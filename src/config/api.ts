@@ -23,7 +23,9 @@ const LOCALHOST_URL = 'http://localhost:5052/';
 // Toggle between local backend and hosted backend.
 // - true  => local backend (Android emulator uses 10.0.2.2)
 // - false => hosted backend (internet required on emulator/device)
-const USE_LOCAL_BACKEND = true;
+// Default to hosted backend to avoid localhost URLs in shared/public links.
+// Set to true only when actively developing against a local backend.
+const USE_LOCAL_BACKEND = false;
 
 export const API_BASE_URL = USE_LOCAL_BACKEND ? LOCALHOST_URL : HOSTING_URL;
 
