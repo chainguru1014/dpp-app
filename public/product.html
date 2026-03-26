@@ -183,8 +183,26 @@
             qrcodeId = decodeURIComponent(pathParts[productIdx + 2]);
         }
 
-        // API base - use same origin as this page (backend serves this HTML)
-        const API_BASE_URL = '/';
+        // Backend base URL priority:
+        // 1) window.__APP_API_BASE_URL (set by hosting template if available)
+        // 2) ?api=<backend-base-url> query param
+        // 3) fallback to known hosted backend URL
+        const DEFAULT_BACKEND_BASE_URL = 'http://82.165.217.122:5052/';
+        const queryApiBase = new URLSearchParams(window.location.search).get('api');
+        const rawApiBaseUrl = window.__APP_API_BASE_URL || queryApiBase || DEFAULT_BACKEND_BASE_URL;
+
+        function normalizeBaseUrl(url) {
+            if (!url) return '/';
+            return url.endsWith('/') ? url : `${url}/`;
+        }
+
+        function joinUrl(base, path) {
+            const safeBase = normalizeBaseUrl(base);
+            const safePath = (path || '').replace(/^\/+/, '');
+            return `${safeBase}${safePath}`;
+        }
+
+        const API_BASE_URL = normalizeBaseUrl(rawApiBaseUrl);
         
         async function loadProduct() {
             if (!productId || qrcodeId == null) {
@@ -195,7 +213,7 @@
             try {
                 // Public app/web endpoint returning normalized product payload
                 const endpoint = `qrcode/public/${encodeURIComponent(productId)}/${encodeURIComponent(qrcodeId)}`;
-                const response = await fetch(`${API_BASE_URL}${endpoint}`);
+                const response = await fetch(joinUrl(API_BASE_URL, endpoint));
                 const data = await response.json();
                 
                 if (response.ok && data.status === 'success') {
@@ -259,8 +277,11 @@
             if (filename.startsWith('http://') || filename.startsWith('https://')) {
                 return filename;
             }
-            // Construct URL
-            return `${API_BASE_URL}files/${filename}`;
+            const cleanFilename = String(filename).replace(/^\/+/, '');
+            const relativePath = cleanFilename.startsWith('files/')
+                ? cleanFilename
+                : `files/${encodeURIComponent(cleanFilename)}`;
+            return joinUrl(API_BASE_URL, relativePath);
         }
         
         function showError(message) {
