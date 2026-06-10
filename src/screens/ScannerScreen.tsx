@@ -445,9 +445,29 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
     );
   }
 
-  // Web QR Scanner Component
+  // Web photo-scan mode (http / no live camera) — clean light layout.
+  if (Platform.OS === 'web' && (webPhotoMode || !QrReader)) {
+    return (
+      <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton={true}>
+        <View style={styles.photoContainer}>
+          <View style={styles.photoScanCard}>
+            <Image source={require('../assets/qr-code.png')} style={styles.photoScanIcon} resizeMode="contain" />
+            <Text style={styles.photoScanTitle}>{t('photoScanTitle')}</Text>
+            <Text style={styles.photoScanSubtitle}>{t('photoScanSubtitle')}</Text>
+            <TouchableOpacity style={styles.photoScanButton} onPress={openPhotoScan} disabled={loading}>
+              <Text style={styles.photoScanButtonText}>
+                {loading ? t('loading') : t('photoScanButton')}
+              </Text>
+            </TouchableOpacity>
+            {loading && <ActivityIndicator size="small" color={colors.accent} style={{ marginTop: 14 }} />}
+          </View>
+        </View>
+      </AppLayout>
+    );
+  }
+
+  // Web live-camera scanner (https / localhost).
   if (Platform.OS === 'web') {
-    const useLiveCamera = !webPhotoMode && !!QrReader;
     return (
       <AppLayout
         navigation={navigation}
@@ -459,42 +479,25 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
           <View style={styles.topContent}>
             <View style={styles.hintCard}>
               <Image source={require('../assets/qr-code.png')} style={styles.hintIcon} resizeMode="contain" />
-              <Text style={styles.hintText}>
-                {useLiveCamera ? t('scannerScanHint') : t('photoScanHint')}
-              </Text>
+              <Text style={styles.hintText}>{t('scannerScanHint')}</Text>
             </View>
           </View>
           <View style={styles.scanViewport}>
-            {useLiveCamera ? (
-              <>
-                <View style={styles.webScannerContainer}>
-                  <QrReader
-                    delay={300}
-                    onError={(err: any) => {
-                      console.error('QR Scanner Error:', err);
-                    }}
-                    onScan={(data: string | null) => {
-                      if (data) {
-                        handleQRCode(data);
-                      }
-                    }}
-                    style={styles.webScanner}
-                  />
-                </View>
-                <ScanFrame />
-              </>
-            ) : (
-              <View style={styles.photoScanCard}>
-                <Image source={require('../assets/qr-code.png')} style={styles.photoScanIcon} resizeMode="contain" />
-                <Text style={styles.photoScanTitle}>{t('photoScanTitle')}</Text>
-                <Text style={styles.photoScanSubtitle}>{t('photoScanSubtitle')}</Text>
-                <TouchableOpacity style={styles.photoScanButton} onPress={openPhotoScan} disabled={loading}>
-                  <Text style={styles.photoScanButtonText}>
-                    {loading ? t('loading') : t('photoScanButton')}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
+            <View style={styles.webScannerContainer}>
+              <QrReader
+                delay={300}
+                onError={(err: any) => {
+                  console.error('QR Scanner Error:', err);
+                }}
+                onScan={(data: string | null) => {
+                  if (data) {
+                    handleQRCode(data);
+                  }
+                }}
+                style={styles.webScanner}
+              />
+            </View>
+            <ScanFrame />
           </View>
           <View style={styles.bottomContent}>
             {loading ? (
@@ -502,12 +505,10 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
                 <ActivityIndicator size="small" color="#fff" />
                 <Text style={styles.loadingPillText}>{t('loadingProductInfo')}</Text>
               </View>
-            ) : useLiveCamera ? (
+            ) : (
               <TouchableOpacity onPress={openPhotoScan}>
                 <Text style={styles.scanCaptionLink}>{t('photoScanButton')}</Text>
               </TouchableOpacity>
-            ) : (
-              <Text style={styles.scanCaption}>{t('photoScanHint')}</Text>
             )}
           </View>
         </View>
@@ -725,14 +726,25 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     textDecorationLine: 'underline',
   },
+  photoContainer: {
+    flex: 1,
+    minHeight: 360,
+    alignItems: 'center',
+    backgroundColor: colors.bg,
+    paddingTop: 28,
+    paddingHorizontal: spacing.lg,
+  },
   photoScanCard: {
+    width: '100%',
+    maxWidth: 420,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.surface,
     borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
     paddingVertical: 32,
     paddingHorizontal: 24,
-    marginHorizontal: spacing.xl,
     ...shadow(2),
   },
   photoScanIcon: {
