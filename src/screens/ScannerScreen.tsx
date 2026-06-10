@@ -62,6 +62,8 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
   const isFocused = useIsFocused();
   const [loading, setLoading] = useState(false);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  // On http (insecure origin) the live camera is unavailable -> use photo scan.
+  const [webPhotoMode, setWebPhotoMode] = useState(false);
   const scannerRef = useRef<any>(null);
   const isMountedRef = useRef(true);
   const isProcessingScanRef = useRef(false);
@@ -111,19 +113,17 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
 
   const requestCameraPermission = async () => {
     if (Platform.OS === 'web') {
-      // For web, check if getUserMedia is available
+      // Live camera needs a secure context (https/localhost). When it's not
+      // available (e.g. served over http), fall back to scanning from a photo
+      // instead of leaving the screen.
       try {
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-          setHasPermission(true);
-        } else {
-          setHasPermission(false);
-          Alert.alert(t('error'), t('cameraNotAvailableBrowser'));
-          navigation.goBack();
-        }
+        const hasLiveCamera = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+        setWebPhotoMode(!hasLiveCamera);
+        setHasPermission(true);
       } catch (err) {
         console.warn(err);
-        setHasPermission(false);
-        navigation.goBack();
+        setWebPhotoMode(true);
+        setHasPermission(true);
       }
     } else if (Platform.OS === 'android') {
       try {
@@ -150,6 +150,76 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
     } else {
       // iOS - permissions are handled automatically by the library
       setHasPermission(true);
+    }
+  };
+
+  // Decode a QR code from a picked/captured image (works over http, no camera
+  // stream needed). Uses jsQR on a canvas — web only.
+  const decodeImageFromFile = (file: any) => {
+    const w: any = globalThis as any;
+    setLoading(true);
+    try {
+      const reader = new w.FileReader();
+      reader.onload = () => {
+        const img = new w.Image();
+        img.onload = () => {
+          try {
+            const maxDim = 1200;
+            const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+            const cw = Math.max(1, Math.round(img.width * scale));
+            const ch = Math.max(1, Math.round(img.height * scale));
+            const canvas = w.document.createElement('canvas');
+            canvas.width = cw;
+            canvas.height = ch;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, cw, ch);
+            const imageData = ctx.getImageData(0, 0, cw, ch);
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
+            const jsQR = require('jsqr').default || require('jsqr');
+            const code = jsQR(imageData.data, cw, ch);
+            setLoading(false);
+            if (code && code.data) {
+              handleQRCode(String(code.data));
+            } else {
+              Alert.alert(t('error'), 'No QR code found in the image. Make sure the QR is clear and centered, then try again.');
+            }
+          } catch (err) {
+            setLoading(false);
+            Alert.alert(t('error'), 'Could not read the image.');
+          }
+        };
+        img.onerror = () => {
+          setLoading(false);
+          Alert.alert(t('error'), 'Could not load the image.');
+        };
+        img.src = reader.result;
+      };
+      reader.onerror = () => {
+        setLoading(false);
+        Alert.alert(t('error'), 'Could not read the file.');
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      setLoading(false);
+      Alert.alert(t('error'), 'Photo scan is not supported here.');
+    }
+  };
+
+  // Open the device camera (mobile) or file picker (desktop) to grab a QR photo.
+  const openPhotoScan = () => {
+    const w: any = globalThis as any;
+    try {
+      const input = w.document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.setAttribute('capture', 'environment'); // hint: open back camera on mobile
+      input.onchange = (ev: any) => {
+        const file = ev?.target?.files && ev.target.files[0];
+        if (file) decodeImageFromFile(file);
+      };
+      input.click();
+    } catch (err) {
+      Alert.alert(t('error'), 'Photo scan is not supported here.');
     }
   };
 
@@ -376,7 +446,8 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
   }
 
   // Web QR Scanner Component
-  if (Platform.OS === 'web' && QrReader) {
+  if (Platform.OS === 'web') {
+    const useLiveCamera = !webPhotoMode && !!QrReader;
     return (
       <AppLayout
         navigation={navigation}
@@ -388,27 +459,42 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
           <View style={styles.topContent}>
             <View style={styles.hintCard}>
               <Image source={require('../assets/qr-code.png')} style={styles.hintIcon} resizeMode="contain" />
-              <Text style={styles.hintText}>{t('scannerScanHint')}</Text>
+              <Text style={styles.hintText}>
+                {useLiveCamera ? t('scannerScanHint') : t('photoScanHint')}
+              </Text>
             </View>
           </View>
           <View style={styles.scanViewport}>
-            <View style={styles.webScannerContainer}>
-              {QrReader && (
-                <QrReader
-                  delay={300}
-                  onError={(err: any) => {
-                    console.error('QR Scanner Error:', err);
-                  }}
-                  onScan={(data: string | null) => {
-                    if (data) {
-                      handleQRCode(data);
-                    }
-                  }}
-                  style={styles.webScanner}
-                />
-              )}
-            </View>
-            <ScanFrame />
+            {useLiveCamera ? (
+              <>
+                <View style={styles.webScannerContainer}>
+                  <QrReader
+                    delay={300}
+                    onError={(err: any) => {
+                      console.error('QR Scanner Error:', err);
+                    }}
+                    onScan={(data: string | null) => {
+                      if (data) {
+                        handleQRCode(data);
+                      }
+                    }}
+                    style={styles.webScanner}
+                  />
+                </View>
+                <ScanFrame />
+              </>
+            ) : (
+              <View style={styles.photoScanCard}>
+                <Image source={require('../assets/qr-code.png')} style={styles.photoScanIcon} resizeMode="contain" />
+                <Text style={styles.photoScanTitle}>{t('photoScanTitle')}</Text>
+                <Text style={styles.photoScanSubtitle}>{t('photoScanSubtitle')}</Text>
+                <TouchableOpacity style={styles.photoScanButton} onPress={openPhotoScan} disabled={loading}>
+                  <Text style={styles.photoScanButtonText}>
+                    {loading ? t('loading') : t('photoScanButton')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
           <View style={styles.bottomContent}>
             {loading ? (
@@ -416,8 +502,12 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
                 <ActivityIndicator size="small" color="#fff" />
                 <Text style={styles.loadingPillText}>{t('loadingProductInfo')}</Text>
               </View>
+            ) : useLiveCamera ? (
+              <TouchableOpacity onPress={openPhotoScan}>
+                <Text style={styles.scanCaptionLink}>{t('photoScanButton')}</Text>
+              </TouchableOpacity>
             ) : (
-              <Text style={styles.scanCaption}>{t('scannerScanHint')}</Text>
+              <Text style={styles.scanCaption}>{t('photoScanHint')}</Text>
             )}
           </View>
         </View>
@@ -627,6 +717,55 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.82)',
     fontSize: 13,
     textAlign: 'center',
+  },
+  scanCaptionLink: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
+    textDecorationLine: 'underline',
+  },
+  photoScanCard: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    paddingVertical: 32,
+    paddingHorizontal: 24,
+    marginHorizontal: spacing.xl,
+    ...shadow(2),
+  },
+  photoScanIcon: {
+    width: 56,
+    height: 56,
+    tintColor: colors.primary,
+    marginBottom: 14,
+  },
+  photoScanTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: colors.heading,
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  photoScanSubtitle: {
+    fontSize: 13,
+    color: colors.muted,
+    textAlign: 'center',
+    marginBottom: 18,
+    lineHeight: 19,
+  },
+  photoScanButton: {
+    backgroundColor: colors.accent,
+    borderRadius: radius.md,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    ...shadow(1),
+  },
+  photoScanButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
   },
   loadingPill: {
     flexDirection: 'row',
