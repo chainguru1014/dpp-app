@@ -16,6 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../config/api';
 import GoogleAuthButton from '../components/GoogleAuthButton';
 import { useI18n } from '../i18n/I18nContext';
+import { colors, spacing, radius, gradients, shadow } from '../theme';
 
 export default function LoginScreen({ navigation, onLogin, route }: any) {
   const goAfterAuth = () => {
@@ -34,6 +35,41 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState('');
 
+  const finalizeLogin = async (userData: any, actorKind: 'User' | 'Company', token: string) => {
+    // Tag the session with which kind of account this is so ownership-transfer
+    // confirmation can identify the acting party (User vs Company/brand).
+    const tagged = { ...userData, actorKind };
+    await AsyncStorage.setItem('userToken', token || '');
+    await AsyncStorage.setItem('user', JSON.stringify(tagged));
+    if (onLogin) {
+      onLogin(tagged);
+    }
+    goAfterAuth();
+  };
+
+  // Brands/companies (the initial owner of every product) live in the companies
+  // collection. If user login fails, fall back to company auth so an owner can
+  // log in and confirm an ownership transfer.
+  const tryCompanyLogin = async (): Promise<boolean> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}company/auth`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ name, password }),
+      });
+      if (!response.ok) return false;
+      const data = await response.json().catch(() => ({}));
+      const doc = data?.data?.doc;
+      if (data?.status === 'success' && doc) {
+        await finalizeLogin(doc, 'Company', '');
+        return true;
+      }
+    } catch (error) {
+      // ignore and report the original user-login failure
+    }
+    return false;
+  };
+
   const handleLogin = async () => {
     setApiError('');
     if (!name || !password) {
@@ -45,12 +81,12 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
     const apiUrl = `${API_BASE_URL}user/login`;
     console.log('Attempting login to:', apiUrl);
     console.log('Request body:', { name, password: '***' });
-    
+
     try {
       // Test connection first with timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-      
+
       const response = await fetch(apiUrl, {
         method: 'POST',
         signal: controller.signal,
@@ -60,13 +96,15 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
         },
         body: JSON.stringify({ name, password }),
       });
-      
+
       clearTimeout(timeoutId);
 
       console.log('Response status:', response.status);
       console.log('Response headers:', JSON.stringify([...response.headers.entries()]));
 
       if (!response.ok) {
+        // User login failed — try company login before reporting an error.
+        if (await tryCompanyLogin()) { setLoading(false); return; }
         const errorText = await response.text();
         console.error('Response error:', errorText);
         try {
@@ -85,16 +123,12 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
       if (data.status === 'success') {
         const userData = data.user || data.data;
         if (userData) {
-          await AsyncStorage.setItem('userToken', data.token || '');
-          await AsyncStorage.setItem('user', JSON.stringify(userData));
-          if (onLogin) {
-            onLogin(userData);
-          }
-          goAfterAuth();
+          await finalizeLogin(userData, 'User', data.token || '');
         } else {
           Alert.alert(t('error'), t('invalidServerResponse'));
         }
       } else {
+        if (await tryCompanyLogin()) { setLoading(false); return; }
         setApiError(data.message || t('loginFailed'));
       }
     } catch (error: any) {
@@ -162,20 +196,19 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
       {...(Platform.OS === 'ios' && { contentInsetAdjustmentBehavior: 'automatic' })}
     >
       <View style={styles.content}>
-        <View style={styles.card}>
+        <View style={[styles.card, gradients.hero]}>
               <View style={styles.logoContainer}>
               <Image
-                source={require('../assets/yometel-logo.png')}
+                source={require('../assets/logo-shield.png')}
                 style={styles.logoImage}
                 resizeMode="contain"
               />
             </View>
-            <Text style={styles.title}>{t('signIn')}</Text>
 
             <TextInput
               style={styles.input}
               placeholder={t('username')}
-              placeholderTextColor="#999"
+              placeholderTextColor={colors.placeholder}
               value={name}
               onChangeText={setName}
               autoCapitalize="none"
@@ -184,7 +217,7 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
             <TextInput
               style={styles.input}
               placeholder={t('password')}
-              placeholderTextColor="#999"
+              placeholderTextColor={colors.placeholder}
               value={password}
               onChangeText={setPassword}
               secureTextEntry
@@ -192,7 +225,9 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
             />
 
             {!!apiError && (
-              <Text style={styles.apiErrorText}>{apiError}</Text>
+              <View style={styles.apiErrorBox}>
+                <Text style={styles.apiErrorText}>{apiError}</Text>
+              </View>
             )}
 
             <TouchableOpacity
@@ -240,7 +275,6 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.overlay} />
       {isWeb ? (
         scrollViewContent
       ) : (
@@ -262,17 +296,8 @@ const isWebPlatform = Platform.OS === 'web';
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#5b8ad9',
     ...(isWebPlatform && { height: screenHeight, minHeight: screenHeight }),
-  },
-  overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
-    zIndex: 0,
   },
   keyboardView: {
     flex: 1,
@@ -285,7 +310,7 @@ const styles = StyleSheet.create({
     ...(isWebPlatform && { height: screenHeight, minHeight: screenHeight }),
   },
   scrollContent: {
-    padding: 20,
+    padding: spacing.xl,
     alignItems: 'center',
     flexGrow: 1,
     justifyContent: 'center',
@@ -298,67 +323,84 @@ const styles = StyleSheet.create({
     ...(isWebPlatform && { minHeight: 0 }),
   },
   card: {
-    backgroundColor: 'rgba(255, 255, 255, 0.98)',
-    borderRadius: 16,
-    padding: 30,
+    backgroundColor: colors.primary,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.navy,
+    padding: spacing.xxxl,
     width: '100%',
     maxWidth: 380,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 24 },
-    shadowOpacity: 0.35,
-    shadowRadius: 60,
-    elevation: 10,
+    ...shadow(3),
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: spacing.xxl,
   },
   logoImage: {
-    width: 300,
-    height: 90,
+    width: 96,
+    height: 96,
+  },
+  logoTagline: {
+    marginTop: 12,
+    fontSize: 36,
+    fontWeight: '800',
+    letterSpacing: 3,
+    color: colors.white,
+    textAlign: 'center',
+    ...(isWebPlatform && { fontFamily: 'Poppins, system-ui, sans-serif' }),
   },
   title: {
     fontSize: 24,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 20,
+    fontWeight: '800',
+    color: colors.heading,
+    marginBottom: spacing.xl,
   },
   input: {
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 15,
+    backgroundColor: colors.fieldBg,
+    borderRadius: radius.md,
+    paddingVertical: 13,
+    paddingHorizontal: 14,
+    marginBottom: spacing.md,
     fontSize: 16,
+    color: colors.text,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: colors.border,
   },
   button: {
-    backgroundColor: '#1976d2',
-    borderRadius: 8,
-    padding: 14,
+    backgroundColor: colors.accent,
+    borderRadius: radius.md,
+    paddingVertical: 15,
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: spacing.sm,
+    ...shadow(1),
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   buttonText: {
-    color: '#fff',
+    color: colors.white,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
+  },
+  apiErrorBox: {
+    backgroundColor: colors.dangerSoft,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.md,
   },
   apiErrorText: {
-    color: '#d32f2f',
+    color: colors.danger,
     fontSize: 13,
     textAlign: 'left',
-    marginBottom: 10,
   },
   linkButton: {
-    marginTop: 15,
+    marginTop: spacing.lg,
     alignItems: 'center',
   },
   linkText: {
-    color: '#1976d2',
+    color: colors.onDarkAccent,
     fontSize: 14,
+    fontWeight: '600',
   },
 });

@@ -35,7 +35,11 @@ module.exports = {
         },
       },
       {
-        test: /\.(png|jpe?g|gif|svg)$/,
+        test: /\.(png|jpe?g|gif|svg|ico)$/,
+        type: 'asset/resource',
+      },
+      {
+        test: /\.(ttf|otf|woff2?)$/,
         type: 'asset/resource',
       },
     ],
@@ -44,6 +48,7 @@ module.exports = {
     new HtmlWebpackPlugin({
       template: './public/index.html',
       inject: 'body',
+      favicon: path.resolve(__dirname, 'src/assets/logo-shield.png'),
     }),
   ],
   devServer: {

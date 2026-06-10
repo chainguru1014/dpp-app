@@ -10,19 +10,26 @@ export default function App() {
     config: {
       screens: {
         Result: 'product/:productId/:qrcodeId',
+        TransferConfirm: 'transfer/:code',
         Home: 'home',
         Login: 'login',
         Register: 'register',
         Scanner: 'scanner',
         EditProfile: 'profile/edit',
         ScannedProducts: 'scanned-products',
+        PurchaseHistory: 'purchase-history',
+        History: 'history-activity',
       },
     },
   };
 
   return (
     <I18nProvider>
-      <NavigationContainer ref={navigationRef} linking={linking}>
+      <NavigationContainer
+        ref={navigationRef}
+        linking={linking}
+        documentTitle={{ formatter: () => 'Yometel DPP' }}
+      >
         <AppNavigator navigationRef={navigationRef} />
       </NavigationContainer>
     </I18nProvider>

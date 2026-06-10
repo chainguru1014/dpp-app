@@ -17,6 +17,7 @@ import AppLayout from '../components/AppLayout';
 import { API_BASE_URL } from '../config/api';
 import { COUNTRIES } from '../constants/countries';
 import { useI18n } from '../i18n/I18nContext';
+import { colors, spacing, radius, fontSize, shadow } from '../theme';
 
 export default function EditProfileScreen({ navigation, route, user, onLogout, onUserUpdate }: any) {
   const TOP_BAR_HEIGHT = 70;
@@ -28,6 +29,7 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
   const [countryModalVisible, setCountryModalVisible] = useState(false);
   const [dobPickerVisible, setDobPickerVisible] = useState(false);
   const [dobDraft, setDobDraft] = useState(new Date(2000, 0, 1));
+  const [fieldErrors, setFieldErrors] = useState<{ gender?: string; age?: string; country?: string }>({});
   const isGoogleProfileCompletion = !!route?.params?.fromGoogle;
   const createProfileFromUser = (sourceUser: any = user) => ({
     userType: sourceUser?.userType || 'client',
@@ -89,9 +91,27 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
     }
   }, [user]);
 
-  const setField = (key: string, value: string) => setProfile((prev: any) => ({ ...prev, [key]: value }));
+  const setField = (key: string, value: string) => {
+    setProfile((prev: any) => ({ ...prev, [key]: value }));
+    if (key === 'gender' || key === 'age' || key === 'country') {
+      setFieldErrors((prev) => ({ ...prev, [key]: undefined }));
+    }
+  };
+
+  const validateGoogleRequiredFields = () => {
+    const nextErrors: { gender?: string; age?: string; country?: string } = {};
+    if (!profile.gender) nextErrors.gender = 'Gender is required';
+    if (!profile.age) nextErrors.age = 'Age is required';
+    if (!profile.country) nextErrors.country = 'Country is required';
+    setFieldErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
 
   const validateProfile = (showAlert = true) => {
+    if (isGoogleProfileCompletion && profile.userType === 'client') {
+      return validateGoogleRequiredFields();
+    }
+
     if (profile.userType === 'client') {
       if (!profile.name || !profile.password || !profile.gender || !profile.age || !profile.country) {
         if (showAlert) {
@@ -173,14 +193,14 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
   };
 
   const handleCancel = () => {
-    if (isGoogleProfileCompletion && !validateProfile(true)) {
-      return;
-    }
-    setProfile(initialProfile);
-    if (isGoogleProfileCompletion) {
+    if (isGoogleProfileCompletion && profile.userType === 'client') {
+      if (!validateGoogleRequiredFields()) {
+        return;
+      }
       navigation.replace('Home');
       return;
     }
+    setProfile(initialProfile);
     navigation.goBack();
   };
   const availableContentMinHeight = Math.max(0, windowHeight - TOP_BAR_HEIGHT - BOTTOM_BAR_HEIGHT - actionsHeight);
@@ -237,12 +257,15 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
                     </TouchableOpacity>
                   ))}
                 </View>
+                {!!fieldErrors.gender && <Text style={styles.errorText}>{fieldErrors.gender}</Text>}
                 <Text style={styles.label}>Age:</Text>
                 <TextInput style={styles.input} placeholder="Age" value={profile.age} onChangeText={(v) => setField('age', v)} keyboardType="numeric" />
+                {!!fieldErrors.age && <Text style={styles.errorText}>{fieldErrors.age}</Text>}
                 <Text style={styles.label}>Country:</Text>
                 <TouchableOpacity style={styles.countryButton} onPress={() => setCountryModalVisible(true)}>
                   <Text style={profile.country ? styles.countryButtonText : styles.countryButtonPlaceholder}>{profile.country || 'Select Country'}</Text>
                 </TouchableOpacity>
+                {!!fieldErrors.country && <Text style={styles.errorText}>{fieldErrors.country}</Text>}
               </>
             ) : (
               <>
@@ -382,42 +405,136 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
 }
 
 const styles = StyleSheet.create({
-  keyboardContainer: { flex: 1 },
-  scrollView: { flex: 1 },
-  scrollContent: { padding: 20, paddingBottom: 24 },
-  card: { backgroundColor: '#fff', borderRadius: 12, padding: 16 },
-  header: { fontSize: 20, fontWeight: '700', marginBottom: 16, color: '#333' },
-  label: { fontSize: 14, fontWeight: '600', color: '#333', marginBottom: 6 },
-  userTypeButtons: { flexDirection: 'row', gap: 10, marginBottom: 14 },
-  userTypeButton: { flex: 1, padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#e0e0e0', backgroundColor: '#f5f5f5', alignItems: 'center' },
-  userTypeButtonActive: { backgroundColor: '#1976d2', borderColor: '#1976d2' },
-  userTypeButtonText: { color: '#666', fontWeight: '500' },
-  userTypeButtonTextActive: { color: '#fff', fontWeight: '700' },
-  input: { backgroundColor: '#f5f5f5', borderRadius: 8, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: '#e0e0e0' },
+  keyboardContainer: { flex: 1, backgroundColor: colors.bg },
+  scrollView: { flex: 1, backgroundColor: colors.bg },
+  scrollContent: { padding: spacing.xl, paddingBottom: spacing.xxl },
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.xl,
+    ...shadow(2),
+  },
+  header: { fontSize: fontSize.xxl, fontWeight: '800', marginBottom: spacing.xl, color: colors.heading },
+  label: { fontSize: fontSize.md, fontWeight: '600', color: colors.primaryDark, marginBottom: spacing.sm },
+  userTypeButtons: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.lg },
+  userTypeButton: {
+    flex: 1,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceAlt,
+    alignItems: 'center',
+  },
+  userTypeButtonActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  userTypeButtonText: { color: colors.muted, fontSize: fontSize.md, fontWeight: '600' },
+  userTypeButtonTextActive: { color: colors.white, fontWeight: '700' },
+  input: {
+    backgroundColor: colors.fieldBg,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: 13,
+    paddingHorizontal: 14,
+    fontSize: fontSize.lg,
+    color: colors.text,
+    marginBottom: spacing.md,
+  },
   textArea: { minHeight: 80, textAlignVertical: 'top' },
-  genderContainer: { flexDirection: 'row', gap: 10, marginBottom: 12 },
-  genderOption: { flex: 1, padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#e0e0e0', backgroundColor: '#f5f5f5', alignItems: 'center' },
-  genderOptionSelected: { backgroundColor: '#1976d2', borderColor: '#1976d2' },
-  genderOptionText: { color: '#666', fontSize: 15 },
-  genderOptionTextSelected: { color: '#fff', fontWeight: '600' },
-  countryButton: { backgroundColor: '#f5f5f5', borderRadius: 8, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: '#e0e0e0' },
-  countryButtonText: { color: '#333' },
-  countryButtonPlaceholder: { color: '#999' },
-  actions: { flexDirection: 'row', gap: 10, padding: 16, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#eee', backgroundColor: '#fff' },
-  cancelButton: { flex: 1, backgroundColor: '#f1f1f1', borderRadius: 8, padding: 14, alignItems: 'center' },
-  saveButton: { flex: 1, backgroundColor: '#1976d2', borderRadius: 8, padding: 14, alignItems: 'center' },
-  cancelText: { color: '#333', fontWeight: '600' },
-  saveText: { color: '#fff', fontWeight: '600' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalCard: { backgroundColor: '#fff', maxHeight: '75%', padding: 16, borderTopLeftRadius: 16, borderTopRightRadius: 16 },
-  modalTitle: { fontSize: 18, fontWeight: '700', marginBottom: 10 },
-  dobPreviewBox: { backgroundColor: '#f5f5f5', borderRadius: 8, padding: 12, alignItems: 'center', marginBottom: 10 },
-  dobPreviewText: { fontSize: 18, fontWeight: '600', color: '#1976d2' },
-  dateRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
-  dateAdjustButton: { flex: 1, backgroundColor: '#e3f2fd', borderRadius: 8, paddingVertical: 10, alignItems: 'center' },
-  dateAdjustButtonText: { color: '#1976d2', fontWeight: '600' },
-  countryItem: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#eee' },
-  countryItemText: { color: '#333' },
-  modalCancel: { marginTop: 12, alignItems: 'center', backgroundColor: '#f2f2f2', padding: 10, borderRadius: 8 },
-  modalCancelText: { color: '#333', fontWeight: '600' },
+  genderContainer: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.md },
+  genderOption: {
+    flex: 1,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceAlt,
+    alignItems: 'center',
+  },
+  genderOptionSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
+  genderOptionText: { color: colors.muted, fontSize: fontSize.md, fontWeight: '600' },
+  genderOptionTextSelected: { color: colors.white, fontWeight: '700' },
+  countryButton: {
+    backgroundColor: colors.fieldBg,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: 13,
+    paddingHorizontal: 14,
+    marginBottom: spacing.md,
+  },
+  countryButtonText: { color: colors.text, fontSize: fontSize.lg },
+  countryButtonPlaceholder: { color: colors.placeholder, fontSize: fontSize.lg },
+  errorText: { color: colors.danger, fontSize: fontSize.sm, marginTop: -spacing.sm, marginBottom: spacing.md },
+  actions: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    padding: spacing.lg,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.md,
+    paddingVertical: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveButton: {
+    flex: 1,
+    backgroundColor: colors.accent,
+    borderRadius: radius.md,
+    paddingVertical: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadow(1),
+  },
+  cancelText: { color: colors.primary, fontSize: fontSize.lg, fontWeight: '700' },
+  saveText: { color: colors.white, fontSize: fontSize.lg, fontWeight: '700' },
+  modalOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
+  modalCard: {
+    backgroundColor: colors.surface,
+    maxHeight: '75%',
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.xl,
+    borderTopLeftRadius: radius.xxl,
+    borderTopRightRadius: radius.xxl,
+  },
+  modalTitle: { fontSize: fontSize.xl, fontWeight: '800', color: colors.heading, marginBottom: spacing.md },
+  dobPreviewBox: {
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  dobPreviewText: { fontSize: fontSize.xl, fontWeight: '700', color: colors.primary },
+  dateRow: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.md },
+  dateAdjustButton: {
+    flex: 1,
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+  },
+  dateAdjustButtonText: { color: colors.primary, fontWeight: '700' },
+  countryItem: { paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
+  countryItemText: { color: colors.text, fontSize: fontSize.lg },
+  modalCancel: {
+    marginTop: spacing.md,
+    alignItems: 'center',
+    backgroundColor: colors.surfaceAlt,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+  },
+  modalCancelText: { color: colors.primary, fontSize: fontSize.lg, fontWeight: '700' },
 });

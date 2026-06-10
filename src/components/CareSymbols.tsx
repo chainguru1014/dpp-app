@@ -1,9 +1,27 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import Svg, { Path, Circle, Text as SvgText } from 'react-native-svg';
+import Svg, { Path, Circle, Rect, Text as SvgText } from 'react-native-svg';
 
 const size = 48;
-const stroke = 1.8;
+const stroke = 1.7;
+
+// Brand-aligned colours: blue accent when picked, soft slate otherwise.
+const ACTIVE = '#1976d2';
+const IDLE = '#5b6b8c';
+
+const common = {
+  fill: 'none' as const,
+  strokeWidth: stroke,
+  strokeLinecap: 'round' as const,
+  strokeLinejoin: 'round' as const,
+};
+
+// Evenly spread N filled dots across the symbol (heat / temperature level).
+function dotPositions(count: number): number[] {
+  if (count <= 1) return [16];
+  if (count === 2) return [13, 19];
+  return [11, 16, 21];
+}
 
 interface WashIconProps {
   temp: number;
@@ -11,21 +29,22 @@ interface WashIconProps {
 }
 
 function WashIcon({ temp, selected }: WashIconProps) {
-  const color = selected ? '#1976d2' : '#333';
+  const color = selected ? ACTIVE : IDLE;
   return (
     <Svg width={size} height={size} viewBox="0 0 32 32">
+      {/* Wavy water surface (top rim of the tub) */}
+      <Path {...common} stroke={color} d="M6 12.5 q2.5 -2.6 5 0 t5 0 t5 0 t5 0" />
+      {/* Tub body */}
       <Path
-        fill="none"
+        {...common}
         stroke={color}
-        strokeWidth={stroke}
-        d="M6 10c0-2 2-4 6-4h8c4 0 6 2 6 4v14H6V10z"
+        d="M6 12.5 L7.6 23.4 Q7.9 26 10.3 26 L21.7 26 Q24.1 26 24.4 23.4 L26 12.5"
       />
-      <Path fill="none" stroke={color} strokeWidth={stroke} d="M6 16h20" />
       <SvgText
         x="16"
-        y="14"
+        y="22"
         textAnchor="middle"
-        fontSize="8"
+        fontSize="9"
         fill={color}
         fontWeight="bold"
       >
@@ -41,15 +60,15 @@ interface DryCleanIconProps {
 }
 
 function DryCleanIcon({ letter, selected }: DryCleanIconProps) {
-  const color = selected ? '#1976d2' : '#333';
+  const color = selected ? ACTIVE : IDLE;
   return (
     <Svg width={size} height={size} viewBox="0 0 32 32">
-      <Circle cx="16" cy="16" r="12" fill="none" stroke={color} strokeWidth={stroke} />
+      <Circle cx="16" cy="16" r="11.5" {...common} stroke={color} />
       <SvgText
         x="16"
-        y="20"
+        y="20.5"
         textAnchor="middle"
-        fontSize="12"
+        fontSize="13"
         fill={color}
         fontWeight="bold"
       >
@@ -65,24 +84,18 @@ interface IronIconProps {
 }
 
 function IronIcon({ dots, selected }: IronIconProps) {
-  const color = selected ? '#1976d2' : '#333';
+  const color = selected ? ACTIVE : IDLE;
   return (
     <Svg width={size} height={size} viewBox="0 0 32 32">
+      {/* Iron body with a pointed nose and a curved handle */}
       <Path
-        fill="none"
+        {...common}
         stroke={color}
-        strokeWidth={stroke}
-        d="M8 6h16l-4 20H12L8 6z"
+        d="M6 20.5 L25.5 20.5 L25.5 17 C25.5 13.5 22.5 11.5 18.5 11.5 L12 11.5 C9 11.5 6.8 13.8 6 17 Z"
       />
-      <Path fill="none" stroke={color} strokeWidth={stroke} d="M8 12h16" />
-      {[1, 2, 3].slice(0, dots).map((_, i) => (
-        <Circle
-          key={i}
-          cx={12 + i * 8}
-          cy="22"
-          r="2.5"
-          fill={color}
-        />
+      <Path {...common} stroke={color} d="M12.5 11.5 C13.5 9.2 16.9 9.2 18 11.5" />
+      {dotPositions(dots).map((cx, i) => (
+        <Circle key={i} cx={cx} cy="17" r="1.6" fill={color} />
       ))}
     </Svg>
   );
@@ -94,21 +107,16 @@ interface BleachIconProps {
 }
 
 function BleachIcon({ allowed, selected }: BleachIconProps) {
-  const color = selected ? '#1976d2' : '#333';
+  const color = selected ? ACTIVE : IDLE;
   return (
     <Svg width={size} height={size} viewBox="0 0 32 32">
-      <Path
-        fill="none"
-        stroke={color}
-        strokeWidth={stroke}
-        d="M16 4L6 28h20L16 4z"
-      />
+      <Path {...common} stroke={color} d="M16 5 L27 25 L5 25 Z" />
       {!allowed && (
         <Path
-          fill="none"
+          {...common}
           stroke={color}
-          strokeWidth={stroke * 1.5}
-          d="M8 8l16 16M24 8l-16 16"
+          strokeWidth={stroke * 1.3}
+          d="M9.5 12 L22.5 23 M22.5 12 L9.5 23"
         />
       )}
     </Svg>
@@ -121,18 +129,13 @@ interface TumbleDryIconProps {
 }
 
 function TumbleDryIcon({ dots, selected }: TumbleDryIconProps) {
-  const color = selected ? '#1976d2' : '#333';
+  const color = selected ? ACTIVE : IDLE;
   return (
     <Svg width={size} height={size} viewBox="0 0 32 32">
-      <Circle cx="16" cy="16" r="12" fill="none" stroke={color} strokeWidth={stroke} />
-      {[1, 2].slice(0, dots).map((_, i) => (
-        <Circle
-          key={i}
-          cx={12 + i * 8}
-          cy="16"
-          r="2.5"
-          fill={color}
-        />
+      <Rect x="4" y="4" width="24" height="24" rx="3.5" {...common} stroke={color} />
+      <Circle cx="16" cy="16" r="6.5" {...common} stroke={color} />
+      {dotPositions(Math.min(dots, 2)).map((cx, i) => (
+        <Circle key={i} cx={cx} cy="16" r="1.5" fill={color} />
       ))}
     </Svg>
   );
@@ -179,19 +182,25 @@ const styles = StyleSheet.create({
   symbolContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 80,
-    minWidth: 80,
-    padding: 4,
-    borderRadius: 4,
+    width: 76,
+    minWidth: 76,
+    height: 76,
+    padding: 8,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
-    backgroundColor: 'transparent',
+    borderColor: '#e7edf6',
+    backgroundColor: '#fff',
     marginRight: 8,
     marginBottom: 8,
+    shadowColor: '#1f3361',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
   },
   symbolContainerSelected: {
     borderColor: '#1976d2',
-    backgroundColor: '#e3f2fd',
+    backgroundColor: '#eaf2fd',
   },
   iconWrapper: {
     alignItems: 'center',

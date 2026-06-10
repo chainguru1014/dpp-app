@@ -25,9 +25,28 @@ const LOCALHOST_URL = 'http://localhost:5052/';
 // - false => hosted backend (internet required on emulator/device)
 // Default to hosted backend to avoid localhost URLs in shared/public links.
 // Set to true only when actively developing against a local backend.
-const USE_LOCAL_BACKEND = false;
+const USE_LOCAL_BACKEND = true;
 
-export const API_BASE_URL = USE_LOCAL_BACKEND ? LOCALHOST_URL : HOSTING_URL;
+// Resolve the backend URL.
+// - Web: derive from the hostname so the SAME build works locally and when
+//   deployed — localhost/127.0.0.1 -> local backend, any real host -> hosted.
+// - Native: use the USE_LOCAL_BACKEND toggle (set false for release APKs).
+const resolveBaseUrl = () => {
+  if (Platform.OS === 'web') {
+    try {
+      const host = (globalThis as any)?.location?.hostname || '';
+      if (host && host !== 'localhost' && host !== '127.0.0.1') {
+        return HOSTING_URL;
+      }
+      return LOCALHOST_URL;
+    } catch (e) {
+      // fall through to the toggle
+    }
+  }
+  return USE_LOCAL_BACKEND ? LOCALHOST_URL : HOSTING_URL;
+};
+
+export const API_BASE_URL = resolveBaseUrl();
 
 // Log configuration for debugging
 console.log('API Configuration:');

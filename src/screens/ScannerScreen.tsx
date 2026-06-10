@@ -8,12 +8,26 @@ import {
   ActivityIndicator,
   PermissionsAndroid,
   Platform,
+  Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../config/api';
 import AppLayout from '../components/AppLayout';
 import { useI18n } from '../i18n/I18nContext';
 import { useIsFocused } from '@react-navigation/native';
+import { colors, radius, spacing, shadow } from '../theme';
+
+// Decorative corner brackets that frame the scan target.
+const ScanFrame = () => (
+  <View pointerEvents="none" style={styles.frameOverlay}>
+    <View style={styles.frame}>
+      <View style={[styles.corner, styles.cornerTL]} />
+      <View style={[styles.corner, styles.cornerTR]} />
+      <View style={[styles.corner, styles.cornerBL]} />
+      <View style={[styles.corner, styles.cornerBR]} />
+    </View>
+  </View>
+);
 
 // Conditionally import QR scanner based on platform
 let QRCodeScanner: any = null;
@@ -167,6 +181,17 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
       let response: any;
       let encryptDataForRecord = '';
 
+      // Ownership-transfer link: .../transfer/:code -> open the confirmation screen
+      // (works on native and the web scan page) instead of fetching product data.
+      const transferUrlMatch = scannedValue.match(/\/transfer\/([^/?#]+)/i);
+      if (transferUrlMatch) {
+        const code = decodeURIComponent(transferUrlMatch[1]);
+        if (isMountedRef.current) setLoading(false);
+        isProcessingScanRef.current = false;
+        navigation.navigate('TransferConfirm', { code });
+        return;
+      }
+
       // New format: .../product/:productId/:qrcodeId
       const productUrlMatch = scannedValue.match(/\/product\/([^/?#]+)\/([^/?#]+)/i);
       if (productUrlMatch) {
@@ -229,6 +254,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
               token_id: productData?.token_id,
               encryptData: encryptDataForRecord || productData?.scannedQRCode || scannedValue,
               user_id: user?._id,
+              source: 'scan',
             }),
           });
         } catch (recordError) {
@@ -272,7 +298,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
           return;
         }
 
-        navigation.replace('Result', {
+        navigation.replace('ScanSuccessful', {
           productData: {
             ...productData,
             scannedQRCode: productData?.scannedQRCode || scannedValue,
@@ -317,9 +343,13 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         onLogout={onLogout}
         showBackButton={true}
       >
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#1976d2" />
-          <Text style={styles.loadingText}>{t('requestingCameraPermission')}</Text>
+        <View style={styles.stateContainer}>
+          <View style={styles.stateCard}>
+            <View style={styles.stateIconWrap}>
+              <ActivityIndicator size="large" color={colors.accent} />
+            </View>
+            <Text style={styles.stateTitle}>{t('requestingCameraPermission')}</Text>
+          </View>
         </View>
       </AppLayout>
     );
@@ -333,8 +363,13 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         onLogout={onLogout}
         showBackButton={true}
       >
-        <View style={styles.loadingContainer}>
-          <Text style={styles.errorText}>{t('cameraPermissionDenied')}</Text>
+        <View style={styles.stateContainer}>
+          <View style={styles.stateCard}>
+            <View style={[styles.stateIconWrap, styles.stateIconWrapDanger]}>
+              <Image source={require('../assets/shield.png')} style={styles.stateIconDanger} resizeMode="contain" />
+            </View>
+            <Text style={styles.stateTitle}>{t('cameraPermissionDenied')}</Text>
+          </View>
         </View>
       </AppLayout>
     );
@@ -351,32 +386,38 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
       >
         <View style={styles.container}>
           <View style={styles.topContent}>
-            <Text style={styles.centerText}>
-              {t('scannerScanHint')}
-            </Text>
+            <View style={styles.hintCard}>
+              <Image source={require('../assets/qr-code.png')} style={styles.hintIcon} resizeMode="contain" />
+              <Text style={styles.hintText}>{t('scannerScanHint')}</Text>
+            </View>
           </View>
-          <View style={styles.webScannerContainer}>
-            {QrReader && (
-              <QrReader
-                delay={300}
-                onError={(err: any) => {
-                  console.error('QR Scanner Error:', err);
-                }}
-                onScan={(data: string | null) => {
-                  if (data) {
-                    handleQRCode(data);
-                  }
-                }}
-                style={styles.webScanner}
-              />
-            )}
+          <View style={styles.scanViewport}>
+            <View style={styles.webScannerContainer}>
+              {QrReader && (
+                <QrReader
+                  delay={300}
+                  onError={(err: any) => {
+                    console.error('QR Scanner Error:', err);
+                  }}
+                  onScan={(data: string | null) => {
+                    if (data) {
+                      handleQRCode(data);
+                    }
+                  }}
+                  style={styles.webScanner}
+                />
+              )}
+            </View>
+            <ScanFrame />
           </View>
           <View style={styles.bottomContent}>
-            {loading && (
-              <View style={styles.loadingOverlay}>
-                <ActivityIndicator size="large" color="#1976d2" />
-                <Text style={styles.loadingText}>{t('loadingProductInfo')}</Text>
+            {loading ? (
+              <View style={styles.loadingPill}>
+                <ActivityIndicator size="small" color="#fff" />
+                <Text style={styles.loadingPillText}>{t('loadingProductInfo')}</Text>
               </View>
+            ) : (
+              <Text style={styles.scanCaption}>{t('scannerScanHint')}</Text>
             )}
           </View>
         </View>
@@ -392,8 +433,12 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         onLogout={onLogout}
         showBackButton={true}
       >
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#1976d2" />
+        <View style={styles.stateContainer}>
+          <View style={styles.stateCard}>
+            <View style={styles.stateIconWrap}>
+              <ActivityIndicator size="large" color={colors.accent} />
+            </View>
+          </View>
         </View>
       </AppLayout>
     );
@@ -418,17 +463,18 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
             cameraStyle={styles.camera}
             topContent={
               <View style={styles.topContent}>
-                <Text style={styles.centerText}>
-                  {t('scannerScanHint')}
-                </Text>
+                <View style={styles.hintCard}>
+                  <Image source={require('../assets/qr-code.png')} style={styles.hintIcon} resizeMode="contain" />
+                  <Text style={styles.hintText}>{t('scannerScanHint')}</Text>
+                </View>
               </View>
             }
             bottomContent={
               <View style={styles.bottomContent}>
                 {loading && (
-                  <View style={styles.loadingOverlay}>
-                    <ActivityIndicator size="large" color="#1976d2" />
-                    <Text style={styles.loadingText}>Loading product information...</Text>
+                  <View style={styles.loadingPill}>
+                    <ActivityIndicator size="small" color="#fff" />
+                    <Text style={styles.loadingPillText}>Loading product information...</Text>
                   </View>
                 )}
               </View>
@@ -450,73 +496,68 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
       onLogout={onLogout}
       showBackButton={true}
     >
-      <View style={styles.loadingContainer}>
-        <Text style={styles.errorText}>{t('qrScannerUnavailable')}</Text>
+      <View style={styles.stateContainer}>
+        <View style={styles.stateCard}>
+          <View style={[styles.stateIconWrap, styles.stateIconWrapDanger]}>
+            <Image source={require('../assets/qr-code.png')} style={styles.stateIconDanger} resizeMode="contain" />
+          </View>
+          <Text style={styles.stateTitle}>{t('qrScannerUnavailable')}</Text>
+        </View>
       </View>
     </AppLayout>
   );
 }
 
+const DARK = '#0b1220';
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: DARK,
   },
   camera: {
     flex: 1,
   },
   topContent: {
-    paddingTop: 60,
-    paddingHorizontal: 20,
+    paddingTop: spacing.xl,
+    paddingHorizontal: spacing.xl,
     alignItems: 'center',
   },
-  centerText: {
-    fontSize: 18,
+  // Branded scan hint
+  hintCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    gap: spacing.sm,
+    maxWidth: 460,
+    backgroundColor: 'rgba(31,51,97,0.86)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+    borderRadius: radius.pill,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    ...shadow(2),
+  },
+  hintIcon: {
+    width: 18,
+    height: 18,
+    tintColor: '#fff',
+  },
+  hintText: {
     color: '#fff',
-    textAlign: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    padding: 16,
-    borderRadius: 8,
-  },
-  bottomContent: {
-    paddingBottom: 40,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-  },
-  button: {
-    backgroundColor: '#1976d2',
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 8,
-    alignItems: 'center',
-    minWidth: 120,
-    marginTop: 20,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '600',
+    flexShrink: 1,
+    textAlign: 'center',
   },
-  loadingContainer: {
+  // Camera viewport + frame
+  scanViewport: {
     flex: 1,
+    width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
-  },
-  loadingOverlay: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  loadingText: {
-    marginTop: 20,
-    fontSize: 16,
-    color: '#fff',
-  },
-  errorText: {
-    fontSize: 18,
-    color: '#d32f2f',
-    marginBottom: 20,
-    textAlign: 'center',
+    position: 'relative',
+    backgroundColor: DARK,
   },
   webScannerContainer: {
     flex: 1,
@@ -529,5 +570,121 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 500,
     height: '100%',
+  },
+  frameOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  frame: {
+    width: '68%',
+    maxWidth: 280,
+    aspectRatio: 1,
+    position: 'relative',
+  },
+  corner: {
+    position: 'absolute',
+    width: 38,
+    height: 38,
+    borderColor: colors.accent,
+    borderWidth: 4,
+  },
+  cornerTL: {
+    top: 0,
+    left: 0,
+    borderRightWidth: 0,
+    borderBottomWidth: 0,
+    borderTopLeftRadius: radius.md,
+  },
+  cornerTR: {
+    top: 0,
+    right: 0,
+    borderLeftWidth: 0,
+    borderBottomWidth: 0,
+    borderTopRightRadius: radius.md,
+  },
+  cornerBL: {
+    bottom: 0,
+    left: 0,
+    borderRightWidth: 0,
+    borderTopWidth: 0,
+    borderBottomLeftRadius: radius.md,
+  },
+  cornerBR: {
+    bottom: 0,
+    right: 0,
+    borderLeftWidth: 0,
+    borderTopWidth: 0,
+    borderBottomRightRadius: radius.md,
+  },
+  bottomContent: {
+    paddingBottom: spacing.xxxl,
+    paddingTop: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    alignItems: 'center',
+  },
+  scanCaption: {
+    color: 'rgba(255,255,255,0.82)',
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  loadingPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.accent,
+    borderRadius: radius.pill,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    ...shadow(2),
+  },
+  loadingPillText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  // Light-theme state screens (permission / unavailable / loading)
+  stateContainer: {
+    flex: 1,
+    backgroundColor: colors.bg,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xxl,
+  },
+  stateCard: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: spacing.xxxl,
+    paddingHorizontal: spacing.xxl,
+    alignItems: 'center',
+    ...shadow(2),
+  },
+  stateIconWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: colors.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.lg,
+  },
+  stateIconWrapDanger: {
+    backgroundColor: colors.dangerSoft,
+  },
+  stateIconDanger: {
+    width: 32,
+    height: 32,
+    tintColor: colors.danger,
+  },
+  stateTitle: {
+    fontSize: 16,
+    color: colors.text,
+    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 22,
   },
 });

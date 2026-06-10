@@ -6,19 +6,24 @@ import {
   ScrollView,
   Image,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   Dimensions,
   Linking,
   Modal,
   Alert,
   Platform,
   useWindowDimensions,
+  TextInput,
+  Share,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Clipboard from '@react-native-clipboard/clipboard';
 import { API_BASE_URL } from '../config/api';
 import { CareSymbol, getCareSymbolLabel } from '../components/CareSymbols';
 import AppLayout from '../components/AppLayout';
 import { useI18n } from '../i18n/I18nContext';
+import { colors, radius, spacing, shadow, gradients } from '../theme';
 
 // Web QR Scanner
 let QRCodeScanner: any = null;
@@ -49,8 +54,90 @@ interface ResultScreenProps {
   onLogout?: () => void;
 }
 
+// Paged product-image slider with pagination dots — styled to match the home slider.
+function ImageSlider({
+  images,
+  name,
+  model,
+  getFileUrl,
+}: {
+  images: string[];
+  name?: string;
+  model?: string;
+  getFileUrl: (filename: string) => string;
+}) {
+  const [pageWidth, setPageWidth] = useState(width);
+  const [active, setActive] = useState(0);
+  const scrollRef = useRef<ScrollView>(null);
+  const imageHeight = Math.min(Math.round((pageWidth - 32) * 1.1), 440);
+
+  const onScroll = (e: any) => {
+    if (!pageWidth) return;
+    const i = Math.round(e.nativeEvent.contentOffset.x / pageWidth);
+    if (i !== active && i >= 0 && i < images.length) setActive(i);
+  };
+
+  const goTo = (i: number) => {
+    scrollRef.current?.scrollTo({ x: i * pageWidth, animated: true });
+    setActive(i);
+  };
+
+  return (
+    <View style={styles.topImageSliderContainer}>
+      <View style={styles.sliderTextHeader}>
+        <Text style={styles.productName}>{name || '—'}</Text>
+        <Text style={styles.productModel}>{model || '—'}</Text>
+      </View>
+
+      <ScrollView
+        ref={scrollRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        scrollEventThrottle={16}
+        onScroll={onScroll}
+        onLayout={(e) => {
+          const w = e.nativeEvent.layout.width;
+          if (w && w !== pageWidth) setPageWidth(w);
+        }}
+        style={styles.imageCarousel}
+      >
+        {images.map((img: string, index: number) => (
+          <View key={`${img}-${index}`} style={[styles.slidePage, { width: pageWidth }]}>
+            <View style={[styles.imageCard, { height: imageHeight }]}>
+              <Image
+                source={{ uri: getFileUrl(img) }}
+                style={styles.carouselImageFull}
+                resizeMode="contain"
+              />
+            </View>
+          </View>
+        ))}
+      </ScrollView>
+
+      {images.length > 1 && (
+        <View style={styles.imageDots}>
+          {images.map((_: string, i: number) => (
+            <TouchableOpacity
+              key={i}
+              onPress={() => goTo(i)}
+              activeOpacity={0.7}
+              hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+            >
+              <View style={[styles.imageDot, active === i && styles.imageDotActive]} />
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
 export default function ResultScreen({ route, navigation, user, onLogout }: ResultScreenProps) {
-  const BRAND_COLOR = '#3c5b92';
+  const BRAND_COLOR = colors.primary;
+  const FALLBACK_BRAND_NAME = 'Yometel';
+  const FALLBACK_BRAND_DETAIL = 'Developing innovative "real-time and automatic" digital twins IoT /RFID technologies';
+  const FALLBACK_BRAND_WEBSITE = 'https://www.yometel.jp/';
   const { t } = useI18n();
   const { height: windowHeight } = useWindowDimensions();
   const [productData, setProductData] = useState<any>(route?.params?.productData || {});
@@ -60,7 +147,35 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
   const [showCamera, setShowCamera] = useState(false);
   const [showJoinDialog, setShowJoinDialog] = useState(false);
   const [selectedFeedback, setSelectedFeedback] = useState<'like' | 'dislike' | 'buy' | null>(null);
+  const [selectedCareInfo, setSelectedCareInfo] = useState<{ label: string; description: string } | null>(null);
+  const [brandLogoLoadFailed, setBrandLogoLoadFailed] = useState(false);
+  const [isBrandFollowed, setIsBrandFollowed] = useState(false);
+  const [isInAlbum, setIsInAlbum] = useState(false);
+  const [showSalesDialog, setShowSalesDialog] = useState(false);
+  const [showIntroduceDialog, setShowIntroduceDialog] = useState(false);
+  const [showSendProductDialog, setShowSendProductDialog] = useState(false);
+  const [showCopyInfoDialog, setShowCopyInfoDialog] = useState(false);
+  const [friendEmail, setFriendEmail] = useState('');
+  const [friendContent, setFriendContent] = useState('');
+  const [sendInfoEmail, setSendInfoEmail] = useState('');
+  const [sendInfoContent, setSendInfoContent] = useState('');
+  const [showTransferDialog, setShowTransferDialog] = useState(false);
+  const [transferLoading, setTransferLoading] = useState(false);
+  const [transferUrl, setTransferUrl] = useState('');
+  const [transferCode, setTransferCode] = useState('');
+  const [transferQrImage, setTransferQrImage] = useState('');
+  const [transferEmail, setTransferEmail] = useState('');
+  const [transferEmailSending, setTransferEmailSending] = useState(false);
+  // Owner-initiated transfer (for products the current user owns).
+  const [showOwnerTransfer, setShowOwnerTransfer] = useState(false);
+  const [otQuantity, setOtQuantity] = useState('1');
+  const [otEmail, setOtEmail] = useState('');
+  const [otMethod, setOtMethod] = useState<string>('sell');
+  const [otLoading, setOtLoading] = useState(false);
+  const [otConfirmNew, setOtConfirmNew] = useState(false);
+  const [otError, setOtError] = useState('');
   const scannerRef = useRef<any>(null);
+  const recordedScanSyncRef = useRef<string>('');
 
   const sections = [
     { id: 0, title: t('resultSectionProductDetails') },
@@ -71,6 +186,11 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
   ];
 
   const isAuthenticatedUser = !!user;
+  // "Owner mode": opened from My Products for a product the user owns -> the Buy
+  // action becomes a Transfer action.
+  const isOwnedMode = !!route?.params?.owned;
+  const ownedQuantity = route?.params?.ownedQuantity;
+  const OWNER_TRANSFER_METHODS = ['sell', 'distribute', 'distribute_to_shop', 'export_to_country', 'export_to_store', 'export_to_shop', 'gift', 'lease', 'return', 'sale'];
   const availableContentMinHeight = Math.max(0, windowHeight - 70 - 70);
 
   useEffect(() => {
@@ -83,6 +203,35 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
       setProductData(incomingProduct);
     }
   }, [route?.params?.productData]);
+
+  useEffect(() => {
+    const syncVisitedProductToUserHistory = async () => {
+      if (!user?._id || !productData?._id || productData?.token_id == null) return;
+      const scanRef = String(productData?.scannedQRCode || `${productData?._id}:${productData?.token_id}`);
+      if (!scanRef || recordedScanSyncRef.current === scanRef) return;
+      recordedScanSyncRef.current = scanRef;
+      try {
+        await fetch(`${API_BASE_URL}qrcode/scan/record`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            product_id: productData._id,
+            token_id: productData.token_id,
+            encryptData: scanRef,
+            user_id: user._id,
+            source: 'visit',
+          }),
+        });
+      } catch (error) {
+        console.error('Failed to sync visited product scan record', error);
+      }
+    };
+    syncVisitedProductToUserHistory();
+  }, [user?._id, productData?._id, productData?.token_id, productData?.scannedQRCode]);
+
+  useEffect(() => {
+    setBrandLogoLoadFailed(false);
+  }, [productData?._id, productData?.brandInfo?.logoUrl]);
 
   useEffect(() => {
     const productId = route?.params?.productId;
@@ -105,6 +254,21 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
 
   const showLoginPrompt = () => {
     setShowJoinDialog(true);
+  };
+
+  const getPostLoginRedirect = () => {
+    const productId = route?.params?.productId ?? productData?._id;
+    const qrcodeId = route?.params?.qrcodeId ?? productData?.token_id;
+    if (productId != null && productId !== '' && qrcodeId != null && qrcodeId !== '') {
+      return {
+        redirectTo: 'Result' as const,
+        redirectParams: { productId: String(productId), qrcodeId: String(qrcodeId) },
+      };
+    }
+    if (productData && Object.keys(productData).length > 0) {
+      return { redirectTo: 'Result' as const, redirectParams: { productData } };
+    }
+    return { redirectTo: 'Home' as const, redirectParams: undefined };
   };
 
   const getSecurityStatusKey = () => {
@@ -206,6 +370,21 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
       const key = getProductFeedbackKey();
       if (!key) return;
       try {
+        if (user?._id && productData?._id && productData?.token_id != null) {
+          const res = await fetch(
+            `${API_BASE_URL}engagement/product-reaction?user_id=${encodeURIComponent(String(user._id))}&product_id=${encodeURIComponent(String(productData._id))}&token_id=${encodeURIComponent(String(productData.token_id))}`
+          );
+          const j = await res.json().catch(() => ({}));
+          if (res.ok && j?.status === 'success') {
+            const r = j?.reaction;
+            if (r === 'like' || r === 'dislike' || r === 'buy') {
+              setSelectedFeedback(r);
+              return;
+            }
+            setSelectedFeedback(null);
+            return;
+          }
+        }
         const raw = await AsyncStorage.getItem('scannedProductFeedback');
         const feedbackMap = raw ? JSON.parse(raw) : {};
         setSelectedFeedback(feedbackMap[key] || null);
@@ -214,7 +393,29 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
       }
     };
     loadFeedback();
-  }, [productData?._id, productData?.token_id, productData?.scannedQRCode]);
+  }, [user?._id, productData?._id, productData?.token_id, productData?.scannedQRCode]);
+
+  const persistProductReactionToServer = async (feedback: 'like' | 'dislike' | 'buy' | null) => {
+    if (!user?._id || !productData?._id || productData?.token_id == null) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}engagement/product-reaction`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: user._id,
+          product_id: productData._id,
+          token_id: productData.token_id,
+          reaction: feedback ?? '',
+        }),
+      });
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        console.warn('Product reaction API failed', errBody);
+      }
+    } catch (error) {
+      console.error('Error saving product reaction:', error);
+    }
+  };
 
   const updateProductFeedback = async (feedback: 'like' | 'dislike' | 'buy' | null) => {
     const key = getProductFeedbackKey();
@@ -233,6 +434,30 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
     }
   };
 
+  useEffect(() => {
+    const syncMenuStatus = async () => {
+      if (!user?._id || !productData?._id) {
+        setIsBrandFollowed(false);
+        setIsInAlbum(false);
+        return;
+      }
+      const brand = getBrandInfo();
+      try {
+        const [followRes, albumRes] = await Promise.all([
+          fetch(`${API_BASE_URL}engagement/follow/status?user_id=${encodeURIComponent(String(user._id))}&brandWebsiteUrl=${encodeURIComponent(brand.websiteUrl)}`),
+          fetch(`${API_BASE_URL}engagement/album/status?user_id=${encodeURIComponent(String(user._id))}&product_id=${encodeURIComponent(String(productData._id))}&token_id=${encodeURIComponent(String(productData?.token_id ?? ''))}`),
+        ]);
+        const followJson = await followRes.json().catch(() => ({}));
+        const albumJson = await albumRes.json().catch(() => ({}));
+        setIsBrandFollowed(!!followJson?.following);
+        setIsInAlbum(!!albumJson?.added);
+      } catch (error) {
+        console.error('Failed to load menu status', error);
+      }
+    };
+    syncMenuStatus();
+  }, [user?._id, productData?._id, productData?.token_id, productData?.brandInfo?.websiteUrl]);
+
   const handleLike = () => {
     if (!isAuthenticatedUser) {
       showLoginPrompt();
@@ -241,6 +466,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
     setSelectedFeedback((prev) => {
       const next = prev === 'like' ? null : 'like';
       updateProductFeedback(next);
+      persistProductReactionToServer(next);
       return next;
     });
   };
@@ -253,6 +479,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
     setSelectedFeedback((prev) => {
       const next = prev === 'dislike' ? null : 'dislike';
       updateProductFeedback(next);
+      persistProductReactionToServer(next);
       return next;
     });
   };
@@ -262,11 +489,280 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
       showLoginPrompt();
       return;
     }
-    setSelectedFeedback((prev) => {
-      const next = prev === 'buy' ? null : 'buy';
-      updateProductFeedback(next);
-      return next;
-    });
+    // Record the buy reaction + purchase history (unchanged behavior).
+    setSelectedFeedback('buy');
+    updateProductFeedback('buy');
+    persistProductReactionToServer('buy');
+    if (user?._id && productData?._id) {
+      fetch(`${API_BASE_URL}engagement/purchase`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: user._id,
+          product_id: productData._id,
+          token_id: productData?.token_id ?? null,
+          productSnapshot: getProductSnapshot(),
+        }),
+      }).catch((error) => console.error('Failed to add purchase history', error));
+    }
+    // Open the ownership-transfer share dialog (QR + link + email).
+    initiateTransfer();
+  };
+
+  // Ask the backend to create (or reuse) a pending ownership-transfer request,
+  // then show its QR code / link for the current owner to scan and confirm.
+  const initiateTransfer = async () => {
+    if (!user?._id || !productData?._id) return;
+    setShowTransferDialog(true);
+    setTransferLoading(true);
+    setTransferUrl('');
+    setTransferCode('');
+    setTransferQrImage('');
+    setTransferEmail('');
+    try {
+      const response = await fetch(`${API_BASE_URL}transfer/initiate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          product_id: productData._id,
+          buyer_id: user._id,
+          qrcode_id: productData?.token_id ?? null,
+          method: 'sale',
+        }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result?.status !== 'success') {
+        throw new Error(result?.message || 'Failed to start transfer');
+      }
+      setTransferUrl(result.url || '');
+      setTransferCode(result.code || '');
+      setTransferQrImage(result.qrImage || '');
+    } catch (error: any) {
+      Alert.alert(t('error'), error?.message || 'Failed to start transfer');
+      setShowTransferDialog(false);
+    } finally {
+      setTransferLoading(false);
+    }
+  };
+
+  const sendTransferEmail = async () => {
+    if (!isValidEmail(transferEmail)) {
+      Alert.alert(t('error'), 'Please enter a valid email address');
+      return;
+    }
+    if (!transferCode) {
+      Alert.alert(t('error'), 'Transfer is not ready yet');
+      return;
+    }
+    setTransferEmailSending(true);
+    try {
+      // Server-side branded template (embeds the QR + confirmation button).
+      const response = await fetch(`${API_BASE_URL}transfer/share-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ toEmail: transferEmail, code: transferCode }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result?.status !== 'success') {
+        throw new Error(result?.message || 'Failed to send email');
+      }
+      Alert.alert(t('success'), 'Email sent');
+      setTransferEmail('');
+    } catch (error: any) {
+      Alert.alert(t('error'), error?.message || 'Failed to send email');
+    } finally {
+      setTransferEmailSending(false);
+    }
+  };
+
+  // --- Owner-initiated transfer (the Transfer button on an owned product) ---
+  const openOwnerTransfer = () => {
+    if (!isAuthenticatedUser) {
+      showLoginPrompt();
+      return;
+    }
+    setOtQuantity('1');
+    setOtEmail('');
+    setOtMethod('sell');
+    setOtError('');
+    setOtConfirmNew(false);
+    setShowOwnerTransfer(true);
+  };
+
+  const performOwnerTransfer = async () => {
+    setOtLoading(true);
+    setOtError('');
+    try {
+      const response = await fetch(`${API_BASE_URL}transfer/owner-initiate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          product_id: productData._id,
+          actor: { kind: user?.actorKind || 'User', id: user?._id },
+          quantity: Number(otQuantity),
+          method: otMethod,
+          receiver_email: otEmail.trim(),
+        }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result?.status !== 'success') {
+        throw new Error(result?.message || t('error'));
+      }
+      setShowOwnerTransfer(false);
+      setOtConfirmNew(false);
+      Alert.alert(
+        t('success'),
+        result.recipientRegistered ? t('transferSuccessMsg') : t('inviteSentMsg'),
+        [{ text: t('ok'), onPress: () => navigation.navigate('ScannedProducts') }]
+      );
+    } catch (error: any) {
+      setOtError(error?.message || t('error'));
+      setOtConfirmNew(false);
+    } finally {
+      setOtLoading(false);
+    }
+  };
+
+  const submitOwnerTransfer = async () => {
+    setOtError('');
+    const q = Number(otQuantity);
+    const maxQ = ownedQuantity != null ? Number(ownedQuantity) : undefined;
+    if (!q || q < 1) {
+      setOtError('Enter a quantity of at least 1.');
+      return;
+    }
+    if (maxQ != null && q > maxQ) {
+      setOtError(`You only own ${maxQ} unit(s).`);
+      return;
+    }
+    if (!isValidEmail(otEmail)) {
+      setOtError('Enter a valid receiver email address.');
+      return;
+    }
+    setOtLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}transfer/recipient?email=${encodeURIComponent(otEmail.trim())}`);
+      const json = await res.json().catch(() => ({}));
+      setOtLoading(false);
+      if (json?.exists) {
+        await performOwnerTransfer();
+      } else {
+        setOtConfirmNew(true);
+      }
+    } catch (error: any) {
+      setOtLoading(false);
+      setOtError(error?.message || t('error'));
+    }
+  };
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      const nav = (globalThis as any)?.navigator;
+      if (Platform.OS === 'web' && nav?.clipboard?.writeText) {
+        await nav.clipboard.writeText(text);
+      } else {
+        await Clipboard.setString(text);
+      }
+      setShowCopyInfoDialog(true);
+    } catch (error) {
+      console.error('Clipboard copy failed:', error);
+      Alert.alert(t('error'), 'Could not copy to clipboard');
+    }
+  };
+
+  const saveProductInfoToDoc = async (content: string) => {
+    const webGlobal = globalThis as any;
+    if (Platform.OS === 'web' && webGlobal?.document && webGlobal?.Blob && webGlobal?.URL) {
+      const blob = new webGlobal.Blob([content], { type: 'application/msword' });
+      const url = webGlobal.URL.createObjectURL(blob);
+      const a = webGlobal.document.createElement('a');
+      a.href = url;
+      a.download = `${(productData?.name || 'product-info').replace(/[^a-z0-9-_]+/gi, '_')}.doc`;
+      webGlobal.document.body.appendChild(a);
+      a.click();
+      webGlobal.document.body.removeChild(a);
+      webGlobal.URL.revokeObjectURL(url);
+      return;
+    }
+    await Share.share({ message: content, title: 'Product info' });
+  };
+
+  const handleActionMenuPress = async (actionKey: string) => {
+    const brand = getBrandInfo();
+    const infoText = buildProductInfoText();
+    const requireLoginFor = ['toggleAlbum', 'toggleFollowBrand'];
+    if (requireLoginFor.includes(actionKey) && !user?._id) {
+      showLoginPrompt();
+      return;
+    }
+
+    try {
+      switch (actionKey) {
+        case 'connectBrand':
+          openBrandWebsite(brand.websiteUrl);
+          break;
+        case 'connectSalesPerson':
+          setShowSalesDialog(true);
+          break;
+        case 'toggleFollowBrand': {
+          const method = isBrandFollowed ? 'DELETE' : 'POST';
+          const res = await fetch(`${API_BASE_URL}engagement/follow`, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_id: user._id,
+              brandWebsiteUrl: brand.websiteUrl,
+              brandName: brand.name,
+              brandDetail: brand.detail,
+              brandLogoUrl: brand.logoRaw || '',
+            }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || data?.status !== 'success') throw new Error(data?.message || 'Failed');
+          setIsBrandFollowed(!isBrandFollowed);
+          break;
+        }
+        case 'toggleAlbum': {
+          const method = isInAlbum ? 'DELETE' : 'POST';
+          const res = await fetch(`${API_BASE_URL}engagement/album`, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_id: user._id,
+              product_id: productData?._id,
+              token_id: productData?.token_id ?? null,
+              productSnapshot: getProductSnapshot(),
+            }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || data?.status !== 'success') throw new Error(data?.message || 'Failed');
+          setIsInAlbum(!isInAlbum);
+          break;
+        }
+        case 'introduceBrandToFriend':
+          setFriendEmail('');
+          setFriendContent(
+            `Brand Name: ${brand.name}\nBrand Detail: ${brand.detail}\nBrand Website URL: ${brand.websiteUrl}`
+          );
+          setShowIntroduceDialog(true);
+          break;
+        case 'saveProductInfo':
+          await saveProductInfoToDoc(infoText);
+          break;
+        case 'copyProductInfo':
+          await copyToClipboard(infoText);
+          break;
+        case 'sendProductInfo':
+          setSendInfoEmail('');
+          setSendInfoContent(infoText);
+          setShowSendProductDialog(true);
+          break;
+        default:
+          break;
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error?.message || 'Action failed');
+    }
   };
 
   const getFileUrl = (filename: string) => {
@@ -315,18 +811,148 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
     return [value];
   };
 
+  const getCareInstruction = (iconId: string, fallbackLabel: string) => {
+    const careInstructions: Record<string, string> = {
+      wash_30: 'Wash at a maximum temperature of 30°C.',
+      wash_40: 'Wash at a maximum temperature of 40°C.',
+      wash_50: 'Wash at a maximum temperature of 50°C.',
+      wash_60: 'Wash at a maximum temperature of 60°C.',
+      wash_70: 'Wash at a maximum temperature of 70°C.',
+      dry_clean_P: 'Professional dry clean with perchloroethylene allowed.',
+      dry_clean_F: 'Professional dry clean with hydrocarbon solvents only.',
+      iron_low: 'Iron at low temperature (max 110°C).',
+      iron_med: 'Iron at medium temperature (max 150°C).',
+      iron_high: 'Iron at high temperature (max 200°C).',
+      bleach_no: 'Do not bleach.',
+      bleach_any: 'Bleach with any oxidizing agent allowed.',
+      tumble_dry_low: 'Tumble dry at low heat.',
+      tumble_dry_high: 'Tumble dry at high heat.',
+    };
+    return careInstructions[iconId] || `${fallbackLabel}.`;
+  };
+
+  const getBrandInfo = () => {
+    const info = productData?.brandInfo || {};
+    const name = String(info.name || '').trim() || FALLBACK_BRAND_NAME;
+    const detail = String(info.detail || '').trim() || FALLBACK_BRAND_DETAIL;
+    const websiteUrl = String(info.websiteUrl || '').trim() || FALLBACK_BRAND_WEBSITE;
+    const logoRaw = String(info.logoUrl || '').trim();
+    return { name, detail, websiteUrl, logoRaw };
+  };
+
+  const openBrandWebsite = (websiteUrl: string) => {
+    const sanitizedUrl = /^https?:\/\//i.test(websiteUrl) ? websiteUrl : `https://${websiteUrl}`;
+    if (Platform.OS === 'web') {
+      (globalThis as any)?.open?.(sanitizedUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    Linking.openURL(sanitizedUrl);
+  };
+
+  const buildProductInfoText = () => {
+    const brand = getBrandInfo();
+    const maintenance = productData?.maintenance || { iconIds: [], description: '' };
+    const materialSize = productData?.materialSize || { size: '', materials: [] };
+    const disposal = productData?.disposal || {};
+    const traceability = productData?.traceabilityEsg || {};
+    const iconIds = normalizeToStringArray(maintenance.iconIds);
+    const careLines = iconIds.map((id: string) => `${getCareSymbolLabel(id)}: ${getCareInstruction(id, getCareSymbolLabel(id))}`);
+    const materials = normalizeToArray(materialSize.materials).map((row: any) => `${row.material || '-'} ${row.percent != null ? `${row.percent}%` : ''}`);
+    return [
+      `Product Name: ${productData?.name || '-'}`,
+      `Model: ${productData?.model || '-'}`,
+      '',
+      `Product Detail: ${String(productData?.detail || '').trim() || '-'}`,
+      '',
+      `Brand Name: ${brand.name}`,
+      `Brand Detail: ${brand.detail}`,
+      `Brand Website: ${brand.websiteUrl}`,
+      '',
+      'Care Label:',
+      careLines.length ? careLines.join('\n') : '-',
+      maintenance.description ? `Description: ${maintenance.description}` : '',
+      '',
+      `Material/Size: ${materialSize.size || '-'}`,
+      materials.length ? materials.join('\n') : '-',
+      '',
+      'Dispose:',
+      `Repair URL: ${disposal.repairUrl || '-'}`,
+      `Reuse URL: ${disposal.reuseUrl || '-'}`,
+      `Rental URL: ${disposal.rentalUrl || '-'}`,
+      `Dispose URL: ${disposal.disposeUrl || '-'}`,
+      '',
+      'Traceability/ESG:',
+      `Made in: ${traceability.madeIn || '-'}`,
+      `Shipping: ${traceability.shippingLog || '-'}`,
+      `Distance: ${traceability.distance || '-'}`,
+      `CO2 Production: ${traceability.co2Production || '-'}`,
+      `CO2 Transportation: ${traceability.co2Transportation || '-'}`,
+    ].filter(Boolean).join('\n');
+  };
+
+  const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
+
+  const sendEmailContent = async (toEmail: string, content: string, subject: string) => {
+    const response = await fetch(`${API_BASE_URL}engagement/email/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ toEmail, content, subject }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || result?.status !== 'success') {
+      throw new Error(result?.message || 'Failed to send email');
+    }
+  };
+
+  const getProductSnapshot = () => ({
+    name: productData?.name || '',
+    model: productData?.model || '',
+    detail: productData?.detail || '',
+    images: normalizeToStringArray(productData?.images),
+    brandInfo: getBrandInfo(),
+  });
+
   const renderProductDetails = () => {
     const videos = normalizeToArray(productData?.videos);
     const files = normalizeToStringArray(productData?.files);
     const detail = String(productData?.detail ?? '').trim();
+    const brandInfo = getBrandInfo();
+    const logoSource = !brandLogoLoadFailed && brandInfo.logoRaw
+      ? {
+          uri: /^https?:\/\//i.test(brandInfo.logoRaw)
+            ? brandInfo.logoRaw
+            : getFileUrl(brandInfo.logoRaw),
+        }
+      : require('../assets/logo.jpg');
 
     return (
       <View style={styles.sectionContent}>
-        {detail && (
-          <View style={styles.detailContainer}>
-            <Text style={styles.detailText}>{detail}</Text>
+        <View style={styles.productDetailMainRow}>
+          <View style={styles.productDetailLeftPane}>
+            {detail ? (
+              <View style={styles.detailContainer}>
+                <Text style={styles.detailText}>{detail}</Text>
+              </View>
+            ) : (
+              <View style={styles.detailContainer}>
+                <Text style={styles.detailText}>—</Text>
+              </View>
+            )}
           </View>
-        )}
+          <TouchableOpacity
+            style={styles.brandCard}
+            activeOpacity={0.8}
+            onPress={() => openBrandWebsite(brandInfo.websiteUrl)}
+          >
+            <Image
+              source={logoSource}
+              style={styles.brandLogoImage}
+              resizeMode="contain"
+              onError={() => setBrandLogoLoadFailed(true)}
+            />
+            <Text style={styles.brandNameText}>{brandInfo.name}</Text>
+          </TouchableOpacity>
+        </View>
 
         {videos.length > 0 && (
           <View style={styles.videosContainer}>
@@ -374,14 +1000,25 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
         <Text style={styles.careSymbolsLabel}>{t('careSymbolsSelected')}</Text>
         {iconIds.length > 0 ? (
           <View style={styles.careSymbolsContainer}>
-            {iconIds.map((id: string, index: number) => (
-              <View key={index} style={styles.careSymbolBox}>
-                <CareSymbol iconId={id} selected={true} />
-                <Text style={styles.careSymbolLabel}>
-                  {getCareSymbolLabel(id)}
-                </Text>
-              </View>
-            ))}
+            {iconIds.map((id: string, index: number) => {
+              const label = getCareSymbolLabel(id);
+              return (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.careSymbolBox}
+                  activeOpacity={0.8}
+                  onPress={() =>
+                    setSelectedCareInfo({
+                      label,
+                      description: getCareInstruction(id, label),
+                    })
+                  }
+                >
+                  <CareSymbol iconId={id} selected={true} />
+                  <Text style={styles.careSymbolLabel}>{label}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         ) : (
           <Text style={styles.noDataText}>{t('noCareSymbolsSelected')}</Text>
@@ -548,27 +1185,12 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
     if (images.length === 0) return null;
 
     return (
-      <View style={styles.topImageSliderContainer}>
-        <View style={styles.sliderTextHeader}>
-          <Text style={styles.productName}>{productData?.name || '—'}</Text>
-          <Text style={styles.productModel}>{productData?.model || '—'}</Text>
-        </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.imageCarousel}
-          contentContainerStyle={styles.imageCarouselContent}
-        >
-          {images.map((img: string, index: number) => (
-            <Image
-              key={`${img}-${index}`}
-              source={{ uri: getFileUrl(img) }}
-              style={styles.carouselImage}
-              resizeMode="contain"
-            />
-          ))}
-        </ScrollView>
-      </View>
+      <ImageSlider
+        images={images}
+        name={productData?.name}
+        model={productData?.model}
+        getFileUrl={getFileUrl}
+      />
     );
   };
 
@@ -644,15 +1266,40 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
     );
   };
 
+  const ownerInfo = {
+    name: String(productData?.ownerInfo?.name || productData?.company?.name || '').trim(),
+    email: String(productData?.ownerInfo?.email || productData?.company?.email || '').trim(),
+    phoneNumber: String(productData?.ownerInfo?.phoneNumber || productData?.company?.phoneNumber || '').trim(),
+    address: String(productData?.ownerInfo?.address || productData?.company?.location || '').trim(),
+  };
+
+  const copyFieldValue = async (value: string) => {
+    if (!value) return;
+    try {
+      await copyToClipboard(value);
+    } catch {
+      Alert.alert('Error', 'Failed to copy');
+    }
+  };
+
   return (
     <AppLayout
       navigation={navigation}
       user={user}
       onLogout={onLogout}
       showBackButton={isAuthenticatedUser}
-      onBackPress={isAuthenticatedUser ? () => navigation.navigate('Home') : undefined}
+      onBackPress={
+        isAuthenticatedUser
+          ? () => navigation.navigate(route?.params?.returnTo || 'Home')
+          : undefined
+      }
       hideBottomBar={false}
       onGuestAction={showLoginPrompt}
+      onActionMenuPress={handleActionMenuPress}
+      isBrandFollowed={isBrandFollowed}
+      isInAlbum={isInAlbum}
+      useActionMenuCenter={true}
+      isProductDetailPage={true}
     >
       <ScrollView
         style={[styles.content, Platform.OS === 'web' && { minHeight: availableContentMinHeight }]}
@@ -671,10 +1318,10 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
         <View style={styles.securityCheckContainer}>
           {showSecurityCheck && !isAuthenticated ? (
             <TouchableOpacity
-              style={styles.securityCheckButton}
+              style={[styles.securityCheckButton, gradients.accent]}
               onPress={handleSecurityCheck}
             >
-              <Image source={require('../assets/shield.png')} style={styles.actionIcon} />
+              <Image source={require('../assets/shield.png')} style={[styles.actionIcon, { tintColor: '#fff' }]} />
               <Text style={styles.securityCheckText}>{t('securityCheck')}</Text>
             </TouchableOpacity>
           ) : isAuthenticated ? (
@@ -693,7 +1340,25 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
           ) : null}
         </View>
 
-        {/* Like/Dislike/Buy Buttons */}
+        {/* Primary action: Buy (or Transfer when the user owns this product) */}
+        <TouchableOpacity
+          style={[styles.primaryActionButton, isOwnedMode && styles.primaryActionButtonTransfer]}
+          onPress={isOwnedMode ? openOwnerTransfer : handleBuy}
+          activeOpacity={0.85}
+        >
+          <Image
+            source={isOwnedMode ? require('../assets/connection.png') : require('../assets/cart.png')}
+            style={styles.primaryActionIcon}
+          />
+          <Text style={styles.primaryActionText}>
+            {isOwnedMode ? t('transferButton') : t('buy')}
+          </Text>
+          {isOwnedMode && ownedQuantity != null && (
+            <Text style={styles.primaryActionBadge}>{`× ${ownedQuantity}`}</Text>
+          )}
+        </TouchableOpacity>
+
+        {/* Secondary feedback: Like / Dislike */}
         <View style={styles.likeDislikeContainer}>
           <TouchableOpacity
             style={[styles.likeDislikeButton, selectedFeedback === 'like' && styles.likeDislikeButtonActive]}
@@ -713,28 +1378,24 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
               {t('dislike')}
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.likeDislikeButton, selectedFeedback === 'buy' && styles.likeDislikeButtonActive]}
-            onPress={handleBuy}
-          >
-            <Image source={require('../assets/cart.png')} style={styles.actionIcon} />
-            <Text style={[styles.likeDislikeText, selectedFeedback === 'buy' && styles.likeDislikeTextActive]}>Buy</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Accordion Sections */}
         {sections.map((section) => (
           <View key={section.id} style={styles.accordionSection}>
             <TouchableOpacity
-              style={styles.accordionHeader}
+              style={[styles.accordionHeader, gradients.header]}
               onPress={() => toggleSection(section.id)}
+              activeOpacity={0.85}
             >
               <Text style={styles.accordionHeaderText}>{section.title}</Text>
-              <Icon
-                name={expandedSections[section.id] ? 'remove' : 'add'}
-                size={24}
-                color={BRAND_COLOR}
-              />
+              <View style={styles.accordionToggleBadge}>
+                <Icon
+                  name={expandedSections[section.id] ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+                  size={22}
+                  color={'#fff'}
+                />
+              </View>
             </TouchableOpacity>
             {expandedSections[section.id] && (
               <View style={styles.accordionContent}>
@@ -743,19 +1404,6 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
             )}
           </View>
         ))}
-
-        <View style={styles.storeBadgesContainer}>
-          <Image
-            source={require('../assets/App_Store_(iOS)-Badge-Alternative-Logo.wine.png')}
-            style={styles.storeBadge}
-            resizeMode="contain"
-          />
-          <Image
-            source={require('../assets/Google_Play-Badge-Logo.wine.png')}
-            style={styles.storeBadge}
-            resizeMode="contain"
-          />
-        </View>
       </ScrollView>
       {/* Keep modal outside ScrollView to avoid RN web content-layer paint issues */}
       <Modal
@@ -774,26 +1422,342 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
       >
         <View style={styles.joinModalOverlay}>
           <View style={styles.joinModalCard}>
-            <Text style={styles.joinModalText}>Please join to our app!</Text>
+            <Text style={styles.joinModalText}>Please sign in to continue</Text>
             <TouchableOpacity
               style={styles.joinModalButton}
               onPress={() => {
                 setShowJoinDialog(false);
-                navigation.navigate('Login', {
-                  redirectTo: 'Result',
-                  redirectParams: {
-                    productData,
-                    productId: route?.params?.productId,
-                    qrcodeId: route?.params?.qrcodeId,
-                  },
-                });
+                const { redirectTo, redirectParams } = getPostLoginRedirect();
+                navigation.navigate('Login', { redirectTo, redirectParams });
               }}
             >
-              <Text style={styles.joinModalButtonText}>Sign up!</Text>
+              <Text style={styles.joinModalButtonText}>Log in</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.joinModalSecondary}
+              onPress={() => {
+                setShowJoinDialog(false);
+                const { redirectTo, redirectParams } = getPostLoginRedirect();
+                navigation.navigate('Register', { redirectTo, redirectParams });
+              }}
+            >
+              <Text style={styles.joinModalSecondaryText}>Create account</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setShowJoinDialog(false)}>
               <Text style={styles.joinModalCancel}>{t('cancel')}</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+      <Modal
+        visible={showTransferDialog}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowTransferDialog(false)}
+      >
+        <View style={styles.careModalOverlay}>
+          <View style={styles.emailDialogCard}>
+            <Text style={styles.careModalTitle}>{t('transferShareTitle')}</Text>
+            <Text style={styles.transferHelpText}>{t('transferShareHelp')}</Text>
+            {transferLoading ? (
+              <Text style={styles.transferHelpText}>{t('loading')}</Text>
+            ) : (
+              <>
+                {!!transferQrImage && (
+                  <View style={styles.transferQrWrap}>
+                    <Image source={{ uri: transferQrImage }} style={styles.transferQrImage} resizeMode="contain" />
+                  </View>
+                )}
+                {!!transferUrl && (
+                  <View style={styles.copyRow}>
+                    <View style={styles.copyRowTextWrap}>
+                      <Text style={styles.copyRowValue} numberOfLines={2}>{transferUrl}</Text>
+                    </View>
+                    <TouchableOpacity style={styles.copyButton} onPress={() => copyToClipboard(transferUrl)}>
+                      <Text style={styles.copyButtonText}>{t('copyLink')}</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+                <Text style={styles.transferEmailLabel}>{t('shareViaEmail')}</Text>
+                <TextInput
+                  style={styles.input}
+                  value={transferEmail}
+                  onChangeText={setTransferEmail}
+                  placeholder={t('ownerEmailPlaceholder')}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </>
+            )}
+            <View style={styles.dialogActionsRow}>
+              <TouchableOpacity
+                style={styles.dialogActionSecondary}
+                onPress={() => setShowTransferDialog(false)}
+              >
+                <Text style={styles.dialogActionSecondaryText}>{t('cancel')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.dialogActionPrimary, (transferLoading || transferEmailSending) && { opacity: 0.6 }]}
+                disabled={transferLoading || transferEmailSending}
+                onPress={sendTransferEmail}
+              >
+                <Text style={styles.dialogActionPrimaryText}>{transferEmailSending ? t('loading') : t('send')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+      <Modal
+        visible={showOwnerTransfer}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowOwnerTransfer(false)}
+      >
+        <View style={styles.careModalOverlay}>
+          <View style={styles.emailDialogCard}>
+            {!otConfirmNew ? (
+              <>
+                <Text style={styles.careModalTitle}>{t('transferProductTitle')}</Text>
+                {ownedQuantity != null && (
+                  <Text style={styles.transferHelpText}>{`${t('owned')}: ${ownedQuantity}`}</Text>
+                )}
+                {!!otError && <Text style={styles.otErrorText}>{otError}</Text>}
+                <Text style={styles.transferEmailLabel}>{t('quantity')}</Text>
+                <TextInput
+                  style={styles.input}
+                  value={otQuantity}
+                  onChangeText={setOtQuantity}
+                  keyboardType="number-pad"
+                  placeholder="1"
+                />
+                <Text style={styles.transferEmailLabel}>{t('transferMethodLabel')}</Text>
+                <View style={styles.methodChipsWrap}>
+                  {OWNER_TRANSFER_METHODS.map((m) => (
+                    <TouchableOpacity
+                      key={m}
+                      style={[styles.methodChip, otMethod === m && styles.methodChipActive]}
+                      onPress={() => setOtMethod(m)}
+                    >
+                      <Text style={[styles.methodChipText, otMethod === m && styles.methodChipTextActive]}>
+                        {t(`method_${m}` as any)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <Text style={styles.transferEmailLabel}>{t('receiverEmail')}</Text>
+                <TextInput
+                  style={styles.input}
+                  value={otEmail}
+                  onChangeText={setOtEmail}
+                  placeholder="recipient@example.com"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+                <View style={styles.dialogActionsRow}>
+                  <TouchableOpacity style={styles.dialogActionSecondary} onPress={() => setShowOwnerTransfer(false)}>
+                    <Text style={styles.dialogActionSecondaryText}>{t('cancel')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.dialogActionPrimary, otLoading && { opacity: 0.6 }]}
+                    disabled={otLoading}
+                    onPress={submitOwnerTransfer}
+                  >
+                    <Text style={styles.dialogActionPrimaryText}>{otLoading ? t('loading') : t('transferButton')}</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            ) : (
+              <>
+                <Text style={styles.careModalTitle}>{t('confirmEmailTitle')}</Text>
+                <Text style={styles.transferHelpText}>{`${otEmail}`}</Text>
+                <Text style={styles.transferHelpText}>{t('inviteSentMsg')}</Text>
+                {!!otError && <Text style={styles.otErrorText}>{otError}</Text>}
+                <View style={styles.dialogActionsRow}>
+                  <TouchableOpacity style={styles.dialogActionSecondary} onPress={() => setOtConfirmNew(false)}>
+                    <Text style={styles.dialogActionSecondaryText}>{t('editEmail')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.dialogActionPrimary, otLoading && { opacity: 0.6 }]}
+                    disabled={otLoading}
+                    onPress={performOwnerTransfer}
+                  >
+                    <Text style={styles.dialogActionPrimaryText}>{otLoading ? t('loading') : t('sendInvite')}</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+      <Modal
+        visible={showCopyInfoDialog}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowCopyInfoDialog(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowCopyInfoDialog(false)}>
+          <View style={styles.copyInfoModalOverlay}>
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View style={styles.copyInfoModalCard}>
+                <Text style={styles.copyInfoModalText}>Product Info is copied to clipboard</Text>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+      <Modal
+        visible={!!selectedCareInfo}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedCareInfo(null)}
+      >
+        <TouchableWithoutFeedback onPress={() => setSelectedCareInfo(null)}>
+          <View style={styles.careModalOverlay}>
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View style={styles.careModalCard}>
+                <Text style={styles.careModalTitle}>{selectedCareInfo?.label}</Text>
+                <Text style={styles.careModalDescription}>{selectedCareInfo?.description}</Text>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+      <Modal
+        visible={showSalesDialog}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowSalesDialog(false)}
+      >
+        <View style={styles.careModalOverlay}>
+          <View style={styles.careModalCard}>
+            <Text style={styles.careModalTitle}>Sales Person / Owner Info</Text>
+            {[
+              { label: 'Name', value: ownerInfo.name },
+              { label: 'Email', value: ownerInfo.email },
+              { label: 'Phone', value: ownerInfo.phoneNumber },
+              { label: 'Address', value: ownerInfo.address },
+            ].map((item) => (
+              <View key={item.label} style={styles.copyRow}>
+                <View style={styles.copyRowTextWrap}>
+                  <Text style={styles.copyRowLabel}>{item.label}</Text>
+                  <Text style={styles.copyRowValue}>{item.value || '-'}</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.copyButton}
+                  onPress={() => copyFieldValue(item.value)}
+                  disabled={!item.value}
+                >
+                  <Text style={styles.copyButtonText}>Copy</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+            <TouchableOpacity style={styles.dialogActionButton} onPress={() => setShowSalesDialog(false)}>
+              <Text style={styles.dialogActionButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+      <Modal
+        visible={showIntroduceDialog}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowIntroduceDialog(false)}
+      >
+        <View style={styles.careModalOverlay}>
+          <View style={styles.emailDialogCard}>
+            <Text style={styles.careModalTitle}>Introduce this brand to friend</Text>
+            <TextInput
+              style={styles.input}
+              value={friendEmail}
+              onChangeText={setFriendEmail}
+              placeholder="Friend email address"
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+            <TextInput
+              style={styles.textArea}
+              value={friendContent}
+              onChangeText={setFriendContent}
+              multiline
+            />
+            <View style={styles.dialogActionsRow}>
+              <TouchableOpacity
+                style={styles.dialogActionSecondary}
+                onPress={() => setShowIntroduceDialog(false)}
+              >
+                <Text style={styles.dialogActionSecondaryText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.dialogActionPrimary}
+                onPress={async () => {
+                  if (!isValidEmail(friendEmail)) {
+                    Alert.alert('Error', 'Please enter a valid email address');
+                    return;
+                  }
+                  try {
+                    await sendEmailContent(friendEmail, friendContent, 'Brand introduction');
+                    setShowIntroduceDialog(false);
+                    Alert.alert('Success', 'Email sent');
+                  } catch (error: any) {
+                    Alert.alert('Error', error?.message || 'Failed to send email');
+                  }
+                }}
+              >
+                <Text style={styles.dialogActionPrimaryText}>Send</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+      <Modal
+        visible={showSendProductDialog}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowSendProductDialog(false)}
+      >
+        <View style={styles.careModalOverlay}>
+          <View style={styles.emailDialogCard}>
+            <Text style={styles.careModalTitle}>Send product info</Text>
+            <TextInput
+              style={styles.input}
+              value={sendInfoEmail}
+              onChangeText={setSendInfoEmail}
+              placeholder="Friend email address"
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+            <TextInput
+              style={styles.textArea}
+              value={sendInfoContent}
+              onChangeText={setSendInfoContent}
+              multiline
+            />
+            <View style={styles.dialogActionsRow}>
+              <TouchableOpacity
+                style={styles.dialogActionSecondary}
+                onPress={() => setShowSendProductDialog(false)}
+              >
+                <Text style={styles.dialogActionSecondaryText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.dialogActionPrimary}
+                onPress={async () => {
+                  if (!isValidEmail(sendInfoEmail)) {
+                    Alert.alert('Error', 'Please enter a valid email address');
+                    return;
+                  }
+                  try {
+                    await sendEmailContent(sendInfoEmail, sendInfoContent, 'Product information');
+                    setShowSendProductDialog(false);
+                    Alert.alert('Success', 'Email sent');
+                  } catch (error: any) {
+                    Alert.alert('Error', error?.message || 'Failed to send email');
+                  }
+                }}
+              >
+                <Text style={styles.dialogActionPrimaryText}>Send</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -804,7 +1768,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
 const styles = StyleSheet.create({
   content: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.bg,
   },
   contentContainer: {
     flexGrow: 1,
@@ -816,13 +1780,13 @@ const styles = StyleSheet.create({
   productName: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#3c5b92',
+    color: colors.primary,
     marginBottom: 5,
     textAlign: 'center',
   },
   productModel: {
     fontSize: 16,
-    color: '#666',
+    color: colors.muted,
     textAlign: 'center',
   },
   sliderTextHeader: {
@@ -832,27 +1796,83 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   imageCarousel: {
-    marginBottom: 12,
+    width: '100%',
   },
-  imageCarouselContent: {
-    paddingRight: 8,
-    paddingLeft: 20,
+  slidePage: {
+    paddingHorizontal: 16,
   },
-  carouselImage: {
-    width: width - 40,
-    height: Math.min((width - 40) * 1.2, 420),
-    marginRight: 10,
-    borderRadius: 8,
+  imageCard: {
+    width: '100%',
     backgroundColor: '#fff',
+    borderRadius: 18,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadow(2),
+  },
+  carouselImageFull: {
+    width: '100%',
+    height: '100%',
+  },
+  imageDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 14,
+    marginBottom: 6,
+  },
+  imageDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginHorizontal: 4,
+    backgroundColor: '#c7d2e4',
+  },
+  imageDotActive: {
+    width: 22,
+    backgroundColor: colors.accent,
   },
   detailContainer: {
     marginVertical: 15,
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
   },
   detailText: {
     fontSize: 14,
-    color: '#333',
+    color: colors.text,
     lineHeight: 20,
+  },
+  productDetailMainRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    paddingHorizontal: 20,
+    gap: 10,
+  },
+  productDetailLeftPane: {
+    flex: 2,
+    justifyContent: 'center',
+  },
+  brandCard: {
+    flex: 1,
+    minHeight: 120,
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+  },
+  brandLogoImage: {
+    width: '100%',
+    height: 72,
+  },
+  brandNameText: {
+    marginTop: 8,
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.primary,
+    textAlign: 'center',
   },
   videosContainer: {
     marginVertical: 15,
@@ -862,13 +1882,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 10,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.surfaceAlt,
     borderRadius: 8,
     marginBottom: 10,
   },
   videoText: {
     marginLeft: 10,
-    color: '#3c5b92',
+    color: colors.primary,
     fontSize: 14,
   },
   filesContainer: {
@@ -879,13 +1899,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 10,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.surfaceAlt,
     borderRadius: 8,
     marginBottom: 10,
   },
   fileText: {
     marginLeft: 10,
-    color: '#3c5b92',
+    color: colors.primary,
     fontSize: 14,
   },
   sectionContent: {
@@ -894,32 +1914,32 @@ const styles = StyleSheet.create({
   },
   sectionText: {
     fontSize: 14,
-    color: '#666',
+    color: colors.muted,
     lineHeight: 20,
     paddingHorizontal: 20,
   },
   sectionTitleBlue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#3c5b92',
+    color: colors.primary,
     marginBottom: 8,
     paddingHorizontal: 20,
   },
   productIdText: {
     fontSize: 12,
-    color: '#666',
+    color: colors.muted,
     marginBottom: 8,
     paddingHorizontal: 20,
   },
   materialText: {
     fontSize: 13,
-    color: '#333',
+    color: colors.text,
     marginBottom: 4,
     paddingHorizontal: 20,
   },
   careSymbolsLabel: {
     fontSize: 12,
-    color: '#666',
+    color: colors.muted,
     marginBottom: 8,
     paddingHorizontal: 20,
   },
@@ -938,13 +1958,13 @@ const styles = StyleSheet.create({
   },
   careSymbolLabel: {
     fontSize: 10,
-    color: '#3c5b92',
+    color: colors.primary,
     textAlign: 'center',
     marginTop: 4,
   },
   noDataText: {
     fontSize: 12,
-    color: '#666',
+    color: colors.muted,
     fontStyle: 'italic',
     marginBottom: 15,
     paddingHorizontal: 20,
@@ -955,50 +1975,69 @@ const styles = StyleSheet.create({
   },
   maintenanceDescription: {
     fontSize: 13,
-    color: '#333',
+    color: colors.text,
     marginBottom: 15,
     lineHeight: 20,
     paddingHorizontal: 20,
   },
   dppInfoBox: {
     marginTop: 15,
-    padding: 12,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 4,
+    padding: 14,
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
     marginHorizontal: 20,
   },
   dppTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#3c5b92',
+    color: colors.primary,
     marginBottom: 4,
   },
   dppText: {
     fontSize: 12,
-    color: '#333',
+    color: colors.text,
     marginBottom: 2,
   },
   accordionSection: {
     minHeight: 1,
-    marginBottom: 1,
-    backgroundColor: '#fff',
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadow(1),
   },
   accordionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 15,
-    paddingHorizontal: 20,
-    backgroundColor: '#3c5b92',
+    paddingHorizontal: 18,
+    backgroundColor: colors.primary,
   },
   accordionHeaderText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#fff',
+    letterSpacing: 0.3,
+    flex: 1,
+  },
+  accordionToggleBadge: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 10,
   },
   accordionContent: {
     minHeight: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     paddingBottom: 15,
   },
   securityCheckContainer: {
@@ -1011,25 +2050,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#3c5b92',
+    backgroundColor: colors.accent,
     paddingVertical: 15,
     paddingHorizontal: 30,
-    borderRadius: 8,
+    borderRadius: radius.pill,
     width: '100%',
-    maxWidth: 300,
+    maxWidth: 320,
+    ...shadow(1),
   },
   securityCheckText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     marginLeft: 10,
+    letterSpacing: 0.3,
   },
   authenticatedContainer: {
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
+    padding: 22,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
     width: '100%',
+    ...shadow(1),
   },
   authenticatedIcon: {
     marginBottom: 15,
@@ -1041,16 +2085,56 @@ const styles = StyleSheet.create({
   },
   authenticatedTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: '700',
+    color: colors.primary,
     marginBottom: 10,
     textAlign: 'center',
   },
   authenticatedText: {
     fontSize: 14,
-    color: '#666',
+    color: colors.muted,
     textAlign: 'center',
     marginBottom: 5,
+  },
+  primaryActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'stretch',
+    marginTop: 8,
+    marginBottom: 10,
+    marginHorizontal: 20,
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+    borderRadius: radius.lg,
+    backgroundColor: colors.navy,
+    ...shadow(3),
+  },
+  primaryActionButtonTransfer: {
+    backgroundColor: colors.navy,
+  },
+  primaryActionIcon: {
+    width: 26,
+    height: 26,
+    tintColor: '#fff',
+    marginRight: 10,
+  },
+  primaryActionText: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: 0.5,
+  },
+  primaryActionBadge: {
+    marginLeft: 10,
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
+    overflow: 'hidden',
   },
   likeDislikeContainer: {
     flexDirection: 'row',
@@ -1065,24 +2149,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 12,
     marginHorizontal: 4,
-    borderRadius: 8,
-    backgroundColor: '#f5f5f5',
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: colors.border,
+    ...shadow(1),
   },
   likeDislikeButtonActive: {
-    backgroundColor: '#3c5b92',
-    borderColor: '#3c5b92',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   likeDislikeButtonDisliked: {
-    backgroundColor: '#3c5b92',
-    borderColor: '#3c5b92',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   likeDislikeText: {
     marginLeft: 8,
     fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
+    color: colors.muted,
+    fontWeight: '600',
   },
   likeDislikeTextActive: {
     color: '#fff',
@@ -1120,7 +2205,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   button: {
-    backgroundColor: '#3c5b92',
+    backgroundColor: colors.primary,
     paddingVertical: 16,
     paddingHorizontal: 32,
     borderRadius: 8,
@@ -1143,19 +2228,19 @@ const styles = StyleSheet.create({
   },
   disposalLabel: {
     fontSize: 12,
-    color: '#666',
+    color: colors.muted,
   },
   disposalLink: {
     fontSize: 13,
-    color: '#3c5b92',
+    color: colors.primary,
     textDecorationLine: 'underline',
   },
   environmentBox: {
     marginTop: 15,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: '#2e7d32',
-    borderRadius: 4,
+    backgroundColor: colors.success,
+    borderRadius: radius.md,
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginHorizontal: 20,
@@ -1167,14 +2252,14 @@ const styles = StyleSheet.create({
   },
   inquiryLabel: {
     fontSize: 12,
-    color: '#666',
+    color: colors.muted,
     marginTop: 15,
     marginBottom: 4,
     paddingHorizontal: 20,
   },
   inquiryLink: {
     fontSize: 13,
-    color: '#3c5b92',
+    color: colors.primary,
     textDecorationLine: 'underline',
     paddingHorizontal: 20,
   },
@@ -1186,23 +2271,9 @@ const styles = StyleSheet.create({
   marginTop: {
     marginTop: 15,
   },
-  storeBadgesContainer: {
-    marginTop: 20,
-    marginBottom: 16,
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    paddingHorizontal: 20,
-  },
-  storeBadge: {
-    width: Math.min(width * 0.48, 220),
-    height: 80,
-  },
   joinModalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    backgroundColor: colors.overlay,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
@@ -1210,26 +2281,28 @@ const styles = StyleSheet.create({
   joinModalCard: {
     width: '100%',
     maxWidth: 360,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: 24,
     alignItems: 'center',
+    ...shadow(3),
   },
   joinModalText: {
     fontSize: 18,
-    color: '#333',
+    color: colors.primary,
     textAlign: 'center',
-    marginBottom: 16,
-    fontWeight: '600',
+    marginBottom: 18,
+    fontWeight: '700',
   },
   joinModalButton: {
-    backgroundColor: '#3c5b92',
-    borderRadius: 8,
-    paddingVertical: 12,
+    backgroundColor: colors.accent,
+    borderRadius: radius.md,
+    paddingVertical: 13,
     paddingHorizontal: 20,
     marginBottom: 12,
-    minWidth: 140,
+    minWidth: 160,
     alignItems: 'center',
+    ...shadow(1),
   },
   joinModalButtonText: {
     color: '#fff',
@@ -1237,7 +2310,216 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   joinModalCancel: {
-    color: '#3c5b92',
+    color: colors.primary,
     fontSize: 14,
+  },
+  joinModalSecondary: {
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    marginBottom: 12,
+    minWidth: 140,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  joinModalSecondaryText: {
+    color: colors.primary,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  copyInfoModalOverlay: {
+    flex: 1,
+    backgroundColor: colors.overlay,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  copyInfoModalCard: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: 22,
+    ...shadow(3),
+  },
+  copyInfoModalText: {
+    fontSize: 16,
+    color: colors.text,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  careModalOverlay: {
+    flex: 1,
+    backgroundColor: colors.overlay,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  careModalCard: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: 20,
+    ...shadow(3),
+  },
+  careModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.primary,
+    marginBottom: 8,
+  },
+  careModalDescription: {
+    fontSize: 14,
+    color: colors.text,
+    lineHeight: 20,
+  },
+  copyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    gap: 8,
+  },
+  copyRowTextWrap: {
+    flex: 1,
+  },
+  copyRowLabel: {
+    fontSize: 12,
+    color: colors.muted,
+  },
+  copyRowValue: {
+    fontSize: 13,
+    color: colors.text,
+    marginTop: 2,
+  },
+  copyButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    backgroundColor: colors.primary,
+  },
+  copyButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  dialogActionButton: {
+    marginTop: 8,
+    alignSelf: 'flex-end',
+  },
+  dialogActionButtonText: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  emailDialogCard: {
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: 20,
+    ...shadow(3),
+  },
+  transferHelpText: {
+    fontSize: 13,
+    color: colors.muted,
+    marginBottom: 12,
+  },
+  transferQrWrap: {
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  transferQrImage: {
+    width: 200,
+    height: 200,
+  },
+  transferEmailLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.heading,
+    marginBottom: 6,
+    marginTop: 4,
+  },
+  methodChipsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 10,
+  },
+  methodChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    marginRight: 6,
+    marginBottom: 6,
+  },
+  methodChipActive: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  methodChipText: {
+    fontSize: 12,
+    color: colors.text,
+    fontWeight: '600',
+  },
+  methodChipTextActive: {
+    color: '#fff',
+  },
+  otErrorText: {
+    fontSize: 13,
+    color: colors.danger,
+    marginBottom: 8,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.fieldBg,
+    borderRadius: radius.md,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    marginBottom: 10,
+    fontSize: 14,
+    color: colors.text,
+  },
+  textArea: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.fieldBg,
+    borderRadius: radius.md,
+    minHeight: 140,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    marginBottom: 10,
+    fontSize: 14,
+    color: colors.text,
+    textAlignVertical: 'top',
+  },
+  dialogActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+  },
+  dialogActionSecondary: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  dialogActionSecondaryText: {
+    color: colors.muted,
+    fontSize: 14,
+  },
+  dialogActionPrimary: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+  },
+  dialogActionPrimaryText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

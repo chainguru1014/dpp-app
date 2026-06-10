@@ -18,6 +18,7 @@ import { API_BASE_URL } from '../config/api';
 import GoogleAuthButton from '../components/GoogleAuthButton';
 import { COUNTRIES } from '../constants/countries';
 import { useI18n } from '../i18n/I18nContext';
+import { colors, spacing, radius, gradients, shadow } from '../theme';
 
 export default function RegisterScreen({ navigation, onLogin, route }: any) {
   const { t, locale } = useI18n();
@@ -177,13 +178,15 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.overlay} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
         <ScrollView contentContainerStyle={[styles.scrollContent, isWeb && { minHeight: screenHeight }]} style={styles.scrollView}>
           <View style={styles.content}>
-            <View style={styles.card}>
-              <Image source={require('../assets/yometel-logo.png')} style={{ width: 300, height: 90, marginBottom: 30 }} resizeMode="contain" />
-              <Text style={styles.title}>{t('createAccount')}</Text>
+            <View style={[styles.card, gradients.hero]}>
+              <Image
+                source={require('../assets/logo-shield.png')}
+                style={{ width: 96, height: 96, marginBottom: 28, alignSelf: 'center' }}
+                resizeMode="contain"
+              />
 
               <View style={styles.userTypeButtons}>
                 {(['client', 'agent'] as const).map((type) => (
@@ -193,8 +196,8 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
                 ))}
               </View>
 
-              <TextInput style={styles.input} placeholder="Username" value={form.name} onChangeText={(v) => setField('name', v)} autoCapitalize="none" />
-              <TextInput style={styles.input} placeholder="Password" value={form.password} onChangeText={(v) => setField('password', v)} secureTextEntry autoCapitalize="none" />
+              <TextInput style={styles.input} placeholder="Username" placeholderTextColor={colors.placeholder} value={form.name} onChangeText={(v) => setField('name', v)} autoCapitalize="none" />
+              <TextInput style={styles.input} placeholder="Password" placeholderTextColor={colors.placeholder} value={form.password} onChangeText={(v) => setField('password', v)} secureTextEntry autoCapitalize="none" />
 
               {userType === 'client' ? (
                 <>
@@ -219,22 +222,22 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
                       </TouchableOpacity>
                     ))}
                   </View>
-                  <TextInput style={styles.input} placeholder="Age" value={form.age} onChangeText={(v) => setField('age', v)} keyboardType="numeric" />
+                  <TextInput style={styles.input} placeholder="Age" placeholderTextColor={colors.placeholder} value={form.age} onChangeText={(v) => setField('age', v)} keyboardType="numeric" />
                   <TouchableOpacity style={styles.inputButton} onPress={() => setCountryModalVisible(true)}>
                     <Text style={form.country ? styles.inputButtonText : styles.inputButtonPlaceholder}>{form.country || 'Select Country'}</Text>
                   </TouchableOpacity>
                 </>
               ) : (
                 <>
-                  <TextInput style={styles.input} placeholder="Email" value={form.email} onChangeText={(v) => setField('email', v)} keyboardType="email-address" autoCapitalize="none" />
-                  <TextInput style={styles.input} placeholder="First Name" value={form.firstName} onChangeText={(v) => setField('firstName', v)} />
-                  <TextInput style={styles.input} placeholder="Last Name" value={form.lastName} onChangeText={(v) => setField('lastName', v)} />
-                  <TextInput style={styles.input} placeholder="Street" value={form.addressStreet} onChangeText={(v) => setField('addressStreet', v)} />
-                  <TextInput style={styles.input} placeholder="City" value={form.addressCity} onChangeText={(v) => setField('addressCity', v)} />
-                  <TextInput style={styles.input} placeholder="State" value={form.addressState} onChangeText={(v) => setField('addressState', v)} />
-                  <TextInput style={styles.input} placeholder="Zip Code" value={form.addressZipCode} onChangeText={(v) => setField('addressZipCode', v)} />
-                  <TextInput style={styles.input} placeholder="Country" value={form.addressCountry} onChangeText={(v) => setField('addressCountry', v)} />
-                  <TextInput style={styles.input} placeholder="Phone Number" value={form.phoneNumber} onChangeText={(v) => setField('phoneNumber', v)} keyboardType="phone-pad" />
+                  <TextInput style={styles.input} placeholder="Email" placeholderTextColor={colors.placeholder} value={form.email} onChangeText={(v) => setField('email', v)} keyboardType="email-address" autoCapitalize="none" />
+                  <TextInput style={styles.input} placeholder="First Name" placeholderTextColor={colors.placeholder} value={form.firstName} onChangeText={(v) => setField('firstName', v)} />
+                  <TextInput style={styles.input} placeholder="Last Name" placeholderTextColor={colors.placeholder} value={form.lastName} onChangeText={(v) => setField('lastName', v)} />
+                  <TextInput style={styles.input} placeholder="Street" placeholderTextColor={colors.placeholder} value={form.addressStreet} onChangeText={(v) => setField('addressStreet', v)} />
+                  <TextInput style={styles.input} placeholder="City" placeholderTextColor={colors.placeholder} value={form.addressCity} onChangeText={(v) => setField('addressCity', v)} />
+                  <TextInput style={styles.input} placeholder="State" placeholderTextColor={colors.placeholder} value={form.addressState} onChangeText={(v) => setField('addressState', v)} />
+                  <TextInput style={styles.input} placeholder="Zip Code" placeholderTextColor={colors.placeholder} value={form.addressZipCode} onChangeText={(v) => setField('addressZipCode', v)} />
+                  <TextInput style={styles.input} placeholder="Country" placeholderTextColor={colors.placeholder} value={form.addressCountry} onChangeText={(v) => setField('addressCountry', v)} />
+                  <TextInput style={styles.input} placeholder="Phone Number" placeholderTextColor={colors.placeholder} value={form.phoneNumber} onChangeText={(v) => setField('phoneNumber', v)} keyboardType="phone-pad" />
                   <View style={styles.genderContainer}>
                     {genderOptions.map((option) => (
                       <TouchableOpacity
@@ -271,7 +274,9 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
               )}
 
               {!!apiError && (
-                <Text style={styles.apiErrorText}>{apiError}</Text>
+                <View style={styles.apiErrorBox}>
+                  <Text style={styles.apiErrorText}>{apiError}</Text>
+                </View>
               )}
 
               <TouchableOpacity style={[styles.button, loading && styles.buttonDisabled]} onPress={handleRegister} disabled={loading}>
@@ -379,46 +384,47 @@ const screenHeight = Dimensions.get('window').height;
 const isWebPlatform = Platform.OS === 'web';
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5', ...(isWebPlatform && { height: screenHeight, minHeight: screenHeight }) },
-  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0, 0, 0, 0.45)' },
+  container: { flex: 1, backgroundColor: '#5b8ad9', ...(isWebPlatform && { height: screenHeight, minHeight: screenHeight }) },
   keyboardView: { flex: 1 },
   scrollView: { flex: 1 },
-  scrollContent: { padding: 20, alignItems: 'center', flexGrow: 1, justifyContent: 'center' },
+  scrollContent: { padding: spacing.xl, alignItems: 'center', flexGrow: 1, justifyContent: 'center' },
   content: { alignItems: 'center', width: '100%', paddingVertical: 40 },
-  card: { backgroundColor: 'rgba(255, 255, 255, 0.98)', borderRadius: 16, padding: 30, width: '100%', maxWidth: 420 },
-  title: { fontSize: 24, fontWeight: '600', color: '#333', marginBottom: 20 },
-  userTypeButtons: { flexDirection: 'row', gap: 10, marginBottom: 16 },
-  userTypeButton: { flex: 1, padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#e0e0e0', backgroundColor: '#f5f5f5', alignItems: 'center' },
-  userTypeButtonActive: { backgroundColor: '#1976d2', borderColor: '#1976d2' },
-  userTypeButtonText: { color: '#666' },
-  userTypeButtonTextActive: { color: '#fff', fontWeight: '600' },
-  genderContainer: { flexDirection: 'row', gap: 10, marginBottom: 12 },
-  genderOption: { flex: 1, padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#e0e0e0', backgroundColor: '#f5f5f5', alignItems: 'center' },
-  genderOptionSelected: { backgroundColor: '#1976d2', borderColor: '#1976d2' },
-  genderOptionText: { color: '#666', fontSize: 15 },
-  genderOptionTextSelected: { color: '#fff', fontWeight: '600' },
-  input: { backgroundColor: '#f5f5f5', borderRadius: 8, padding: 12, marginBottom: 12, fontSize: 16, borderWidth: 1, borderColor: '#e0e0e0' },
+  card: { backgroundColor: colors.primary, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.navy, padding: spacing.xxxl, width: '100%', maxWidth: 420, ...shadow(3) },
+  title: { fontSize: 24, fontWeight: '800', color: colors.heading, marginBottom: spacing.xl },
+  brandTagline: { fontSize: 36, fontWeight: '800', letterSpacing: 3, color: colors.white, textAlign: 'center', marginBottom: spacing.xxl, ...(isWebPlatform && { fontFamily: 'Poppins, system-ui, sans-serif' }) },
+  userTypeButtons: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
+  userTypeButton: { flex: 1, paddingVertical: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surfaceAlt, alignItems: 'center' },
+  userTypeButtonActive: { backgroundColor: colors.accent, borderColor: colors.accent },
+  userTypeButtonText: { color: colors.muted, fontWeight: '600' },
+  userTypeButtonTextActive: { color: colors.white, fontWeight: '700' },
+  genderContainer: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
+  genderOption: { flex: 1, paddingVertical: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surfaceAlt, alignItems: 'center' },
+  genderOptionSelected: { backgroundColor: colors.accent, borderColor: colors.accent },
+  genderOptionText: { color: colors.muted, fontSize: 15, fontWeight: '600' },
+  genderOptionTextSelected: { color: colors.white, fontWeight: '700' },
+  input: { backgroundColor: colors.fieldBg, borderRadius: radius.md, paddingVertical: 13, paddingHorizontal: 14, marginBottom: spacing.md, fontSize: 16, color: colors.text, borderWidth: 1, borderColor: colors.border },
   textArea: { minHeight: 80, textAlignVertical: 'top' },
-  inputButton: { backgroundColor: '#f5f5f5', borderRadius: 8, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: '#e0e0e0' },
-  inputButtonText: { color: '#333', fontSize: 16 },
-  inputButtonPlaceholder: { color: '#999', fontSize: 16 },
-  button: { backgroundColor: '#1976d2', borderRadius: 8, padding: 14, alignItems: 'center', marginTop: 10 },
+  inputButton: { backgroundColor: colors.fieldBg, borderRadius: radius.md, paddingVertical: 13, paddingHorizontal: 14, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.border },
+  inputButtonText: { color: colors.text, fontSize: 16 },
+  inputButtonPlaceholder: { color: colors.placeholder, fontSize: 16 },
+  button: { backgroundColor: colors.accent, borderRadius: radius.md, paddingVertical: 15, paddingHorizontal: spacing.lg, alignItems: 'center', marginTop: spacing.sm, ...shadow(1) },
   buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  apiErrorText: { color: '#d32f2f', fontSize: 13, textAlign: 'left', marginBottom: 10 },
-  linkButton: { marginTop: 15, alignItems: 'center' },
-  linkText: { color: '#1976d2', fontSize: 14 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalCard: { backgroundColor: '#fff', maxHeight: '75%', padding: 16, borderTopLeftRadius: 16, borderTopRightRadius: 16 },
-  modalTitle: { fontSize: 18, fontWeight: '600', marginBottom: 10 },
-  dobPreviewBox: { backgroundColor: '#f5f5f5', borderRadius: 8, padding: 12, alignItems: 'center', marginBottom: 10 },
-  dobPreviewText: { fontSize: 18, fontWeight: '600', color: '#1976d2' },
-  dateRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
-  dateAdjustButton: { flex: 1, backgroundColor: '#e3f2fd', borderRadius: 8, paddingVertical: 10, alignItems: 'center' },
-  dateAdjustButtonText: { color: '#1976d2', fontWeight: '600' },
-  dateActions: { flexDirection: 'row', gap: 10, marginTop: 10 },
-  countryItem: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#eee' },
-  countryText: { fontSize: 15, color: '#333' },
-  cancelButton: { marginTop: 12, alignItems: 'center', padding: 10, backgroundColor: '#f2f2f2', borderRadius: 8 },
-  cancelButtonText: { color: '#333', fontWeight: '600' },
+  buttonText: { color: colors.white, fontSize: 16, fontWeight: '700' },
+  apiErrorBox: { backgroundColor: colors.dangerSoft, borderRadius: radius.md, paddingVertical: spacing.md, paddingHorizontal: spacing.md, marginBottom: spacing.md },
+  apiErrorText: { color: colors.danger, fontSize: 13, textAlign: 'left' },
+  linkButton: { marginTop: spacing.lg, alignItems: 'center' },
+  linkText: { color: colors.onDarkAccent, fontSize: 14, fontWeight: '600' },
+  modalOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
+  modalCard: { backgroundColor: colors.surface, maxHeight: '75%', paddingHorizontal: spacing.xl, paddingVertical: spacing.xl, borderTopLeftRadius: radius.xxl, borderTopRightRadius: radius.xxl },
+  modalTitle: { fontSize: 18, fontWeight: '800', color: colors.heading, marginBottom: spacing.md },
+  dobPreviewBox: { backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: spacing.md, alignItems: 'center', marginBottom: spacing.md },
+  dobPreviewText: { fontSize: 18, fontWeight: '700', color: colors.primary },
+  dateRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
+  dateAdjustButton: { flex: 1, backgroundColor: colors.surfaceAlt, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingVertical: spacing.md, alignItems: 'center' },
+  dateAdjustButtonText: { color: colors.accent, fontWeight: '700' },
+  dateActions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
+  countryItem: { paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
+  countryText: { fontSize: 15, color: colors.text },
+  cancelButton: { marginTop: spacing.md, alignItems: 'center', paddingVertical: spacing.md, paddingHorizontal: spacing.lg, backgroundColor: colors.surfaceAlt, borderRadius: radius.md },
+  cancelButtonText: { color: colors.primary, fontWeight: '700' },
 });

@@ -14,8 +14,13 @@ import AppLayout from '../components/AppLayout';
 import { API_BASE_URL } from '../config/api';
 import { useI18n } from '../i18n/I18nContext';
 import { useFocusEffect } from '@react-navigation/native';
+import { colors, spacing, radius, ui, shadow } from '../theme';
 
-const { width } = Dimensions.get('window');
+const { width, height: screenHeight } = Dimensions.get('window');
+// Top bar (70) + bottom bar (70) from AppLayout, plus this screen's header (~58).
+const WEB_LIST_HEIGHT = Math.max(320, screenHeight - 70 - 70 - 58);
+// The content area is split into two fixed-height, independently scrolling panels.
+const PANEL_HEIGHT = Math.max(180, Math.floor((WEB_LIST_HEIGHT - 16) / 2));
 
 interface ScannedProduct {
   _id: string;
@@ -26,6 +31,8 @@ interface ScannedProduct {
   scannedAt: number;
   scannedQRCode?: string;
   feedback?: 'like' | 'dislike' | 'buy' | null;
+  /** From backend scan list: how this product was added for this user */
+  visitSource?: 'scan' | 'visit';
 }
 
 interface ScannedProductListScreenProps {
@@ -41,16 +48,21 @@ export default function ScannedProductListScreen({
 }: ScannedProductListScreenProps) {
   const { t } = useI18n();
   const [scannedProducts, setScannedProducts] = useState<ScannedProduct[]>([]);
+  const [albumItems, setAlbumItems] = useState<ScannedProduct[]>([]);
+  const [ownedProducts, setOwnedProducts] = useState<any[]>([]);
+  const [soldProducts, setSoldProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [topTab, setTopTab] = useState<'myproducts' | 'album' | 'sold'>('myproducts');
+  const [bottomTab, setBottomTab] = useState<'scanned' | 'liked' | 'disliked'>('scanned');
 
   useEffect(() => {
     loadScannedProducts();
-  }, []);
+  }, [user?._id]);
 
   useFocusEffect(
     React.useCallback(() => {
       loadScannedProducts();
-    }, [])
+    }, [user?._id])
   );
 
   const getDedupeKey = (product: ScannedProduct) => {
@@ -69,6 +81,62 @@ export default function ScannedProductListScreen({
 
   const loadScannedProducts = async () => {
     try {
+      // Products the user currently owns (per-unit holdings ledger).
+      if (user?._id) {
+        try {
+          const ownedRes = await fetch(`${API_BASE_URL}transfer/my-products?user_id=${encodeURIComponent(String(user._id))}`);
+          const ownedData = await ownedRes.json();
+          if (ownedRes.ok && ownedData?.status === 'success' && Array.isArray(ownedData?.data)) {
+            setOwnedProducts(ownedData.data.map((p: any) => ({ ...p, ownedQuantity: p.heldQuantity })));
+          } else {
+            setOwnedProducts([]);
+          }
+        } catch (ownedError) {
+          console.error('Error loading owned products:', ownedError);
+          setOwnedProducts([]);
+        }
+
+        // Products the user previously owned and has sold/transferred away.
+        try {
+          const soldRes = await fetch(`${API_BASE_URL}transfer/sold?user_id=${encodeURIComponent(String(user._id))}`);
+          const soldData = await soldRes.json();
+          if (soldRes.ok && soldData?.status === 'success' && Array.isArray(soldData?.data)) {
+            setSoldProducts(soldData.data);
+          } else {
+            setSoldProducts([]);
+          }
+        } catch (soldError) {
+          console.error('Error loading sold products:', soldError);
+          setSoldProducts([]);
+        }
+      } else {
+        setOwnedProducts([]);
+        setSoldProducts([]);
+      }
+
+      if (user?._id) {
+        try {
+          const albumRes = await fetch(`${API_BASE_URL}engagement/album/list?user_id=${encodeURIComponent(String(user._id))}`);
+          const albumData = await albumRes.json();
+          if (albumRes.ok && albumData?.status === 'success' && Array.isArray(albumData?.data)) {
+            const mappedAlbum = albumData.data.map((item: any) => ({
+              _id: String(item.product_id || ''),
+              token_id: item.token_id,
+              scannedAt: new Date(item.updatedAt || item.createdAt || Date.now()).getTime(),
+              ...(item.productSnapshot || {}),
+            }));
+            setAlbumItems(mappedAlbum);
+          } else {
+            setAlbumItems([]);
+          }
+        } catch (albumError) {
+          console.error('Error loading album items:', albumError);
+          setAlbumItems([]);
+        }
+      } else {
+        setAlbumItems([]);
+      }
+
       const query = user?._id ? `?user_id=${encodeURIComponent(String(user._id))}` : '';
       const response = await fetch(`${API_BASE_URL}qrcode/scan/list${query}`);
       if (response.ok) {
@@ -77,10 +145,42 @@ export default function ScannedProductListScreen({
           const backendProducts = result.data as ScannedProduct[];
           const feedbackRaw = await AsyncStorage.getItem('scannedProductFeedback');
           const feedbackMap = feedbackRaw ? JSON.parse(feedbackRaw) : {};
-          const mergedProducts = backendProducts.map((product) => ({
-            ...product,
-            feedback: feedbackMap[getFeedbackKey(product)] || null,
-          }));
+          let serverReactions: Record<string, string> = {};
+          if (user?._id) {
+            try {
+              const reactRes = await fetch(
+                `${API_BASE_URL}engagement/product-reactions?user_id=${encodeURIComponent(String(user._id))}`
+              );
+              const reactJson = await reactRes.json().catch(() => ({}));
+              if (reactRes.ok && reactJson?.status === 'success' && Array.isArray(reactJson?.data)) {
+                serverReactions = {};
+                reactJson.data.forEach((row: any) => {
+                  const pid = row?.product_id != null ? String(row.product_id) : '';
+                  const tid = row?.token_id != null ? String(row.token_id) : '';
+                  if (pid && tid && row?.reaction) {
+                    serverReactions[`${pid}:${tid}`] = row.reaction;
+                  }
+                });
+              }
+            } catch (e) {
+              console.warn('product-reactions fetch failed', e);
+            }
+          }
+          const mergedProducts = backendProducts.map((product) => {
+            const pid = product?._id != null ? String(product._id) : '';
+            const tid = product?.token_id != null ? String(product.token_id) : '';
+            const fromServer = pid && tid ? serverReactions[`${pid}:${tid}`] : undefined;
+            const fb =
+              fromServer === 'like' || fromServer === 'dislike' || fromServer === 'buy'
+                ? fromServer
+                : feedbackMap[getFeedbackKey(product)] || null;
+            const vs: 'scan' | 'visit' = (product as any).visitSource === 'visit' ? 'visit' : 'scan';
+            return {
+              ...product,
+              feedback: fb,
+              visitSource: vs,
+            };
+          });
           setScannedProducts(mergedProducts);
           await AsyncStorage.setItem('scannedProducts', JSON.stringify(mergedProducts));
           return;
@@ -100,16 +200,42 @@ export default function ScannedProductListScreen({
           }
         });
         const uniqueProducts = Array.from(dedupedMap.values());
-        // Sort by most recently scanned
         const feedbackRaw = await AsyncStorage.getItem('scannedProductFeedback');
         const feedbackMap = feedbackRaw ? JSON.parse(feedbackRaw) : {};
+        let serverReactionsLocal: Record<string, string> = {};
+        if (user?._id) {
+          try {
+            const reactRes = await fetch(
+              `${API_BASE_URL}engagement/product-reactions?user_id=${encodeURIComponent(String(user._id))}`
+            );
+            const reactJson = await reactRes.json().catch(() => ({}));
+            if (reactRes.ok && reactJson?.status === 'success' && Array.isArray(reactJson?.data)) {
+              reactJson.data.forEach((row: any) => {
+                const pid = row?.product_id != null ? String(row.product_id) : '';
+                const tid = row?.token_id != null ? String(row.token_id) : '';
+                if (pid && tid && row?.reaction) {
+                  serverReactionsLocal[`${pid}:${tid}`] = row.reaction;
+                }
+              });
+            }
+          } catch (e) {
+            console.warn('product-reactions fetch failed', e);
+          }
+        }
         const sorted = uniqueProducts.sort(
           (a: ScannedProduct, b: ScannedProduct) => b.scannedAt - a.scannedAt
         );
-        const mergedProducts = sorted.map((product) => ({
-          ...product,
-          feedback: feedbackMap[getFeedbackKey(product)] || null,
-        }));
+        const mergedProducts = sorted.map((product) => {
+          const pid = product?._id != null ? String(product._id) : '';
+          const tid = product?.token_id != null ? String(product.token_id) : '';
+          const fromServer = pid && tid ? serverReactionsLocal[`${pid}:${tid}`] : undefined;
+          const fb =
+            fromServer === 'like' || fromServer === 'dislike' || fromServer === 'buy'
+              ? fromServer
+              : feedbackMap[getFeedbackKey(product)] || null;
+          const vs: 'scan' | 'visit' = (product as any).visitSource === 'visit' ? 'visit' : 'scan';
+          return { ...product, feedback: fb, visitSource: vs };
+        });
         setScannedProducts(mergedProducts);
 
         // Persist cleaned-up list so duplicates don't reappear later.
@@ -137,9 +263,157 @@ export default function ScannedProductListScreen({
   };
 
   const handleProductPress = (product: ScannedProduct) => {
-    // Navigate to result screen with product data
-    navigation.navigate('Result', { productData: product });
+    navigation.navigate('Result', {
+      productData: product,
+      productId: product._id,
+      qrcodeId: product.token_id != null ? String(product.token_id) : undefined,
+    });
   };
+
+  // Owned products open the detail page in "owner" mode (Buy -> Transfer button).
+  const handleOwnedPress = (product: any) => {
+    navigation.navigate('Result', {
+      productData: product,
+      productId: product._id,
+      qrcodeId: product.token_id != null ? String(product.token_id) : undefined,
+      owned: true,
+      ownedQuantity: product.ownedQuantity,
+    });
+  };
+
+  const renderOwnedItem = ({ item }: { item: any }) => {
+    const images = Array.isArray(item.images) ? item.images : [];
+    const firstImage = images.length > 0 ? images[0] : null;
+    const isOwned = item.ownedQuantity != null; // ledger holding vs Bought reaction
+    return (
+      <TouchableOpacity
+        style={styles.productItem}
+        onPress={() => (isOwned ? handleOwnedPress(item) : handleProductPress(item))}
+        activeOpacity={0.7}
+      >
+        {firstImage ? (
+          <Image source={{ uri: getFileUrl(firstImage) }} style={styles.productImage} resizeMode="cover" />
+        ) : (
+          <View style={[styles.productImage, styles.placeholderImage]}>
+            <Text style={styles.placeholderText}>{t('noImage')}</Text>
+          </View>
+        )}
+        <View style={styles.productInfo}>
+          <View style={[styles.sourceChip, isOwned ? styles.ownedChip : styles.boughtChip]}>
+            <Text
+              style={[styles.sourceChipText, isOwned ? styles.ownedChipText : styles.boughtChipText]}
+              numberOfLines={1}
+            >
+              {isOwned ? t('owned') : t('bought')}
+            </Text>
+          </View>
+          <Text style={styles.productName} numberOfLines={1}>
+            {item.name || t('unnamedProduct')}
+          </Text>
+          {item.model && (
+            <Text style={styles.productModel} numberOfLines={1}>
+              {item.model}
+            </Text>
+          )}
+          {isOwned && (
+            <Text style={styles.itemIdText} numberOfLines={1}>
+              {t('quantity')}: {item.ownedQuantity ?? '—'}
+            </Text>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderOwnedSection = () => (
+    <View style={styles.sectionBlock}>
+      <View style={styles.sectionHeader}>
+        <View style={styles.sectionIconBadge}>
+          <Image source={require('../assets/cart.png')} style={styles.sectionIcon} />
+        </View>
+        <Text style={styles.sectionTitle}>{t('myProductsOwned')}</Text>
+      </View>
+      {myProductsList.length === 0 ? (
+        <Text style={styles.noItemsText}>{t('noOwnedProducts')}</Text>
+      ) : (
+        <FlatList
+          data={myProductsList}
+          renderItem={renderOwnedItem}
+          keyExtractor={(item) =>
+            item.ownedQuantity != null
+              ? `owned-${item._id}`
+              : `bought-${item.scannedQRCode || `${item._id}-${item.scannedAt}`}`
+          }
+          numColumns={3}
+          scrollEnabled={false}
+          contentContainerStyle={styles.sectionListContent}
+        />
+      )}
+    </View>
+  );
+
+  // A product the user sold/transferred away (read-only detail, no Transfer).
+  const renderSoldItem = ({ item }: { item: any }) => {
+    const images = Array.isArray(item.images) ? item.images : [];
+    const firstImage = images.length > 0 ? images[0] : null;
+    return (
+      <TouchableOpacity style={styles.productItem} onPress={() => handleProductPress(item)} activeOpacity={0.7}>
+        {firstImage ? (
+          <Image source={{ uri: getFileUrl(firstImage) }} style={styles.productImage} resizeMode="cover" />
+        ) : (
+          <View style={[styles.productImage, styles.placeholderImage]}>
+            <Text style={styles.placeholderText}>{t('noImage')}</Text>
+          </View>
+        )}
+        <View style={styles.productInfo}>
+          <View style={[styles.sourceChip, styles.soldChip]}>
+            <Text style={[styles.sourceChipText, styles.soldChipText]} numberOfLines={1}>
+              {t('sellSection')}
+            </Text>
+          </View>
+          <Text style={styles.productName} numberOfLines={1}>
+            {item.name || t('unnamedProduct')}
+          </Text>
+          {item.model && (
+            <Text style={styles.productModel} numberOfLines={1}>
+              {item.model}
+            </Text>
+          )}
+          <Text style={styles.itemIdText} numberOfLines={1}>
+            {t('quantity')}: {item.quantity ?? '—'}
+          </Text>
+          {!!item.to_owner?.email && (
+            <Text style={styles.itemIdText} numberOfLines={1}>
+              {item.to_owner.email}
+            </Text>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderSoldSection = () => (
+    <View style={styles.sectionBlock}>
+      <View style={styles.sectionHeader}>
+        <View style={styles.sectionIconBadge}>
+          <Image source={require('../assets/send.png')} style={styles.sectionIcon} />
+        </View>
+        <Text style={styles.sectionTitle}>{t('sellSection')}</Text>
+      </View>
+      {soldProducts.length === 0 ? (
+        <Text style={styles.noItemsText}>{t('noSoldProducts')}</Text>
+      ) : (
+        <FlatList
+          data={soldProducts}
+          renderItem={renderSoldItem}
+          keyExtractor={(item) => `sold-${item.transfer_id}`}
+          numColumns={3}
+          scrollEnabled={false}
+          contentContainerStyle={styles.sectionListContent}
+        />
+      )}
+    </View>
+  );
 
   const renderProductItem = ({ item }: { item: ScannedProduct }) => {
     const images = Array.isArray(item.images) ? item.images : [];
@@ -162,6 +436,11 @@ export default function ScannedProductListScreen({
           </View>
         )}
         <View style={styles.productInfo}>
+          <View style={styles.sourceChip}>
+            <Text style={styles.sourceChipText} numberOfLines={1}>
+              {item.visitSource === 'visit' ? 'Visited' : 'QR scan'}
+            </Text>
+          </View>
           <Text style={styles.productName} numberOfLines={1}>
             {item.name || t('unnamedProduct')}
           </Text>
@@ -173,6 +452,30 @@ export default function ScannedProductListScreen({
           <Text style={styles.itemIdText} numberOfLines={1}>
             Item ID: {item.token_id != null ? item.token_id : '—'}
           </Text>
+          {item.feedback ? (
+            <View
+              style={[
+                styles.statusPill,
+                item.feedback === 'dislike' ? styles.statusPillDislike : styles.statusPillPositive,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.statusPillText,
+                  item.feedback === 'dislike' ? styles.statusPillTextDislike : styles.statusPillTextPositive,
+                ]}
+                numberOfLines={1}
+              >
+                {item.feedback === 'like' ? 'Liked' : item.feedback === 'dislike' ? 'Disliked' : 'Bought'}
+              </Text>
+            </View>
+          ) : (
+            <View style={[styles.statusPill, styles.statusPillNeutral]}>
+              <Text style={[styles.statusPillText, styles.statusPillTextNeutral]} numberOfLines={1}>
+                No rating
+              </Text>
+            </View>
+          )}
         </View>
       </TouchableOpacity>
     );
@@ -186,7 +489,9 @@ export default function ScannedProductListScreen({
     return (
       <View style={styles.sectionBlock}>
         <View style={styles.sectionHeader}>
-          <Image source={iconSource} style={styles.sectionIcon} />
+          <View style={styles.sectionIconBadge}>
+            <Image source={iconSource} style={styles.sectionIcon} />
+          </View>
           <Text style={styles.sectionTitle}>{title}</Text>
         </View>
         {items.length === 0 ? (
@@ -205,10 +510,57 @@ export default function ScannedProductListScreen({
     );
   };
 
+  // A single tab button inside a panel's tab bar.
+  const renderTab = (
+    key: string,
+    label: string,
+    icon: any,
+    active: string,
+    setActive: (k: any) => void
+  ) => (
+    <TouchableOpacity
+      key={key}
+      style={[styles.tabBtn, active === key && styles.tabBtnActive]}
+      onPress={() => setActive(key)}
+      activeOpacity={0.7}
+    >
+      <Image
+        source={icon}
+        style={[styles.tabIcon, { opacity: active === key ? 1 : 0.5 }]}
+        resizeMode="contain"
+      />
+      <Text style={[styles.tabText, active === key && styles.tabTextActive]} numberOfLines={1}>
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+
+  // A 3-column grid of items, or an empty hint.
+  const renderGrid = (items: any[], renderItem: any, keyPrefix: string, emptyText: string) =>
+    !items || items.length === 0 ? (
+      <Text style={styles.noItemsText}>{emptyText}</Text>
+    ) : (
+      <FlatList
+        data={items}
+        renderItem={renderItem}
+        keyExtractor={(it, idx) => `${keyPrefix}-${it._id || it.transfer_id || it.scannedQRCode || idx}-${idx}`}
+        numColumns={3}
+        scrollEnabled={false}
+        contentContainerStyle={styles.sectionListContent}
+      />
+    );
+
   const onlyScannedItems = scannedProducts.filter((p) => !p.feedback);
   const dislikedItems = scannedProducts.filter((p) => p.feedback === 'dislike');
   const likedItems = scannedProducts.filter((p) => p.feedback === 'like');
-  const boughtItems = scannedProducts.filter((p) => p.feedback === 'buy');
+
+  // "My Products" = products owned in the holdings ledger + products the user
+  // marked as Bought (deduped). Owned items keep the Transfer flow.
+  const ownedIds = new Set(ownedProducts.map((p) => String(p._id)));
+  const boughtItems = scannedProducts.filter(
+    (p) => p.feedback === 'buy' && !ownedIds.has(String(p._id))
+  );
+  const myProductsList = [...ownedProducts, ...boughtItems];
 
   return (
     <AppLayout
@@ -219,26 +571,42 @@ export default function ScannedProductListScreen({
     >
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>{t('scannedProductsTitle')}</Text>
+          <Text style={[ui.screenTitle, styles.headerTitle]}>{t('myProductsTitle')}</Text>
         </View>
         {loading ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>{t('loading')}</Text>
           </View>
-        ) : scannedProducts.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>{t('noScannedProductsYet')}</Text>
-            <Text style={styles.emptySubtext}>
-              {t('scanQrToAddProducts')}
-            </Text>
-          </View>
         ) : (
-          <ScrollView style={styles.list} contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
-            {renderSection('Only Scanned', require('../assets/qr-code.png'), onlyScannedItems)}
-            {renderSection('Disliked', require('../assets/dislike.png'), dislikedItems)}
-            {renderSection('Liked', require('../assets/like.png'), likedItems)}
-            {renderSection('Bought', require('../assets/cart.png'), boughtItems)}
-          </ScrollView>
+          <View style={styles.splitWrap}>
+            {/* Top panel: My Products / My Album / Sold */}
+            <View style={[styles.panel, { height: PANEL_HEIGHT }]}>
+              <View style={styles.tabRow}>
+                {renderTab('myproducts', t('myProductsOwned'), require('../assets/cart.png'), topTab, setTopTab)}
+                {renderTab('album', 'My Album', require('../assets/add-image.png'), topTab, setTopTab)}
+                {renderTab('sold', t('sellSection'), require('../assets/send.png'), topTab, setTopTab)}
+              </View>
+              <ScrollView style={styles.panelBody} contentContainerStyle={styles.panelBodyContent}>
+                {topTab === 'myproducts' && renderGrid(myProductsList, renderOwnedItem, 'mp', t('noOwnedProducts'))}
+                {topTab === 'album' && renderGrid(albumItems, renderProductItem, 'al', 'No items')}
+                {topTab === 'sold' && renderGrid(soldProducts, renderSoldItem, 'sd', t('noSoldProducts'))}
+              </ScrollView>
+            </View>
+
+            {/* Bottom panel: Only Scanned / Liked / Disliked */}
+            <View style={[styles.panel, { height: PANEL_HEIGHT }]}>
+              <View style={styles.tabRow}>
+                {renderTab('scanned', 'Only Scanned', require('../assets/qr-code.png'), bottomTab, setBottomTab)}
+                {renderTab('liked', 'Liked', require('../assets/like.png'), bottomTab, setBottomTab)}
+                {renderTab('disliked', 'Disliked', require('../assets/dislike.png'), bottomTab, setBottomTab)}
+              </View>
+              <ScrollView style={styles.panelBody} contentContainerStyle={styles.panelBodyContent}>
+                {bottomTab === 'scanned' && renderGrid(onlyScannedItems, renderProductItem, 'os', 'No items')}
+                {bottomTab === 'liked' && renderGrid(likedItems, renderProductItem, 'lk', 'No items')}
+                {bottomTab === 'disliked' && renderGrid(dislikedItems, renderProductItem, 'dl', 'No items')}
+              </ScrollView>
+            </View>
+          </View>
         )}
       </View>
     </AppLayout>
@@ -248,73 +616,130 @@ export default function ScannedProductListScreen({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.bg,
   },
   header: {
-    padding: 20,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.md,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#333',
+    // base typography from ui.screenTitle
   },
   listContent: {
-    padding: 10,
-    paddingBottom: 24,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.xxl,
   },
   list: {
     flex: 1,
-    minHeight:500,
+    minHeight: WEB_LIST_HEIGHT,
+  },
+  splitWrap: {
+    flex: 1,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+  },
+  panel: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: spacing.md,
+    overflow: 'hidden',
+    ...shadow(1),
+  },
+  tabRow: {
+    flexDirection: 'row',
+    backgroundColor: colors.surfaceAlt,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  tabBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  tabBtnActive: {
+    backgroundColor: colors.surface,
+    borderBottomColor: colors.navy,
+  },
+  tabIcon: {
+    width: 18,
+    height: 18,
+    marginRight: 5,
+  },
+  tabText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.muted,
+  },
+  tabTextActive: {
+    color: colors.navy,
+  },
+  panelBody: {
+    flex: 1,
+  },
+  panelBodyContent: {
+    padding: spacing.sm,
+    paddingBottom: spacing.lg,
   },
   productItem: {
-    width: (width - 40) / 3,
-    backgroundColor: '#fff',
-    borderRadius: 8,
+    width: (width - 70) / 3,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
     margin: 5,
-    padding: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    padding: spacing.sm,
+    ...shadow(1),
   },
   sectionBlock: {
-    marginBottom: 14,
+    marginBottom: spacing.lg,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
-    paddingHorizontal: 6,
+    marginBottom: spacing.md,
+    paddingHorizontal: spacing.xs + 2,
+  },
+  sectionIconBadge: {
+    width: 30,
+    height: 30,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.sm,
   },
   sectionIcon: {
-    width: 18,
-    height: 18,
-    marginRight: 8,
-    tintColor: '#2f3f5a',
+    width: 16,
+    height: 16,
+    tintColor: colors.primary,
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#2f3f5a',
+    fontWeight: '700',
+    color: colors.primaryDark,
   },
   sectionListContent: {
-    paddingBottom: 4,
+    paddingBottom: spacing.xs,
   },
   noItemsText: {
     fontSize: 13,
-    color: '#888',
-    paddingHorizontal: 8,
-    paddingBottom: 8,
+    color: colors.muted,
+    paddingHorizontal: spacing.sm,
+    paddingBottom: spacing.sm,
   },
   productImage: {
     width: '100%',
     aspectRatio: 1 / 1.3,
-    borderRadius: 6,
-    backgroundColor: '#f0f0f0',
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceAlt,
   },
   placeholderImage: {
     justifyContent: 'center',
@@ -322,43 +747,107 @@ const styles = StyleSheet.create({
   },
   placeholderText: {
     fontSize: 12,
-    color: '#999',
+    color: colors.placeholder,
   },
   productInfo: {
-    marginTop: 8,
+    marginTop: spacing.sm,
     minHeight: 34,
+    alignItems: 'center',
   },
   productName: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: '700',
+    color: colors.heading,
     textAlign: 'center',
   },
   productModel: {
     fontSize: 11,
-    color: '#666',
+    color: colors.muted,
     textAlign: 'center',
   },
   itemIdText: {
-    marginTop: 4,
+    marginTop: spacing.xs,
     fontSize: 10,
-    color: '#888',
+    color: colors.muted,
     textAlign: 'center',
+  },
+  sourceChip: {
+    alignSelf: 'center',
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    marginBottom: spacing.xs,
+  },
+  sourceChipText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: colors.primary,
+    textAlign: 'center',
+  },
+  ownedChip: {
+    backgroundColor: colors.accent,
+  },
+  ownedChipText: {
+    color: '#fff',
+  },
+  soldChip: {
+    backgroundColor: colors.navy,
+  },
+  soldChipText: {
+    color: '#fff',
+  },
+  boughtChip: {
+    backgroundColor: colors.successSoft,
+  },
+  boughtChipText: {
+    color: colors.success,
+  },
+  statusPill: {
+    marginTop: spacing.xs,
+    alignSelf: 'center',
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+  },
+  statusPillPositive: {
+    backgroundColor: colors.successSoft,
+  },
+  statusPillDislike: {
+    backgroundColor: colors.dangerSoft,
+  },
+  statusPillNeutral: {
+    backgroundColor: colors.surfaceAlt,
+  },
+  statusPillText: {
+    fontSize: 10,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  statusPillTextPositive: {
+    color: colors.success,
+  },
+  statusPillTextDislike: {
+    color: colors.danger,
+  },
+  statusPillTextNeutral: {
+    color: colors.muted,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 40,
+    padding: spacing.xxxl,
   },
   emptyText: {
     fontSize: 18,
-    color: '#666',
-    marginBottom: 10,
+    color: colors.text,
+    marginBottom: spacing.sm,
+    textAlign: 'center',
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#999',
+    color: colors.muted,
     textAlign: 'center',
   },
 });

@@ -6,10 +6,17 @@ import { Platform } from 'react-native';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import HomeScreen from '../screens/HomeScreen';
+import ShopNowScreen from '../screens/ShopNowScreen';
 import ScannerScreen from '../screens/ScannerScreen';
 import ResultScreen from '../screens/ResultScreen';
+import TransferConfirmScreen from '../screens/TransferConfirmScreen';
+import ScanSuccessfulScreen from '../screens/ScanSuccessfulScreen';
+import PrivatePolicyScreen from '../screens/PrivatePolicyScreen';
 import ScannedProductListScreen from '../screens/ScannedProductListScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
+import FavoriteBrandsScreen from '../screens/FavoriteBrandsScreen';
+import PurchaseHistoryScreen from '../screens/PurchaseHistoryScreen';
+import HistoryScreen from '../screens/HistoryScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -32,6 +39,21 @@ export default function AppNavigator({ navigationRef }: { navigationRef: any }) 
     if (!navigationRef?.current) return;
 
     const pathname = (globalThis as any)?.location?.pathname || '';
+
+    // /transfer/:code -> ownership-transfer confirmation screen.
+    const transferMatch = pathname.match(/^\/transfer\/([^/]+)\/?$/);
+    if (transferMatch) {
+      const code = decodeURIComponent(transferMatch[1]);
+      handledWebProductPathRef.current = true;
+      navigationRef.current.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: 'TransferConfirm', params: { code } }],
+        })
+      );
+      return;
+    }
+
     const match = pathname.match(/^\/product\/([^/]+)\/([^/]+)\/?$/);
     if (!match) return;
 
@@ -147,6 +169,10 @@ export default function AppNavigator({ navigationRef }: { navigationRef: any }) 
         {(props) => <HomeScreen {...props} user={user} onLogout={handleLogout} />}
       </Stack.Screen>
 
+      <Stack.Screen name="ShopNow">
+        {(props) => <ShopNowScreen {...props} user={user} onLogout={handleLogout} />}
+      </Stack.Screen>
+
       <Stack.Screen name="Scanner">
         {(props) => <ScannerScreen {...props} user={user} onLogout={handleLogout} />}
       </Stack.Screen>
@@ -155,10 +181,34 @@ export default function AppNavigator({ navigationRef }: { navigationRef: any }) 
         {(props) => <ResultScreen {...props} user={user} onLogout={handleLogout} />}
       </Stack.Screen>
 
+      <Stack.Screen name="TransferConfirm">
+        {(props) => <TransferConfirmScreen {...props} user={user} onLogout={handleLogout} />}
+      </Stack.Screen>
+
+      <Stack.Screen name="ScanSuccessful">
+        {(props) => <ScanSuccessfulScreen {...props} user={user} onLogout={handleLogout} />}
+      </Stack.Screen>
+
+      <Stack.Screen name="PrivatePolicy">
+        {(props) => <PrivatePolicyScreen {...props} user={user} onLogout={handleLogout} />}
+      </Stack.Screen>
+
       <Stack.Screen name="ScannedProducts">
         {(props) => (
           <ScannedProductListScreen {...props} user={user} onLogout={handleLogout} />
         )}
+      </Stack.Screen>
+
+      <Stack.Screen name="FavoriteBrands">
+        {(props) => <FavoriteBrandsScreen {...props} user={user} onLogout={handleLogout} />}
+      </Stack.Screen>
+
+      <Stack.Screen name="PurchaseHistory">
+        {(props) => <PurchaseHistoryScreen {...props} user={user} onLogout={handleLogout} />}
+      </Stack.Screen>
+
+      <Stack.Screen name="History">
+        {(props) => <HistoryScreen {...props} user={user} onLogout={handleLogout} />}
       </Stack.Screen>
     </Stack.Navigator>
   );

@@ -11,8 +11,9 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../config/api';
+import { colors, spacing, radius, fontSize, shadow } from '../theme';
 
-const GOOGLE_CLIENT_ID = '877290656114-taabbrtvlt1dsi7tc9cotjv91g0jo4e9.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = '827449082182-gv23mpvpgi7jfh4v62ju5m6vgsi7fnv0.apps.googleusercontent.com';
 
 interface GoogleAuthButtonProps {
   onSuccess: (userData: any) => void;
@@ -154,7 +155,7 @@ export default function GoogleAuthButton({ onSuccess, onError, navigation }: Goo
         disabled={isLoading}
       >
         {isLoading ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={colors.accent} />
         ) : (
           <>
             <Image
@@ -173,27 +174,31 @@ export default function GoogleAuthButton({ onSuccess, onError, navigation }: Goo
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    marginVertical: 10,
+    marginVertical: spacing.sm,
   },
   button: {
-    backgroundColor: '#4285f4',
-    borderRadius: 8,
-    padding: 14,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: 14,
+    paddingHorizontal: spacing.lg,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
+    ...shadow(1),
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   buttonText: {
-    color: '#fff',
-    fontSize: 16,
+    color: colors.text,
+    fontSize: fontSize.lg,
     fontWeight: '600',
   },
   googleIcon: {
     width: 20,
     height: 20,
-    marginRight: 10,
+    marginRight: spacing.md,
   },
 });

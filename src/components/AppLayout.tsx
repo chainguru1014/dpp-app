@@ -10,9 +10,11 @@ import {
   Alert,
   Dimensions,
   Platform,
+  ScrollView,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useI18n } from '../i18n/I18nContext';
+import { colors, radius, shadow, gradients } from '../theme';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -24,6 +26,12 @@ interface AppLayoutProps {
   useCenterTop?: boolean;
   hideBottomBar?: boolean;
   onGuestAction?: () => void;
+  onActionMenuPress?: (actionKey: string) => void;
+  onSettingsMenuPress?: (settingKey: string) => void;
+  isBrandFollowed?: boolean;
+  isInAlbum?: boolean;
+  useActionMenuCenter?: boolean;
+  isProductDetailPage?: boolean;
 }
 
 const TOP_BAR_HEIGHT = 70;
@@ -43,9 +51,17 @@ export default function AppLayout({
   useCenterTop = false,
   hideBottomBar = false,
   onGuestAction,
+  onActionMenuPress,
+  onSettingsMenuPress,
+  isBrandFollowed = false,
+  isInAlbum = false,
+  useActionMenuCenter = false,
+  isProductDetailPage = false,
 }: AppLayoutProps) {
   const { t, locale, setLocale, languages } = useI18n();
   const [settingsVisible, setSettingsVisible] = useState(false);
+  const [actionMenuVisible, setActionMenuVisible] = useState(false);
+  const [extraMenuVisible, setExtraMenuVisible] = useState(false);
   const [langMenuVisible, setLangMenuVisible] = useState(false);
   const [langPopover, setLangPopover] = useState({ top: 76, right: 16 });
   const worldIconRef = useRef<View>(null);
@@ -129,6 +145,7 @@ export default function AppLayout({
     setSettingsVisible(true);
   };
 
+  // Center button is always the QR scanner on every page.
   const handleScan = () => {
     if (!isAuthenticated) {
       onGuestAction?.();
@@ -137,42 +154,111 @@ export default function AppLayout({
     navigation.navigate('Scanner');
   };
 
+  const closeActionMenu = () => {
+    setActionMenuVisible(false);
+  };
+
+  // Right-side menu button. On the product detail page it is the 3-line product
+  // action menu; on every other page it opens the history/data menu.
+  const handleExtraMenu = () => {
+    if (isProductDetailPage || useActionMenuCenter) {
+      setActionMenuVisible(true);
+      return;
+    }
+    if (!isAuthenticated) {
+      onGuestAction?.();
+      return;
+    }
+    setExtraMenuVisible(true);
+  };
+
+  // Navigation for the 4 history/data items (shared by the new menu button and,
+  // on the product detail page, the center action menu).
+  const handleExtraMenuItemPress = (itemKey: string) => {
+    setExtraMenuVisible(false);
+    if (onSettingsMenuPress) {
+      onSettingsMenuPress(itemKey);
+      return;
+    }
+    if (itemKey === 'purchaseHistory') {
+      navigation.navigate('PurchaseHistory');
+    } else if (itemKey === 'viewHistory') {
+      navigation.navigate('History');
+    } else if (itemKey === 'favoriteBrands') {
+      navigation.navigate('FavoriteBrands');
+    }
+  };
+
+  const actionMenuItems = [
+    { key: 'saveProductInfo', label: 'Save product info', iconSource: require('../assets/diskette.png') },
+    { key: 'copyProductInfo', label: 'Copy product info', iconSource: require('../assets/copy.png') },
+    { key: 'sendProductInfo', label: 'Send product info', iconSource: require('../assets/send.png') },
+    { key: 'toggleAlbum', label: isInAlbum ? 'Remove from album' : 'Add album', iconSource: require('../assets/add-image.png') },
+    { key: 'connectBrand', label: 'Connect this brand', iconSource: require('../assets/brand.png') },
+    { key: 'connectSalesPerson', label: 'Connect Sales person', iconSource: require('../assets/end-call.png') },
+    { key: 'toggleFollowBrand', label: isBrandFollowed ? 'Unfollow this brand' : 'Follow this brand', iconSource: require('../assets/add-friend.png') },
+    { key: 'introduceBrandToFriend', label: 'Introduce this brand to friend', iconSource: require('../assets/connection.png') },
+  ];
+  const commonCenterMenuItems = [
+    { key: 'scanQr', label: 'Scan QR code', iconSource: require('../assets/qr-code.png') },
+  ];
+
+  // The 4 history/data items. Opened from the new 3-line menu button in the bottom
+  // bar, and (on the product detail page) also appended to the center action menu.
+  const extraMenuItems = [
+    { key: 'purchaseHistory', label: 'Purchase History', iconSource: require('../assets/purchase-history.png') },
+    { key: 'viewHistory', label: 'Product History', iconSource: require('../assets/history.png') },
+    { key: 'favoriteBrands', label: 'Favorite Brands', iconSource: require('../assets/favorite.png') },
+  ];
+
+  // Center menu list. On the product detail page the original action items get the
+  // 4 history/data items appended ("nav" kind), otherwise it's the plain scan item.
+  const centerMenuItems =
+    isProductDetailPage || useActionMenuCenter
+      ? [
+          ...actionMenuItems.map((item) => ({ ...item, kind: 'action' as const })),
+          ...extraMenuItems.map((item) => ({ ...item, kind: 'nav' as const })),
+        ]
+      : commonCenterMenuItems.map((item) => ({ ...item, kind: 'center' as const }));
+
   return (
     <View style={styles.container}>
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, gradients.header]}>
         {showBackButton ? (
           <TouchableOpacity
             onPress={handleBack}
-            style={styles.iconButton}
+            style={[styles.iconButton, styles.navBtnOnDark]}
             activeOpacity={0.7}
           >
             <Image
               source={require('../assets/left-arrow.png')}
-              style={styles.menuIcon}
+              style={styles.topBarIcon}
               resizeMode="contain"
             />
           </TouchableOpacity>
         ) : (
-          <View style={styles.iconButton} />
+          <View style={[styles.iconButton, styles.navBtnOnDark]}>
+            <Image
+              source={require('../assets/logo-shield.png')}
+              style={styles.topBarLogoIcon}
+              resizeMode="contain"
+            />
+          </View>
         )}
 
-        <View style={styles.logoContainer}>
-          <Image
-            source={require('../assets/yometel-logo.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
+        <View style={styles.dppBadge}>
+          <Text style={styles.dppBadgeText}>{t('homeHeroEyebrow')}</Text>
         </View>
 
         <TouchableOpacity
           onPress={openLanguageMenu}
-          style={styles.iconButton}
+          style={[styles.iconButton, styles.navBtnOnDark]}
           activeOpacity={0.7}
         >
           <View ref={worldIconRef}>
             <Image
               source={require('../assets/world.png')}
-              style={styles.menuIcon}
+              style={styles.topBarIcon}
               resizeMode="contain"
             />
           </View>
@@ -198,7 +284,7 @@ export default function AppLayout({
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.bottomIconButton}
+          style={[styles.bottomIconButton, styles.bottomIconNudgeLeft]}
           onPress={handleBookmark}
           activeOpacity={0.7}
         >
@@ -210,12 +296,26 @@ export default function AppLayout({
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.bottomIconButton}
+          style={styles.bottomScanButton}
           onPress={handleScan}
+          activeOpacity={0.85}
+        >
+          <View style={[styles.bottomScanCircle, gradients.accent]}>
+            <Image
+              source={require('../assets/qr-code.png')}
+              style={styles.bottomScanIcon}
+              resizeMode="contain"
+            />
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.bottomIconButton, styles.bottomIconNudgeRight]}
+          onPress={handleExtraMenu}
           activeOpacity={0.7}
         >
           <Image
-            source={require('../assets/qr-code-icon.png')}
+            source={require('../assets/menus.png')}
             style={styles.bottomIcon}
             resizeMode="contain"
           />
@@ -234,6 +334,56 @@ export default function AppLayout({
         </TouchableOpacity>
       </View>
       )}
+
+      <Modal
+        visible={(isProductDetailPage || useActionMenuCenter) && actionMenuVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={closeActionMenu}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={closeActionMenu}
+        >
+          <View style={styles.settingsContainer}>
+            <Text style={styles.settingsTitle}>Menu</Text>
+            <Text style={styles.settingsSubtitle}>Quick actions for this product</Text>
+
+            <ScrollView style={styles.menuScroll} showsVerticalScrollIndicator={true}>
+            {centerMenuItems.map((item, index, list) => (
+              <View key={item.label}>
+                {item.kind === 'nav' && (index === 0 || list[index - 1].kind !== 'nav') ? (
+                  <Text style={styles.menuSectionLabel}>History &amp; data</Text>
+                ) : null}
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  onPress={() => {
+                    closeActionMenu();
+                    if (item.kind === 'nav') {
+                      handleExtraMenuItemPress(item.key);
+                    } else if (item.kind === 'action') {
+                      onActionMenuPress?.(item.key);
+                    } else if (item.key === 'scanQr') {
+                      if (!isAuthenticated) {
+                        onGuestAction?.();
+                      } else {
+                        navigation.navigate('Scanner');
+                      }
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Image source={item.iconSource} style={styles.menuItemIcon} resizeMode="contain" />
+                  <Text style={styles.menuItemText}>{item.label}</Text>
+                </TouchableOpacity>
+                {index < list.length - 1 ? <View style={styles.menuDivider} /> : null}
+              </View>
+            ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       <Modal
         visible={settingsVisible}
@@ -304,6 +454,38 @@ export default function AppLayout({
       </Modal>
 
       <Modal
+        visible={extraMenuVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setExtraMenuVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setExtraMenuVisible(false)}
+        >
+          <View style={styles.settingsContainer}>
+            <Text style={styles.settingsTitle}>Menu</Text>
+            <Text style={styles.settingsSubtitle}>History, brands &amp; data</Text>
+
+            {extraMenuItems.map((item, index, list) => (
+              <View key={item.label}>
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  onPress={() => handleExtraMenuItemPress(item.key)}
+                  activeOpacity={0.7}
+                >
+                  <Image source={item.iconSource} style={styles.menuItemIcon} resizeMode="contain" />
+                  <Text style={styles.menuItemText}>{item.label}</Text>
+                </TouchableOpacity>
+                {index < list.length - 1 ? <View style={styles.menuDivider} /> : null}
+              </View>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <Modal
         visible={langMenuVisible}
         transparent
         animationType="none"
@@ -365,11 +547,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 15,
-    backgroundColor: '#fff',
+    backgroundColor: colors.navy,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: colors.navy,
     zIndex: 1000,
     elevation: 10,
+    shadowColor: colors.navy,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
   },
   iconButton: {
     width: 40,
@@ -377,18 +563,39 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  logoContainer: {
+  navBtn: {
+    borderRadius: 20,
+    backgroundColor: colors.surfaceAlt,
+  },
+  navBtnOnDark: {
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+  },
+  topBarIcon: {
+    width: 22,
+    height: 22,
+    tintColor: '#fff',
+  },
+  topBarLogoIcon: {
+    width: 30,
+    height: 30,
+  },
+  dppBadge: {
     flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logo: {
-    height: 40,
-    width: 150,
+  dppBadgeText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 1.2,
   },
   menuIcon: {
-    width: 24,
-    height: 24,
+    width: 22,
+    height: 22,
+    tintColor: colors.primary,
   },
   content: {
     flex: 1,
@@ -412,15 +619,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-around',
     paddingHorizontal: 20,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.xxl,
+    borderTopRightRadius: radius.xxl,
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopColor: colors.border,
     zIndex: 1000,
-    elevation: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
+    elevation: 12,
+    shadowColor: colors.navy,
+    shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowRadius: 12,
   },
   bottomIconButton: {
     flex: 1,
@@ -428,32 +637,84 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Nudge the 2nd / 4th icons away from the center scan button for a more even fit.
+  bottomIconNudgeLeft: {
+    transform: [{ translateX: -5 }],
+  },
+  bottomIconNudgeRight: {
+    transform: [{ translateX: 5 }],
+  },
   bottomIcon: {
-    width: 28,
-    height: 28,
+    width: 26,
+    height: 26,
+    tintColor: colors.primary,
+  },
+  bottomScanButton: {
+    flex: 1,
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bottomScanCircle: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    marginTop: -30,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 4,
+    borderColor: colors.surface,
+    shadowColor: colors.accent,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  bottomScanIcon: {
+    width: 26,
+    height: 26,
+    tintColor: '#fff',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: colors.overlay,
     justifyContent: 'flex-end',
   },
   settingsContainer: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingVertical: 20,
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.xxl,
+    borderTopRightRadius: radius.xxl,
+    paddingVertical: 22,
     paddingHorizontal: 20,
+    // Never grow past the top bar — the sheet stops right below it.
+    maxHeight: SCREEN_HEIGHT - TOP_BAR_HEIGHT,
+    ...shadow(3),
   },
   settingsTitle: {
     fontSize: 24,
-    fontWeight: '700',
-    color: '#333',
+    fontWeight: '800',
+    color: colors.heading,
     marginBottom: 6,
   },
   settingsSubtitle: {
     fontSize: 14,
-    color: '#666',
+    color: colors.muted,
     marginBottom: 20,
+  },
+  menuScroll: {
+    // Fill the sheet up to just below the top bar (header/padding reserved).
+    maxHeight: SCREEN_HEIGHT - TOP_BAR_HEIGHT - 120,
+  },
+  menuSectionLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.muted,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    marginTop: 14,
+    marginBottom: 4,
+    paddingHorizontal: 5,
   },
   menuItem: {
     flexDirection: 'row',
@@ -465,42 +726,45 @@ const styles = StyleSheet.create({
   menuItemText: {
     marginLeft: 15,
     fontSize: 16,
-    color: '#333',
+    color: colors.text,
+    fontWeight: '500',
+  },
+  menuItemIcon: {
+    width: 24,
+    height: 24,
   },
   menuDivider: {
     height: 1,
-    backgroundColor: '#e0e0e0',
+    backgroundColor: colors.border,
   },
   langOverlay: {
     flex: 1,
   },
   langPopover: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    paddingVertical: 12,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    paddingVertical: 10,
     paddingHorizontal: 8,
-    minWidth: 30,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 8,
+    minWidth: 120,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadow(3),
   },
   langItem: {
     paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 6,
+    paddingHorizontal: 14,
+    borderRadius: radius.sm,
   },
   langItemActive: {
-    backgroundColor: '#e3f2fd',
+    backgroundColor: colors.surfaceAlt,
   },
   langText: {
     fontSize: 15,
-    color: '#333',
+    color: colors.text,
     fontWeight: '500',
   },
   langTextActive: {
-    color: '#1976d2',
+    color: colors.accent,
     fontWeight: '700',
   },
 });
