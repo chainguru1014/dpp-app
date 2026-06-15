@@ -16,7 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../config/api';
 import GoogleAuthButton from '../components/GoogleAuthButton';
 import { useI18n } from '../i18n/I18nContext';
-import { colors, spacing, radius, gradients, shadow } from '../theme';
+import { colors, spacing, radius, shadow } from '../theme';
 
 export default function LoginScreen({ navigation, onLogin, route }: any) {
   const goAfterAuth = () => {
@@ -196,10 +196,10 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
       {...(Platform.OS === 'ios' && { contentInsetAdjustmentBehavior: 'automatic' })}
     >
       <View style={styles.content}>
-        <View style={[styles.card, gradients.hero]}>
+        <View style={styles.card}>
               <View style={styles.logoContainer}>
               <Image
-                source={require('../assets/logo-shield.png')}
+                source={require('../assets/yometel-logo.png')}
                 style={styles.logoImage}
                 resizeMode="contain"
               />
@@ -296,7 +296,7 @@ const isWebPlatform = Platform.OS === 'web';
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#5b8ad9',
+    backgroundColor: colors.bg,
     ...(isWebPlatform && { height: screenHeight, minHeight: screenHeight }),
   },
   keyboardView: {
@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
     ...(isWebPlatform && { minHeight: 0 }),
   },
   card: {
-    backgroundColor: colors.primary,
+    backgroundColor: '#f3f4f6',
     borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.navy,
@@ -337,8 +337,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xxl,
   },
   logoImage: {
-    width: 96,
-    height: 96,
+    width: 160,
+    height: 48,
   },
   logoTagline: {
     marginTop: 12,
@@ -356,7 +356,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   input: {
-    backgroundColor: colors.fieldBg,
+    backgroundColor: colors.white,
     borderRadius: radius.md,
     paddingVertical: 13,
     paddingHorizontal: 14,
@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderStrong,
   },
   button: {
     backgroundColor: colors.accent,
@@ -399,8 +399,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   linkText: {
-    color: colors.onDarkAccent,
+    color: colors.navy,
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });

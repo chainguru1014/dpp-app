@@ -18,7 +18,7 @@ import { API_BASE_URL } from '../config/api';
 import GoogleAuthButton from '../components/GoogleAuthButton';
 import { COUNTRIES } from '../constants/countries';
 import { useI18n } from '../i18n/I18nContext';
-import { colors, spacing, radius, gradients, shadow } from '../theme';
+import { colors, spacing, radius, shadow } from '../theme';
 
 export default function RegisterScreen({ navigation, onLogin, route }: any) {
   const { t, locale } = useI18n();
@@ -181,10 +181,10 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
         <ScrollView contentContainerStyle={[styles.scrollContent, isWeb && { minHeight: screenHeight }]} style={styles.scrollView}>
           <View style={styles.content}>
-            <View style={[styles.card, gradients.hero]}>
+            <View style={styles.card}>
               <Image
-                source={require('../assets/logo-shield.png')}
-                style={{ width: 96, height: 96, marginBottom: 28, alignSelf: 'center' }}
+                source={require('../assets/yometel-logo.png')}
+                style={{ width: 160, height: 48, marginBottom: 28, alignSelf: 'center' }}
                 resizeMode="contain"
               />
 
@@ -384,12 +384,12 @@ const screenHeight = Dimensions.get('window').height;
 const isWebPlatform = Platform.OS === 'web';
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#5b8ad9', ...(isWebPlatform && { height: screenHeight, minHeight: screenHeight }) },
+  container: { flex: 1, backgroundColor: colors.bg, ...(isWebPlatform && { height: screenHeight, minHeight: screenHeight }) },
   keyboardView: { flex: 1 },
   scrollView: { flex: 1 },
   scrollContent: { padding: spacing.xl, alignItems: 'center', flexGrow: 1, justifyContent: 'center' },
   content: { alignItems: 'center', width: '100%', paddingVertical: 40 },
-  card: { backgroundColor: colors.primary, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.navy, padding: spacing.xxxl, width: '100%', maxWidth: 420, ...shadow(3) },
+  card: { backgroundColor: '#f3f4f6', borderRadius: radius.xl, borderWidth: 1, borderColor: colors.navy, padding: spacing.xxxl, width: '100%', maxWidth: 420, ...shadow(3) },
   title: { fontSize: 24, fontWeight: '800', color: colors.heading, marginBottom: spacing.xl },
   brandTagline: { fontSize: 36, fontWeight: '800', letterSpacing: 3, color: colors.white, textAlign: 'center', marginBottom: spacing.xxl, ...(isWebPlatform && { fontFamily: 'Poppins, system-ui, sans-serif' }) },
   userTypeButtons: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
@@ -402,9 +402,9 @@ const styles = StyleSheet.create({
   genderOptionSelected: { backgroundColor: colors.accent, borderColor: colors.accent },
   genderOptionText: { color: colors.muted, fontSize: 15, fontWeight: '600' },
   genderOptionTextSelected: { color: colors.white, fontWeight: '700' },
-  input: { backgroundColor: colors.fieldBg, borderRadius: radius.md, paddingVertical: 13, paddingHorizontal: 14, marginBottom: spacing.md, fontSize: 16, color: colors.text, borderWidth: 1, borderColor: colors.border },
+  input: { backgroundColor: colors.white, borderRadius: radius.md, paddingVertical: 13, paddingHorizontal: 14, marginBottom: spacing.md, fontSize: 16, color: colors.text, borderWidth: 1, borderColor: colors.borderStrong },
   textArea: { minHeight: 80, textAlignVertical: 'top' },
-  inputButton: { backgroundColor: colors.fieldBg, borderRadius: radius.md, paddingVertical: 13, paddingHorizontal: 14, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.border },
+  inputButton: { backgroundColor: colors.white, borderRadius: radius.md, paddingVertical: 13, paddingHorizontal: 14, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.borderStrong },
   inputButtonText: { color: colors.text, fontSize: 16 },
   inputButtonPlaceholder: { color: colors.placeholder, fontSize: 16 },
   button: { backgroundColor: colors.accent, borderRadius: radius.md, paddingVertical: 15, paddingHorizontal: spacing.lg, alignItems: 'center', marginTop: spacing.sm, ...shadow(1) },
@@ -413,7 +413,7 @@ const styles = StyleSheet.create({
   apiErrorBox: { backgroundColor: colors.dangerSoft, borderRadius: radius.md, paddingVertical: spacing.md, paddingHorizontal: spacing.md, marginBottom: spacing.md },
   apiErrorText: { color: colors.danger, fontSize: 13, textAlign: 'left' },
   linkButton: { marginTop: spacing.lg, alignItems: 'center' },
-  linkText: { color: colors.onDarkAccent, fontSize: 14, fontWeight: '600' },
+  linkText: { color: colors.navy, fontSize: 14, fontWeight: '700' },
   modalOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
   modalCard: { backgroundColor: colors.surface, maxHeight: '75%', paddingHorizontal: spacing.xl, paddingVertical: spacing.xl, borderTopLeftRadius: radius.xxl, borderTopRightRadius: radius.xxl },
   modalTitle: { fontSize: 18, fontWeight: '800', color: colors.heading, marginBottom: spacing.md },
