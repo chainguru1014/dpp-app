@@ -199,7 +199,7 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
         <View style={styles.card}>
               <View style={styles.logoContainer}>
               <Image
-                source={require('../assets/yometel-logo.png')}
+                source={require('../assets/yometel-logo-trans.png')}
                 style={styles.logoImage}
                 resizeMode="contain"
               />

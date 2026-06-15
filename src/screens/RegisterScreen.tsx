@@ -183,7 +183,7 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
           <View style={styles.content}>
             <View style={styles.card}>
               <Image
-                source={require('../assets/yometel-logo.png')}
+                source={require('../assets/yometel-logo-trans.png')}
                 style={{ width: 160, height: 48, marginBottom: 28, alignSelf: 'center' }}
                 resizeMode="contain"
               />
