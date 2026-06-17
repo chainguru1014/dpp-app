@@ -57,7 +57,14 @@ module.exports = {
     },
     compress: true,
     port: 3001,
-    hot: true,
+    host: '0.0.0.0',
+    // Accept any Host header so the server can sit behind a reverse proxy /
+    // custom domain (e.g. dpp.innosynch.com) instead of only localhost.
+    allowedHosts: 'all',
+    // HMR can't reach the dev server through the HTTPS proxy, so turn off
+    // hot/live reload in this hosted setup to avoid websocket reconnect noise.
+    hot: false,
+    liveReload: false,
     historyApiFallback: {
       index: '/index.html', // always serve index.html for SPA routes
       disableDotRule: true,
