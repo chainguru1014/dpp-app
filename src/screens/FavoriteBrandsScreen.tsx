@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.sm,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '400',
     color: colors.primaryDark,
   },
   list: { paddingBottom: 0 },
@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
   nameCol: { flex: 1, paddingHorizontal: spacing.sm },
   detailCol: { flex: 1.4, paddingHorizontal: spacing.xs + 2 },
   imageCol: { flex: 0.85, alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.sm },
-  rowName: { fontSize: 13, color: colors.text, fontWeight: '600' },
+  rowName: { fontSize: 13, color: colors.text, fontWeight: '400' },
   rowDetail: { fontSize: 12, color: colors.muted, lineHeight: 18 },
   rowImage: { width: 56, height: 56, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt },
 });

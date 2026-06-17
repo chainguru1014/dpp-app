@@ -318,7 +318,7 @@ const styles = StyleSheet.create({
   scanTitle: {
     marginTop: 22,
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: '400',
     color: colors.primary,
     textAlign: 'center',
   },
@@ -356,7 +356,7 @@ const styles = StyleSheet.create({
   },
   featureLabel: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '400',
     color: colors.primary,
   },
 
@@ -374,7 +374,7 @@ const styles = StyleSheet.create({
   },
   bannerCaption: {
     fontSize: 21,
-    fontWeight: '700',
+    fontWeight: '400',
     color: '#33415c',
     textAlign: 'center',
     lineHeight: 27,
@@ -392,7 +392,7 @@ const styles = StyleSheet.create({
   shopButtonText: {
     color: colors.primary,
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '400',
     letterSpacing: 0.3,
   },
 
@@ -407,7 +407,7 @@ const styles = StyleSheet.create({
   },
   whyTitle: {
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: '400',
     color: colors.navy,
     marginBottom: 12,
   },
@@ -429,7 +429,7 @@ const styles = StyleSheet.create({
   whyCheckMark: {
     color: colors.accent,
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '400',
   },
   whyText: {
     flex: 1,
@@ -475,14 +475,14 @@ const styles = StyleSheet.create({
   darkEyebrow: {
     color: 'rgba(255,255,255,0.82)',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '400',
     letterSpacing: 1.5,
     marginBottom: 8,
   },
   darkTitle: {
     color: '#fff',
     fontSize: 25,
-    fontWeight: '800',
+    fontWeight: '400',
     lineHeight: 31,
     marginBottom: 8,
   },

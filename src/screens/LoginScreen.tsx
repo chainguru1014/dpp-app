@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
   logoTagline: {
     marginTop: 12,
     fontSize: 36,
-    fontWeight: '800',
+    fontWeight: '400',
     letterSpacing: 3,
     color: colors.white,
     textAlign: 'center',
@@ -351,7 +351,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: '800',
+    fontWeight: '400',
     color: colors.heading,
     marginBottom: spacing.xl,
   },
@@ -380,7 +380,7 @@ const styles = StyleSheet.create({
   buttonText: {
     color: colors.white,
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '400',
   },
   apiErrorBox: {
     backgroundColor: colors.dangerSoft,
@@ -401,6 +401,6 @@ const styles = StyleSheet.create({
   linkText: {
     color: colors.navy,
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '400',
   },
 });

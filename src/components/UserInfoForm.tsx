@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: fontSize.xxl,
-    fontWeight: '800',
+    fontWeight: '400',
     color: colors.heading,
     marginBottom: spacing.xl,
     textAlign: 'center',
@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: fontSize.md,
-    fontWeight: '600',
+    fontWeight: '400',
     color: colors.primaryDark,
     marginBottom: spacing.xs,
     marginTop: spacing.md,
@@ -293,12 +293,12 @@ const styles = StyleSheet.create({
   },
   genderOptionText: {
     fontSize: fontSize.md,
-    fontWeight: '600',
+    fontWeight: '400',
     color: colors.muted,
   },
   genderOptionTextSelected: {
     color: colors.white,
-    fontWeight: '700',
+    fontWeight: '400',
   },
   buttonContainer: {
     flexDirection: 'row',
@@ -317,7 +317,7 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     color: colors.primary,
     fontSize: fontSize.lg,
-    fontWeight: '700',
+    fontWeight: '400',
   },
   submitButton: {
     flex: 1,
@@ -331,6 +331,6 @@ const styles = StyleSheet.create({
   submitButtonText: {
     color: colors.white,
     fontSize: fontSize.lg,
-    fontWeight: '700',
+    fontWeight: '400',
   },
 });

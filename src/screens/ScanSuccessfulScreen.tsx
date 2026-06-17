@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
   privacyText: {
     fontSize: 16,
     color: colors.white,
-    fontWeight: '700',
+    fontWeight: '400',
     letterSpacing: 0.3,
   },
 });

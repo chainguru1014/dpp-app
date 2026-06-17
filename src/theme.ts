@@ -132,17 +132,17 @@ export const ui = StyleSheet.create({
   },
   screenTitle: {
     fontSize: fontSize.xxl,
-    fontWeight: '800',
+    fontWeight: '400',
     color: colors.heading,
   },
   sectionTitle: {
     fontSize: fontSize.lg,
-    fontWeight: '700',
+    fontWeight: '400',
     color: colors.primary,
   },
   label: {
     fontSize: fontSize.md,
-    fontWeight: '600',
+    fontWeight: '400',
     color: colors.primaryDark,
     marginBottom: spacing.sm,
   },
@@ -177,7 +177,7 @@ export const ui = StyleSheet.create({
   buttonPrimaryText: {
     color: colors.white,
     fontSize: fontSize.lg,
-    fontWeight: '700',
+    fontWeight: '400',
   },
   buttonGhost: {
     backgroundColor: colors.surfaceAlt,
@@ -189,7 +189,7 @@ export const ui = StyleSheet.create({
   buttonGhostText: {
     color: colors.primary,
     fontSize: fontSize.lg,
-    fontWeight: '700',
+    fontWeight: '400',
   },
   // Selectable pill (gender / user-type toggles, language, etc.)
   chip: {
@@ -208,11 +208,11 @@ export const ui = StyleSheet.create({
   chipText: {
     color: colors.muted,
     fontSize: fontSize.md,
-    fontWeight: '600',
+    fontWeight: '400',
   },
   chipTextActive: {
     color: colors.white,
-    fontWeight: '700',
+    fontWeight: '400',
   },
   errorText: {
     color: colors.danger,

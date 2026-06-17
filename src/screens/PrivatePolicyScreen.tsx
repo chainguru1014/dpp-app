@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
   updated: {
     fontSize: 12,
     color: colors.muted,
-    fontWeight: '700',
+    fontWeight: '400',
     letterSpacing: 1,
     marginBottom: spacing.lg,
   },
@@ -174,12 +174,12 @@ const styles = StyleSheet.create({
   checkboxMark: {
     color: colors.white,
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '400',
     lineHeight: 18,
   },
   confirmLabel: {
     fontSize: 15,
     color: colors.text,
-    fontWeight: '600',
+    fontWeight: '400',
   },
 });

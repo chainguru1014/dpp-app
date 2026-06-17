@@ -1915,7 +1915,7 @@ const styles = StyleSheet.create({
   },
   productName: {
     fontSize: 20,
-    fontWeight: '600',
+    fontWeight: '400',
     color: colors.primary,
     marginBottom: 5,
     textAlign: 'center',
@@ -2006,7 +2006,7 @@ const styles = StyleSheet.create({
   brandNameText: {
     marginTop: 8,
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '400',
     color: colors.primary,
     textAlign: 'center',
   },
@@ -2056,7 +2056,7 @@ const styles = StyleSheet.create({
   },
   sectionTitleBlue: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '400',
     color: colors.primary,
     marginBottom: 8,
     paddingHorizontal: 20,
@@ -2127,7 +2127,7 @@ const styles = StyleSheet.create({
   },
   dppTitle: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '400',
     color: colors.primary,
     marginBottom: 4,
   },
@@ -2157,7 +2157,7 @@ const styles = StyleSheet.create({
   },
   accordionHeaderText: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '400',
     color: '#fff',
     letterSpacing: 0.3,
     flex: 1,
@@ -2197,7 +2197,7 @@ const styles = StyleSheet.create({
   securityCheckText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '400',
     marginLeft: 10,
     letterSpacing: 0.3,
   },
@@ -2221,7 +2221,7 @@ const styles = StyleSheet.create({
   },
   authenticatedTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '400',
     color: colors.primary,
     marginBottom: 10,
     textAlign: 'center',
@@ -2261,14 +2261,14 @@ const styles = StyleSheet.create({
   },
   primaryActionText: {
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: '400',
     color: '#fff',
     letterSpacing: 0.5,
   },
   primaryActionBadge: {
     marginLeft: 10,
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '400',
     color: '#fff',
     backgroundColor: 'rgba(255,255,255,0.22)',
     paddingHorizontal: 10,
@@ -2307,7 +2307,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 14,
     color: colors.muted,
-    fontWeight: '600',
+    fontWeight: '400',
   },
   likeDislikeTextActive: {
     color: '#fff',
@@ -2356,7 +2356,7 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#fff',
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '400',
   },
   disposalLinksContainer: {
     marginBottom: 15,
@@ -2387,7 +2387,7 @@ const styles = StyleSheet.create({
   },
   environmentText: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '400',
     color: '#fff',
   },
   inquiryLabel: {
@@ -2432,7 +2432,7 @@ const styles = StyleSheet.create({
     color: colors.primary,
     textAlign: 'center',
     marginBottom: 18,
-    fontWeight: '700',
+    fontWeight: '400',
   },
   joinModalButton: {
     backgroundColor: colors.accent,
@@ -2447,7 +2447,7 @@ const styles = StyleSheet.create({
   joinModalButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '400',
   },
   joinModalCancel: {
     color: colors.primary,
@@ -2466,7 +2466,7 @@ const styles = StyleSheet.create({
   joinModalSecondaryText: {
     color: colors.primary,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '400',
   },
   copyInfoModalOverlay: {
     flex: 1,
@@ -2506,7 +2506,7 @@ const styles = StyleSheet.create({
   },
   careModalTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '400',
     color: colors.primary,
     marginBottom: 8,
   },
@@ -2543,7 +2543,7 @@ const styles = StyleSheet.create({
   copyButtonText: {
     color: '#fff',
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '400',
   },
   dialogActionButton: {
     marginTop: 8,
@@ -2552,7 +2552,7 @@ const styles = StyleSheet.create({
   dialogActionButtonText: {
     color: colors.primary,
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '400',
   },
   emailDialogCard: {
     width: '100%',
@@ -2577,7 +2577,7 @@ const styles = StyleSheet.create({
   },
   transferEmailLabel: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '400',
     color: colors.heading,
     marginBottom: 6,
     marginTop: 4,
@@ -2592,7 +2592,7 @@ const styles = StyleSheet.create({
   },
   ownerInfoLabel: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '400',
     color: colors.muted,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
@@ -2600,7 +2600,7 @@ const styles = StyleSheet.create({
   },
   ownerInfoName: {
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '400',
     color: colors.heading,
   },
   ownerInfoEmail: {
@@ -2616,7 +2616,7 @@ const styles = StyleSheet.create({
   },
   checkboxLabel: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '400',
     color: colors.heading,
     marginLeft: 8,
   },
@@ -2642,7 +2642,7 @@ const styles = StyleSheet.create({
   methodChipText: {
     fontSize: 12,
     color: colors.text,
-    fontWeight: '600',
+    fontWeight: '400',
   },
   methodChipTextActive: {
     color: '#fff',
@@ -2698,6 +2698,6 @@ const styles = StyleSheet.create({
   dialogActionPrimaryText: {
     color: '#fff',
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '400',
   },
 });

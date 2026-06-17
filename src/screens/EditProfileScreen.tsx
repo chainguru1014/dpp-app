@@ -416,8 +416,8 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     ...shadow(2),
   },
-  header: { fontSize: fontSize.xxl, fontWeight: '800', marginBottom: spacing.xl, color: colors.heading },
-  label: { fontSize: fontSize.md, fontWeight: '600', color: colors.primaryDark, marginBottom: spacing.sm },
+  header: { fontSize: fontSize.xxl, fontWeight: '400', marginBottom: spacing.xl, color: colors.heading },
+  label: { fontSize: fontSize.md, fontWeight: '400', color: colors.primaryDark, marginBottom: spacing.sm },
   userTypeButtons: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.lg },
   userTypeButton: {
     flex: 1,
@@ -429,8 +429,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   userTypeButtonActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  userTypeButtonText: { color: colors.muted, fontSize: fontSize.md, fontWeight: '600' },
-  userTypeButtonTextActive: { color: colors.white, fontWeight: '700' },
+  userTypeButtonText: { color: colors.muted, fontSize: fontSize.md, fontWeight: '400' },
+  userTypeButtonTextActive: { color: colors.white, fontWeight: '400' },
   input: {
     backgroundColor: colors.fieldBg,
     borderRadius: radius.md,
@@ -454,8 +454,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   genderOptionSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
-  genderOptionText: { color: colors.muted, fontSize: fontSize.md, fontWeight: '600' },
-  genderOptionTextSelected: { color: colors.white, fontWeight: '700' },
+  genderOptionText: { color: colors.muted, fontSize: fontSize.md, fontWeight: '400' },
+  genderOptionTextSelected: { color: colors.white, fontWeight: '400' },
   countryButton: {
     backgroundColor: colors.fieldBg,
     borderRadius: radius.md,
@@ -494,8 +494,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...shadow(1),
   },
-  cancelText: { color: colors.primary, fontSize: fontSize.lg, fontWeight: '700' },
-  saveText: { color: colors.white, fontSize: fontSize.lg, fontWeight: '700' },
+  cancelText: { color: colors.primary, fontSize: fontSize.lg, fontWeight: '400' },
+  saveText: { color: colors.white, fontSize: fontSize.lg, fontWeight: '400' },
   modalOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
   modalCard: {
     backgroundColor: colors.surface,
@@ -505,7 +505,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: radius.xxl,
     borderTopRightRadius: radius.xxl,
   },
-  modalTitle: { fontSize: fontSize.xl, fontWeight: '800', color: colors.heading, marginBottom: spacing.md },
+  modalTitle: { fontSize: fontSize.xl, fontWeight: '400', color: colors.heading, marginBottom: spacing.md },
   dobPreviewBox: {
     backgroundColor: colors.surfaceAlt,
     borderRadius: radius.md,
@@ -515,7 +515,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.md,
   },
-  dobPreviewText: { fontSize: fontSize.xl, fontWeight: '700', color: colors.primary },
+  dobPreviewText: { fontSize: fontSize.xl, fontWeight: '400', color: colors.primary },
   dateRow: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.md },
   dateAdjustButton: {
     flex: 1,
@@ -526,7 +526,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     alignItems: 'center',
   },
-  dateAdjustButtonText: { color: colors.primary, fontWeight: '700' },
+  dateAdjustButtonText: { color: colors.primary, fontWeight: '400' },
   countryItem: { paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
   countryItemText: { color: colors.text, fontSize: fontSize.lg },
   modalCancel: {
@@ -536,5 +536,5 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     borderRadius: radius.md,
   },
-  modalCancelText: { color: colors.primary, fontSize: fontSize.lg, fontWeight: '700' },
+  modalCancelText: { color: colors.primary, fontSize: fontSize.lg, fontWeight: '400' },
 });

@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 22,
-    fontWeight: '800',
+    fontWeight: '400',
     color: colors.heading,
     marginBottom: 4,
   },
@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
   },
   cardHeading: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '400',
     color: colors.heading,
     marginBottom: 8,
   },
@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
   rowValue: {
     fontSize: 14,
     color: colors.text,
-    fontWeight: '600',
+    fontWeight: '400',
     flex: 1.4,
     textAlign: 'right',
   },
@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
   methodChipText: {
     fontSize: 13,
     color: colors.text,
-    fontWeight: '600',
+    fontWeight: '400',
   },
   methodChipTextActive: {
     color: '#fff',
@@ -318,7 +318,7 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: '#fff',
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '400',
   },
   secondaryButton: {
     backgroundColor: colors.surfaceAlt,
@@ -332,7 +332,7 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     color: colors.text,
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '400',
   },
   errorText: {
     fontSize: 15,

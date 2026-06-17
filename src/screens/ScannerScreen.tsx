@@ -638,7 +638,7 @@ const styles = StyleSheet.create({
   hintText: {
     color: '#fff',
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '400',
     flexShrink: 1,
     textAlign: 'center',
   },
@@ -677,7 +677,7 @@ const styles = StyleSheet.create({
   scanCaptionLink: {
     color: '#fff',
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '400',
     textAlign: 'center',
     textDecorationLine: 'underline',
   },
@@ -710,7 +710,7 @@ const styles = StyleSheet.create({
   },
   photoScanTitle: {
     fontSize: 17,
-    fontWeight: '800',
+    fontWeight: '400',
     color: colors.heading,
     textAlign: 'center',
     marginBottom: 6,
@@ -732,7 +732,7 @@ const styles = StyleSheet.create({
   photoScanButtonText: {
     color: '#fff',
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '400',
   },
   loadingPill: {
     flexDirection: 'row',
@@ -747,7 +747,7 @@ const styles = StyleSheet.create({
   loadingPillText: {
     color: '#fff',
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '400',
   },
   // Light-theme state screens (permission / unavailable / loading)
   stateContainer: {
@@ -789,7 +789,7 @@ const styles = StyleSheet.create({
   stateTitle: {
     fontSize: 16,
     color: colors.text,
-    fontWeight: '600',
+    fontWeight: '400',
     textAlign: 'center',
     lineHeight: 22,
   },

@@ -174,13 +174,13 @@ const styles = StyleSheet.create({
   title: {
     color: NAVY,
     fontSize: 24,
-    fontWeight: '600',
+    fontWeight: '400',
     textAlign: 'center',
     lineHeight: 30,
   },
   titleFree: {
     color: ACCENT,
-    fontWeight: '600',
+    fontWeight: '400',
   },
   headline: {
     color: '#5a6b86',
@@ -223,7 +223,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#fff',
     fontSize: 7.5,
-    fontWeight: '800',
+    fontWeight: '400',
     letterSpacing: 0.4,
     marginHorizontal: 4,
   },
@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
   previewScanTitle: {
     marginTop: 10,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '400',
     color: PRIMARY,
   },
   previewScanHint: {
@@ -322,7 +322,7 @@ const styles = StyleSheet.create({
   },
   previewFeatureLabel: {
     fontSize: 7,
-    fontWeight: '600',
+    fontWeight: '400',
     color: PRIMARY,
   },
   previewDots: {
@@ -370,13 +370,13 @@ const styles = StyleSheet.create({
   wordmarkBrand: {
     color: '#2f4c95',
     fontSize: 27,
-    fontWeight: '600',
+    fontWeight: '400',
     fontStyle: 'italic',
   },
   wordmarkDpp: {
     color: '#8a97ad',
     fontSize: 25,
-    fontWeight: '500',
+    fontWeight: '400',
   },
   footerRight: {
     flex: 2,

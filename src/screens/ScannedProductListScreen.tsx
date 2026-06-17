@@ -675,7 +675,7 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '400',
     color: colors.muted,
   },
   tabTextActive: {
@@ -723,7 +723,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '400',
     color: colors.primaryDark,
   },
   sectionListContent: {
@@ -756,7 +756,7 @@ const styles = StyleSheet.create({
   },
   productName: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '400',
     color: colors.heading,
     textAlign: 'center',
   },
@@ -781,7 +781,7 @@ const styles = StyleSheet.create({
   },
   sourceChipText: {
     fontSize: 9,
-    fontWeight: '700',
+    fontWeight: '400',
     color: colors.primary,
     textAlign: 'center',
   },
@@ -821,7 +821,7 @@ const styles = StyleSheet.create({
   },
   statusPillText: {
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '400',
     textAlign: 'center',
   },
   statusPillTextPositive: {

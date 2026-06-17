@@ -624,7 +624,7 @@ const styles = StyleSheet.create({
   dppBadgeText: {
     color: '#fff',
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '400',
     letterSpacing: 1.2,
   },
   menuIcon: {
@@ -728,7 +728,7 @@ const styles = StyleSheet.create({
   },
   settingsTitle: {
     fontSize: 24,
-    fontWeight: '800',
+    fontWeight: '400',
     color: colors.heading,
     marginBottom: 6,
   },
@@ -743,7 +743,7 @@ const styles = StyleSheet.create({
   },
   menuSectionLabel: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '400',
     color: colors.muted,
     letterSpacing: 0.6,
     textTransform: 'uppercase',
@@ -762,7 +762,7 @@ const styles = StyleSheet.create({
     marginLeft: 15,
     fontSize: 16,
     color: colors.text,
-    fontWeight: '500',
+    fontWeight: '400',
   },
   menuItemIcon: {
     width: 24,
@@ -796,10 +796,10 @@ const styles = StyleSheet.create({
   langText: {
     fontSize: 15,
     color: colors.text,
-    fontWeight: '500',
+    fontWeight: '400',
   },
   langTextActive: {
     color: colors.accent,
-    fontWeight: '700',
+    fontWeight: '400',
   },
 });

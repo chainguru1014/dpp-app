@@ -152,9 +152,9 @@ const styles = StyleSheet.create({
   thumb: { width: 52, height: 64, borderRadius: radius.sm, backgroundColor: '#fff' },
   emptyImage: { backgroundColor: colors.surfaceAlt },
   info: { flex: 1, paddingHorizontal: spacing.md },
-  name: { fontSize: 14, color: colors.heading, fontWeight: '700' },
+  name: { fontSize: 14, color: colors.heading, fontWeight: '400' },
   sub: { fontSize: 12, color: colors.muted, marginTop: 1 },
   time: { fontSize: 11, color: colors.muted, marginTop: 4 },
   typePill: { borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 4 },
-  typeText: { fontSize: 11, fontWeight: '700' },
+  typeText: { fontSize: 11, fontWeight: '400' },
 });
