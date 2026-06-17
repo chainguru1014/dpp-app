@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../config/api';
+import { useI18n } from '../i18n/I18nContext';
 import { colors, spacing, radius, fontSize, shadow } from '../theme';
 
 const GOOGLE_CLIENT_ID = '827449082182-gv23mpvpgi7jfh4v62ju5m6vgsi7fnv0.apps.googleusercontent.com';
@@ -28,6 +29,7 @@ declare global {
 }
 
 export default function GoogleAuthButton({ onSuccess, onError, navigation }: GoogleAuthButtonProps) {
+  const { t } = useI18n();
   const [isLoading, setIsLoading] = useState(false);
   const [gsiReady, setGsiReady] = useState(false);
   const tokenClientRef = useRef<any>(null);
@@ -163,7 +165,7 @@ export default function GoogleAuthButton({ onSuccess, onError, navigation }: Goo
               style={styles.googleIcon}
               resizeMode="contain"
             />
-            <Text style={styles.buttonText}>Continue with Google</Text>
+            <Text style={styles.buttonText}>{t('continueWithGoogle')}</Text>
           </>
         )}
       </TouchableOpacity>

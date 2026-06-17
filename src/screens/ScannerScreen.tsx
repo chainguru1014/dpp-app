@@ -17,18 +17,6 @@ import { useI18n } from '../i18n/I18nContext';
 import { useIsFocused } from '@react-navigation/native';
 import { colors, radius, spacing, shadow } from '../theme';
 
-// Decorative corner brackets that frame the scan target.
-const ScanFrame = () => (
-  <View pointerEvents="none" style={styles.frameOverlay}>
-    <View style={styles.frame}>
-      <View style={[styles.corner, styles.cornerTL]} />
-      <View style={[styles.corner, styles.cornerTR]} />
-      <View style={[styles.corner, styles.cornerBL]} />
-      <View style={[styles.corner, styles.cornerBR]} />
-    </View>
-  </View>
-);
-
 // Conditionally import QR scanner based on platform
 let QRCodeScanner: any = null;
 let RNCamera: any = null;
@@ -181,27 +169,27 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
             if (code && code.data) {
               handleQRCode(String(code.data));
             } else {
-              Alert.alert(t('error'), 'No QR code found in the image. Make sure the QR is clear and centered, then try again.');
+              Alert.alert(t('error'), t('noQrInImage'));
             }
           } catch (err) {
             setLoading(false);
-            Alert.alert(t('error'), 'Could not read the image.');
+            Alert.alert(t('error'), t('couldNotReadImage'));
           }
         };
         img.onerror = () => {
           setLoading(false);
-          Alert.alert(t('error'), 'Could not load the image.');
+          Alert.alert(t('error'), t('couldNotLoadImage'));
         };
         img.src = reader.result;
       };
       reader.onerror = () => {
         setLoading(false);
-        Alert.alert(t('error'), 'Could not read the file.');
+        Alert.alert(t('error'), t('couldNotReadFile'));
       };
       reader.readAsDataURL(file);
     } catch (err) {
       setLoading(false);
-      Alert.alert(t('error'), 'Photo scan is not supported here.');
+      Alert.alert(t('error'), t('photoScanNotSupported'));
     }
   };
 
@@ -219,7 +207,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
       };
       input.click();
     } catch (err) {
-      Alert.alert(t('error'), 'Photo scan is not supported here.');
+      Alert.alert(t('error'), t('photoScanNotSupported'));
     }
   };
 
@@ -245,6 +233,15 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
     setLoading(true);
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
+
+    // Fail fast if the backend never responds: without this a hung request would
+    // leave `loading`/`isProcessingScanRef` stuck forever, blocking all further
+    // scans (the screen then looks like it stopped detecting QR codes).
+    const timedOutRef = { current: false };
+    const timeoutId = setTimeout(() => {
+      timedOutRef.current = true;
+      abortController.abort();
+    }, 12000);
 
     try {
       let scannedValue = currentScannedValue;
@@ -301,7 +298,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         const productData = data.data;
         const securityCheckPassedByApi = data?.securityCheck?.isPassed !== false;
         if (expectedSecurityQrUrl && !securityCheckPassedByApi) {
-          Alert.alert(t('error'), 'Scanned QR does not match this product.');
+          Alert.alert(t('error'), t('qrDoesNotMatch'));
           if (isMountedRef.current) {
             setLoading(false);
           }
@@ -387,19 +384,24 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         }
       }
     } catch (error) {
+      // A real abort (navigating away) stays silent; a timeout abort is surfaced
+      // as a network error so the user can retry instead of staring at a spinner.
       const abortError = error && (error as any).name === 'AbortError';
-      if (!abortError) {
+      const isTimeout = timedOutRef.current;
+      const isSilentAbort = abortError && !isTimeout;
+      if (!isSilentAbort) {
         Alert.alert(t('error'), t('networkErrorRetry'));
         console.error('Scan error:', error);
       }
       if (isMountedRef.current) {
         setLoading(false);
       }
-      // Reactivate scanner after error only when still focused
-      if (!abortError && isFocused && scannerRef.current) {
+      // Reactivate scanner after a surfaced error only when still focused.
+      if (!isSilentAbort && isFocused && scannerRef.current) {
         scannerRef.current.reactivate();
       }
     } finally {
+      clearTimeout(timeoutId);
       isProcessingScanRef.current = false;
       abortControllerRef.current = null;
     }
@@ -497,7 +499,6 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
                 style={styles.webScanner}
               />
             </View>
-            <ScanFrame />
           </View>
           <View style={styles.bottomContent}>
             {loading ? (
@@ -661,52 +662,6 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 500,
     height: '100%',
-  },
-  frameOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  frame: {
-    width: '68%',
-    maxWidth: 280,
-    aspectRatio: 1,
-    position: 'relative',
-  },
-  corner: {
-    position: 'absolute',
-    width: 38,
-    height: 38,
-    borderColor: colors.accent,
-    borderWidth: 4,
-  },
-  cornerTL: {
-    top: 0,
-    left: 0,
-    borderRightWidth: 0,
-    borderBottomWidth: 0,
-    borderTopLeftRadius: radius.md,
-  },
-  cornerTR: {
-    top: 0,
-    right: 0,
-    borderLeftWidth: 0,
-    borderBottomWidth: 0,
-    borderTopRightRadius: radius.md,
-  },
-  cornerBL: {
-    bottom: 0,
-    left: 0,
-    borderRightWidth: 0,
-    borderTopWidth: 0,
-    borderBottomLeftRadius: radius.md,
-  },
-  cornerBR: {
-    bottom: 0,
-    right: 0,
-    borderLeftWidth: 0,
-    borderTopWidth: 0,
-    borderBottomRightRadius: radius.md,
   },
   bottomContent: {
     paddingBottom: spacing.xxxl,

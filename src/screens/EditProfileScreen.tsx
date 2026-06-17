@@ -22,7 +22,7 @@ import { colors, spacing, radius, fontSize, shadow } from '../theme';
 export default function EditProfileScreen({ navigation, route, user, onLogout, onUserUpdate }: any) {
   const TOP_BAR_HEIGHT = 70;
   const BOTTOM_BAR_HEIGHT = 70;
-  const { locale } = useI18n();
+  const { t, locale } = useI18n();
   const { height: windowHeight } = useWindowDimensions();
   const [loading, setLoading] = useState(false);
   const [actionsHeight, setActionsHeight] = useState(0);
@@ -100,9 +100,9 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
 
   const validateGoogleRequiredFields = () => {
     const nextErrors: { gender?: string; age?: string; country?: string } = {};
-    if (!profile.gender) nextErrors.gender = 'Gender is required';
-    if (!profile.age) nextErrors.age = 'Age is required';
-    if (!profile.country) nextErrors.country = 'Country is required';
+    if (!profile.gender) nextErrors.gender = t('genderRequired');
+    if (!profile.age) nextErrors.age = t('ageRequired');
+    if (!profile.country) nextErrors.country = t('countryRequired');
     setFieldErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   };
@@ -115,14 +115,14 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
     if (profile.userType === 'client') {
       if (!profile.name || !profile.password || !profile.gender || !profile.age || !profile.country) {
         if (showAlert) {
-          Alert.alert('Error', 'Please fill Username, Password, Gender, Age and Country');
+          Alert.alert(t('error'), t('fillProfileFieldsClient'));
         }
         return;
       }
     } else {
       if (!profile.name || !profile.email || !profile.firstName || !profile.lastName || !profile.addressStreet || !profile.addressCity || !profile.addressState || !profile.addressZipCode || !profile.addressCountry || !profile.phoneNumber || !profile.gender || !profile.dateOfBirth) {
         if (showAlert) {
-          Alert.alert('Error', 'Please fill all required Agent fields');
+          Alert.alert(t('error'), t('fillProfileFieldsAgent'));
         }
         return;
       }
@@ -132,7 +132,7 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
 
   const saveProfile = async () => {
     if (!user?._id) {
-      Alert.alert('Error', 'User not found');
+      Alert.alert(t('error'), t('userNotFound'));
       return;
     }
 
@@ -172,7 +172,7 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
 
       const data = await response.json();
       if (!response.ok || data.status !== 'success') {
-        Alert.alert('Error', data.message || 'Failed to update profile');
+        Alert.alert(t('error'), data.message || t('failedToUpdateProfile'));
         return;
       }
 
@@ -183,10 +183,10 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
       const refreshedProfile = createProfileFromUser(updatedUser);
       setProfile(refreshedProfile);
       setInitialProfile(refreshedProfile);
-      Alert.alert('Success', 'Profile updated');
+      Alert.alert(t('success'), t('profileUpdated'));
       navigation.navigate('Home');
     } catch (error: any) {
-      Alert.alert('Error', error?.message || 'Failed to update profile');
+      Alert.alert(t('error'), error?.message || t('failedToUpdateProfile'));
     } finally {
       setLoading(false);
     }
@@ -220,8 +220,8 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
           showsVerticalScrollIndicator
         >
           <View style={styles.card}>
-            <Text style={styles.header}>Edit Profile</Text>
-            <Text style={styles.label}>User Type:</Text>
+            <Text style={styles.header}>{t('editProfile')}</Text>
+            <Text style={styles.label}>{t('userType')}:</Text>
             <View style={styles.userTypeButtons}>
               {(['client', 'agent'] as const).map((type) => (
                 <TouchableOpacity
@@ -230,20 +230,20 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
                   onPress={() => setField('userType', type)}
                 >
                   <Text style={[styles.userTypeButtonText, profile.userType === type && styles.userTypeButtonTextActive]}>
-                    {type === 'client' ? 'Client' : 'Agent'}
+                    {type === 'client' ? t('client') : t('agent')}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
 
-            <Text style={styles.label}>Username:</Text>
-            <TextInput style={styles.input} placeholder="Username" value={profile.name} onChangeText={(v) => setField('name', v)} />
+            <Text style={styles.label}>{t('username')}:</Text>
+            <TextInput style={styles.input} placeholder={t('username')} value={profile.name} onChangeText={(v) => setField('name', v)} />
 
             {profile.userType === 'client' ? (
               <>
-                <Text style={styles.label}>Password:</Text>
-                <TextInput style={styles.input} placeholder="Password" value={profile.password} onChangeText={(v) => setField('password', v)} secureTextEntry />
-                <Text style={styles.label}>Gender:</Text>
+                <Text style={styles.label}>{t('password')}:</Text>
+                <TextInput style={styles.input} placeholder={t('password')} value={profile.password} onChangeText={(v) => setField('password', v)} secureTextEntry />
+                <Text style={styles.label}>{t('gender')}:</Text>
                 <View style={styles.genderContainer}>
                   {genderOptions.map((option) => (
                     <TouchableOpacity
@@ -258,36 +258,36 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
                   ))}
                 </View>
                 {!!fieldErrors.gender && <Text style={styles.errorText}>{fieldErrors.gender}</Text>}
-                <Text style={styles.label}>Age:</Text>
-                <TextInput style={styles.input} placeholder="Age" value={profile.age} onChangeText={(v) => setField('age', v)} keyboardType="numeric" />
+                <Text style={styles.label}>{t('age')}:</Text>
+                <TextInput style={styles.input} placeholder={t('age')} value={profile.age} onChangeText={(v) => setField('age', v)} keyboardType="numeric" />
                 {!!fieldErrors.age && <Text style={styles.errorText}>{fieldErrors.age}</Text>}
-                <Text style={styles.label}>Country:</Text>
+                <Text style={styles.label}>{t('country')}:</Text>
                 <TouchableOpacity style={styles.countryButton} onPress={() => setCountryModalVisible(true)}>
-                  <Text style={profile.country ? styles.countryButtonText : styles.countryButtonPlaceholder}>{profile.country || 'Select Country'}</Text>
+                  <Text style={profile.country ? styles.countryButtonText : styles.countryButtonPlaceholder}>{profile.country || t('selectCountry')}</Text>
                 </TouchableOpacity>
                 {!!fieldErrors.country && <Text style={styles.errorText}>{fieldErrors.country}</Text>}
               </>
             ) : (
               <>
-                <Text style={styles.label}>Email:</Text>
-                <TextInput style={styles.input} placeholder="Email" value={profile.email} onChangeText={(v) => setField('email', v)} keyboardType="email-address" autoCapitalize="none" />
-                <Text style={styles.label}>First Name:</Text>
-                <TextInput style={styles.input} placeholder="First Name" value={profile.firstName} onChangeText={(v) => setField('firstName', v)} />
-                <Text style={styles.label}>Last Name:</Text>
-                <TextInput style={styles.input} placeholder="Last Name" value={profile.lastName} onChangeText={(v) => setField('lastName', v)} />
-                <Text style={styles.label}>Street:</Text>
-                <TextInput style={styles.input} placeholder="Street" value={profile.addressStreet} onChangeText={(v) => setField('addressStreet', v)} />
-                <Text style={styles.label}>City:</Text>
-                <TextInput style={styles.input} placeholder="City" value={profile.addressCity} onChangeText={(v) => setField('addressCity', v)} />
-                <Text style={styles.label}>State:</Text>
-                <TextInput style={styles.input} placeholder="State" value={profile.addressState} onChangeText={(v) => setField('addressState', v)} />
-                <Text style={styles.label}>Zip Code:</Text>
-                <TextInput style={styles.input} placeholder="Zip Code" value={profile.addressZipCode} onChangeText={(v) => setField('addressZipCode', v)} />
-                <Text style={styles.label}>Country:</Text>
-                <TextInput style={styles.input} placeholder="Country" value={profile.addressCountry} onChangeText={(v) => setField('addressCountry', v)} />
-                <Text style={styles.label}>Phone Number:</Text>
-                <TextInput style={styles.input} placeholder="Phone Number" value={profile.phoneNumber} onChangeText={(v) => setField('phoneNumber', v)} keyboardType="phone-pad" />
-                <Text style={styles.label}>Gender:</Text>
+                <Text style={styles.label}>{t('email')}:</Text>
+                <TextInput style={styles.input} placeholder={t('email')} value={profile.email} onChangeText={(v) => setField('email', v)} keyboardType="email-address" autoCapitalize="none" />
+                <Text style={styles.label}>{t('firstName')}:</Text>
+                <TextInput style={styles.input} placeholder={t('firstName')} value={profile.firstName} onChangeText={(v) => setField('firstName', v)} />
+                <Text style={styles.label}>{t('lastName')}:</Text>
+                <TextInput style={styles.input} placeholder={t('lastName')} value={profile.lastName} onChangeText={(v) => setField('lastName', v)} />
+                <Text style={styles.label}>{t('street')}:</Text>
+                <TextInput style={styles.input} placeholder={t('street')} value={profile.addressStreet} onChangeText={(v) => setField('addressStreet', v)} />
+                <Text style={styles.label}>{t('city')}:</Text>
+                <TextInput style={styles.input} placeholder={t('city')} value={profile.addressCity} onChangeText={(v) => setField('addressCity', v)} />
+                <Text style={styles.label}>{t('state')}:</Text>
+                <TextInput style={styles.input} placeholder={t('state')} value={profile.addressState} onChangeText={(v) => setField('addressState', v)} />
+                <Text style={styles.label}>{t('zipCode')}:</Text>
+                <TextInput style={styles.input} placeholder={t('zipCode')} value={profile.addressZipCode} onChangeText={(v) => setField('addressZipCode', v)} />
+                <Text style={styles.label}>{t('country')}:</Text>
+                <TextInput style={styles.input} placeholder={t('country')} value={profile.addressCountry} onChangeText={(v) => setField('addressCountry', v)} />
+                <Text style={styles.label}>{t('phoneNumber')}:</Text>
+                <TextInput style={styles.input} placeholder={t('phoneNumber')} value={profile.phoneNumber} onChangeText={(v) => setField('phoneNumber', v)} keyboardType="phone-pad" />
+                <Text style={styles.label}>{t('gender')}:</Text>
                 <View style={styles.genderContainer}>
                   {genderOptions.map((option) => (
                     <TouchableOpacity
@@ -301,7 +301,7 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
                     </TouchableOpacity>
                   ))}
                 </View>
-                <Text style={styles.label}>Date of Birth:</Text>
+                <Text style={styles.label}>{t('dateOfBirth')}:</Text>
                 <TouchableOpacity
                   style={styles.countryButton}
                   onPress={() => {
@@ -310,7 +310,7 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
                   }}
                 >
                   <Text style={profile.dateOfBirth ? styles.countryButtonText : styles.countryButtonPlaceholder}>
-                    {profile.dateOfBirth || 'Select Date of Birth'}
+                    {profile.dateOfBirth || t('selectDateOfBirth')}
                   </Text>
                 </TouchableOpacity>
               </>
@@ -327,10 +327,10 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
           }}
         >
           <TouchableOpacity style={styles.cancelButton} onPress={handleCancel} disabled={loading}>
-            <Text style={styles.cancelText}>Cancel</Text>
+            <Text style={styles.cancelText}>{t('cancel')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.saveButton, loading && { opacity: 0.6 }]} onPress={saveProfile} disabled={loading}>
-            <Text style={styles.saveText}>{loading ? 'Saving...' : 'Save'}</Text>
+            <Text style={styles.saveText}>{loading ? t('saving') : t('save')}</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -338,7 +338,7 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
       <Modal visible={countryModalVisible} transparent animationType="slide" onRequestClose={() => setCountryModalVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Select Country</Text>
+            <Text style={styles.modalTitle}>{t('selectCountry')}</Text>
             <ScrollView>
               {COUNTRIES.map((country) => (
                 <TouchableOpacity key={country} style={styles.countryItem} onPress={() => { setField('country', country); setCountryModalVisible(false); }}>
@@ -347,7 +347,7 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
               ))}
             </ScrollView>
             <TouchableOpacity style={styles.modalCancel} onPress={() => setCountryModalVisible(false)}>
-              <Text style={styles.modalCancelText}>Cancel</Text>
+              <Text style={styles.modalCancelText}>{t('cancel')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -355,37 +355,37 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
       <Modal visible={dobPickerVisible} transparent animationType="slide" onRequestClose={() => setDobPickerVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Select Date of Birth</Text>
+            <Text style={styles.modalTitle}>{t('selectDateOfBirth')}</Text>
             <View style={styles.dobPreviewBox}>
               <Text style={styles.dobPreviewText}>{formatDate(dobDraft)}</Text>
             </View>
             <View style={styles.dateRow}>
               <TouchableOpacity style={styles.dateAdjustButton} onPress={() => shiftDobDraft('year', -1)}>
-                <Text style={styles.dateAdjustButtonText}>- Year</Text>
+                <Text style={styles.dateAdjustButtonText}>{t('decreaseYear')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.dateAdjustButton} onPress={() => shiftDobDraft('year', 1)}>
-                <Text style={styles.dateAdjustButtonText}>+ Year</Text>
+                <Text style={styles.dateAdjustButtonText}>{t('increaseYear')}</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.dateRow}>
               <TouchableOpacity style={styles.dateAdjustButton} onPress={() => shiftDobDraft('month', -1)}>
-                <Text style={styles.dateAdjustButtonText}>- Month</Text>
+                <Text style={styles.dateAdjustButtonText}>{t('decreaseMonth')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.dateAdjustButton} onPress={() => shiftDobDraft('month', 1)}>
-                <Text style={styles.dateAdjustButtonText}>+ Month</Text>
+                <Text style={styles.dateAdjustButtonText}>{t('increaseMonth')}</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.dateRow}>
               <TouchableOpacity style={styles.dateAdjustButton} onPress={() => shiftDobDraft('day', -1)}>
-                <Text style={styles.dateAdjustButtonText}>- Day</Text>
+                <Text style={styles.dateAdjustButtonText}>{t('decreaseDay')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.dateAdjustButton} onPress={() => shiftDobDraft('day', 1)}>
-                <Text style={styles.dateAdjustButtonText}>+ Day</Text>
+                <Text style={styles.dateAdjustButtonText}>{t('increaseDay')}</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.actions}>
               <TouchableOpacity style={styles.cancelButton} onPress={() => setDobPickerVisible(false)}>
-                <Text style={styles.cancelText}>Cancel</Text>
+                <Text style={styles.cancelText}>{t('cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.saveButton}
@@ -394,7 +394,7 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
                   setDobPickerVisible(false);
                 }}
               >
-                <Text style={styles.saveText}>Save</Text>
+                <Text style={styles.saveText}>{t('save')}</Text>
               </TouchableOpacity>
             </View>
           </View>

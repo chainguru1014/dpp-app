@@ -17,6 +17,7 @@ import EditProfileScreen from '../screens/EditProfileScreen';
 import FavoriteBrandsScreen from '../screens/FavoriteBrandsScreen';
 import PurchaseHistoryScreen from '../screens/PurchaseHistoryScreen';
 import HistoryScreen from '../screens/HistoryScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -209,6 +210,10 @@ export default function AppNavigator({ navigationRef }: { navigationRef: any }) 
 
       <Stack.Screen name="History">
         {(props) => <HistoryScreen {...props} user={user} onLogout={handleLogout} />}
+      </Stack.Screen>
+
+      <Stack.Screen name="Notifications">
+        {(props) => <NotificationsScreen {...props} user={user} onLogout={handleLogout} />}
       </Stack.Screen>
     </Stack.Navigator>
   );

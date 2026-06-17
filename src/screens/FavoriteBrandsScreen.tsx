@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, Linking, Platform } from 'react-native';
 import AppLayout from '../components/AppLayout';
 import { API_BASE_URL } from '../config/api';
+import { useI18n } from '../i18n/I18nContext';
 import { colors, spacing, radius, ui, shadow } from '../theme';
 
 interface FavoriteBrandsScreenProps {
@@ -19,6 +20,7 @@ function normalizeFollowRows(data: any): any[] {
 }
 
 export default function FavoriteBrandsScreen({ navigation, user, onLogout }: FavoriteBrandsScreenProps) {
+  const { t } = useI18n();
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -82,21 +84,21 @@ export default function FavoriteBrandsScreen({ navigation, user, onLogout }: Fav
   return (
     <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton={true}>
       <View style={styles.container}>
-        <Text style={[ui.screenTitle, styles.title]}>Favorite Brands</Text>
+        <Text style={[ui.screenTitle, styles.title]}>{t('favoriteBrands')}</Text>
         {loading ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>Loading...</Text>
+            <Text style={styles.emptyText}>{t('loading')}</Text>
           </View>
         ) : list.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No followed brands yet</Text>
+            <Text style={styles.emptyText}>{t('noFollowedBrands')}</Text>
           </View>
         ) : (
           <View style={styles.tableWrap}>
             <View style={styles.tableHeader}>
-              <Text style={[styles.headerCell, styles.nameCol]}>Brand name</Text>
-              <Text style={[styles.headerCell, styles.detailCol]}>Brand detail</Text>
-              <Text style={[styles.headerCell, styles.imageCol]}>Brand image</Text>
+              <Text style={[styles.headerCell, styles.nameCol]}>{t('brandNameColumn')}</Text>
+              <Text style={[styles.headerCell, styles.detailCol]}>{t('brandDetailColumn')}</Text>
+              <Text style={[styles.headerCell, styles.imageCol]}>{t('brandImageColumn')}</Text>
             </View>
             <FlatList
               data={list}

@@ -69,7 +69,7 @@ export default function ShopNowScreen({ navigation, user, onLogout }: ShopNowScr
                 resizeMode="contain"
               />
               <Text style={styles.previewTopBarText} numberOfLines={1}>
-                DIGITAL PRODUCT PASSPORT
+                {t('homeHeroEyebrow')}
               </Text>
               <View style={styles.previewGlobe}>
                 <Image

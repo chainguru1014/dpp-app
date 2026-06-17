@@ -147,6 +147,14 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
   const [showCamera, setShowCamera] = useState(false);
   const [showJoinDialog, setShowJoinDialog] = useState(false);
   const [selectedFeedback, setSelectedFeedback] = useState<'like' | 'dislike' | 'buy' | null>(null);
+  // Buyer's transfer status for the current item, driving the primary button:
+  // 'pending' (+ sent) → Requested, 'confirmed' → Owned, otherwise → Buy.
+  const [transferStatus, setTransferStatus] = useState<string | null>(null);
+  // Whether the request was actually sent (Send pressed) — a pending transfer is
+  // also created just to mint the QR on Buy, which must NOT show "Requested".
+  const [transferRequestSent, setTransferRequestSent] = useState(false);
+  // Whether the share dialog should also email the link (checkbox).
+  const [sendEmailChecked, setSendEmailChecked] = useState(false);
   const [selectedCareInfo, setSelectedCareInfo] = useState<{ label: string; description: string } | null>(null);
   const [brandLogoLoadFailed, setBrandLogoLoadFailed] = useState(false);
   const [isBrandFollowed, setIsBrandFollowed] = useState(false);
@@ -166,6 +174,8 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
   const [transferQrImage, setTransferQrImage] = useState('');
   const [transferEmail, setTransferEmail] = useState('');
   const [transferEmailSending, setTransferEmailSending] = useState(false);
+  // The current owner of the item being purchased (shown in the share dialog).
+  const [transferOwner, setTransferOwner] = useState<any>(null);
   // Owner-initiated transfer (for products the current user owns).
   const [showOwnerTransfer, setShowOwnerTransfer] = useState(false);
   const [otQuantity, setOtQuantity] = useState('1');
@@ -395,6 +405,41 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
     loadFeedback();
   }, [user?._id, productData?._id, productData?.token_id, productData?.scannedQRCode]);
 
+  // Track the buyer's transfer status for this item so the primary button shows
+  // Buy → Requested (pending) → Owned (approved) / Buy (declined). Polls so the
+  // owner's approve/decline reflects without a manual refresh.
+  useEffect(() => {
+    const uid = user?._id ? String(user._id) : '';
+    const pid = productData?._id ? String(productData._id) : '';
+    const token = productData?.token_id;
+    if (!uid || !pid) {
+      setTransferStatus(null);
+      return;
+    }
+    let active = true;
+    const fetchStatus = async () => {
+      try {
+        const tokenParam = token != null ? `&qrcode_id=${encodeURIComponent(String(token))}` : '';
+        const res = await fetch(
+          `${API_BASE_URL}transfer/buyer-status?product_id=${encodeURIComponent(pid)}&buyer_id=${encodeURIComponent(uid)}${tokenParam}`
+        );
+        const j = await res.json().catch(() => ({}));
+        if (active && res.ok && j?.status === 'success') {
+          setTransferStatus(j.transferStatus || null);
+          setTransferRequestSent(!!j.requestSent);
+        }
+      } catch (e) {
+        /* keep last value */
+      }
+    };
+    fetchStatus();
+    const id = setInterval(fetchStatus, 4000);
+    return () => {
+      active = false;
+      clearInterval(id);
+    };
+  }, [user?._id, productData?._id, productData?.token_id]);
+
   const persistProductReactionToServer = async (feedback: 'like' | 'dislike' | 'buy' | null) => {
     if (!user?._id || !productData?._id || productData?.token_id == null) return;
     try {
@@ -537,6 +582,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
       setTransferUrl(result.url || '');
       setTransferCode(result.code || '');
       setTransferQrImage(result.qrImage || '');
+      setTransferOwner(result.owner || result.transfer?.from_owner || null);
     } catch (error: any) {
       Alert.alert(t('error'), error?.message || 'Failed to start transfer');
       setShowTransferDialog(false);
@@ -546,32 +592,77 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
   };
 
   const sendTransferEmail = async () => {
-    if (!isValidEmail(transferEmail)) {
-      Alert.alert(t('error'), 'Please enter a valid email address');
-      return;
-    }
     if (!transferCode) {
       Alert.alert(t('error'), 'Transfer is not ready yet');
       return;
     }
+    // Email is optional — only validate/send it when the checkbox is on.
+    if (sendEmailChecked && !isValidEmail(transferEmail)) {
+      Alert.alert(t('error'), 'Please enter a valid email address');
+      return;
+    }
     setTransferEmailSending(true);
     try {
-      // Server-side branded template (embeds the QR + confirmation button).
-      const response = await fetch(`${API_BASE_URL}transfer/share-email`, {
+      // Optionally email the branded confirmation link (embeds QR + button).
+      if (sendEmailChecked) {
+        const response = await fetch(`${API_BASE_URL}transfer/share-email`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ toEmail: transferEmail, code: transferCode }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || result?.status !== 'success') {
+          throw new Error(result?.message || 'Failed to send email');
+        }
+      }
+      // Always send the in-app purchase request to the product item's owner so
+      // they can accept or decline it from their app / admin panel.
+      const notifyRes = await fetch(`${API_BASE_URL}transfer/${encodeURIComponent(transferCode)}/notify-owner`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ toEmail: transferEmail, code: transferCode }),
+        body: JSON.stringify({}),
       });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok || result?.status !== 'success') {
-        throw new Error(result?.message || 'Failed to send email');
+      const notifyData = await notifyRes.json().catch(() => ({}));
+      if (!notifyRes.ok || notifyData?.status !== 'success') {
+        throw new Error(notifyData?.message || 'Failed to send request');
       }
-      Alert.alert(t('success'), 'Email sent');
+      // Success: lock the button to "Requested", close the dialog, confirm.
       setTransferEmail('');
+      setTransferStatus('pending');
+      setTransferRequestSent(true);
+      setShowTransferDialog(false);
+      const notified = notifyData?.notified !== false;
+      Alert.alert(
+        t('success'),
+        notified
+          ? sendEmailChecked
+            ? 'Your purchase request has been sent to the owner and the email was delivered.'
+            : 'Your purchase request has been sent to the owner.'
+          : 'Your request was recorded, but this product has no registered owner account to notify in-app.'
+      );
     } catch (error: any) {
-      Alert.alert(t('error'), error?.message || 'Failed to send email');
+      Alert.alert(t('error'), error?.message || 'Failed to send purchase request');
     } finally {
       setTransferEmailSending(false);
+    }
+  };
+
+  // Cancelling the dialog without sending withdraws the pending request that
+  // "Buy" created (to produce the QR), so the button returns to "Buy".
+  const cancelTransferRequest = async () => {
+    setShowTransferDialog(false);
+    setSendEmailChecked(false);
+    if (transferCode && user?._id) {
+      try {
+        await fetch(`${API_BASE_URL}transfer/${encodeURIComponent(transferCode)}/reject`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ actor: { kind: 'User', id: String(user._id) } }),
+        });
+      } catch (e) {
+        /* best-effort */
+      }
+      setTransferStatus(null);
     }
   };
 
@@ -1340,23 +1431,44 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
           ) : null}
         </View>
 
-        {/* Primary action: Buy (or Transfer when the user owns this product) */}
+        {/* Primary action: Buy (or Transfer when the user owns this product).
+            The buy state follows the transfer: Buy → Requested (pending) →
+            Owned (approved); a declined/none request stays Buy. */}
+        {(() => {
+          const isPending = !isOwnedMode && transferStatus === 'pending' && transferRequestSent;
+          const isOwned = !isOwnedMode && transferStatus === 'confirmed';
+          const buyLocked = isPending || isOwned;
+          const label = isOwnedMode
+            ? t('transferButton')
+            : isPending
+            ? t('requested')
+            : isOwned
+            ? t('owned')
+            : t('buy');
+          return (
         <TouchableOpacity
-          style={[styles.primaryActionButton, isOwnedMode && styles.primaryActionButtonTransfer]}
+          style={[
+            styles.primaryActionButton,
+            isOwnedMode && styles.primaryActionButtonTransfer,
+            buyLocked && styles.primaryActionButtonDisabled,
+          ]}
           onPress={isOwnedMode ? openOwnerTransfer : handleBuy}
           activeOpacity={0.85}
+          disabled={buyLocked}
         >
           <Image
             source={isOwnedMode ? require('../assets/connection.png') : require('../assets/cart.png')}
             style={styles.primaryActionIcon}
           />
           <Text style={styles.primaryActionText}>
-            {isOwnedMode ? t('transferButton') : t('buy')}
+            {label}
           </Text>
           {isOwnedMode && ownedQuantity != null && (
             <Text style={styles.primaryActionBadge}>{`× ${ownedQuantity}`}</Text>
           )}
         </TouchableOpacity>
+          );
+        })()}
 
         {/* Secondary feedback: Like / Dislike */}
         <View style={styles.likeDislikeContainer}>
@@ -1453,7 +1565,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
         visible={showTransferDialog}
         transparent
         animationType="fade"
-        onRequestClose={() => setShowTransferDialog(false)}
+        onRequestClose={cancelTransferRequest}
       >
         <View style={styles.careModalOverlay}>
           <View style={styles.emailDialogCard}>
@@ -1468,6 +1580,17 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
                     <Image source={{ uri: transferQrImage }} style={styles.transferQrImage} resizeMode="contain" />
                   </View>
                 )}
+                {!!(transferOwner && (transferOwner.name || transferOwner.email)) && (
+                  <View style={styles.ownerInfoBox}>
+                    <Text style={styles.ownerInfoLabel}>{t('ownerLabel')}</Text>
+                    {!!transferOwner.name && (
+                      <Text style={styles.ownerInfoName}>{transferOwner.name}</Text>
+                    )}
+                    {!!transferOwner.email && (
+                      <Text style={styles.ownerInfoEmail}>{transferOwner.email}</Text>
+                    )}
+                  </View>
+                )}
                 {!!transferUrl && (
                   <View style={styles.copyRow}>
                     <View style={styles.copyRowTextWrap}>
@@ -1478,21 +1601,34 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
                     </TouchableOpacity>
                   </View>
                 )}
-                <Text style={styles.transferEmailLabel}>{t('shareViaEmail')}</Text>
-                <TextInput
-                  style={styles.input}
-                  value={transferEmail}
-                  onChangeText={setTransferEmail}
-                  placeholder={t('ownerEmailPlaceholder')}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
+                <TouchableOpacity
+                  style={styles.checkboxRow}
+                  onPress={() => setSendEmailChecked((v) => !v)}
+                  activeOpacity={0.7}
+                >
+                  <Icon
+                    name={sendEmailChecked ? 'check-box' : 'check-box-outline-blank'}
+                    size={22}
+                    color={colors.accent}
+                  />
+                  <Text style={styles.checkboxLabel}>{t('shareViaEmail')}</Text>
+                </TouchableOpacity>
+                {sendEmailChecked && (
+                  <TextInput
+                    style={styles.input}
+                    value={transferEmail}
+                    onChangeText={setTransferEmail}
+                    placeholder={t('ownerEmailPlaceholder')}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                )}
               </>
             )}
             <View style={styles.dialogActionsRow}>
               <TouchableOpacity
                 style={styles.dialogActionSecondary}
-                onPress={() => setShowTransferDialog(false)}
+                onPress={cancelTransferRequest}
               >
                 <Text style={styles.dialogActionSecondaryText}>{t('cancel')}</Text>
               </TouchableOpacity>
@@ -2113,6 +2249,10 @@ const styles = StyleSheet.create({
   primaryActionButtonTransfer: {
     backgroundColor: colors.navy,
   },
+  primaryActionButtonDisabled: {
+    backgroundColor: colors.muted,
+    opacity: 0.6,
+  },
   primaryActionIcon: {
     width: 26,
     height: 26,
@@ -2441,6 +2581,44 @@ const styles = StyleSheet.create({
     color: colors.heading,
     marginBottom: 6,
     marginTop: 4,
+  },
+  ownerInfoBox: {
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  ownerInfoLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    marginBottom: 3,
+  },
+  ownerInfoName: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: colors.heading,
+  },
+  ownerInfoEmail: {
+    fontSize: 13,
+    color: colors.text,
+    marginTop: 1,
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+    marginBottom: 4,
+  },
+  checkboxLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.heading,
+    marginLeft: 8,
   },
   methodChipsWrap: {
     flexDirection: 'row',

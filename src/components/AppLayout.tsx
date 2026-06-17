@@ -13,7 +13,11 @@ import {
   ScrollView,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useI18n } from '../i18n/I18nContext';
+import NotificationPanel from './NotificationPanel';
+import NotificationDetailModal from './NotificationDetailModal';
+import NotificationBadge from './NotificationBadge';
 import { colors, radius, shadow, gradients } from '../theme';
 
 interface AppLayoutProps {
@@ -66,6 +70,16 @@ export default function AppLayout({
   const [langPopover, setLangPopover] = useState({ top: 76, right: 16 });
   const worldIconRef = useRef<View>(null);
   const isAuthenticated = !!user;
+  const [notifPanelVisible, setNotifPanelVisible] = useState(false);
+  const [notifDetail, setNotifDetail] = useState<any>(null);
+
+  const handleNotifications = () => {
+    if (!isAuthenticated) {
+      onGuestAction?.();
+      return;
+    }
+    setNotifPanelVisible(true);
+  };
 
   const handleBack = () => {
     if (onBackPress) {
@@ -190,25 +204,25 @@ export default function AppLayout({
   };
 
   const actionMenuItems = [
-    { key: 'saveProductInfo', label: 'Save product info', iconSource: require('../assets/diskette.png') },
-    { key: 'copyProductInfo', label: 'Copy product info', iconSource: require('../assets/copy.png') },
-    { key: 'sendProductInfo', label: 'Send product info', iconSource: require('../assets/send.png') },
-    { key: 'toggleAlbum', label: isInAlbum ? 'Remove from album' : 'Add album', iconSource: require('../assets/add-image.png') },
-    { key: 'connectBrand', label: 'Connect this brand', iconSource: require('../assets/brand.png') },
-    { key: 'connectSalesPerson', label: 'Connect Sales person', iconSource: require('../assets/end-call.png') },
-    { key: 'toggleFollowBrand', label: isBrandFollowed ? 'Unfollow this brand' : 'Follow this brand', iconSource: require('../assets/add-friend.png') },
-    { key: 'introduceBrandToFriend', label: 'Introduce this brand to friend', iconSource: require('../assets/connection.png') },
+    { key: 'saveProductInfo', label: t('saveProductInfo'), iconSource: require('../assets/diskette.png') },
+    { key: 'copyProductInfo', label: t('copyProductInfo'), iconSource: require('../assets/copy.png') },
+    { key: 'sendProductInfo', label: t('sendProductInfo'), iconSource: require('../assets/send.png') },
+    { key: 'toggleAlbum', label: isInAlbum ? t('removeFromAlbum') : t('addAlbum'), iconSource: require('../assets/add-image.png') },
+    { key: 'connectBrand', label: t('connectBrand'), iconSource: require('../assets/brand.png') },
+    { key: 'connectSalesPerson', label: t('connectSalesPerson'), iconSource: require('../assets/end-call.png') },
+    { key: 'toggleFollowBrand', label: isBrandFollowed ? t('unfollowBrand') : t('followBrand'), iconSource: require('../assets/add-friend.png') },
+    { key: 'introduceBrandToFriend', label: t('introduceBrand'), iconSource: require('../assets/connection.png') },
   ];
   const commonCenterMenuItems = [
-    { key: 'scanQr', label: 'Scan QR code', iconSource: require('../assets/qr-code.png') },
+    { key: 'scanQr', label: t('homeScanQr'), iconSource: require('../assets/qr-code.png') },
   ];
 
   // The 4 history/data items. Opened from the new 3-line menu button in the bottom
   // bar, and (on the product detail page) also appended to the center action menu.
   const extraMenuItems = [
-    { key: 'purchaseHistory', label: 'Purchase History', iconSource: require('../assets/purchase-history.png') },
-    { key: 'viewHistory', label: 'Product History', iconSource: require('../assets/history.png') },
-    { key: 'favoriteBrands', label: 'Favorite Brands', iconSource: require('../assets/favorite.png') },
+    { key: 'purchaseHistory', label: t('purchaseHistory'), iconSource: require('../assets/purchase-history.png') },
+    { key: 'viewHistory', label: t('productHistory'), iconSource: require('../assets/history.png') },
+    { key: 'favoriteBrands', label: t('favoriteBrands'), iconSource: require('../assets/favorite.png') },
   ];
 
   // Center menu list. On the product detail page the original action items get the
@@ -251,16 +265,13 @@ export default function AppLayout({
         </View>
 
         <TouchableOpacity
-          onPress={openLanguageMenu}
+          onPress={handleNotifications}
           style={[styles.iconButton, styles.navBtnOnDark]}
           activeOpacity={0.7}
         >
           <View ref={worldIconRef}>
-            <Image
-              source={require('../assets/world.png')}
-              style={styles.topBarIcon}
-              resizeMode="contain"
-            />
+            <Icon name="notifications" size={24} color={colors.white} />
+            <NotificationBadge userId={user?._id ? String(user._id) : undefined} />
           </View>
         </TouchableOpacity>
       </View>
@@ -347,14 +358,14 @@ export default function AppLayout({
           onPress={closeActionMenu}
         >
           <View style={styles.settingsContainer}>
-            <Text style={styles.settingsTitle}>Menu</Text>
-            <Text style={styles.settingsSubtitle}>Quick actions for this product</Text>
+            <Text style={styles.settingsTitle}>{t('menu')}</Text>
+            <Text style={styles.settingsSubtitle}>{t('quickActionsSubtitle')}</Text>
 
             <ScrollView style={styles.menuScroll} showsVerticalScrollIndicator={true}>
             {centerMenuItems.map((item, index, list) => (
               <View key={item.label}>
                 {item.kind === 'nav' && (index === 0 || list[index - 1].kind !== 'nav') ? (
-                  <Text style={styles.menuSectionLabel}>History &amp; data</Text>
+                  <Text style={styles.menuSectionLabel}>{t('historyAndData')}</Text>
                 ) : null}
                 <TouchableOpacity
                   style={styles.menuItem}
@@ -465,8 +476,8 @@ export default function AppLayout({
           onPress={() => setExtraMenuVisible(false)}
         >
           <View style={styles.settingsContainer}>
-            <Text style={styles.settingsTitle}>Menu</Text>
-            <Text style={styles.settingsSubtitle}>History, brands &amp; data</Text>
+            <Text style={styles.settingsTitle}>{t('menu')}</Text>
+            <Text style={styles.settingsSubtitle}>{t('historyBrandsData')}</Text>
 
             {extraMenuItems.map((item, index, list) => (
               <View key={item.label}>
@@ -526,6 +537,30 @@ export default function AppLayout({
           </View>
         </TouchableWithoutFeedback>
       </Modal>
+
+      {notifPanelVisible && (
+        <NotificationPanel
+          visible={notifPanelVisible}
+          user={user}
+          onClose={() => setNotifPanelVisible(false)}
+          onOpenDetail={(n) => {
+            setNotifPanelVisible(false);
+            setNotifDetail(n);
+          }}
+          onShowAll={() => {
+            setNotifPanelVisible(false);
+            navigation.navigate('Notifications');
+          }}
+        />
+      )}
+      {!!notifDetail && (
+        <NotificationDetailModal
+          visible={!!notifDetail}
+          notification={notifDetail}
+          user={user}
+          onClose={() => setNotifDetail(null)}
+        />
+      )}
     </View>
   );
 }

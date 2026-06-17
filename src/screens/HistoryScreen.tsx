@@ -15,15 +15,15 @@ interface HistoryScreenProps {
   onLogout?: () => void;
 }
 
-// Activity type -> { label, color }.
-const TYPE_META: Record<string, { label: string; bg: string; fg: string }> = {
-  scan: { label: 'Scanned', bg: '#e7edf6', fg: colors.primary },
-  visit: { label: 'Visited', bg: '#e7edf6', fg: colors.primary },
-  like: { label: 'Liked', bg: colors.successSoft, fg: colors.success },
-  dislike: { label: 'Disliked', bg: colors.dangerSoft, fg: colors.danger },
-  buy: { label: 'Buy', bg: '#e3f0ff', fg: colors.accent },
-  transfer: { label: 'Transferred', bg: '#e6e9f5', fg: colors.navy },
-  receive: { label: 'Received', bg: '#e3f0ff', fg: colors.accent },
+// Activity type -> { labelKey (resolved via t() at render), color }.
+const TYPE_META: Record<string, { labelKey: any; bg: string; fg: string }> = {
+  scan: { labelKey: 'scannedLabel', bg: '#e7edf6', fg: colors.primary },
+  visit: { labelKey: 'visited', bg: '#e7edf6', fg: colors.primary },
+  like: { labelKey: 'liked', bg: colors.successSoft, fg: colors.success },
+  dislike: { labelKey: 'disliked', bg: colors.dangerSoft, fg: colors.danger },
+  buy: { labelKey: 'buy', bg: '#e3f0ff', fg: colors.accent },
+  transfer: { labelKey: 'transferred', bg: '#e6e9f5', fg: colors.navy },
+  receive: { labelKey: 'received', bg: '#e3f0ff', fg: colors.accent },
 };
 
 export default function HistoryScreen({ navigation, user, onLogout }: HistoryScreenProps) {
@@ -62,7 +62,10 @@ export default function HistoryScreen({ navigation, user, onLogout }: HistoryScr
   };
 
   const renderItem = ({ item }: { item: any }) => {
-    const meta = TYPE_META[item.type] || { label: item.type, bg: colors.surfaceAlt, fg: colors.muted };
+    const meta = TYPE_META[item.type];
+    const typeLabel = meta ? t(meta.labelKey) : item.type;
+    const typeBg = meta ? meta.bg : colors.surfaceAlt;
+    const typeFg = meta ? meta.fg : colors.muted;
     const when = item.time ? new Date(item.time).toLocaleString() : '';
     const isTransfer = item.type === 'transfer' || item.type === 'receive';
     const sub = isTransfer
@@ -91,12 +94,12 @@ export default function HistoryScreen({ navigation, user, onLogout }: HistoryScr
           <View style={[styles.thumb, styles.emptyImage]} />
         )}
         <View style={styles.info}>
-          <Text style={styles.name} numberOfLines={1}>{item.productName || 'Product'}</Text>
+          <Text style={styles.name} numberOfLines={1}>{item.productName || t('homeProduct')}</Text>
           {!!sub && <Text style={styles.sub} numberOfLines={1}>{sub}</Text>}
           <Text style={styles.time}>{when}</Text>
         </View>
-        <View style={[styles.typePill, { backgroundColor: meta.bg }]}>
-          <Text style={[styles.typeText, { color: meta.fg }]}>{meta.label}</Text>
+        <View style={[styles.typePill, { backgroundColor: typeBg }]}>
+          <Text style={[styles.typeText, { color: typeFg }]}>{typeLabel}</Text>
         </View>
       </TouchableOpacity>
     );
@@ -105,14 +108,14 @@ export default function HistoryScreen({ navigation, user, onLogout }: HistoryScr
   return (
     <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton={true}>
       <View style={styles.container}>
-        <Text style={[ui.screenTitle, styles.title]}>Product History</Text>
+        <Text style={[ui.screenTitle, styles.title]}>{t('productHistory')}</Text>
         {loading ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>{t('loading')}</Text>
           </View>
         ) : items.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No history yet</Text>
+            <Text style={styles.emptyText}>{t('noHistoryYet')}</Text>
           </View>
         ) : (
           <FlatList

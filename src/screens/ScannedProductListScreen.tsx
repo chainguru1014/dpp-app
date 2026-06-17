@@ -438,7 +438,7 @@ export default function ScannedProductListScreen({
         <View style={styles.productInfo}>
           <View style={styles.sourceChip}>
             <Text style={styles.sourceChipText} numberOfLines={1}>
-              {item.visitSource === 'visit' ? 'Visited' : 'QR scan'}
+              {item.visitSource === 'visit' ? t('visited') : t('qrScan')}
             </Text>
           </View>
           <Text style={styles.productName} numberOfLines={1}>
@@ -450,7 +450,7 @@ export default function ScannedProductListScreen({
             </Text>
           )}
           <Text style={styles.itemIdText} numberOfLines={1}>
-            Item ID: {item.token_id != null ? item.token_id : '—'}
+            {t('itemId')}: {item.token_id != null ? item.token_id : '—'}
           </Text>
           {item.feedback ? (
             <View
@@ -466,13 +466,13 @@ export default function ScannedProductListScreen({
                 ]}
                 numberOfLines={1}
               >
-                {item.feedback === 'like' ? 'Liked' : item.feedback === 'dislike' ? 'Disliked' : 'Bought'}
+                {item.feedback === 'like' ? t('liked') : item.feedback === 'dislike' ? t('disliked') : t('bought')}
               </Text>
             </View>
           ) : (
             <View style={[styles.statusPill, styles.statusPillNeutral]}>
               <Text style={[styles.statusPillText, styles.statusPillTextNeutral]} numberOfLines={1}>
-                No rating
+                {t('noRating')}
               </Text>
             </View>
           )}
@@ -495,7 +495,7 @@ export default function ScannedProductListScreen({
           <Text style={styles.sectionTitle}>{title}</Text>
         </View>
         {items.length === 0 ? (
-          <Text style={styles.noItemsText}>No items</Text>
+          <Text style={styles.noItemsText}>{t('noItems')}</Text>
         ) : (
           <FlatList
             data={items}
@@ -583,12 +583,12 @@ export default function ScannedProductListScreen({
             <View style={[styles.panel, { height: PANEL_HEIGHT }]}>
               <View style={styles.tabRow}>
                 {renderTab('myproducts', t('myProductsOwned'), require('../assets/cart.png'), topTab, setTopTab)}
-                {renderTab('album', 'My Album', require('../assets/add-image.png'), topTab, setTopTab)}
+                {renderTab('album', t('myAlbum'), require('../assets/add-image.png'), topTab, setTopTab)}
                 {renderTab('sold', t('sellSection'), require('../assets/send.png'), topTab, setTopTab)}
               </View>
               <ScrollView style={styles.panelBody} contentContainerStyle={styles.panelBodyContent}>
                 {topTab === 'myproducts' && renderGrid(myProductsList, renderOwnedItem, 'mp', t('noOwnedProducts'))}
-                {topTab === 'album' && renderGrid(albumItems, renderProductItem, 'al', 'No items')}
+                {topTab === 'album' && renderGrid(albumItems, renderProductItem, 'al', t('noItems'))}
                 {topTab === 'sold' && renderGrid(soldProducts, renderSoldItem, 'sd', t('noSoldProducts'))}
               </ScrollView>
             </View>
@@ -596,14 +596,14 @@ export default function ScannedProductListScreen({
             {/* Bottom panel: Only Scanned / Liked / Disliked */}
             <View style={[styles.panel, { height: PANEL_HEIGHT }]}>
               <View style={styles.tabRow}>
-                {renderTab('scanned', 'Only Scanned', require('../assets/qr-code.png'), bottomTab, setBottomTab)}
-                {renderTab('liked', 'Liked', require('../assets/like.png'), bottomTab, setBottomTab)}
-                {renderTab('disliked', 'Disliked', require('../assets/dislike.png'), bottomTab, setBottomTab)}
+                {renderTab('scanned', t('onlyScanned'), require('../assets/qr-code.png'), bottomTab, setBottomTab)}
+                {renderTab('liked', t('liked'), require('../assets/like.png'), bottomTab, setBottomTab)}
+                {renderTab('disliked', t('disliked'), require('../assets/dislike.png'), bottomTab, setBottomTab)}
               </View>
               <ScrollView style={styles.panelBody} contentContainerStyle={styles.panelBodyContent}>
-                {bottomTab === 'scanned' && renderGrid(onlyScannedItems, renderProductItem, 'os', 'No items')}
-                {bottomTab === 'liked' && renderGrid(likedItems, renderProductItem, 'lk', 'No items')}
-                {bottomTab === 'disliked' && renderGrid(dislikedItems, renderProductItem, 'dl', 'No items')}
+                {bottomTab === 'scanned' && renderGrid(onlyScannedItems, renderProductItem, 'os', t('noItems'))}
+                {bottomTab === 'liked' && renderGrid(likedItems, renderProductItem, 'lk', t('noItems'))}
+                {bottomTab === 'disliked' && renderGrid(dislikedItems, renderProductItem, 'dl', t('noItems'))}
               </ScrollView>
             </View>
           </View>

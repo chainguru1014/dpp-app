@@ -86,12 +86,12 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
     const normalizedName = (form.name || '').trim();
     if (userType === 'client') {
       if (!normalizedName || !form.password || !form.gender || !form.age || !form.country) {
-        Alert.alert(t('error'), 'Please fill Username, Password, Gender, Age and Country');
+        Alert.alert(t('error'), t('fillProfileFieldsClient'));
         return false;
       }
     } else {
       if (!normalizedName || !form.email || !form.firstName || !form.lastName || !form.addressStreet || !form.addressCity || !form.addressState || !form.addressZipCode || !form.addressCountry || !form.phoneNumber || !form.gender || !form.dateOfBirth || !form.password) {
-        Alert.alert(t('error'), 'Please fill all required Agent fields');
+        Alert.alert(t('error'), t('fillProfileFieldsAgent'));
         return false;
       }
     }
@@ -116,7 +116,7 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
         return;
       }
       if (usernameCheckData.exists) {
-        setApiError('Username already exists. Please choose another username.');
+        setApiError(t('usernameAlreadyExists'));
         return;
       }
 
@@ -196,8 +196,8 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
                 ))}
               </View>
 
-              <TextInput style={styles.input} placeholder="Username" placeholderTextColor={colors.placeholder} value={form.name} onChangeText={(v) => setField('name', v)} autoCapitalize="none" />
-              <TextInput style={styles.input} placeholder="Password" placeholderTextColor={colors.placeholder} value={form.password} onChangeText={(v) => setField('password', v)} secureTextEntry autoCapitalize="none" />
+              <TextInput style={styles.input} placeholder={t('username')} placeholderTextColor={colors.placeholder} value={form.name} onChangeText={(v) => setField('name', v)} autoCapitalize="none" />
+              <TextInput style={styles.input} placeholder={t('password')} placeholderTextColor={colors.placeholder} value={form.password} onChangeText={(v) => setField('password', v)} secureTextEntry autoCapitalize="none" />
 
               {userType === 'client' ? (
                 <>
@@ -222,22 +222,22 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
                       </TouchableOpacity>
                     ))}
                   </View>
-                  <TextInput style={styles.input} placeholder="Age" placeholderTextColor={colors.placeholder} value={form.age} onChangeText={(v) => setField('age', v)} keyboardType="numeric" />
+                  <TextInput style={styles.input} placeholder={t('age')} placeholderTextColor={colors.placeholder} value={form.age} onChangeText={(v) => setField('age', v)} keyboardType="numeric" />
                   <TouchableOpacity style={styles.inputButton} onPress={() => setCountryModalVisible(true)}>
-                    <Text style={form.country ? styles.inputButtonText : styles.inputButtonPlaceholder}>{form.country || 'Select Country'}</Text>
+                    <Text style={form.country ? styles.inputButtonText : styles.inputButtonPlaceholder}>{form.country || t('selectCountry')}</Text>
                   </TouchableOpacity>
                 </>
               ) : (
                 <>
-                  <TextInput style={styles.input} placeholder="Email" placeholderTextColor={colors.placeholder} value={form.email} onChangeText={(v) => setField('email', v)} keyboardType="email-address" autoCapitalize="none" />
-                  <TextInput style={styles.input} placeholder="First Name" placeholderTextColor={colors.placeholder} value={form.firstName} onChangeText={(v) => setField('firstName', v)} />
-                  <TextInput style={styles.input} placeholder="Last Name" placeholderTextColor={colors.placeholder} value={form.lastName} onChangeText={(v) => setField('lastName', v)} />
-                  <TextInput style={styles.input} placeholder="Street" placeholderTextColor={colors.placeholder} value={form.addressStreet} onChangeText={(v) => setField('addressStreet', v)} />
-                  <TextInput style={styles.input} placeholder="City" placeholderTextColor={colors.placeholder} value={form.addressCity} onChangeText={(v) => setField('addressCity', v)} />
-                  <TextInput style={styles.input} placeholder="State" placeholderTextColor={colors.placeholder} value={form.addressState} onChangeText={(v) => setField('addressState', v)} />
-                  <TextInput style={styles.input} placeholder="Zip Code" placeholderTextColor={colors.placeholder} value={form.addressZipCode} onChangeText={(v) => setField('addressZipCode', v)} />
-                  <TextInput style={styles.input} placeholder="Country" placeholderTextColor={colors.placeholder} value={form.addressCountry} onChangeText={(v) => setField('addressCountry', v)} />
-                  <TextInput style={styles.input} placeholder="Phone Number" placeholderTextColor={colors.placeholder} value={form.phoneNumber} onChangeText={(v) => setField('phoneNumber', v)} keyboardType="phone-pad" />
+                  <TextInput style={styles.input} placeholder={t('email')} placeholderTextColor={colors.placeholder} value={form.email} onChangeText={(v) => setField('email', v)} keyboardType="email-address" autoCapitalize="none" />
+                  <TextInput style={styles.input} placeholder={t('firstName')} placeholderTextColor={colors.placeholder} value={form.firstName} onChangeText={(v) => setField('firstName', v)} />
+                  <TextInput style={styles.input} placeholder={t('lastName')} placeholderTextColor={colors.placeholder} value={form.lastName} onChangeText={(v) => setField('lastName', v)} />
+                  <TextInput style={styles.input} placeholder={t('street')} placeholderTextColor={colors.placeholder} value={form.addressStreet} onChangeText={(v) => setField('addressStreet', v)} />
+                  <TextInput style={styles.input} placeholder={t('city')} placeholderTextColor={colors.placeholder} value={form.addressCity} onChangeText={(v) => setField('addressCity', v)} />
+                  <TextInput style={styles.input} placeholder={t('state')} placeholderTextColor={colors.placeholder} value={form.addressState} onChangeText={(v) => setField('addressState', v)} />
+                  <TextInput style={styles.input} placeholder={t('zipCode')} placeholderTextColor={colors.placeholder} value={form.addressZipCode} onChangeText={(v) => setField('addressZipCode', v)} />
+                  <TextInput style={styles.input} placeholder={t('country')} placeholderTextColor={colors.placeholder} value={form.addressCountry} onChangeText={(v) => setField('addressCountry', v)} />
+                  <TextInput style={styles.input} placeholder={t('phoneNumber')} placeholderTextColor={colors.placeholder} value={form.phoneNumber} onChangeText={(v) => setField('phoneNumber', v)} keyboardType="phone-pad" />
                   <View style={styles.genderContainer}>
                     {genderOptions.map((option) => (
                       <TouchableOpacity
@@ -267,7 +267,7 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
                     }}
                   >
                     <Text style={form.dateOfBirth ? styles.inputButtonText : styles.inputButtonPlaceholder}>
-                      {form.dateOfBirth || 'Select Date of Birth'}
+                      {form.dateOfBirth || t('selectDateOfBirth')}
                     </Text>
                   </TouchableOpacity>
                 </>
@@ -292,7 +292,7 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
                     navigation.replace('EditProfile', { fromGoogle: true });
                   }
                 }}
-                onError={(error) => Alert.alert('Error', error)}
+                onError={(error) => Alert.alert(t('error'), error)}
                 navigation={navigation}
               />
 
@@ -313,7 +313,7 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
       <Modal visible={countryModalVisible} transparent animationType="slide" onRequestClose={() => setCountryModalVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Select Country</Text>
+            <Text style={styles.modalTitle}>{t('selectCountry')}</Text>
             <ScrollView>
               {filteredCountries.map((country) => (
                 <TouchableOpacity key={country} style={styles.countryItem} onPress={() => { setField('country', country); setCountryModalVisible(false); }}>
@@ -322,7 +322,7 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
               ))}
             </ScrollView>
             <TouchableOpacity style={styles.cancelButton} onPress={() => setCountryModalVisible(false)}>
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+              <Text style={styles.cancelButtonText}>{t('cancel')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -331,37 +331,37 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
       <Modal visible={dobPickerVisible} transparent animationType="slide" onRequestClose={() => setDobPickerVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Select Date of Birth</Text>
+            <Text style={styles.modalTitle}>{t('selectDateOfBirth')}</Text>
             <View style={styles.dobPreviewBox}>
               <Text style={styles.dobPreviewText}>{formatDate(dobDraft)}</Text>
             </View>
             <View style={styles.dateRow}>
               <TouchableOpacity style={styles.dateAdjustButton} onPress={() => shiftDobDraft('year', -1)}>
-                <Text style={styles.dateAdjustButtonText}>- Year</Text>
+                <Text style={styles.dateAdjustButtonText}>{t('decreaseYear')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.dateAdjustButton} onPress={() => shiftDobDraft('year', 1)}>
-                <Text style={styles.dateAdjustButtonText}>+ Year</Text>
+                <Text style={styles.dateAdjustButtonText}>{t('increaseYear')}</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.dateRow}>
               <TouchableOpacity style={styles.dateAdjustButton} onPress={() => shiftDobDraft('month', -1)}>
-                <Text style={styles.dateAdjustButtonText}>- Month</Text>
+                <Text style={styles.dateAdjustButtonText}>{t('decreaseMonth')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.dateAdjustButton} onPress={() => shiftDobDraft('month', 1)}>
-                <Text style={styles.dateAdjustButtonText}>+ Month</Text>
+                <Text style={styles.dateAdjustButtonText}>{t('increaseMonth')}</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.dateRow}>
               <TouchableOpacity style={styles.dateAdjustButton} onPress={() => shiftDobDraft('day', -1)}>
-                <Text style={styles.dateAdjustButtonText}>- Day</Text>
+                <Text style={styles.dateAdjustButtonText}>{t('decreaseDay')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.dateAdjustButton} onPress={() => shiftDobDraft('day', 1)}>
-                <Text style={styles.dateAdjustButtonText}>+ Day</Text>
+                <Text style={styles.dateAdjustButtonText}>{t('increaseDay')}</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.dateActions}>
               <TouchableOpacity style={styles.cancelButton} onPress={() => setDobPickerVisible(false)}>
-                <Text style={styles.cancelButtonText}>Cancel</Text>
+                <Text style={styles.cancelButtonText}>{t('cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.button}
@@ -370,7 +370,7 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
                   setDobPickerVisible(false);
                 }}
               >
-                <Text style={styles.buttonText}>Save</Text>
+                <Text style={styles.buttonText}>{t('save')}</Text>
               </TouchableOpacity>
             </View>
           </View>

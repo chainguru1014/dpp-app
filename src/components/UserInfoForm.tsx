@@ -10,6 +10,7 @@ import {
   ScrollView,
   Platform,
 } from 'react-native';
+import { useI18n } from '../i18n/I18nContext';
 import { colors, spacing, radius, fontSize, shadow } from '../theme';
 
 interface UserInfoFormProps {
@@ -27,6 +28,7 @@ export default function UserInfoForm({
   onSubmit,
   onCancel,
 }: UserInfoFormProps) {
+  const { t } = useI18n();
   const [formData, setFormData] = useState({
     username: defaultUsername || '',
     gender: '',
@@ -42,7 +44,7 @@ export default function UserInfoForm({
   const handleSubmit = () => {
     if (userType === 'client') {
       if (!formData.username || !formData.gender || !formData.age || !formData.country) {
-        Alert.alert('Error', 'Please fill in all required fields');
+        Alert.alert(t('error'), t('pleaseFillAllRequired'));
         return;
       }
       onSubmit({
@@ -61,7 +63,7 @@ export default function UserInfoForm({
         !formData.address ||
         !formData.gender
       ) {
-        Alert.alert('Error', 'Please fill in all required fields');
+        Alert.alert(t('error'), t('pleaseFillAllRequired'));
         return;
       }
       onSubmit({
@@ -81,21 +83,21 @@ export default function UserInfoForm({
       <View style={styles.overlay}>
         <View style={styles.container}>
           <Text style={styles.title}>
-            {userType === 'client' ? 'Complete Your Profile' : 'Agent Registration'}
+            {userType === 'client' ? t('completeProfile') : t('agentRegistration')}
           </Text>
           <ScrollView style={styles.scrollView}>
             {userType === 'client' ? (
               <>
-                <Text style={styles.label}>Username *</Text>
+                <Text style={styles.label}>{t('username')} *</Text>
                 <TextInput
                   style={styles.input}
                   value={formData.username}
                   onChangeText={(text) => setFormData({ ...formData, username: text })}
-                  placeholder="Username"
+                  placeholder={t('username')}
                   autoCapitalize="none"
                 />
 
-                <Text style={styles.label}>Gender *</Text>
+                <Text style={styles.label}>{t('gender')} *</Text>
                 <View style={styles.genderContainer}>
                   {['male', 'female', 'other'].map((gender) => (
                     <TouchableOpacity
@@ -118,52 +120,52 @@ export default function UserInfoForm({
                   ))}
                 </View>
 
-                <Text style={styles.label}>Age *</Text>
+                <Text style={styles.label}>{t('age')} *</Text>
                 <TextInput
                   style={styles.input}
                   value={formData.age}
                   onChangeText={(text) => setFormData({ ...formData, age: text })}
-                  placeholder="Age"
+                  placeholder={t('age')}
                   keyboardType="numeric"
                 />
 
-                <Text style={styles.label}>Country *</Text>
+                <Text style={styles.label}>{t('country')} *</Text>
                 <TextInput
                   style={styles.input}
                   value={formData.country}
                   onChangeText={(text) => setFormData({ ...formData, country: text })}
-                  placeholder="Country"
+                  placeholder={t('country')}
                 />
               </>
             ) : (
               <>
-                <Text style={styles.label}>Email *</Text>
+                <Text style={styles.label}>{t('email')} *</Text>
                 <TextInput
                   style={styles.input}
                   value={formData.email}
                   onChangeText={(text) => setFormData({ ...formData, email: text })}
-                  placeholder="Email"
+                  placeholder={t('email')}
                   keyboardType="email-address"
                   autoCapitalize="none"
                 />
 
-                <Text style={styles.label}>First Name *</Text>
+                <Text style={styles.label}>{t('firstName')} *</Text>
                 <TextInput
                   style={styles.input}
                   value={formData.firstName}
                   onChangeText={(text) => setFormData({ ...formData, firstName: text })}
-                  placeholder="First Name"
+                  placeholder={t('firstName')}
                 />
 
-                <Text style={styles.label}>Last Name *</Text>
+                <Text style={styles.label}>{t('lastName')} *</Text>
                 <TextInput
                   style={styles.input}
                   value={formData.lastName}
                   onChangeText={(text) => setFormData({ ...formData, lastName: text })}
-                  placeholder="Last Name"
+                  placeholder={t('lastName')}
                 />
 
-                <Text style={styles.label}>Date of Birth *</Text>
+                <Text style={styles.label}>{t('dateOfBirth')} *</Text>
                 <TextInput
                   style={styles.input}
                   value={formData.dateOfBirth}
@@ -171,17 +173,17 @@ export default function UserInfoForm({
                   placeholder="YYYY-MM-DD"
                 />
 
-                <Text style={styles.label}>Address *</Text>
+                <Text style={styles.label}>{t('address')} *</Text>
                 <TextInput
                   style={[styles.input, styles.textArea]}
                   value={formData.address}
                   onChangeText={(text) => setFormData({ ...formData, address: text })}
-                  placeholder="Address"
+                  placeholder={t('address')}
                   multiline
                   numberOfLines={3}
                 />
 
-                <Text style={styles.label}>Gender *</Text>
+                <Text style={styles.label}>{t('gender')} *</Text>
                 <View style={styles.genderContainer}>
                   {['male', 'female', 'other'].map((gender) => (
                     <TouchableOpacity
@@ -208,10 +210,10 @@ export default function UserInfoForm({
           </ScrollView>
           <View style={styles.buttonContainer}>
             <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+              <Text style={styles.cancelButtonText}>{t('cancel')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-              <Text style={styles.submitButtonText}>Submit</Text>
+              <Text style={styles.submitButtonText}>{t('submit')}</Text>
             </TouchableOpacity>
           </View>
         </View>
