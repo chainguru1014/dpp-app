@@ -280,7 +280,10 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
                   <Text style={styles.apiErrorText}>{apiError}</Text>
                 </View>
               )}
+            </ScrollView>
 
+            {/* Fixed footer — stays below the scrolling fields. */}
+            <View style={styles.cardFooter}>
               <TouchableOpacity style={[styles.button, loading && styles.buttonDisabled]} onPress={handleRegister} disabled={loading}>
                 <Text style={styles.buttonText}>{loading ? `${t('signUp')}...` : t('signUp')}</Text>
               </TouchableOpacity>
@@ -307,7 +310,7 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
               >
                 <Text style={styles.linkText}>{t('haveAccount')} {t('signIn')}</Text>
               </TouchableOpacity>
-            </ScrollView>
+            </View>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -401,8 +404,16 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     ...shadow(3),
   },
-  cardScroll: { width: '100%' },
-  cardScrollContent: { padding: spacing.xxxl },
+  cardScroll: { width: '100%', flexShrink: 1 },
+  cardScrollContent: { paddingHorizontal: spacing.xxxl, paddingTop: spacing.xxxl, paddingBottom: spacing.md },
+  cardFooter: {
+    flexShrink: 0,
+    paddingHorizontal: spacing.xxxl,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xxxl,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(15,30,60,0.08)',
+  },
   title: { fontSize: 24, fontWeight: '800', color: colors.heading, marginBottom: spacing.xl },
   brandTagline: { fontSize: 36, fontWeight: '800', letterSpacing: 3, color: colors.white, textAlign: 'center', marginBottom: spacing.xxl, ...(isWebPlatform && { fontFamily: 'Poppins, system-ui, sans-serif' }) },
   userTypeButtons: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
