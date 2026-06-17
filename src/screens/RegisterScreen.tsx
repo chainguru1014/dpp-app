@@ -174,14 +174,16 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
     }
   };
 
-  const isWeb = Platform.OS === 'web';
-
   return (
     <View style={styles.container}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
-        <ScrollView contentContainerStyle={[styles.scrollContent, isWeb && { minHeight: screenHeight }]} style={styles.scrollView}>
-          <View style={styles.content}>
-            <View style={styles.card}>
+        <View style={styles.centerWrap}>
+          <View style={styles.card}>
+            <ScrollView
+              style={styles.cardScroll}
+              contentContainerStyle={styles.cardScrollContent}
+              showsVerticalScrollIndicator
+            >
               <Image
                 source={require('../assets/yometel-logo-trans.png')}
                 style={{ width: 160, height: 48, marginBottom: 28, alignSelf: 'center' }}
@@ -305,9 +307,9 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
               >
                 <Text style={styles.linkText}>{t('haveAccount')} {t('signIn')}</Text>
               </TouchableOpacity>
-            </View>
+            </ScrollView>
           </View>
-        </ScrollView>
+        </View>
       </KeyboardAvoidingView>
 
       <Modal visible={countryModalVisible} transparent animationType="slide" onRequestClose={() => setCountryModalVisible(false)}>
@@ -386,10 +388,21 @@ const isWebPlatform = Platform.OS === 'web';
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg, ...(isWebPlatform && { height: screenHeight, minHeight: screenHeight }) },
   keyboardView: { flex: 1 },
-  scrollView: { flex: 1 },
-  scrollContent: { padding: spacing.xl, alignItems: 'center', flexGrow: 1, justifyContent: 'center' },
-  content: { alignItems: 'center', width: '100%', paddingVertical: 40 },
-  card: { backgroundColor: '#f3f4f6', borderRadius: radius.xl, borderWidth: 1, borderColor: colors.navy, padding: spacing.xxxl, width: '100%', maxWidth: 420, ...shadow(3) },
+  // Center the card and cap its content area to ~70vh, scrolling inside.
+  centerWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl, width: '100%' },
+  card: {
+    backgroundColor: '#f3f4f6',
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.navy,
+    width: '100%',
+    maxWidth: 420,
+    maxHeight: Math.round(screenHeight * 0.7),
+    overflow: 'hidden',
+    ...shadow(3),
+  },
+  cardScroll: { width: '100%' },
+  cardScrollContent: { padding: spacing.xxxl },
   title: { fontSize: 24, fontWeight: '800', color: colors.heading, marginBottom: spacing.xl },
   brandTagline: { fontSize: 36, fontWeight: '800', letterSpacing: 3, color: colors.white, textAlign: 'center', marginBottom: spacing.xxl, ...(isWebPlatform && { fontFamily: 'Poppins, system-ui, sans-serif' }) },
   userTypeButtons: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
