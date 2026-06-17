@@ -187,7 +187,7 @@
         // 1) window.__APP_API_BASE_URL (set by hosting template if available)
         // 2) ?api=<backend-base-url> query param
         // 3) fallback to known hosted backend URL
-        const DEFAULT_BACKEND_BASE_URL = 'http://82.165.217.122:5052/';
+        const DEFAULT_BACKEND_BASE_URL = 'https://api.innosynch.com/';
         const queryApiBase = new URLSearchParams(window.location.search).get('api');
         const rawApiBaseUrl = window.__APP_API_BASE_URL || queryApiBase || DEFAULT_BACKEND_BASE_URL;
 

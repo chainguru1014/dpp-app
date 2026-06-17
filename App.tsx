@@ -6,7 +6,7 @@ import { I18nProvider } from './src/i18n/I18nContext';
 export default function App() {
   const navigationRef = useNavigationContainerRef();
   const linking = {
-    prefixes: ['http://localhost:3001', 'http://localhost:19006', 'https://localhost:3001'],
+    prefixes: ['https://dpp.innosynch.com', 'http://localhost:3001', 'http://localhost:19006'],
     config: {
       screens: {
         Result: 'product/:productId/:qrcodeId',

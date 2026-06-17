@@ -15,7 +15,7 @@ import { Platform } from 'react-native';
 // VPS hosted backend - backend is on port 5052
 // If using reverse proxy on port 80, use: 'http://82.165.217.122/'
 // Otherwise use port 5052 directly
-const HOSTING_URL = 'http://82.165.217.122:5052/';
+const HOSTING_URL = 'https://api.innosynch.com/';
 
 // Localhost backend for Android emulator (10.0.2.2 maps to host's localhost)
 const LOCALHOST_URL = 'http://localhost:5052/';
@@ -25,7 +25,7 @@ const LOCALHOST_URL = 'http://localhost:5052/';
 // - false => hosted backend (internet required on emulator/device)
 // Default to hosted backend to avoid localhost URLs in shared/public links.
 // Set to true only when actively developing against a local backend.
-const USE_LOCAL_BACKEND = true;
+const USE_LOCAL_BACKEND = false;
 
 // Resolve the backend URL.
 // - Web: derive from the hostname so the SAME build works locally and when
