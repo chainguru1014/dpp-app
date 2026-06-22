@@ -23,9 +23,9 @@ function mark(color) {
     <path d="M316 162 L236 286"/>
     <path d="M236 282 L236 380"/>
   </g>
-  ${wave(322, 150, 19, 12, color)}
-  ${wave(322, 150, 36, 12, color)}
-  ${wave(322, 150, 53, 12, color)}`;
+  ${wave(318, 146, 24, 15, color)}
+  ${wave(318, 146, 46, 15, color)}
+  ${wave(318, 146, 68, 15, color)}`;
 }
 
 // Generous padding so the Y sits smaller inside the round badge.
