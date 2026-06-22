@@ -251,9 +251,9 @@ export default function AppLayout({
             />
           </TouchableOpacity>
         ) : (
-          <View style={[styles.iconButton, styles.navBtnOnDark]}>
+          <View style={styles.iconButton}>
             <Image
-              source={require('../assets/logo-shield.png')}
+              source={require('../assets/logo-y-white.png')}
               style={styles.topBarLogoIcon}
               resizeMode="contain"
             />
@@ -311,9 +311,9 @@ export default function AppLayout({
           onPress={handleScan}
           activeOpacity={0.85}
         >
-          <View style={[styles.bottomScanCircle, gradients.accent]}>
+          <View style={styles.bottomScanCircle}>
             <Image
-              source={require('../assets/qr-code.png')}
+              source={require('../assets/logo-y.png')}
               style={styles.bottomScanIcon}
               resizeMode="contain"
             />
@@ -611,9 +611,10 @@ const styles = StyleSheet.create({
     height: 22,
     tintColor: '#fff',
   },
+  // Borderless white Y sits directly on the blue bar.
   topBarLogoIcon: {
-    width: 30,
-    height: 30,
+    width: 38,
+    height: 38,
   },
   dppBadge: {
     flex: 1,
@@ -695,21 +696,20 @@ const styles = StyleSheet.create({
     height: 58,
     borderRadius: 29,
     marginTop: -30,
-    backgroundColor: colors.accent,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 4,
-    borderColor: colors.surface,
-    shadowColor: colors.accent,
+    borderWidth: 3,
+    borderColor: '#cfe0f7',
+    shadowColor: colors.header,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.4,
     shadowRadius: 10,
     elevation: 8,
   },
   bottomScanIcon: {
-    width: 26,
-    height: 26,
-    tintColor: '#fff',
+    width: 46,
+    height: 46,
   },
   modalOverlay: {
     flex: 1,

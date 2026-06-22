@@ -14,10 +14,15 @@ import { Platform, StyleSheet } from 'react-native';
  */
 
 export const colors = {
-  navy: '#1f3361',
-  primary: '#3d5c93',
-  primaryDark: '#2f3f5a',
+  // Main brand blue — the bright azure of the top bar, used across all UI.
+  navy: '#2f74c4',
+  primary: '#2f74c4',
+  primaryDark: '#255f9f',
   accent: '#1976d2',
+
+  // Top bar / header surface (bright azure blue)
+  header: '#2f74c4',
+  headerLight: '#3e87d6',
 
   // Surfaces
   bg: '#f4f7fc',
@@ -28,7 +33,7 @@ export const colors = {
   borderStrong: '#d3dbe8',
 
   // Text
-  heading: '#1f3361',
+  heading: '#2f74c4',
   text: '#33415c',
   textBody: '#33415c',
   muted: '#7a8aa3',
@@ -94,8 +99,8 @@ const isWeb = Platform.OS === 'web';
 
 /** Web-only CSS gradients (no-op on native, where a solid colour is used instead). */
 export const gradients = {
-  hero: isWeb ? ({ backgroundImage: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.navy} 100%)` } as any) : null,
-  header: isWeb ? ({ backgroundImage: `linear-gradient(120deg, ${colors.navy} 0%, ${colors.primary} 100%)` } as any) : null,
+  hero: isWeb ? ({ backgroundImage: `linear-gradient(135deg, ${colors.headerLight} 0%, ${colors.header} 100%)` } as any) : null,
+  header: isWeb ? ({ backgroundImage: `linear-gradient(120deg, ${colors.header} 0%, ${colors.headerLight} 100%)` } as any) : null,
   accent: isWeb ? ({ backgroundImage: `linear-gradient(135deg, ${colors.accent} 0%, ${colors.primary} 100%)` } as any) : null,
 };
 

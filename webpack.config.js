@@ -48,7 +48,7 @@ module.exports = {
     new HtmlWebpackPlugin({
       template: './public/index.html',
       inject: 'body',
-      favicon: path.resolve(__dirname, 'src/assets/logo-shield.png'),
+      favicon: path.resolve(__dirname, 'src/assets/favicon.png'),
     }),
   ],
   devServer: {

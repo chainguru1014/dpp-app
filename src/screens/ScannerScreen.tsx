@@ -488,6 +488,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
             <View style={styles.webScannerContainer}>
               <QrReader
                 delay={300}
+                showViewFinder={false}
                 onError={(err: any) => {
                   console.error('QR Scanner Error:', err);
                 }}
@@ -498,6 +499,9 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
                 }}
                 style={styles.webScanner}
               />
+            </View>
+            <View pointerEvents="none" style={styles.frameOverlay}>
+              <View style={styles.scanFrame} />
             </View>
           </View>
           <View style={styles.bottomContent}>
@@ -552,6 +556,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
             reactivate={!loading}
             reactivateTimeout={3000}
             showMarker={true}
+            customMarker={<View style={styles.scanFrame} />}
             cameraStyle={styles.camera}
             topContent={
               <View style={styles.topContent}>
@@ -622,7 +627,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     gap: spacing.sm,
     maxWidth: 460,
-    backgroundColor: 'rgba(31,51,97,0.86)',
+    backgroundColor: 'rgba(47,116,196,0.92)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.18)',
     borderRadius: radius.pill,
@@ -662,6 +667,20 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 500,
     height: '100%',
+  },
+  // Light frame over the camera viewport (replaces the library's coral default).
+  frameOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scanFrame: {
+    width: 240,
+    height: 240,
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.92)',
+    borderRadius: radius.lg,
+    backgroundColor: 'transparent',
   },
   bottomContent: {
     paddingBottom: spacing.xxxl,

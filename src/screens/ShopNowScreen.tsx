@@ -14,8 +14,8 @@ import { useI18n } from '../i18n/I18nContext';
 
 const { width } = Dimensions.get('window');
 
-const NAVY = '#1f3361';
-const PRIMARY = '#3d5c93';
+const NAVY = '#2f74c4';
+const PRIMARY = '#2f74c4';
 const ACCENT = '#1976d2';
 const LIGHT_BG = '#f4f7fc';
 
