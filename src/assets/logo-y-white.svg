@@ -1,9 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="60 80 392 360">
-  <g stroke="#ffffff" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M150 165 L235 295" stroke-width="48"/>
-    <path d="M300 175 L235 295" stroke-width="48"/>
-    <path d="M235 290 L235 380" stroke-width="48"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="115 90 280 322">
+  <g stroke="#ffffff" fill="none" stroke-width="54" stroke-linecap="butt" stroke-linejoin="miter">
+    <path d="M150 160 L236 288"/>
+    <path d="M322 160 L236 288"/>
+    <path d="M236 284 L236 384"/>
   </g>
-  <path d="M336.8,131.1 A24,24 0 0 1 336.8,168.9" fill="none" stroke="#ffffff" stroke-width="16" stroke-linecap="round"/>
-  <path d="M350.3,113.8 A46,46 0 0 1 350.3,186.2" fill="none" stroke="#ffffff" stroke-width="16" stroke-linecap="round"/>
-  <path d="M363.9,96.4 A68,68 0 0 1 363.9,203.6" fill="none" stroke="#ffffff" stroke-width="16" stroke-linecap="round"/></svg>
+  <path d="M342.3,134.2 A20,20 0 0 1 342.3,165.8" fill="none" stroke="#ffffff" stroke-width="13" stroke-linecap="round"/>
+  <path d="M353.4,120.1 A38,38 0 0 1 353.4,179.9" fill="none" stroke="#ffffff" stroke-width="13" stroke-linecap="round"/>
+  <path d="M364.5,105.9 A56,56 0 0 1 364.5,194.1" fill="none" stroke="#ffffff" stroke-width="13" stroke-linecap="round"/></svg>

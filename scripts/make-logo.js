@@ -15,20 +15,21 @@ function wave(cx, cy, r, w, color) {
 }
 
 // The Y + waves mark, drawn with the given colour. No background.
+// Bold typographic Y: flat (butt) ends, sharp mitred junction; thin delicate arcs.
 function mark(color) {
   return `
-  <g stroke="${color}" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M150 165 L235 295" stroke-width="48"/>
-    <path d="M300 175 L235 295" stroke-width="48"/>
-    <path d="M235 290 L235 380" stroke-width="48"/>
+  <g stroke="${color}" fill="none" stroke-width="54" stroke-linecap="butt" stroke-linejoin="miter">
+    <path d="M150 160 L236 288"/>
+    <path d="M322 160 L236 288"/>
+    <path d="M236 284 L236 384"/>
   </g>
-  ${wave(322, 150, 24, 16, color)}
-  ${wave(322, 150, 46, 16, color)}
-  ${wave(322, 150, 68, 16, color)}`;
+  ${wave(330, 150, 20, 13, color)}
+  ${wave(330, 150, 38, 13, color)}
+  ${wave(330, 150, 56, 13, color)}`;
 }
 
-const markSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="60 80 392 360">${mark(BLUE)}</svg>`;
-const markWhiteSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="60 80 392 360">${mark('#ffffff')}</svg>`;
+const markSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="115 90 280 322">${mark(BLUE)}</svg>`;
+const markWhiteSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="115 90 280 322">${mark('#ffffff')}</svg>`;
 const tileSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <rect x="0" y="0" width="512" height="512" rx="112" ry="112" fill="#ffffff"/>
   ${mark(BLUE)}
