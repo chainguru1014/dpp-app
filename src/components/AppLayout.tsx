@@ -705,7 +705,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
-    borderColor: '#cfe0f7',
+    borderColor: colors.header,
     shadowColor: colors.header,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.4,
