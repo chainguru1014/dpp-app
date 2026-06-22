@@ -251,9 +251,9 @@ export default function AppLayout({
             />
           </TouchableOpacity>
         ) : (
-          <View style={styles.iconButton}>
+          <View style={[styles.iconButton, styles.logoBadge]}>
             <Image
-              source={require('../assets/logo-y-white.png')}
+              source={require('../assets/logo-y.png')}
               style={styles.topBarLogoIcon}
               resizeMode="contain"
             />
@@ -611,10 +611,15 @@ const styles = StyleSheet.create({
     height: 22,
     tintColor: '#fff',
   },
-  // Borderless white Y sits directly on the blue bar.
+  // White circular badge holding the blue Y logo on the top bar
+  // (matches the bottom-center button).
+  logoBadge: {
+    borderRadius: 20,
+    backgroundColor: '#fff',
+  },
   topBarLogoIcon: {
-    width: 38,
-    height: 38,
+    width: 32,
+    height: 32,
   },
   dppBadge: {
     flex: 1,
