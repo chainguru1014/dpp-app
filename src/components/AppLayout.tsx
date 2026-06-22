@@ -253,7 +253,7 @@ export default function AppLayout({
         ) : (
           <View style={[styles.iconButton, styles.logoBadge]}>
             <Image
-              source={require('../assets/logo-y.png')}
+              source={require('../assets/logo-y-mark.png')}
               style={styles.topBarLogoIcon}
               resizeMode="contain"
             />
@@ -313,7 +313,7 @@ export default function AppLayout({
         >
           <View style={styles.bottomScanCircle}>
             <Image
-              source={require('../assets/logo-y.png')}
+              source={require('../assets/logo-y-mark.png')}
               style={styles.bottomScanIcon}
               resizeMode="contain"
             />
@@ -618,8 +618,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   topBarLogoIcon: {
-    width: 32,
-    height: 32,
+    width: 28,
+    height: 28,
   },
   dppBadge: {
     flex: 1,
@@ -713,8 +713,8 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   bottomScanIcon: {
-    width: 46,
-    height: 46,
+    width: 38,
+    height: 38,
   },
   modalOverlay: {
     flex: 1,
