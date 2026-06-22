@@ -18,18 +18,19 @@ function wave(cx, cy, r, w, color) {
 // Bold typographic Y: flat (butt) ends, sharp mitred junction; thin delicate arcs.
 function mark(color) {
   return `
-  <g stroke="${color}" fill="none" stroke-width="54" stroke-linecap="butt" stroke-linejoin="miter">
-    <path d="M150 160 L236 288"/>
-    <path d="M322 160 L236 288"/>
-    <path d="M236 284 L236 384"/>
+  <g stroke="${color}" fill="none" stroke-width="44" stroke-linecap="butt" stroke-linejoin="miter">
+    <path d="M156 162 L236 286"/>
+    <path d="M316 162 L236 286"/>
+    <path d="M236 282 L236 380"/>
   </g>
-  ${wave(330, 150, 20, 13, color)}
-  ${wave(330, 150, 38, 13, color)}
-  ${wave(330, 150, 56, 13, color)}`;
+  ${wave(322, 150, 19, 12, color)}
+  ${wave(322, 150, 36, 12, color)}
+  ${wave(322, 150, 53, 12, color)}`;
 }
 
-const markSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="115 90 280 322">${mark(BLUE)}</svg>`;
-const markWhiteSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="115 90 280 322">${mark('#ffffff')}</svg>`;
+// Generous padding so the Y sits smaller inside the round badge.
+const markSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="80 45 360 380">${mark(BLUE)}</svg>`;
+const markWhiteSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="80 45 360 380">${mark('#ffffff')}</svg>`;
 const tileSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <rect x="0" y="0" width="512" height="512" rx="112" ry="112" fill="#ffffff"/>
   ${mark(BLUE)}
