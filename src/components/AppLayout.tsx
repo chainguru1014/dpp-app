@@ -311,12 +311,14 @@ export default function AppLayout({
           onPress={handleScan}
           activeOpacity={0.85}
         >
-          <View style={styles.bottomScanCircle}>
-            <Image
-              source={require('../assets/logo-y-mark.png')}
-              style={styles.bottomScanIcon}
-              resizeMode="contain"
-            />
+          <View style={styles.bottomScanOuter}>
+            <View style={styles.bottomScanCircle}>
+              <Image
+                source={require('../assets/logo-y-mark.png')}
+                style={styles.bottomScanIcon}
+                resizeMode="contain"
+              />
+            </View>
           </View>
         </TouchableOpacity>
 
@@ -696,25 +698,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  bottomScanCircle: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
+  // Outer white circle (white outline ring) with the soft blue glow.
+  bottomScanOuter: {
+    width: 62,
+    height: 62,
+    borderRadius: 31,
     marginTop: -30,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.header,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  // Inner blue ring around the white center that holds the logo.
+  bottomScanCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
     borderColor: colors.header,
-    shadowColor: colors.header,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-    elevation: 8,
   },
   bottomScanIcon: {
-    width: 38,
-    height: 38,
+    width: 32,
+    height: 32,
   },
   modalOverlay: {
     flex: 1,
