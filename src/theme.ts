@@ -15,14 +15,14 @@ import { Platform, StyleSheet } from 'react-native';
 
 export const colors = {
   // Main brand blue — the bright azure of the top bar, used across all UI.
-  navy: '#2f74c4',
-  primary: '#2f74c4',
-  primaryDark: '#255f9f',
+  navy: '#2f80c8',
+  primary: '#2f80c8',
+  primaryDark: '#266aa8',
   accent: '#1976d2',
 
   // Top bar / header surface (bright azure blue)
-  header: '#2f74c4',
-  headerLight: '#3e87d6',
+  header: '#2f80c8',
+  headerLight: '#4a96dd',
 
   // Surfaces
   bg: '#f4f7fc',
@@ -33,7 +33,7 @@ export const colors = {
   borderStrong: '#d3dbe8',
 
   // Text
-  heading: '#2f74c4',
+  heading: '#2f80c8',
   text: '#33415c',
   textBody: '#33415c',
   muted: '#7a8aa3',

@@ -627,7 +627,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     gap: spacing.sm,
     maxWidth: 460,
-    backgroundColor: 'rgba(47,116,196,0.92)',
+    backgroundColor: 'rgba(47,128,200,0.92)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.18)',
     borderRadius: radius.pill,
