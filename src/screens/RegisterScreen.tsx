@@ -312,6 +312,12 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
               </TouchableOpacity>
             </View>
           </View>
+
+          <Image
+            source={require('../assets/Screenshot_12.png')}
+            style={styles.footerBanner}
+            resizeMode="contain"
+          />
         </View>
       </KeyboardAvoidingView>
 
@@ -404,6 +410,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     ...shadow(3),
   },
+  footerBanner: { width: '100%', maxWidth: 420, height: 64, marginTop: spacing.lg, alignSelf: 'center' },
   cardScroll: { width: '100%', flexShrink: 1 },
   cardScrollContent: { paddingHorizontal: spacing.xxxl, paddingTop: spacing.xxxl, paddingBottom: spacing.md },
   cardFooter: {

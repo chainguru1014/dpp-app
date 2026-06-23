@@ -269,6 +269,12 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
               </Text>
             </TouchableOpacity>
           </View>
+
+          <Image
+            source={require('../assets/Screenshot_12.png')}
+            style={styles.footerBanner}
+            resizeMode="contain"
+          />
         </View>
     </ScrollView>
   );
@@ -339,6 +345,13 @@ const styles = StyleSheet.create({
   logoImage: {
     width: 160,
     height: 48,
+  },
+  footerBanner: {
+    width: '100%',
+    maxWidth: 380,
+    height: 72,
+    marginTop: spacing.xxl,
+    alignSelf: 'center',
   },
   logoTagline: {
     marginTop: 12,

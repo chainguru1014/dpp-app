@@ -650,6 +650,9 @@ const styles = StyleSheet.create({
   // Camera viewport + frame
   scanViewport: {
     flex: 1,
+    // Guarantee a tall camera area even if the flex chain collapses on web,
+    // so the centred frame lands on the middle of the camera view.
+    minHeight: 420,
     width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
@@ -657,8 +660,8 @@ const styles = StyleSheet.create({
     backgroundColor: DARK,
   },
   webScannerContainer: {
-    flex: 1,
-    width: '100%',
+    // Fill the whole viewport so the camera covers it and the frame centres on it.
+    ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#000',
