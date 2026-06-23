@@ -18,14 +18,14 @@ function wave(cx, cy, r, w, color) {
 // Bold typographic Y: flat (butt) ends, sharp mitred junction; thin delicate arcs.
 function mark(color) {
   return `
-  <g stroke="${color}" fill="none" stroke-width="44" stroke-linecap="butt" stroke-linejoin="miter">
-    <path d="M156 162 L236 286"/>
-    <path d="M316 162 L236 286"/>
-    <path d="M236 282 L236 380"/>
+  <g stroke="${color}" fill="none" stroke-width="40" stroke-linecap="butt" stroke-linejoin="miter">
+    <path d="M164 173 L236 284"/>
+    <path d="M308 173 L236 284"/>
+    <path d="M236 280 L236 369"/>
   </g>
-  ${wave(313, 152, 28, 16, color)}
-  ${wave(313, 152, 53, 16, color)}
-  ${wave(313, 152, 78, 16, color)}`;
+  ${wave(322, 166, 30, 17, color)}
+  ${wave(322, 166, 56, 17, color)}
+  ${wave(322, 166, 82, 17, color)}`;
 }
 
 // Generous padding so the Y sits smaller inside the round badge.
