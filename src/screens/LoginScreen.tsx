@@ -349,8 +349,8 @@ const styles = StyleSheet.create({
   footerBanner: {
     width: '100%',
     maxWidth: 380,
-    height: 72,
-    marginTop: spacing.xxl,
+    height: 155,
+    marginTop: spacing.xl,
     alignSelf: 'center',
   },
   logoTagline: {
