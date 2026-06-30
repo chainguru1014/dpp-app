@@ -178,12 +178,11 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
   };
 
   return (
-    <View style={styles.container}>
-      <ImageBackground
-        source={require('../assets/bg-login.jpg')}
-        style={StyleSheet.absoluteFillObject}
-        resizeMode="cover"
-      />
+    <ImageBackground
+      source={require('../assets/bg-login.jpg')}
+      style={styles.container}
+      resizeMode="cover"
+    >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
         style={styles.kav}
@@ -265,17 +264,17 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
           </View>
         </View>
       </KeyboardAvoidingView>
-    </View>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.bg,
   },
   kav: {
     flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.25)',
   },
   pageTitle: {
     color: '#ffffff',
