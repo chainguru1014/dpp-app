@@ -268,9 +268,12 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
   );
 }
 
+const webFill = Platform.OS === 'web' ? ({ minHeight: '100vh' } as any) : {};
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    ...webFill,
   },
   kav: {
     flex: 1,

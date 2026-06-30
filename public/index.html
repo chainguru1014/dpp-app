@@ -10,6 +10,9 @@
             padding: 0;
             box-sizing: border-box;
         }
+        html, body {
+            height: 100%;
+        }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
                 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
@@ -19,7 +22,9 @@
         }
         #root {
             width: 100%;
-            height: 100vh;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
         }
     </style>
     <link rel="preconnect" href="https://fonts.googleapis.com">
