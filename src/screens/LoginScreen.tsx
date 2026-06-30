@@ -9,6 +9,7 @@ import {
   Platform,
   Alert,
   Image,
+  ImageBackground,
   ScrollView,
   Dimensions,
 } from 'react-native';
@@ -270,29 +271,30 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
             </TouchableOpacity>
           </View>
 
-          <Image
-            source={require('../assets/Screenshot_12.png')}
-            style={styles.footerBanner}
-            resizeMode="contain"
-          />
         </View>
     </ScrollView>
   );
 
   return (
-    <View style={styles.container}>
-      {isWeb ? (
-        scrollViewContent
-      ) : (
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.keyboardView}
-        >
-          {scrollViewContent}
-        </KeyboardAvoidingView>
-      )}
-
-    </View>
+    <ImageBackground
+      source={require('../assets/bg-login.jpg')}
+      style={styles.backgroundImage}
+      resizeMode="cover"
+    >
+      <View style={styles.overlay}>
+        <Text style={styles.pageTitle}>Digital Product Passport</Text>
+        {isWeb ? (
+          scrollViewContent
+        ) : (
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.keyboardView}
+          >
+            {scrollViewContent}
+          </KeyboardAvoidingView>
+        )}
+      </View>
+    </ImageBackground>
   );
 }
 
@@ -300,10 +302,27 @@ const screenHeight = Dimensions.get('window').height;
 const isWebPlatform = Platform.OS === 'web';
 
 const styles = StyleSheet.create({
-  container: {
+  backgroundImage: {
     flex: 1,
-    backgroundColor: colors.bg,
     ...(isWebPlatform && { height: screenHeight, minHeight: screenHeight }),
+  },
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.18)',
+    ...(isWebPlatform && { height: screenHeight, minHeight: screenHeight }),
+  },
+  pageTitle: {
+    color: '#ffffff',
+    fontSize: 22,
+    fontWeight: '500',
+    textAlign: 'center',
+    paddingTop: 56,
+    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    letterSpacing: 0.5,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   keyboardView: {
     flex: 1,
@@ -331,8 +350,6 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: '#f3f4f6',
     borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: colors.navy,
     padding: spacing.xxxl,
     width: '100%',
     maxWidth: 380,
@@ -345,13 +362,6 @@ const styles = StyleSheet.create({
   logoImage: {
     width: 160,
     height: 48,
-  },
-  footerBanner: {
-    width: '100%',
-    maxWidth: 380,
-    height: 155,
-    marginTop: spacing.xl,
-    alignSelf: 'center',
   },
   logoTagline: {
     marginTop: 12,
@@ -370,9 +380,9 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: colors.white,
-    borderRadius: radius.md,
+    borderRadius: radius.pill,
     paddingVertical: 13,
-    paddingHorizontal: 14,
+    paddingHorizontal: 18,
     marginBottom: spacing.md,
     fontSize: 16,
     color: colors.text,
@@ -381,7 +391,7 @@ const styles = StyleSheet.create({
   },
   button: {
     backgroundColor: colors.accent,
-    borderRadius: radius.md,
+    borderRadius: radius.pill,
     paddingVertical: 15,
     alignItems: 'center',
     marginTop: spacing.sm,

@@ -11,6 +11,7 @@ import {
   ScrollView,
   Dimensions,
   Image,
+  ImageBackground,
   Modal,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -175,8 +176,14 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
   };
 
   return (
-    <View style={styles.container}>
+    <ImageBackground
+      source={require('../assets/bg-login.jpg')}
+      style={styles.backgroundImage}
+      resizeMode="cover"
+    >
+      <View style={styles.overlay}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
+        <Text style={styles.pageTitle}>Digital Product Passport</Text>
         <View style={styles.centerWrap}>
           <View style={styles.card}>
             <ScrollView
@@ -313,11 +320,6 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
             </View>
           </View>
 
-          <Image
-            source={require('../assets/Screenshot_12.png')}
-            style={styles.footerBanner}
-            resizeMode="contain"
-          />
         </View>
       </KeyboardAvoidingView>
 
@@ -387,7 +389,8 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
           </View>
         </View>
       </Modal>
-    </View>
+      </View>
+    </ImageBackground>
   );
 }
 
@@ -395,22 +398,33 @@ const screenHeight = Dimensions.get('window').height;
 const isWebPlatform = Platform.OS === 'web';
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg, ...(isWebPlatform && { height: screenHeight, minHeight: screenHeight }) },
+  backgroundImage: { flex: 1, ...(isWebPlatform && { height: screenHeight, minHeight: screenHeight }) },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.18)', ...(isWebPlatform && { height: screenHeight, minHeight: screenHeight }) },
+  pageTitle: {
+    color: '#ffffff',
+    fontSize: 22,
+    fontWeight: '500',
+    textAlign: 'center',
+    paddingTop: 56,
+    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    letterSpacing: 0.5,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
   keyboardView: { flex: 1 },
   // Center the card and cap its content area to ~70vh, scrolling inside.
   centerWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl, width: '100%' },
   card: {
     backgroundColor: '#f3f4f6',
     borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: colors.navy,
     width: '100%',
     maxWidth: 420,
     maxHeight: Math.round(screenHeight * 0.7),
     overflow: 'hidden',
     ...shadow(3),
   },
-  footerBanner: { width: '100%', maxWidth: 380, height: 130, marginTop: spacing.md, alignSelf: 'center' },
   cardScroll: { width: '100%', flexShrink: 1 },
   cardScrollContent: { paddingHorizontal: spacing.xxxl, paddingTop: spacing.xxxl, paddingBottom: spacing.md },
   cardFooter: {
@@ -433,12 +447,12 @@ const styles = StyleSheet.create({
   genderOptionSelected: { backgroundColor: colors.accent, borderColor: colors.accent },
   genderOptionText: { color: colors.muted, fontSize: 15, fontWeight: '400' },
   genderOptionTextSelected: { color: colors.white, fontWeight: '400' },
-  input: { backgroundColor: colors.white, borderRadius: radius.md, paddingVertical: 13, paddingHorizontal: 14, marginBottom: spacing.md, fontSize: 16, color: colors.text, borderWidth: 1, borderColor: colors.borderStrong },
+  input: { backgroundColor: colors.white, borderRadius: radius.pill, paddingVertical: 13, paddingHorizontal: 18, marginBottom: spacing.md, fontSize: 16, color: colors.text, borderWidth: 1, borderColor: colors.borderStrong },
   textArea: { minHeight: 80, textAlignVertical: 'top' },
-  inputButton: { backgroundColor: colors.white, borderRadius: radius.md, paddingVertical: 13, paddingHorizontal: 14, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.borderStrong },
+  inputButton: { backgroundColor: colors.white, borderRadius: radius.pill, paddingVertical: 13, paddingHorizontal: 18, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.borderStrong },
   inputButtonText: { color: colors.text, fontSize: 16 },
   inputButtonPlaceholder: { color: colors.placeholder, fontSize: 16 },
-  button: { backgroundColor: colors.accent, borderRadius: radius.md, paddingVertical: 15, paddingHorizontal: spacing.lg, alignItems: 'center', marginTop: spacing.sm, ...shadow(1) },
+  button: { backgroundColor: colors.accent, borderRadius: radius.pill, paddingVertical: 15, paddingHorizontal: spacing.lg, alignItems: 'center', marginTop: spacing.sm, ...shadow(1) },
   buttonDisabled: { opacity: 0.6 },
   buttonText: { color: colors.white, fontSize: 16, fontWeight: '400' },
   apiErrorBox: { backgroundColor: colors.dangerSoft, borderRadius: radius.md, paddingVertical: spacing.md, paddingHorizontal: spacing.md, marginBottom: spacing.md },
