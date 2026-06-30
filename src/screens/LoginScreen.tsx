@@ -10,7 +10,10 @@ import {
   Alert,
   Image,
   ImageBackground,
+  Dimensions,
 } from 'react-native';
+
+const screenHeight = Dimensions.get('window').height;
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../config/api';
 import GoogleAuthButton from '../components/GoogleAuthButton';
@@ -178,16 +181,27 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
   };
 
   return (
-    <ImageBackground
-      source={require('../assets/bg-login.jpg')}
-      style={styles.container}
-      resizeMode="cover"
-    >
+    <View style={styles.container}>
+      {/* Background: image covers top 55%, plain colour fills the rest */}
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        <ImageBackground
+          source={require('../assets/bg-login.jpg')}
+          style={styles.bgImage}
+          resizeMode="cover"
+        >
+          <View style={styles.bgOverlay} />
+        </ImageBackground>
+        <View style={styles.bgBottom} />
+      </View>
+
+      {/* Title floated at the top over the image */}
+      <Text style={styles.pageTitle}>Digital Product Passport</Text>
+
+      {/* KAV fills the full screen so the card centres against the whole page */}
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
         style={styles.kav}
       >
-        <Text style={styles.pageTitle}>Digital Product Passport</Text>
         <View style={styles.centerWrap}>
           <View style={styles.card}>
             <View style={styles.logoContainer}>
@@ -264,40 +278,56 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
           </View>
         </View>
       </KeyboardAvoidingView>
-    </ImageBackground>
+    </View>
   );
 }
 
 const webFill = Platform.OS === 'web' ? ({ minHeight: '100vh' } as any) : {};
+const bgImageHeight: any = Platform.OS === 'web' ? '55vh' : screenHeight * 0.55;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#e8ecf0',
     ...webFill,
   },
-  kav: {
+  bgImage: {
+    height: bgImageHeight,
+  },
+  bgOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.25)',
+    backgroundColor: 'rgba(0,0,0,0.28)',
+  },
+  bgBottom: {
+    flex: 1,
+    backgroundColor: '#e8ecf0',
+  },
+  kav: {
+    ...StyleSheet.absoluteFillObject,
   },
   pageTitle: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     color: '#ffffff',
     fontSize: 22,
     fontWeight: '600',
     textAlign: 'center',
     paddingTop: 56,
-    paddingBottom: spacing.lg,
     paddingHorizontal: spacing.xl,
     letterSpacing: 0.5,
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
+    zIndex: 10,
   },
   centerWrap: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.xl,
+    paddingBottom: spacing.xxxl,
     width: '100%',
   },
   card: {
