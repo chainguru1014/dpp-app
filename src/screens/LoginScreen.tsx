@@ -10,8 +10,6 @@ import {
   Alert,
   Image,
   ImageBackground,
-  ScrollView,
-  Dimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../config/api';
@@ -179,26 +177,22 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
     }
   };
 
-  const isWeb = Platform.OS === 'web';
-  
-  const scrollViewContent = (
-    <ScrollView
-      contentContainerStyle={[
-        styles.scrollContent,
-        isWeb && { minHeight: screenHeight }
-      ]}
-      style={[
-        styles.scrollView,
-        isWeb && { height: screenHeight }
-      ]}
-      keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={false}
-      bounces={!isWeb}
-      {...(Platform.OS === 'ios' && { contentInsetAdjustmentBehavior: 'automatic' })}
-    >
-      <View style={styles.content}>
-        <View style={styles.card}>
-              <View style={styles.logoContainer}>
+  return (
+    <View style={styles.container}>
+      <ImageBackground
+        source={require('../assets/bg-login.jpg')}
+        style={styles.imageBg}
+        resizeMode="cover"
+      >
+        <Text style={styles.pageTitle}>Digital Product Passport</Text>
+      </ImageBackground>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+        style={styles.centeredOverlay}
+      >
+        <View style={styles.centerWrap}>
+          <View style={styles.card}>
+            <View style={styles.logoContainer}>
               <Image
                 source={require('../assets/yometel-logo-trans.png')}
                 style={styles.logoImage}
@@ -270,32 +264,11 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
               </Text>
             </TouchableOpacity>
           </View>
-
         </View>
-    </ScrollView>
-  );
-
-  return (
-    <View style={styles.container}>
-      <ImageBackground
-        source={require('../assets/bg-login.jpg')}
-        style={styles.imageBg}
-        resizeMode="cover"
-      >
-        <Text style={styles.pageTitle}>Digital Product Passport</Text>
-      </ImageBackground>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.centeredOverlay}
-      >
-        {scrollViewContent}
       </KeyboardAvoidingView>
     </View>
   );
 }
-
-const screenHeight = Dimensions.get('window').height;
-const isWebPlatform = Platform.OS === 'web';
 
 const styles = StyleSheet.create({
   container: {
@@ -304,7 +277,7 @@ const styles = StyleSheet.create({
   },
   imageBg: {
     width: '100%',
-    height: screenHeight * 0.55,
+    height: '55%',
   },
   centeredOverlay: {
     position: 'absolute',
@@ -326,18 +299,12 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },
-  scrollView: {
+  centerWrap: {
     flex: 1,
-  },
-  scrollContent: {
-    minHeight: screenHeight,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.xl,
-  },
-  content: {
-    alignItems: 'center',
     width: '100%',
   },
   card: {
@@ -355,15 +322,6 @@ const styles = StyleSheet.create({
   logoImage: {
     width: 160,
     height: 48,
-  },
-  logoTagline: {
-    marginTop: 12,
-    fontSize: 36,
-    fontWeight: '400',
-    letterSpacing: 3,
-    color: colors.white,
-    textAlign: 'center',
-    ...(isWebPlatform && { fontFamily: 'Poppins, system-ui, sans-serif' }),
   },
   title: {
     fontSize: 24,
