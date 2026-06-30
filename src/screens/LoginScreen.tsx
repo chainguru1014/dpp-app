@@ -181,15 +181,14 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
     <View style={styles.container}>
       <ImageBackground
         source={require('../assets/bg-login.jpg')}
-        style={styles.imageBg}
+        style={StyleSheet.absoluteFillObject}
         resizeMode="cover"
-      >
-        <Text style={styles.pageTitle}>Digital Product Passport</Text>
-      </ImageBackground>
+      />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
-        style={styles.centeredOverlay}
+        style={styles.kav}
       >
+        <Text style={styles.pageTitle}>Digital Product Passport</Text>
         <View style={styles.centerWrap}>
           <View style={styles.card}>
             <View style={styles.logoContainer}>
@@ -275,16 +274,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg,
   },
-  imageBg: {
-    width: '100%',
-    height: '55%',
-  },
-  centeredOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+  kav: {
+    flex: 1,
   },
   pageTitle: {
     color: '#ffffff',
