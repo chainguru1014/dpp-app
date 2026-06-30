@@ -276,25 +276,21 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
   );
 
   return (
-    <ImageBackground
-      source={require('../assets/bg-login.jpg')}
-      style={styles.backgroundImage}
-      resizeMode="cover"
-    >
-      <View style={styles.overlay}>
+    <View style={styles.container}>
+      <ImageBackground
+        source={require('../assets/bg-login.jpg')}
+        style={styles.imageBg}
+        resizeMode="cover"
+      >
         <Text style={styles.pageTitle}>Digital Product Passport</Text>
-        {isWeb ? (
-          scrollViewContent
-        ) : (
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.keyboardView}
-          >
-            {scrollViewContent}
-          </KeyboardAvoidingView>
-        )}
-      </View>
-    </ImageBackground>
+      </ImageBackground>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.centeredOverlay}
+      >
+        {scrollViewContent}
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -302,19 +298,25 @@ const screenHeight = Dimensions.get('window').height;
 const isWebPlatform = Platform.OS === 'web';
 
 const styles = StyleSheet.create({
-  backgroundImage: {
+  container: {
     flex: 1,
-    ...(isWebPlatform && { height: screenHeight, minHeight: screenHeight }),
+    backgroundColor: colors.bg,
   },
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.18)',
-    ...(isWebPlatform && { height: screenHeight, minHeight: screenHeight }),
+  imageBg: {
+    width: '100%',
+    height: screenHeight * 0.55,
+  },
+  centeredOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   pageTitle: {
     color: '#ffffff',
     fontSize: 22,
-    fontWeight: '500',
+    fontWeight: '600',
     textAlign: 'center',
     paddingTop: 56,
     paddingBottom: spacing.lg,
@@ -324,28 +326,19 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },
-  keyboardView: {
-    flex: 1,
-    zIndex: 1,
-    ...(isWebPlatform && { height: screenHeight, minHeight: screenHeight }),
-  },
   scrollView: {
     flex: 1,
-    zIndex: 1,
-    ...(isWebPlatform && { height: screenHeight, minHeight: screenHeight }),
   },
   scrollContent: {
-    padding: spacing.xl,
-    alignItems: 'center',
-    flexGrow: 1,
+    minHeight: screenHeight,
     justifyContent: 'center',
-    ...(isWebPlatform && { minHeight: screenHeight }),
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.xl,
   },
   content: {
     alignItems: 'center',
     width: '100%',
-    paddingVertical: 40,
-    ...(isWebPlatform && { minHeight: 0 }),
   },
   card: {
     backgroundColor: '#f3f4f6',

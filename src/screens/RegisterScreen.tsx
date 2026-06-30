@@ -176,14 +176,15 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
   };
 
   return (
-    <ImageBackground
-      source={require('../assets/bg-login.jpg')}
-      style={styles.backgroundImage}
-      resizeMode="cover"
-    >
-      <View style={styles.overlay}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
+    <View style={styles.container}>
+      <ImageBackground
+        source={require('../assets/bg-login.jpg')}
+        style={styles.imageBg}
+        resizeMode="cover"
+      >
         <Text style={styles.pageTitle}>Digital Product Passport</Text>
+      </ImageBackground>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.centeredOverlay}>
         <View style={styles.centerWrap}>
           <View style={styles.card}>
             <ScrollView
@@ -389,8 +390,7 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
           </View>
         </View>
       </Modal>
-      </View>
-    </ImageBackground>
+    </View>
   );
 }
 
@@ -398,12 +398,13 @@ const screenHeight = Dimensions.get('window').height;
 const isWebPlatform = Platform.OS === 'web';
 
 const styles = StyleSheet.create({
-  backgroundImage: { flex: 1, ...(isWebPlatform && { height: screenHeight, minHeight: screenHeight }) },
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.18)', ...(isWebPlatform && { height: screenHeight, minHeight: screenHeight }) },
+  container: { flex: 1, backgroundColor: colors.bg },
+  imageBg: { width: '100%', height: screenHeight * 0.55 },
+  centeredOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   pageTitle: {
     color: '#ffffff',
     fontSize: 22,
-    fontWeight: '500',
+    fontWeight: '600',
     textAlign: 'center',
     paddingTop: 56,
     paddingBottom: spacing.lg,
@@ -413,8 +414,6 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },
-  keyboardView: { flex: 1 },
-  // Center the card and cap its content area to ~70vh, scrolling inside.
   centerWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl, width: '100%' },
   card: {
     backgroundColor: '#f3f4f6',
