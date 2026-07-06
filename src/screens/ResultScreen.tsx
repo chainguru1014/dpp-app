@@ -1139,6 +1139,9 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
         {productData?._id && (
           <Text style={styles.productIdText}>{t('productIdColon')}: {productData._id}</Text>
         )}
+        {productData?.pmc_code && (
+          <Text style={styles.productIdText}>{t('pmcCodeColon')}: {productData.pmc_code}</Text>
+        )}
         {materials.map((row: any, i: number) => (
           <Text key={i} style={styles.materialText}>
             {row.material || '—'} {row.percent != null ? `${row.percent}%` : ''}

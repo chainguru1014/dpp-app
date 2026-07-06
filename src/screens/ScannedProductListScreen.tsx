@@ -27,6 +27,7 @@ interface ScannedProduct {
   name: string;
   model?: string;
   token_id?: number;
+  pmc_code?: string;
   images?: string[];
   scannedAt: number;
   scannedQRCode?: string;
@@ -452,6 +453,11 @@ export default function ScannedProductListScreen({
           <Text style={styles.itemIdText} numberOfLines={1}>
             {t('itemId')}: {item.token_id != null ? item.token_id : '—'}
           </Text>
+          {item.pmc_code && (
+            <Text style={styles.itemIdText} numberOfLines={1}>
+              {t('pmcCodeColon')}: {item.pmc_code}
+            </Text>
+          )}
           {item.feedback ? (
             <View
               style={[

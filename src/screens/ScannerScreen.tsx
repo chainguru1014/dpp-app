@@ -16,21 +16,15 @@ import AppLayout from '../components/AppLayout';
 import { useI18n } from '../i18n/I18nContext';
 import { useIsFocused } from '@react-navigation/native';
 import { colors, radius, spacing, shadow } from '../theme';
+import NativeCodeScanner, { isNativeCodeScannerAvailable, ScannedCodeFormat } from '../components/NativeCodeScanner';
+import { isNfcSupported, readNfcTag } from '../utils/nfc';
 
-// Conditionally import QR scanner based on platform
-let QRCodeScanner: any = null;
-let RNCamera: any = null;
+// Conditionally import the web QR reader — native scanning goes through
+// NativeCodeScanner (react-native-vision-camera), which reads QR + the
+// common 1D/2D barcode formats in one pass.
 let QrReader: any = null;
 
-if (Platform.OS !== 'web') {
-  try {
-    QRCodeScanner = require('react-native-qrcode-scanner').default;
-    RNCamera = require('react-native-camera').RNCamera;
-  } catch (e) {
-    console.warn('Native QR scanner not available:', e);
-  }
-} else {
-  // For web, use react-qr-reader
+if (Platform.OS === 'web') {
   try {
     QrReader = require('react-qr-reader');
   } catch (e) {
@@ -52,7 +46,8 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   // On http (insecure origin) the live camera is unavailable -> use photo scan.
   const [webPhotoMode, setWebPhotoMode] = useState(false);
-  const scannerRef = useRef<any>(null);
+  const [nfcAvailable, setNfcAvailable] = useState(false);
+  const [nfcReading, setNfcReading] = useState(false);
   const isMountedRef = useRef(true);
   const isProcessingScanRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -61,6 +56,13 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
 
   React.useEffect(() => {
     requestCameraPermission();
+  }, []);
+
+  React.useEffect(() => {
+    if (Platform.OS === 'web') return;
+    isNfcSupported().then((supported) => {
+      if (isMountedRef.current) setNfcAvailable(supported);
+    });
   }, []);
 
   React.useEffect(() => {
@@ -167,7 +169,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
             const code = jsQR(imageData.data, cw, ch);
             setLoading(false);
             if (code && code.data) {
-              handleQRCode(String(code.data));
+              handleScannedCode(String(code.data), 'qr');
             } else {
               Alert.alert(t('error'), t('noQrInImage'));
             }
@@ -211,12 +213,26 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
     }
   };
 
-  const handleQRCode = async (e: any) => {
+  // Anything that isn't our own QR carries no product_id at all — resolve it
+  // against the admin-curated ProductIdentifier mapping instead (see backend
+  // productIdentifierController). 404s if nobody has registered this
+  // identifier to a product yet.
+  type ScanSourceType = 'barcode' | 'nfc' | 'rfid' | 'gs1dl';
+  const attemptPmcLookup = async (rawValue: string, sourceType: ScanSourceType, signal: AbortSignal) => {
+    const resp = await fetch(`${API_BASE_URL}pmc/lookup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal,
+      body: JSON.stringify({ source_type: sourceType, raw_value: rawValue }),
+    });
+    const json = await resp.json();
+    return { response: resp, data: json };
+  };
+
+  const handleScannedCode = async (value: any, format: ScannedCodeFormat | 'nfc' | 'rfid' = 'qr') => {
     if (!isFocused || isProcessingScanRef.current) return;
-    
-    // Handle both native (e.data) and web (e) formats
-    const qrData = e.data || e;
-    const currentScannedValue = String(qrData || '').trim();
+
+    const currentScannedValue = String(value || '').trim();
     if (!currentScannedValue) return;
 
     if (lastScannedValueRef.current === currentScannedValue) {
@@ -246,53 +262,73 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
     try {
       let scannedValue = currentScannedValue;
       let response: any;
+      let data: any;
       let encryptDataForRecord = '';
+      // Tracks the identifier format that actually resolved the scan — starts
+      // as `format`, but a QR that falls through to the GS1 lookup below
+      // resolves as 'gs1dl' even though the physical code scanned was a QR.
+      let resolvedIdentifierType: string = format;
 
-      // Ownership-transfer link: .../transfer/:code -> open the confirmation screen
-      // (works on native and the web scan page) instead of fetching product data.
-      const transferUrlMatch = scannedValue.match(/\/transfer\/([^/?#]+)/i);
-      if (transferUrlMatch) {
-        const code = decodeURIComponent(transferUrlMatch[1]);
-        if (isMountedRef.current) setLoading(false);
-        isProcessingScanRef.current = false;
-        navigation.navigate('TransferConfirm', { code });
-        return;
-      }
-
-      // New format: .../product/:productId/:qrcodeId
-      const productUrlMatch = scannedValue.match(/\/product\/([^/?#]+)\/([^/?#]+)/i);
-      if (productUrlMatch) {
-        response = await fetch(`${API_BASE_URL}qrcode/resolve-url`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          signal: abortController.signal,
-          body: JSON.stringify({
-            qrUrl: scannedValue,
-            expectedQrUrl: expectedSecurityQrUrl || undefined,
-          }),
-        });
+      if (format !== 'qr') {
+        // A 1D/2D product barcode, NFC tag, or RFID tag never matches our own
+        // QR URL/encrypted formats — it carries no product_id at all, so it
+        // only resolves via the admin-curated identifier mapping.
+        ({ response, data } = await attemptPmcLookup(scannedValue, format, abortController.signal));
       } else {
-        // Legacy format: encrypted value (optionally as ?qrcode=...)
-        let encryptData = scannedValue;
-        if (encryptData.includes('qrcode=')) {
-          const [rawParam] = encryptData.split('qrcode=').slice(1);
-          encryptData = rawParam?.split('&')[0] || '';
+        // Ownership-transfer link: .../transfer/:code -> open the confirmation screen
+        // (works on native and the web scan page) instead of fetching product data.
+        const transferUrlMatch = scannedValue.match(/\/transfer\/([^/?#]+)/i);
+        if (transferUrlMatch) {
+          const code = decodeURIComponent(transferUrlMatch[1]);
+          if (isMountedRef.current) setLoading(false);
+          isProcessingScanRef.current = false;
+          navigation.navigate('TransferConfirm', { code });
+          return;
         }
-        encryptData = normalizeEncryptData(encryptData);
-        encryptDataForRecord = encryptData;
-        response = await fetch(`${API_BASE_URL}qrcode/decrypt`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          signal: abortController.signal,
-          body: JSON.stringify({ encryptData }),
-        });
-      }
 
-      const data = await response.json();
+        // New format: .../product/:productId/:qrcodeId
+        const productUrlMatch = scannedValue.match(/\/product\/([^/?#]+)\/([^/?#]+)/i);
+        if (productUrlMatch) {
+          response = await fetch(`${API_BASE_URL}qrcode/resolve-url`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            signal: abortController.signal,
+            body: JSON.stringify({
+              qrUrl: scannedValue,
+              expectedQrUrl: expectedSecurityQrUrl || undefined,
+            }),
+          });
+          data = await response.json();
+        } else {
+          // Legacy format: encrypted value (optionally as ?qrcode=...)
+          let encryptData = scannedValue;
+          if (encryptData.includes('qrcode=')) {
+            const [rawParam] = encryptData.split('qrcode=').slice(1);
+            encryptData = rawParam?.split('&')[0] || '';
+          }
+          encryptData = normalizeEncryptData(encryptData);
+          encryptDataForRecord = encryptData;
+          response = await fetch(`${API_BASE_URL}qrcode/decrypt`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            signal: abortController.signal,
+            body: JSON.stringify({ encryptData }),
+          });
+          data = await response.json();
+
+          // Not one of our own formats — maybe a GS1 Digital Link URL or
+          // bracketed AI element string from a company that doesn't mint
+          // through this platform at all.
+          if (!(response.ok && data.status === 'success')) {
+            resolvedIdentifierType = 'gs1dl';
+            ({ response, data } = await attemptPmcLookup(scannedValue, 'gs1dl', abortController.signal));
+          }
+        }
+      }
 
       if (response.ok && data.status === 'success') {
         const productData = data.data;
@@ -302,14 +338,13 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
           if (isMountedRef.current) {
             setLoading(false);
           }
-          if (isFocused && scannerRef.current) {
-            scannerRef.current.reactivate();
-          }
           isProcessingScanRef.current = false;
           return;
         }
 
-        // Record successful scan in backend (best effort).
+        // Record successful scan in backend (best effort). Barcode/GS1-DL
+        // resolved products have no per-unit token_id — pmc_code (already
+        // resolved by pmc/lookup above) is what the backend stores instead.
         try {
           await fetch(`${API_BASE_URL}qrcode/scan/record`, {
             method: 'POST',
@@ -319,6 +354,8 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
             body: JSON.stringify({
               product_id: productData?._id,
               token_id: productData?.token_id,
+              pmc_code: productData?.pmc_code,
+              identifier_type: resolvedIdentifierType,
               encryptData: encryptDataForRecord || productData?.scannedQRCode || scannedValue,
               user_id: user?._id,
               source: 'scan',
@@ -378,10 +415,6 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         if (isMountedRef.current) {
           setLoading(false);
         }
-        // Reactivate scanner after error
-        if (isFocused && scannerRef.current) {
-          scannerRef.current.reactivate();
-        }
       }
     } catch (error) {
       // A real abort (navigating away) stays silent; a timeout abort is surfaced
@@ -396,14 +429,25 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
       if (isMountedRef.current) {
         setLoading(false);
       }
-      // Reactivate scanner after a surfaced error only when still focused.
-      if (!isSilentAbort && isFocused && scannerRef.current) {
-        scannerRef.current.reactivate();
-      }
     } finally {
       clearTimeout(timeoutId);
       isProcessingScanRef.current = false;
       abortControllerRef.current = null;
+    }
+  };
+
+  const handleNfcScanPress = async () => {
+    if (nfcReading || isProcessingScanRef.current) return;
+    setNfcReading(true);
+    try {
+      const value = await readNfcTag();
+      if (value) {
+        await handleScannedCode(value, 'nfc');
+      } else {
+        Alert.alert(t('error'), t('nfcReadFailed'));
+      }
+    } finally {
+      if (isMountedRef.current) setNfcReading(false);
     }
   };
 
@@ -494,7 +538,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
                 }}
                 onScan={(data: string | null) => {
                   if (data) {
-                    handleQRCode(data);
+                    handleScannedCode(data, 'qr');
                   }
                 }}
                 style={styles.webScanner}
@@ -540,8 +584,9 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
     );
   }
 
-  // Native QR Scanner Component
-  if (QRCodeScanner && RNCamera) {
+  // Native QR + barcode scanner (react-native-vision-camera). Reads QR codes
+  // and the common 1D/2D product-barcode formats in one pass.
+  if (isNativeCodeScannerAvailable()) {
     return (
       <AppLayout
         navigation={navigation}
@@ -550,36 +595,38 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         showBackButton={true}
       >
         <View style={styles.container}>
-          <QRCodeScanner
-            ref={scannerRef}
-            onRead={handleQRCode}
-            reactivate={!loading}
-            reactivateTimeout={3000}
-            showMarker={true}
-            customMarker={<View style={styles.scanFrame} />}
-            cameraStyle={styles.camera}
-            topContent={
-              <View style={styles.topContent}>
-                <View style={styles.hintCard}>
-                  <Image source={require('../assets/qr-code.png')} style={styles.hintIcon} resizeMode="contain" />
-                  <Text style={styles.hintText}>{t('scannerScanHint')}</Text>
-                </View>
+          <View style={styles.topContent}>
+            <View style={styles.hintCard}>
+              <Image source={require('../assets/qr-code.png')} style={styles.hintIcon} resizeMode="contain" />
+              <Text style={styles.hintText}>{t('scannerScanHint')}</Text>
+            </View>
+          </View>
+          <View style={styles.scanViewport}>
+            <NativeCodeScanner active={isFocused && !loading} onScan={handleScannedCode} />
+            <View pointerEvents="none" style={styles.frameOverlay}>
+              <View style={styles.scanFrame} />
+            </View>
+          </View>
+          <View style={styles.bottomContent}>
+            {loading ? (
+              <View style={styles.loadingPill}>
+                <ActivityIndicator size="small" color="#fff" />
+                <Text style={styles.loadingPillText}>{t('loadingProductInfo')}</Text>
               </View>
-            }
-            bottomContent={
-              <View style={styles.bottomContent}>
-                {loading && (
-                  <View style={styles.loadingPill}>
-                    <ActivityIndicator size="small" color="#fff" />
-                    <Text style={styles.loadingPillText}>Loading product information...</Text>
-                  </View>
+            ) : nfcAvailable ? (
+              <TouchableOpacity
+                style={styles.loadingPill}
+                onPress={handleNfcScanPress}
+                disabled={nfcReading}
+              >
+                {nfcReading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.loadingPillText}>{t('nfcScanButton')}</Text>
                 )}
-              </View>
-            }
-            cameraProps={{
-              flashMode: RNCamera.Constants.FlashMode.auto,
-            }}
-          />
+              </TouchableOpacity>
+            ) : null}
+          </View>
         </View>
       </AppLayout>
     );
