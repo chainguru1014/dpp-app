@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -29,36 +29,60 @@ export default function OtpSignIn({ onSuccess, onError }: OtpSignInProps) {
   const [requesting, setRequesting] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  const RESEND_COOLDOWN_SECONDS = 30;
+
+  // Counts the resend cooldown down to 0 once a code has been (re)sent.
+  useEffect(() => {
+    if (resendCooldown <= 0) return undefined;
+    const timer = setInterval(() => setResendCooldown((s) => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
 
   const reportError = (msg: string) => {
     setError(msg);
     onError?.(msg);
   };
 
-  const handleSendCode = async () => {
+  const sendCode = async (targetEmail: string) => {
     setError('');
-    const trimmed = email.trim();
-    if (!trimmed || !trimmed.includes('@')) {
-      reportError('Please enter a valid email address.');
-      return;
-    }
-    setRequesting(true);
     try {
       const response = await fetch(`${API_BASE_URL}auth/otp/request`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ email: trimmed }),
+        body: JSON.stringify({ email: targetEmail }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
         throw new Error(data?.message || 'Could not send the code. Please try again.');
       }
-      setStage('code');
+      setResendCooldown(RESEND_COOLDOWN_SECONDS);
+      return true;
     } catch (e: any) {
       reportError(e?.message || 'Network error, please try again.');
-    } finally {
-      setRequesting(false);
+      return false;
     }
+  };
+
+  const handleSendCode = async () => {
+    const trimmed = email.trim();
+    if (!trimmed || !trimmed.includes('@')) {
+      setError('');
+      reportError('Please enter a valid email address.');
+      return;
+    }
+    setRequesting(true);
+    const ok = await sendCode(trimmed);
+    setRequesting(false);
+    if (ok) setStage('code');
+  };
+
+  const handleResendCode = async () => {
+    if (requesting || verifying || resendCooldown > 0) return;
+    setRequesting(true);
+    await sendCode(email.trim());
+    setRequesting(false);
   };
 
   const handleVerifyCode = async () => {
@@ -140,17 +164,30 @@ export default function OtpSignIn({ onSuccess, onError }: OtpSignInProps) {
             onChangeText={(v) => setCode(v.replace(/[^0-9]/g, '').slice(0, 6))}
             keyboardType="number-pad"
             maxLength={6}
-            editable={!verifying}
+            editable={!verifying && !requesting}
           />
           <TouchableOpacity
             style={[styles.button, verifying && styles.buttonDisabled]}
             onPress={handleVerifyCode}
-            disabled={verifying}
+            disabled={verifying || requesting}
           >
             {verifying ? (
               <ActivityIndicator color={colors.white} />
             ) : (
               <Text style={styles.buttonText}>Verify</Text>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.linkButton}
+            onPress={handleResendCode}
+            disabled={verifying || requesting || resendCooldown > 0}
+          >
+            {requesting ? (
+              <ActivityIndicator color={colors.navy} size="small" />
+            ) : (
+              <Text style={[styles.linkText, resendCooldown > 0 && styles.linkTextDisabled]}>
+                {resendCooldown > 0 ? `Resend code (${resendCooldown}s)` : 'Resend code'}
+              </Text>
             )}
           </TouchableOpacity>
           <TouchableOpacity style={styles.linkButton} onPress={handleChangeEmail} disabled={verifying}>
@@ -220,6 +257,9 @@ const styles = StyleSheet.create({
     color: colors.navy,
     fontSize: 14,
     fontWeight: '400',
+  },
+  linkTextDisabled: {
+    color: colors.muted,
   },
   errorBox: {
     backgroundColor: colors.dangerSoft,
