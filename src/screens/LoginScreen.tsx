@@ -2,8 +2,6 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
-  TouchableOpacity,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
@@ -15,12 +13,18 @@ import {
 
 const screenHeight = Dimensions.get('window').height;
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_BASE_URL } from '../config/api';
 import GoogleAuthButton from '../components/GoogleAuthButton';
+import AppleAuthButton from '../components/AppleAuthButton';
+import OtpSignIn from '../components/OtpSignIn';
 import { useI18n } from '../i18n/I18nContext';
 import { colors, spacing, radius, shadow } from '../theme';
 
+type AuthResult = { user: any; token: string; profileCompleted: boolean };
+
 export default function LoginScreen({ navigation, onLogin, route }: any) {
+  const { t } = useI18n();
+  const [apiError, setApiError] = useState('');
+
   const goAfterAuth = () => {
     const redirectTo = route?.params?.redirectTo;
     const redirectParams = route?.params?.redirectParams;
@@ -31,16 +35,12 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
     navigation.replace('Home');
   };
 
-  const { t } = useI18n();
-  const [name, setName] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [apiError, setApiError] = useState('');
-
-  const finalizeLogin = async (userData: any, actorKind: 'User' | 'Company', token: string) => {
-    // Tag the session with which kind of account this is so ownership-transfer
-    // confirmation can identify the acting party (User vs Company/brand).
-    const tagged = { ...userData, actorKind };
+  // Tag the session with which kind of account this is so ownership-transfer
+  // confirmation can identify the acting party (User vs Company/brand).
+  // All three passwordless methods (Google/Apple/OTP) are User-only —
+  // there is no Company/brand equivalent for any of them.
+  const finalizeLogin = async (userData: any, token: string) => {
+    const tagged = { ...userData, actorKind: 'User' };
     await AsyncStorage.setItem('userToken', token || '');
     await AsyncStorage.setItem('user', JSON.stringify(tagged));
     if (onLogin) {
@@ -49,135 +49,31 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
     goAfterAuth();
   };
 
-  // Brands/companies (the initial owner of every product) live in the companies
-  // collection. If user login fails, fall back to company auth so an owner can
-  // log in and confirm an ownership transfer.
-  const tryCompanyLogin = async (): Promise<boolean> => {
-    try {
-      const response = await fetch(`${API_BASE_URL}company/auth`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({ name, password }),
-      });
-      if (!response.ok) return false;
-      const data = await response.json().catch(() => ({}));
-      const doc = data?.data?.doc;
-      if (data?.status === 'success' && doc) {
-        await finalizeLogin(doc, 'Company', '');
-        return true;
-      }
-    } catch (error) {
-      // ignore and report the original user-login failure
-    }
-    return false;
-  };
-
-  const handleLogin = async () => {
+  // Shared handler for all three passwordless methods. If the backend says
+  // the profile isn't complete yet (new account, or an existing account
+  // that never finished onboarding), stash the token/partial user and route
+  // to the profile-completion screen (the repurposed RegisterScreen)
+  // instead of Home.
+  const handleAuthSuccess = async ({ user, token, profileCompleted }: AuthResult) => {
     setApiError('');
-    if (!name || !password) {
-      Alert.alert(t('error'), t('fillAllFields'));
+    if (!profileCompleted) {
+      const tagged = { ...user, actorKind: 'User' };
+      await AsyncStorage.setItem('userToken', token || '');
+      await AsyncStorage.setItem('user', JSON.stringify(tagged));
+      navigation.replace('Register', {
+        profileCompletion: true,
+        partialUser: tagged,
+        token,
+        redirectTo: route?.params?.redirectTo,
+        redirectParams: route?.params?.redirectParams,
+      });
       return;
     }
+    await finalizeLogin(user, token);
+  };
 
-    setLoading(true);
-    const apiUrl = `${API_BASE_URL}user/login`;
-    console.log('Attempting login to:', apiUrl);
-    console.log('Request body:', { name, password: '***' });
-
-    try {
-      // Test connection first with timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        signal: controller.signal,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({ name, password }),
-      });
-
-      clearTimeout(timeoutId);
-
-      console.log('Response status:', response.status);
-      console.log('Response headers:', JSON.stringify([...response.headers.entries()]));
-
-      if (!response.ok) {
-        // User login failed — try company login before reporting an error.
-        if (await tryCompanyLogin()) { setLoading(false); return; }
-        const errorText = await response.text();
-        console.error('Response error:', errorText);
-        try {
-          const errorData = JSON.parse(errorText);
-          setApiError(errorData.message || `${t('serverError')}: ${response.status}`);
-        } catch {
-          setApiError(`${t('serverError')}: ${response.status} - ${errorText}`);
-        }
-        setLoading(false);
-        return;
-      }
-
-      const data = await response.json();
-      console.log('Response data:', data);
-
-      if (data.status === 'success') {
-        const userData = data.user || data.data;
-        if (userData) {
-          await finalizeLogin(userData, 'User', data.token || '');
-        } else {
-          Alert.alert(t('error'), t('invalidServerResponse'));
-        }
-      } else {
-        if (await tryCompanyLogin()) { setLoading(false); return; }
-        setApiError(data.message || t('loginFailed'));
-      }
-    } catch (error: any) {
-      console.error('Login error details:', {
-        message: error?.message,
-        stack: error?.stack,
-        name: error?.name,
-        apiUrl: apiUrl,
-        errorType: error?.constructor?.name
-      });
-      
-      let errorMessage = 'Network request failed';
-      let isTimeout = false;
-      
-      if (error?.name === 'AbortError' || error?.message?.includes('timeout') || error?.message?.includes('aborted')) {
-        errorMessage = 'Connection timeout - Server not reachable';
-        isTimeout = true;
-      } else if (error?.message) {
-        errorMessage = error.message;
-      } else if (error?.toString) {
-        errorMessage = error.toString();
-      }
-      
-      // Provide more helpful error message
-      let detailedMessage = `${errorMessage}\n\nAPI URL: ${apiUrl}\n\n`;
-      
-      if (isTimeout) {
-        detailedMessage += 'Possible causes:\n';
-        detailedMessage += '• LDPlayer network not properly configured\n';
-        detailedMessage += '• Firewall blocking connection\n';
-        detailedMessage += '• VPS server is down\n';
-        detailedMessage += '• No internet access in emulator\n\n';
-        detailedMessage += 'Try:\n';
-        detailedMessage += '1. Check LDPlayer network settings\n';
-        detailedMessage += '2. Restart LDPlayer\n';
-        detailedMessage += '3. Test in browser: ' + apiUrl.replace('user/login', '');
-      } else {
-        detailedMessage += 'Please check:\n';
-        detailedMessage += '• Internet connection\n';
-        detailedMessage += '• VPS server is running\n';
-        detailedMessage += '• Network security settings';
-      }
-      
-      setApiError(detailedMessage);
-    } finally {
-      setLoading(false);
-    }
+  const handleAuthError = (message: string) => {
+    setApiError(message);
   };
 
   return (
@@ -212,24 +108,7 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
               />
             </View>
 
-            <TextInput
-              style={styles.input}
-              placeholder={t('username')}
-              placeholderTextColor={colors.placeholder}
-              value={name}
-              onChangeText={setName}
-              autoCapitalize="none"
-            />
-
-            <TextInput
-              style={styles.input}
-              placeholder={t('password')}
-              placeholderTextColor={colors.placeholder}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-            />
+            <Text style={styles.subtitle}>Sign in to continue</Text>
 
             {!!apiError && (
               <View style={styles.apiErrorBox}>
@@ -237,44 +116,17 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
               </View>
             )}
 
-            <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
-              onPress={handleLogin}
-              disabled={loading}
-            >
-              <Text style={styles.buttonText}>
-                {loading ? `${t('signIn')}...` : t('signIn')}
-              </Text>
-            </TouchableOpacity>
+            <GoogleAuthButton onSuccess={handleAuthSuccess} onError={handleAuthError} navigation={navigation} />
 
-            <GoogleAuthButton
-              onSuccess={(userData) => {
-                if (onLogin) {
-                  onLogin(userData);
-                }
-                if (route?.params?.redirectTo) {
-                  navigation.replace(route.params.redirectTo, route.params.redirectParams || {});
-                } else {
-                  navigation.replace('EditProfile', { fromGoogle: true });
-                }
-              }}
-              onError={(error) => {
-                Alert.alert('Error', error);
-              }}
-              navigation={navigation}
-            />
+            <AppleAuthButton onSuccess={handleAuthSuccess} onError={handleAuthError} />
 
-            <TouchableOpacity
-              style={styles.linkButton}
-              onPress={() => navigation.navigate('Register', {
-                redirectTo: route?.params?.redirectTo,
-                redirectParams: route?.params?.redirectParams,
-              })}
-            >
-              <Text style={styles.linkText}>
-                {t('noAccount')} {t('signUp')}
-              </Text>
-            </TouchableOpacity>
+            <View style={styles.dividerRow}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            <OtpSignIn onSuccess={handleAuthSuccess} onError={handleAuthError} />
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -340,11 +192,18 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: spacing.xxl,
+    marginBottom: spacing.lg,
   },
   logoImage: {
     width: 160,
     height: 48,
+  },
+  subtitle: {
+    fontSize: 15,
+    fontWeight: '400',
+    color: colors.muted,
+    textAlign: 'center',
+    marginBottom: spacing.xl,
   },
   title: {
     fontSize: 24,
@@ -352,32 +211,20 @@ const styles = StyleSheet.create({
     color: colors.heading,
     marginBottom: spacing.xl,
   },
-  input: {
-    backgroundColor: colors.white,
-    borderRadius: radius.pill,
-    paddingVertical: 13,
-    paddingHorizontal: 18,
-    marginBottom: spacing.md,
-    fontSize: 16,
-    color: colors.text,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-  },
-  button: {
-    backgroundColor: colors.accent,
-    borderRadius: radius.pill,
-    paddingVertical: 15,
+  dividerRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: spacing.sm,
-    ...shadow(1),
+    marginVertical: spacing.md,
   },
-  buttonDisabled: {
-    opacity: 0.6,
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.borderStrong,
   },
-  buttonText: {
-    color: colors.white,
-    fontSize: 16,
-    fontWeight: '400',
+  dividerText: {
+    color: colors.muted,
+    fontSize: 13,
+    marginHorizontal: spacing.md,
   },
   apiErrorBox: {
     backgroundColor: colors.dangerSoft,
@@ -390,14 +237,5 @@ const styles = StyleSheet.create({
     color: colors.danger,
     fontSize: 13,
     textAlign: 'left',
-  },
-  linkButton: {
-    marginTop: spacing.lg,
-    alignItems: 'center',
-  },
-  linkText: {
-    color: colors.navy,
-    fontSize: 14,
-    fontWeight: '400',
   },
 });

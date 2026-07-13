@@ -16,14 +16,24 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../config/api';
-import GoogleAuthButton from '../components/GoogleAuthButton';
 import { COUNTRIES } from '../constants/countries';
 import { useI18n } from '../i18n/I18nContext';
 import { colors, spacing, radius, shadow } from '../theme';
 
+// This screen used to be the password-based registration form. It is now
+// the PROFILE-COMPLETION screen: it's only reached after a successful
+// passwordless auth (Google / Apple / email OTP) whose response came back
+// with `profileCompleted: false` — see LoginScreen's handleAuthSuccess.
+// The same fields and userType-conditional validation are kept as-is
+// (minus password, which no longer exists anywhere in the app), but the
+// submit now POSTs to auth/profile/complete with the bearer token obtained
+// from that prior auth step instead of user/register.
 export default function RegisterScreen({ navigation, onLogin, route }: any) {
   const { t, locale } = useI18n();
-  const [userType, setUserType] = useState<'client' | 'agent'>('client');
+  const partialUser = route?.params?.partialUser || {};
+  const [userType, setUserType] = useState<'client' | 'agent'>(
+    partialUser.userType === 'agent' ? 'agent' : 'client'
+  );
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState('');
   const [countryModalVisible, setCountryModalVisible] = useState(false);
@@ -31,14 +41,13 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
   const [dobDraft, setDobDraft] = useState(new Date(2000, 0, 1));
 
   const [form, setForm] = useState<any>({
-    name: '',
-    email: '',
-    password: '',
-    gender: '',
-    age: '',
-    country: '',
-    firstName: '',
-    lastName: '',
+    name: partialUser.name || '',
+    email: partialUser.email || '',
+    gender: partialUser.gender || '',
+    age: partialUser.age ? String(partialUser.age) : '',
+    country: partialUser.country || '',
+    firstName: partialUser.firstName || '',
+    lastName: partialUser.lastName || '',
     addressStreet: '',
     addressCity: '',
     addressState: '',
@@ -86,12 +95,12 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
   const validate = () => {
     const normalizedName = (form.name || '').trim();
     if (userType === 'client') {
-      if (!normalizedName || !form.password || !form.gender || !form.age || !form.country) {
+      if (!normalizedName || !form.gender || !form.age || !form.country) {
         Alert.alert(t('error'), t('fillProfileFieldsClient'));
         return false;
       }
     } else {
-      if (!normalizedName || !form.email || !form.firstName || !form.lastName || !form.addressStreet || !form.addressCity || !form.addressState || !form.addressZipCode || !form.addressCountry || !form.phoneNumber || !form.gender || !form.dateOfBirth || !form.password) {
+      if (!normalizedName || !form.email || !form.firstName || !form.lastName || !form.addressStreet || !form.addressCity || !form.addressState || !form.addressZipCode || !form.addressCountry || !form.phoneNumber || !form.gender || !form.dateOfBirth) {
         Alert.alert(t('error'), t('fillProfileFieldsAgent'));
         return false;
       }
@@ -99,31 +108,20 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
     return true;
   };
 
-  const handleRegister = async () => {
+  const handleCompleteProfile = async () => {
     setApiError('');
     if (!validate()) return;
 
     setLoading(true);
     try {
+      // The bearer token comes from the auth step that got us here (passed
+      // via route params); AsyncStorage is a fallback in case this screen
+      // was remounted (e.g. app restart mid-onboarding).
+      const token = route?.params?.token || (await AsyncStorage.getItem('userToken')) || '';
       const normalizedName = (form.name || '').trim();
-      const usernameCheckResponse = await fetch(`${API_BASE_URL}user/check-username`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ name: normalizedName }),
-      });
-      const usernameCheckData = await usernameCheckResponse.json();
-      if (!usernameCheckResponse.ok || usernameCheckData.status !== 'success') {
-        setApiError(usernameCheckData.message || t('networkErrorRetry'));
-        return;
-      }
-      if (usernameCheckData.exists) {
-        setApiError(t('usernameAlreadyExists'));
-        return;
-      }
 
       const payload: any = {
         name: normalizedName,
-        password: form.password,
         userType,
       };
 
@@ -145,22 +143,27 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
         payload.dateOfBirth = form.dateOfBirth;
       }
 
-      const response = await fetch(`${API_BASE_URL}user/register`, {
+      const response = await fetch(`${API_BASE_URL}auth/profile/complete`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(payload),
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
       if (!response.ok || data.status !== 'success') {
         setApiError(data.message || t('registrationFailed'));
         return;
       }
 
       const userData = data.user || data.data;
-      await AsyncStorage.setItem('userToken', data.token || '');
-      await AsyncStorage.setItem('user', JSON.stringify(userData));
-      onLogin?.(userData);
+      const tagged = { ...(userData || {}), actorKind: 'User' };
+      await AsyncStorage.setItem('userToken', data.token || token || '');
+      await AsyncStorage.setItem('user', JSON.stringify(tagged));
+      onLogin?.(tagged);
       const redirectTo = route?.params?.redirectTo;
       const redirectParams = route?.params?.redirectParams;
       if (redirectTo) {
@@ -173,6 +176,13 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Bail out of profile completion back to the sign-in screen — clears the
+  // partial session so the user doesn't get stuck in limbo.
+  const handleCancel = async () => {
+    await AsyncStorage.multiRemove(['userToken', 'user']);
+    navigation.replace('Login');
   };
 
   return (
@@ -207,7 +217,6 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
               </View>
 
               <TextInput style={styles.input} placeholder={t('username')} placeholderTextColor={colors.placeholder} value={form.name} onChangeText={(v) => setField('name', v)} autoCapitalize="none" />
-              <TextInput style={styles.input} placeholder={t('password')} placeholderTextColor={colors.placeholder} value={form.password} onChangeText={(v) => setField('password', v)} secureTextEntry autoCapitalize="none" />
 
               {userType === 'client' ? (
                 <>
@@ -292,31 +301,12 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
 
             {/* Fixed footer — stays below the scrolling fields. */}
             <View style={styles.cardFooter}>
-              <TouchableOpacity style={[styles.button, loading && styles.buttonDisabled]} onPress={handleRegister} disabled={loading}>
-                <Text style={styles.buttonText}>{loading ? `${t('signUp')}...` : t('signUp')}</Text>
+              <TouchableOpacity style={[styles.button, loading && styles.buttonDisabled]} onPress={handleCompleteProfile} disabled={loading}>
+                <Text style={styles.buttonText}>{loading ? 'Saving...' : 'Save & Continue'}</Text>
               </TouchableOpacity>
 
-              <GoogleAuthButton
-                onSuccess={async (userData) => {
-                  onLogin?.(userData);
-                  if (route?.params?.redirectTo) {
-                    navigation.replace(route.params.redirectTo, route.params.redirectParams || {});
-                  } else {
-                    navigation.replace('EditProfile', { fromGoogle: true });
-                  }
-                }}
-                onError={(error) => Alert.alert(t('error'), error)}
-                navigation={navigation}
-              />
-
-              <TouchableOpacity
-                style={styles.linkButton}
-                onPress={() => navigation.navigate('Login', {
-                  redirectTo: route?.params?.redirectTo,
-                  redirectParams: route?.params?.redirectParams,
-                })}
-              >
-                <Text style={styles.linkText}>{t('haveAccount')} {t('signIn')}</Text>
+              <TouchableOpacity style={styles.linkButton} onPress={handleCancel}>
+                <Text style={styles.linkText}>Cancel and sign out</Text>
               </TouchableOpacity>
             </View>
           </View>

@@ -15,8 +15,10 @@
     "web:build": "webpack --mode production"
   },
   "dependencies": {
+    "@invertase/react-native-apple-authentication": "^2.5.1",
     "@react-native-async-storage/async-storage": "^1.19.3",
     "@react-native-clipboard/clipboard": "^1.16.3",
+    "@react-native-google-signin/google-signin": "^16.1.2",
     "@react-navigation/native": "^6.1.9",
     "@react-navigation/native-stack": "^6.9.17",
     "axios": "^1.13.5",

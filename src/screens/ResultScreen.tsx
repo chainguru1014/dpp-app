@@ -1538,6 +1538,11 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
         <View style={styles.joinModalOverlay}>
           <View style={styles.joinModalCard}>
             <Text style={styles.joinModalText}>Please sign in to continue</Text>
+            {/* Sign-in now doubles as sign-up: Google/Apple/email-OTP
+                find-or-create the account, so there's no separate
+                "create account" entry point anymore — Register requires a
+                bearer token from a completed auth step and is no longer a
+                valid destination for a signed-out user. */}
             <TouchableOpacity
               style={styles.joinModalButton}
               onPress={() => {
@@ -1547,16 +1552,6 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
               }}
             >
               <Text style={styles.joinModalButtonText}>Log in</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.joinModalSecondary}
-              onPress={() => {
-                setShowJoinDialog(false);
-                const { redirectTo, redirectParams } = getPostLoginRedirect();
-                navigation.navigate('Register', { redirectTo, redirectParams });
-              }}
-            >
-              <Text style={styles.joinModalSecondaryText}>Create account</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setShowJoinDialog(false)}>
               <Text style={styles.joinModalCancel}>{t('cancel')}</Text>

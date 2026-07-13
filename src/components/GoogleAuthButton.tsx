@@ -9,17 +9,28 @@ import {
   Platform,
   Alert,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../config/api';
+import {
+  GOOGLE_WEB_CLIENT_ID,
+  GOOGLE_ANDROID_CLIENT_ID,
+  GOOGLE_IOS_CLIENT_ID,
+} from '../config/auth';
 import { useI18n } from '../i18n/I18nContext';
 import { colors, spacing, radius, fontSize, shadow } from '../theme';
 
-const GOOGLE_CLIENT_ID = '827449082182-gv23mpvpgi7jfh4v62ju5m6vgsi7fnv0.apps.googleusercontent.com';
+// Native (Android/iOS) Google Sign-In. Not imported at all on web so the
+// native module is never touched there.
+let GoogleSignin: any = null;
+if (Platform.OS === 'android' || Platform.OS === 'ios') {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  GoogleSignin = require('@react-native-google-signin/google-signin').GoogleSignin;
+}
 
 interface GoogleAuthButtonProps {
-  onSuccess: (userData: any) => void;
+  // Called with the envelope returned by POST auth/google: { user, token, profileCompleted, ... }
+  onSuccess: (result: { user: any; token: string; profileCompleted: boolean }) => void;
   onError?: (error: string) => void;
-  navigation: any;
+  navigation?: any;
 }
 
 declare global {
@@ -28,28 +39,38 @@ declare global {
   }
 }
 
-export default function GoogleAuthButton({ onSuccess, onError, navigation }: GoogleAuthButtonProps) {
+const HIDDEN_BUTTON_CONTAINER_ID = 'google-id-hidden-button';
+
+export default function GoogleAuthButton({ onSuccess, onError }: GoogleAuthButtonProps) {
   const { t } = useI18n();
   const [isLoading, setIsLoading] = useState(false);
   const [gsiReady, setGsiReady] = useState(false);
-  const tokenClientRef = useRef<any>(null);
+  const configuredNativeRef = useRef(false);
 
   useEffect(() => {
     if (Platform.OS === 'web') {
       loadGoogleScript();
+    } else if (GoogleSignin && !configuredNativeRef.current) {
+      configuredNativeRef.current = true;
+      GoogleSignin.configure({
+        webClientId: GOOGLE_WEB_CLIENT_ID,
+        // iosClientId only matters on iOS; harmless to pass on Android.
+        iosClientId: GOOGLE_IOS_CLIENT_ID || undefined,
+      });
     }
   }, []);
 
   useEffect(() => {
-    if (Platform.OS === 'web' && gsiReady && !tokenClientRef.current) {
-      initTokenClient();
+    if (Platform.OS === 'web' && gsiReady) {
+      initIdClient();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gsiReady]);
 
   const loadGoogleScript = () => {
     const id = 'google-gsi-client';
     if (document.getElementById(id)) {
-      setGsiReady(!!window.google?.accounts?.oauth2);
+      setGsiReady(!!window.google?.accounts?.id);
       return;
     }
 
@@ -59,7 +80,7 @@ export default function GoogleAuthButton({ onSuccess, onError, navigation }: Goo
     script.async = true;
     script.defer = true;
     script.onload = () => {
-      setGsiReady(!!window.google?.accounts?.oauth2);
+      setGsiReady(!!window.google?.accounts?.id);
     };
     script.onerror = () => {
       console.error('Failed to load Google Identity Services script');
@@ -70,84 +91,141 @@ export default function GoogleAuthButton({ onSuccess, onError, navigation }: Goo
     document.head.appendChild(script);
   };
 
-  const initTokenClient = () => {
-    if (!window.google?.accounts?.oauth2) return;
+  // ID-token flow (replaces the old access-token flow): initialize GIS with a
+  // callback that receives a signed `credential` (the ID token), then forward
+  // taps on our styled button to a hidden, official Google button so the
+  // click counts as a real user gesture (required for the credential UI).
+  const initIdClient = () => {
+    if (!window.google?.accounts?.id) return;
 
-    tokenClientRef.current = window.google.accounts.oauth2.initTokenClient({
-      client_id: GOOGLE_CLIENT_ID,
-      scope: 'openid email profile',
-      callback: () => {},
-      error_callback: (err: any) => {
-        console.error('GIS error:', err);
-        setIsLoading(false);
-        const errorMsg = err?.error || 'unknown_error';
-        if (onError) {
-          onError(`Google login failed: ${errorMsg}`);
-        } else {
-          Alert.alert('Error', `Google login failed: ${errorMsg}`);
-        }
-      },
+    window.google.accounts.id.initialize({
+      client_id: GOOGLE_WEB_CLIENT_ID,
+      callback: handleCredentialResponse,
+      ux_mode: 'popup',
+      auto_select: false,
     });
+
+    let container = document.getElementById(HIDDEN_BUTTON_CONTAINER_ID);
+    if (!container) {
+      container = document.createElement('div');
+      container.id = HIDDEN_BUTTON_CONTAINER_ID;
+      container.style.position = 'fixed';
+      container.style.top = '-9999px';
+      container.style.left = '-9999px';
+      document.body.appendChild(container);
+    }
+    window.google.accounts.id.renderButton(container, { type: 'standard' });
   };
 
-  const handleGoogleLogin = async () => {
-    if (Platform.OS !== 'web') {
-      Alert.alert('Info', 'Google login is currently only available on web');
+  const handleCredentialResponse = async (response: any) => {
+    const idToken = response?.credential;
+    if (!idToken) {
+      setIsLoading(false);
+      const msg = 'No credential returned from Google';
+      onError ? onError(msg) : Alert.alert('Error', msg);
       return;
     }
+    await postIdTokenToBackend(idToken);
+  };
 
-    if (!gsiReady || !tokenClientRef.current) {
-      Alert.alert('Error', 'Google is not ready yet. Please try again in a moment.');
-      return;
-    }
+  const postIdTokenToBackend = async (idToken: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
 
-    setIsLoading(true);
+      const data = await response.json().catch(() => ({}));
 
-    tokenClientRef.current.callback = async (tokenResponse: any) => {
-      try {
-        const response = await fetch(`${API_BASE_URL}user/google-login`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            accessToken: tokenResponse.access_token,
-          }),
-        });
-
-        const data = await response.json();
-
-        if (response.ok && data.status === 'success') {
-          const userData = data.user || data.data;
-          if (userData) {
-            await AsyncStorage.setItem('userToken', data.token || '');
-            await AsyncStorage.setItem('user', JSON.stringify(userData));
-            setIsLoading(false);
-            onSuccess(userData);
-          } else {
-            throw new Error('Invalid response from server');
-          }
+      if (response.ok && data.status === 'success') {
+        const userData = data.user || data.data;
+        if (userData) {
+          onSuccess({
+            user: userData,
+            token: data.token || '',
+            profileCompleted: userData.profileCompleted !== false,
+          });
         } else {
-          throw new Error(data.message || 'Login failed');
+          throw new Error('Invalid response from server');
         }
-      } catch (error: any) {
-        console.error('Google login error:', error);
-        setIsLoading(false);
-        const errorMsg = error?.message || 'Login failed';
-        if (onError) {
-          onError(errorMsg);
-        } else {
-          Alert.alert('Error', errorMsg);
-        }
+      } else {
+        throw new Error(data.message || 'Google login failed');
       }
-    };
-
-    tokenClientRef.current.requestAccessToken({ prompt: 'consent' });
+    } catch (error: any) {
+      console.error('Google login error:', error);
+      const errorMsg = error?.message || 'Google login failed';
+      if (onError) {
+        onError(errorMsg);
+      } else {
+        Alert.alert('Error', errorMsg);
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  if (Platform.OS !== 'web') {
-    return null; // Google login only on web for now
-  }
+  const handleWebLogin = () => {
+    const container = document.getElementById(HIDDEN_BUTTON_CONTAINER_ID);
+    const hiddenButton = container?.querySelector('div[role="button"]') as HTMLElement | null;
+    setIsLoading(true);
+    if (hiddenButton) {
+      hiddenButton.click();
+      return;
+    }
+    // Fallback: One Tap prompt, in case the hidden official button hasn't
+    // rendered yet (e.g. GIS script still loading).
+    if (window.google?.accounts?.id) {
+      window.google.accounts.id.prompt();
+    } else {
+      setIsLoading(false);
+      Alert.alert('Error', 'Google is not ready yet. Please try again in a moment.');
+    }
+  };
+
+  const handleNativeLogin = async () => {
+    if (!GoogleSignin) {
+      Alert.alert('Error', 'Google Sign-In is not available on this platform.');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      const result = await GoogleSignin.signIn();
+      if (result?.type === 'cancelled') {
+        setIsLoading(false);
+        return;
+      }
+      const idToken = result?.data?.idToken;
+      if (!idToken) {
+        throw new Error('Google did not return an ID token');
+      }
+      await postIdTokenToBackend(idToken);
+    } catch (error: any) {
+      setIsLoading(false);
+      const errorMsg = error?.message || 'Google login failed';
+      if (onError) {
+        onError(errorMsg);
+      } else {
+        Alert.alert('Error', errorMsg);
+      }
+    }
+  };
+
+  const handleGoogleLogin = () => {
+    if (Platform.OS === 'web') {
+      handleWebLogin();
+    } else {
+      handleNativeLogin();
+    }
+  };
+
+  // NOTE: GOOGLE_ANDROID_CLIENT_ID isn't referenced directly here — the
+  // native Android OAuth client is resolved by Google Play Services from the
+  // app's package name + signing cert SHA-1 registered against that client
+  // in Google Cloud Console. Keeping the import/name around documents where
+  // it must be created; see src/config/auth.ts.
+  void GOOGLE_ANDROID_CLIENT_ID;
 
   return (
     <View style={styles.container}>
