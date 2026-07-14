@@ -31,7 +31,9 @@ export default function OtpSignIn({ onSuccess, onError }: OtpSignInProps) {
   const [error, setError] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
 
-  const RESEND_COOLDOWN_SECONDS = 30;
+  // Must match the backend's per-email resend cooldown (see authController.otpRequest) —
+  // a shorter client cooldown would let users retry before the server accepts it, guaranteeing a 429.
+  const RESEND_COOLDOWN_SECONDS = 60;
 
   // Counts the resend cooldown down to 0 once a code has been (re)sent.
   useEffect(() => {

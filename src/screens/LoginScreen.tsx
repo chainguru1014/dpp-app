@@ -116,9 +116,7 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
               </View>
             )}
 
-            <GoogleAuthButton onSuccess={handleAuthSuccess} onError={handleAuthError} navigation={navigation} />
-
-            <AppleAuthButton onSuccess={handleAuthSuccess} onError={handleAuthError} />
+            <OtpSignIn onSuccess={handleAuthSuccess} onError={handleAuthError} />
 
             <View style={styles.dividerRow}>
               <View style={styles.dividerLine} />
@@ -126,7 +124,9 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
               <View style={styles.dividerLine} />
             </View>
 
-            <OtpSignIn onSuccess={handleAuthSuccess} onError={handleAuthError} />
+            <GoogleAuthButton onSuccess={handleAuthSuccess} onError={handleAuthError} navigation={navigation} />
+
+            <AppleAuthButton onSuccess={handleAuthSuccess} onError={handleAuthError} />
           </View>
         </View>
       </KeyboardAvoidingView>
