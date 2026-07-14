@@ -42,9 +42,10 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
 
   const [form, setForm] = useState<any>({
     name: partialUser.name || '',
+    nickname: partialUser.nickname || '',
     email: partialUser.email || '',
     gender: partialUser.gender || '',
-    age: partialUser.age ? String(partialUser.age) : '',
+    birthYear: partialUser.birthYear ? String(partialUser.birthYear) : '',
     country: partialUser.country || '',
     firstName: partialUser.firstName || '',
     lastName: partialUser.lastName || '',
@@ -95,7 +96,10 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
   const validate = () => {
     const normalizedName = (form.name || '').trim();
     if (userType === 'client') {
-      if (!normalizedName || !form.gender || !form.age || !form.country) {
+      // GDPR data minimization: nickname/gender/birthYear/country only —
+      // never a real name, email, or phone number for consumer accounts.
+      const normalizedNickname = (form.nickname || '').trim();
+      if (!normalizedNickname || !form.gender || !/^\d{4}$/.test(form.birthYear || '') || !form.country) {
         Alert.alert(t('error'), t('fillProfileFieldsClient'));
         return false;
       }
@@ -121,15 +125,18 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
       const normalizedName = (form.name || '').trim();
 
       const payload: any = {
-        name: normalizedName,
         userType,
       };
 
       if (userType === 'client') {
+        // No `name` sent for consumer accounts — nickname is the only
+        // display identity, per the GDPR-safe avatar dataset.
+        payload.nickname = (form.nickname || '').trim();
         payload.gender = form.gender;
-        payload.age = Number(form.age);
+        payload.birthYear = Number(form.birthYear);
         payload.country = form.country;
       } else {
+        payload.name = normalizedName;
         payload.email = form.email;
         payload.firstName = form.firstName;
         payload.lastName = form.lastName;
@@ -216,10 +223,13 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
                 ))}
               </View>
 
-              <TextInput style={styles.input} placeholder={t('username')} placeholderTextColor={colors.placeholder} value={form.name} onChangeText={(v) => setField('name', v)} autoCapitalize="none" />
+              {userType === 'agent' && (
+                <TextInput style={styles.input} placeholder={t('username')} placeholderTextColor={colors.placeholder} value={form.name} onChangeText={(v) => setField('name', v)} autoCapitalize="none" />
+              )}
 
               {userType === 'client' ? (
                 <>
+                  <TextInput style={styles.input} placeholder={t('nickname')} placeholderTextColor={colors.placeholder} value={form.nickname} onChangeText={(v) => setField('nickname', v)} autoCapitalize="none" />
                   <View style={styles.genderContainer}>
                     {genderOptions.map((option) => (
                       <TouchableOpacity
@@ -241,7 +251,7 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
                       </TouchableOpacity>
                     ))}
                   </View>
-                  <TextInput style={styles.input} placeholder={t('age')} placeholderTextColor={colors.placeholder} value={form.age} onChangeText={(v) => setField('age', v)} keyboardType="numeric" />
+                  <TextInput style={styles.input} placeholder={t('birthYear')} placeholderTextColor={colors.placeholder} value={form.birthYear} onChangeText={(v) => setField('birthYear', v.replace(/[^0-9]/g, '').slice(0, 4))} keyboardType="numeric" maxLength={4} />
                   <TouchableOpacity style={styles.inputButton} onPress={() => setCountryModalVisible(true)}>
                     <Text style={form.country ? styles.inputButtonText : styles.inputButtonPlaceholder}>{form.country || t('selectCountry')}</Text>
                   </TouchableOpacity>

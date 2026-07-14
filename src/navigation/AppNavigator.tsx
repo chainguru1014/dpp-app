@@ -18,6 +18,8 @@ import FavoriteBrandsScreen from '../screens/FavoriteBrandsScreen';
 import PurchaseHistoryScreen from '../screens/PurchaseHistoryScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
+import StaffLoginScreen from '../screens/StaffLoginScreen';
+import EmployeeHomeScreen from '../screens/EmployeeHomeScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -143,12 +145,20 @@ export default function AppNavigator({ navigationRef }: { navigationRef: any }) 
   }
 
   return (
-    <Stack.Navigator 
+    <Stack.Navigator
       screenOptions={{ headerShown: false }}
-      initialRouteName={user ? 'Home' : 'Login'}
+      initialRouteName={user ? (user.actorKind === 'Employee' ? 'EmployeeHome' : 'Home') : 'Login'}
     >
       <Stack.Screen name="Login">
         {(props) => <LoginScreen {...props} onLogin={handleLogin} />}
+      </Stack.Screen>
+
+      <Stack.Screen name="StaffLogin">
+        {(props) => <StaffLoginScreen {...props} onLogin={handleLogin} />}
+      </Stack.Screen>
+
+      <Stack.Screen name="EmployeeHome">
+        {(props) => <EmployeeHomeScreen {...props} user={user} onLogout={handleLogout} />}
       </Stack.Screen>
 
       <Stack.Screen name="Register">

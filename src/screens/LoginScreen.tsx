@@ -9,6 +9,7 @@ import {
   Image,
   ImageBackground,
   Dimensions,
+  TouchableOpacity,
 } from 'react-native';
 
 const screenHeight = Dimensions.get('window').height;
@@ -127,6 +128,10 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
             <GoogleAuthButton onSuccess={handleAuthSuccess} onError={handleAuthError} navigation={navigation} />
 
             <AppleAuthButton onSuccess={handleAuthSuccess} onError={handleAuthError} />
+
+            <TouchableOpacity style={styles.staffLinkButton} onPress={() => navigation.navigate('StaffLogin')}>
+              <Text style={styles.staffLinkText}>Staff Login</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -237,5 +242,15 @@ const styles = StyleSheet.create({
     color: colors.danger,
     fontSize: 13,
     textAlign: 'left',
+  },
+  staffLinkButton: {
+    marginTop: spacing.lg,
+    alignItems: 'center',
+  },
+  staffLinkText: {
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: '400',
+    textDecorationLine: 'underline',
   },
 });
