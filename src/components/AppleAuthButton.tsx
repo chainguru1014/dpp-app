@@ -8,9 +8,25 @@ import {
   Platform,
   Alert,
 } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { API_BASE_URL } from '../config/api';
 import { APPLE_WEB_CLIENT_ID } from '../config/auth';
 import { colors, spacing, radius, fontSize, shadow } from '../theme';
+
+// Apple logomark as an inline SVG (react-native-svg, already a project
+// dependency) rather than a font icon or bundled asset — GoogleAuthButton
+// uses a static PNG for its "G", but no vector-icon font is actually linked
+// into the native iOS/Android builds here (no UIAppFonts entry, no Android
+// fonts.gradle hookup), so an SVG path sidesteps that entirely and renders
+// identically on iOS, Android, and web. Path data: Simple Icons (CC0).
+const AppleLogo = ({ size = 18, color = colors.white }: { size?: number; color?: string }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24">
+    <Path
+      fill={color}
+      d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.06 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zm3.325-3.014c.836-1.014 1.402-2.428 1.246-3.831-1.207.052-2.663.805-3.532 1.818-.78.896-1.454 2.336-1.273 3.703 1.336.104 2.702-.676 3.559-1.69z"
+    />
+  </Svg>
+);
 
 // NOTE: "Continue with Apple" is not (yet) part of src/i18n/translations.ts
 // (a large, strictly-typed 5-locale table). Rather than hand-translate a new
@@ -176,7 +192,12 @@ export default function AppleAuthButton({ onSuccess, onError }: AppleAuthButtonP
         {isLoading ? (
           <ActivityIndicator color={colors.white} />
         ) : (
-          <Text style={styles.buttonText}>Continue with Apple</Text>
+          <>
+            <View style={styles.appleIcon}>
+              <AppleLogo />
+            </View>
+            <Text style={styles.buttonText}>Continue with Apple</Text>
+          </>
         )}
       </TouchableOpacity>
     </View>
@@ -187,6 +208,9 @@ const styles = StyleSheet.create({
   container: {
     width: '100%',
     marginVertical: spacing.sm,
+  },
+  appleIcon: {
+    marginRight: spacing.md,
   },
   button: {
     backgroundColor: '#000000',
