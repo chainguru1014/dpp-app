@@ -8,16 +8,24 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Image,
+  ImageBackground,
+  Dimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../config/api';
-import { colors, spacing, radius, fontSize, shadow } from '../theme';
+import { colors, spacing, radius, shadow } from '../theme';
+import AudienceToggle from '../components/AudienceToggle';
 
-// Deliberately separate screen and API surface (/employee-auth/*, not /auth/*)
-// from the consumer login flow — the corporate-SSO route never shares a
-// backend collection or endpoint with the consumer route. See
+const screenHeight = Dimensions.get('window').height;
+
+// Same visual shell as LoginScreen.tsx (background image, title, logo, card
+// frame) — deliberately separate screen and API surface (/employee-auth/*,
+// not /auth/*) from the consumer login flow, but not deliberately
+// different-looking; only the card's inner content (corporate email/OTP
+// instead of nickname/social buttons) differs. See
 // backend/controllers/employeeAuthController.ts: the raw email typed below
-// is used only to send the OTP mail and to check the domain allowlist; it is
+// is used only to send the OTP mail and check the domain allowlist; it is
 // never written to the database, only a one-way hash of it.
 export default function StaffLoginScreen({ navigation, onLogin }: any) {
   const [stage, setStage] = useState<'email' | 'code'>('email');
@@ -107,10 +115,28 @@ export default function StaffLoginScreen({ navigation, onLogin }: any) {
 
   return (
     <View style={styles.container}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.kav}>
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        <ImageBackground source={require('../assets/bg-login.jpg')} style={styles.bgImage} resizeMode="cover">
+          <View style={styles.bgOverlay} />
+        </ImageBackground>
+        <View style={styles.bgBottom} />
+      </View>
+
+      <Text style={styles.pageTitle}>Digital Product Passport</Text>
+
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} style={styles.kav}>
         <View style={styles.centerWrap}>
           <View style={styles.card}>
-            <Text style={styles.title}>Staff Login</Text>
+            <View style={styles.logoContainer}>
+              <Image source={require('../assets/yometel-logo-trans.png')} style={styles.logoImage} resizeMode="contain" />
+            </View>
+
+            <AudienceToggle
+              value="staff"
+              onSelectConsumer={() => navigation.replace('Login')}
+              onSelectStaff={() => {}}
+            />
+
             <Text style={styles.subtitle}>Sign in with your corporate email</Text>
 
             {stage === 'email' ? (
@@ -158,10 +184,6 @@ export default function StaffLoginScreen({ navigation, onLogin }: any) {
                 <Text style={styles.errorText}>{error}</Text>
               </View>
             )}
-
-            <TouchableOpacity style={styles.linkButton} onPress={() => navigation.replace('Login')}>
-              <Text style={styles.linkText}>Back to consumer sign-in</Text>
-            </TouchableOpacity>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -169,18 +191,42 @@ export default function StaffLoginScreen({ navigation, onLogin }: any) {
   );
 }
 
+const webFill = Platform.OS === 'web' ? ({ minHeight: '100vh' } as any) : {};
+const bgImageHeight: any = Platform.OS === 'web' ? '55vh' : screenHeight * 0.55;
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg },
-  kav: { flex: 1 },
-  centerWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
+  container: { flex: 1, backgroundColor: '#e8ecf0', ...webFill },
+  bgImage: { height: bgImageHeight },
+  bgOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.28)' },
+  bgBottom: { flex: 1, backgroundColor: '#e8ecf0' },
+  kav: { ...StyleSheet.absoluteFillObject },
+  pageTitle: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    color: '#ffffff',
+    fontSize: 22,
+    fontWeight: '600',
+    textAlign: 'center',
+    paddingTop: 56,
+    paddingHorizontal: spacing.xl,
+    letterSpacing: 0.5,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+    zIndex: 10,
+  },
+  centerWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: spacing.xl, paddingBottom: spacing.xxxl, width: '100%' },
   card: { backgroundColor: '#f3f4f6', borderRadius: radius.xl, padding: spacing.xxxl, width: '100%', maxWidth: 380, ...shadow(3) },
-  title: { fontSize: 22, fontWeight: '600', color: colors.heading, textAlign: 'center', marginBottom: spacing.sm },
-  subtitle: { fontSize: fontSize.sm, color: colors.muted, textAlign: 'center', marginBottom: spacing.lg },
-  helperText: { fontSize: fontSize.sm, color: colors.muted, marginBottom: spacing.sm, textAlign: 'center' },
+  logoContainer: { alignItems: 'center', marginBottom: spacing.lg },
+  logoImage: { width: 160, height: 48 },
+  subtitle: { fontSize: 15, fontWeight: '400', color: colors.muted, textAlign: 'center', marginBottom: spacing.xl },
+  helperText: { fontSize: 13, color: colors.muted, marginBottom: spacing.sm, textAlign: 'center' },
   input: { backgroundColor: colors.white, borderRadius: radius.pill, paddingVertical: 13, paddingHorizontal: 18, marginBottom: spacing.md, fontSize: 16, color: colors.text, borderWidth: 1, borderColor: colors.borderStrong },
   button: { backgroundColor: colors.primary, borderRadius: radius.pill, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', ...shadow(1) },
   buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: colors.white, fontSize: fontSize.lg, fontWeight: '400' },
+  buttonText: { color: colors.white, fontSize: 16, fontWeight: '400' },
   linkButton: { marginTop: spacing.md, alignItems: 'center' },
   linkText: { color: colors.navy, fontSize: 14, fontWeight: '400' },
   linkTextDisabled: { color: colors.muted },

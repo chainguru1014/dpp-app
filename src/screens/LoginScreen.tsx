@@ -9,7 +9,6 @@ import {
   Image,
   ImageBackground,
   Dimensions,
-  TouchableOpacity,
 } from 'react-native';
 
 const screenHeight = Dimensions.get('window').height;
@@ -17,6 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import GoogleAuthButton from '../components/GoogleAuthButton';
 import AppleAuthButton from '../components/AppleAuthButton';
 import OtpSignIn from '../components/OtpSignIn';
+import AudienceToggle from '../components/AudienceToggle';
 import { useI18n } from '../i18n/I18nContext';
 import { colors, spacing, radius, shadow } from '../theme';
 
@@ -109,6 +109,12 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
               />
             </View>
 
+            <AudienceToggle
+              value="consumer"
+              onSelectConsumer={() => {}}
+              onSelectStaff={() => navigation.navigate('StaffLogin')}
+            />
+
             <Text style={styles.subtitle}>Sign in to continue</Text>
 
             {!!apiError && (
@@ -128,10 +134,6 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
             <GoogleAuthButton onSuccess={handleAuthSuccess} onError={handleAuthError} navigation={navigation} />
 
             <AppleAuthButton onSuccess={handleAuthSuccess} onError={handleAuthError} />
-
-            <TouchableOpacity style={styles.staffLinkButton} onPress={() => navigation.navigate('StaffLogin')}>
-              <Text style={styles.staffLinkText}>Staff Login</Text>
-            </TouchableOpacity>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -242,15 +244,5 @@ const styles = StyleSheet.create({
     color: colors.danger,
     fontSize: 13,
     textAlign: 'left',
-  },
-  staffLinkButton: {
-    marginTop: spacing.lg,
-    alignItems: 'center',
-  },
-  staffLinkText: {
-    color: colors.muted,
-    fontSize: 13,
-    fontWeight: '400',
-    textDecorationLine: 'underline',
   },
 });
