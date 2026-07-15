@@ -21,7 +21,7 @@ import AudienceToggle from '../components/AudienceToggle';
 import { useI18n } from '../i18n/I18nContext';
 import { colors, spacing, radius, shadow } from '../theme';
 
-type AuthResult = { user: any; token: string; profileCompleted: boolean };
+type AuthResult = { user: any; token: string; profileCompleted: boolean; mode?: 'signin' | 'signup' };
 
 export default function LoginScreen({ navigation, onLogin, route }: any) {
   const { t } = useI18n();
@@ -56,10 +56,14 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
   // the profile isn't complete yet (new account, or an existing account
   // that never finished onboarding), stash the token/partial user and route
   // to the profile-completion screen (the repurposed RegisterScreen)
-  // instead of Home.
-  const handleAuthSuccess = async ({ user, token, profileCompleted }: AuthResult) => {
+  // instead of Home. Exception: OTP sign-in (mode === 'signin') never
+  // requires profile completion — auth/otp/request only succeeds for an
+  // email that's already registered, so an incomplete profile there means an
+  // old abandoned signup, not someone who needs onboarding right now.
+  // Google/Apple and OTP signup are unaffected and keep the redirect.
+  const handleAuthSuccess = async ({ user, token, profileCompleted, mode }: AuthResult) => {
     setApiError('');
-    if (!profileCompleted) {
+    if (!profileCompleted && mode !== 'signin') {
       const tagged = { ...user, actorKind: 'User' };
       await AsyncStorage.setItem('userToken', token || '');
       await AsyncStorage.setItem('user', JSON.stringify(tagged));
