@@ -33,6 +33,16 @@ export const GOOGLE_ANDROID_CLIENT_ID = '';
 // reversed-client-id URL scheme in ios/QRAuthApp/Info.plist to match.
 export const GOOGLE_IOS_CLIENT_ID = '';
 
-// Sign In with Apple has no client-id concept on the client side — the
+// Sign In with Apple has no client-id concept on the NATIVE client side — the
 // entitlement + bundle id (com.qrauthapp) registered in the Apple Developer
-// portal is what ties native requests to the app. Nothing to configure here.
+// portal is what ties native requests to the app. Nothing to configure here
+// for native iOS.
+//
+// The WEB build (react-native-web, served as the app's web SPA) is different:
+// Apple's web JS SDK needs a separate "Services ID" (Certificates, Identifiers
+// & Profiles -> Identifiers -> Services IDs), registered against the app's web
+// domain (e.g. dpp.innosynch.com) with a Return URL. Mirrors
+// frontend/src/features/auth/useAppleAuth.js's same placeholder pattern —
+// `signIn()` on web will simply fail with an Apple-side error until this is
+// replaced with a real Services ID.
+export const APPLE_WEB_CLIENT_ID = 'com.yometel.dpp.web-PLACEHOLDER';

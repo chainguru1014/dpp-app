@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   TouchableOpacity,
@@ -9,6 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { API_BASE_URL } from '../config/api';
+import { APPLE_WEB_CLIENT_ID } from '../config/auth';
 import { colors, spacing, radius, fontSize, shadow } from '../theme';
 
 // NOTE: "Continue with Apple" is not (yet) part of src/i18n/translations.ts
@@ -17,14 +18,19 @@ import { colors, spacing, radius, fontSize, shadow } from '../theme';
 // plain literal for now — add a proper `continueWithApple` translation key
 // alongside the rest of the auth copy when that's done as its own pass.
 
-// Sign In with Apple is only meaningful (and only allowed by Apple's Human
-// Interface Guidelines to be shown) on iOS. There is no Android/web
-// equivalent wired up here — the component renders nothing anywhere else.
+// Sign In with Apple is only meaningful on iOS (native module) and web (JS
+// SDK) — Apple has never offered an Android implementation, and Apple's own
+// Human Interface Guidelines don't permit showing the button there, so this
+// component renders nothing on Android.
 let appleAuth: any = null;
 if (Platform.OS === 'ios') {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   appleAuth = require('@invertase/react-native-apple-authentication').appleAuth;
 }
+
+const APPLE_JS_SDK_SRC =
+  'https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js';
+const APPLE_JS_SDK_SCRIPT_ID = 'appleid-auth-client';
 
 interface AppleAuthButtonProps {
   // Called with the envelope returned by POST auth/apple: { user, token, profileCompleted, ... }
@@ -34,60 +40,115 @@ interface AppleAuthButtonProps {
 
 export default function AppleAuthButton({ onSuccess, onError }: AppleAuthButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const webReadyRef = useRef(false);
 
-  if (Platform.OS !== 'ios' || !appleAuth) {
+  // Mirrors frontend/src/features/auth/useAppleAuth.js — loads Apple's "Sign
+  // in with Apple JS" once and initializes it against APPLE_WEB_CLIENT_ID.
+  // Inert (signIn() will fail with an Apple-side error) until that's replaced
+  // with a real Services ID registered for this app's web domain.
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+
+    const init = () => {
+      if (!(window as any).AppleID?.auth || webReadyRef.current) return;
+      try {
+        (window as any).AppleID.auth.init({
+          clientId: APPLE_WEB_CLIENT_ID,
+          scope: 'name email',
+          redirectURI: window.location.origin,
+          usePopup: true,
+        });
+        webReadyRef.current = true;
+      } catch (err) {
+        console.error('Sign in with Apple init failed (check APPLE_WEB_CLIENT_ID):', err);
+      }
+    };
+
+    if (document.getElementById(APPLE_JS_SDK_SCRIPT_ID)) {
+      init();
+      return;
+    }
+    const script = document.createElement('script');
+    script.id = APPLE_JS_SDK_SCRIPT_ID;
+    script.src = APPLE_JS_SDK_SRC;
+    script.async = true;
+    script.defer = true;
+    script.onload = init;
+    script.onerror = () => console.error('Failed to load Sign in with Apple JS');
+    document.head.appendChild(script);
+  }, []);
+
+  if (Platform.OS === 'android' || (Platform.OS === 'ios' && !appleAuth)) {
     return null;
   }
+
+  const postIdentityTokenToBackend = async (identityToken: string, fullName?: { firstName?: string; lastName?: string }) => {
+    const body: any = { identityToken };
+    if (fullName && (fullName.firstName || fullName.lastName)) {
+      body.user = { firstName: fullName.firstName || '', lastName: fullName.lastName || '' };
+    }
+
+    const apiResponse = await fetch(`${API_BASE_URL}auth/apple`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    const data = await apiResponse.json().catch(() => ({}));
+    if (apiResponse.ok && data.status === 'success') {
+      const userData = data.user || data.data;
+      if (!userData) {
+        throw new Error('Invalid response from server');
+      }
+      onSuccess({
+        user: userData,
+        token: data.token || '',
+        profileCompleted: userData.profileCompleted !== false,
+      });
+    } else {
+      throw new Error(data.message || 'Apple login failed');
+    }
+  };
+
+  const handleAppleLoginNative = async () => {
+    const response = await appleAuth.performRequest({
+      requestedOperation: appleAuth.Operation.LOGIN,
+      requestedScopes: [appleAuth.Scope.FULL_NAME, appleAuth.Scope.EMAIL],
+    });
+    const { identityToken, fullName } = response;
+    if (!identityToken) {
+      throw new Error('Apple did not return an identity token');
+    }
+    // fullName is only ever populated on the FIRST authorization for a given
+    // Apple ID + app — the backend should persist it then, since subsequent
+    // sign-ins will not include it again.
+    await postIdentityTokenToBackend(identityToken, fullName ? { firstName: fullName.givenName, lastName: fullName.familyName } : undefined);
+  };
+
+  const handleAppleLoginWeb = async () => {
+    if (!(window as any).AppleID?.auth) {
+      throw new Error('Apple sign-in is not ready yet. Please try again in a moment.');
+    }
+    const result = await (window as any).AppleID.auth.signIn();
+    const identityToken = result?.authorization?.id_token;
+    if (!identityToken) {
+      throw new Error('Apple did not return an identity token');
+    }
+    const rawName = result?.user?.name;
+    await postIdentityTokenToBackend(identityToken, rawName ? { firstName: rawName.firstName, lastName: rawName.lastName } : undefined);
+  };
 
   const handleAppleLogin = async () => {
     setIsLoading(true);
     try {
-      const response = await appleAuth.performRequest({
-        requestedOperation: appleAuth.Operation.LOGIN,
-        requestedScopes: [appleAuth.Scope.FULL_NAME, appleAuth.Scope.EMAIL],
-      });
-
-      const { identityToken, fullName } = response;
-      if (!identityToken) {
-        throw new Error('Apple did not return an identity token');
-      }
-
-      // fullName is only ever populated on the FIRST authorization for a
-      // given Apple ID + app — the backend should persist it then, since
-      // subsequent sign-ins will not include it again.
-      const body: any = { identityToken };
-      if (fullName && (fullName.givenName || fullName.familyName)) {
-        body.user = {
-          firstName: fullName.givenName || '',
-          lastName: fullName.familyName || '',
-        };
-      }
-
-      const apiResponse = await fetch(`${API_BASE_URL}auth/apple`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify(body),
-      });
-
-      const data = await apiResponse.json().catch(() => ({}));
-
-      if (apiResponse.ok && data.status === 'success') {
-        const userData = data.user || data.data;
-        if (userData) {
-          onSuccess({
-            user: userData,
-            token: data.token || '',
-            profileCompleted: userData.profileCompleted !== false,
-          });
-        } else {
-          throw new Error('Invalid response from server');
-        }
+      if (Platform.OS === 'web') {
+        await handleAppleLoginWeb();
       } else {
-        throw new Error(data.message || 'Apple login failed');
+        await handleAppleLoginNative();
       }
     } catch (error: any) {
       // appleAuth.Error.CANCELED / code '1001' -> user simply dismissed the
-      // sheet; don't surface that as a hard error.
+      // sheet (native); the web popup rejects similarly on user cancel.
       const code = error?.code;
       if (code === appleAuth?.Error?.CANCELED || code === '1001') {
         setIsLoading(false);

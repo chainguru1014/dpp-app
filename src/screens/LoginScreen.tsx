@@ -9,6 +9,7 @@ import {
   Image,
   ImageBackground,
   Dimensions,
+  TouchableOpacity,
 } from 'react-native';
 
 const screenHeight = Dimensions.get('window').height;
@@ -25,6 +26,7 @@ type AuthResult = { user: any; token: string; profileCompleted: boolean };
 export default function LoginScreen({ navigation, onLogin, route }: any) {
   const { t } = useI18n();
   const [apiError, setApiError] = useState('');
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
 
   const goAfterAuth = () => {
     const redirectTo = route?.params?.redirectTo;
@@ -121,7 +123,7 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
               </View>
             )}
 
-            <OtpSignIn onSuccess={handleAuthSuccess} onError={handleAuthError} />
+            <OtpSignIn onSuccess={handleAuthSuccess} onError={handleAuthError} mode={authMode} />
 
             <Text style={styles.subtitle}>Sign in to continue</Text>
 
@@ -134,6 +136,21 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
             <GoogleAuthButton onSuccess={handleAuthSuccess} onError={handleAuthError} navigation={navigation} />
 
             <AppleAuthButton onSuccess={handleAuthSuccess} onError={handleAuthError} />
+
+            <View style={styles.modeTrack}>
+              <TouchableOpacity
+                style={[styles.modeOption, authMode === 'signin' && styles.modeOptionActive]}
+                onPress={() => setAuthMode('signin')}
+              >
+                <Text style={[styles.modeOptionText, authMode === 'signin' && styles.modeOptionTextActive]}>Sign In</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modeOption, authMode === 'signup' && styles.modeOptionActive]}
+                onPress={() => setAuthMode('signup')}
+              >
+                <Text style={[styles.modeOptionText, authMode === 'signup' && styles.modeOptionTextActive]}>Sign Up</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -244,5 +261,31 @@ const styles = StyleSheet.create({
     color: colors.danger,
     fontSize: 13,
     textAlign: 'left',
+  },
+  modeTrack: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(0,0,0,0.06)',
+    borderRadius: radius.pill,
+    padding: 4,
+    marginTop: spacing.lg,
+  },
+  modeOption: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+  },
+  modeOptionActive: {
+    backgroundColor: colors.white,
+    ...shadow(1),
+  },
+  modeOptionText: {
+    fontSize: 13,
+    fontWeight: '400',
+    color: colors.muted,
+  },
+  modeOptionTextActive: {
+    fontWeight: '600',
+    color: colors.primary,
   },
 });

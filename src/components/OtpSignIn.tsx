@@ -15,6 +15,9 @@ interface OtpSignInProps {
   // Called with the envelope returned by POST auth/otp/verify: { user, token, profileCompleted, ... }
   onSuccess: (result: { user: any; token: string; profileCompleted: boolean }) => void;
   onError?: (error: string) => void;
+  // Controlled by the parent (LoginScreen) so the Sign In/Sign Up toggle can
+  // be rendered at the bottom of the card instead of inline here.
+  mode: 'signin' | 'signup';
 }
 
 // NOTE: this component's copy is plain English literals rather than the
@@ -22,8 +25,7 @@ interface OtpSignInProps {
 // why (translations.ts is a large, strictly-typed 5-locale table; adding a
 // dozen-plus new OTP-flow strings to it is left as a follow-up pass rather
 // than a side effect of the passwordless-auth migration).
-export default function OtpSignIn({ onSuccess, onError }: OtpSignInProps) {
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+export default function OtpSignIn({ onSuccess, onError, mode }: OtpSignInProps) {
   const [stage, setStage] = useState<'email' | 'code'>('email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -42,6 +44,11 @@ export default function OtpSignIn({ onSuccess, onError }: OtpSignInProps) {
     const timer = setInterval(() => setResendCooldown((s) => Math.max(0, s - 1)), 1000);
     return () => clearInterval(timer);
   }, [resendCooldown]);
+
+  // Clear any stale error when the parent flips Sign In <-> Sign Up.
+  useEffect(() => {
+    setError('');
+  }, [mode]);
 
   const reportError = (msg: string) => {
     setError(msg);
@@ -129,31 +136,8 @@ export default function OtpSignIn({ onSuccess, onError }: OtpSignInProps) {
     setError('');
   };
 
-  const handleSelectMode = (nextMode: 'signin' | 'signup') => {
-    if (mode === nextMode) return;
-    setMode(nextMode);
-    setError('');
-  };
-
   return (
     <View style={styles.container}>
-      {stage === 'email' && (
-        <View style={styles.modeTrack}>
-          <TouchableOpacity
-            style={[styles.modeOption, mode === 'signin' && styles.modeOptionActive]}
-            onPress={() => handleSelectMode('signin')}
-          >
-            <Text style={[styles.modeOptionText, mode === 'signin' && styles.modeOptionTextActive]}>Sign In</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.modeOption, mode === 'signup' && styles.modeOptionActive]}
-            onPress={() => handleSelectMode('signup')}
-          >
-            <Text style={[styles.modeOptionText, mode === 'signup' && styles.modeOptionTextActive]}>Sign Up</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
       <Text style={styles.sectionLabel}>
         {mode === 'signup' ? 'Create your account with an email code' : 'Sign in with email code'}
       </Text>
@@ -238,32 +222,6 @@ const styles = StyleSheet.create({
   container: {
     width: '100%',
     marginVertical: spacing.sm,
-  },
-  modeTrack: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(0,0,0,0.06)',
-    borderRadius: radius.pill,
-    padding: 4,
-    marginBottom: spacing.md,
-  },
-  modeOption: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-  },
-  modeOptionActive: {
-    backgroundColor: colors.white,
-    ...shadow(1),
-  },
-  modeOptionText: {
-    fontSize: 13,
-    fontWeight: '400',
-    color: colors.muted,
-  },
-  modeOptionTextActive: {
-    fontWeight: '600',
-    color: colors.primary,
   },
   sectionLabel: {
     fontSize: fontSize.sm,
