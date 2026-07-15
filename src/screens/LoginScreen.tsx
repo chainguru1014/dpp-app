@@ -115,8 +115,6 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
               onSelectStaff={() => navigation.navigate('StaffLogin')}
             />
 
-            <Text style={styles.subtitle}>Sign in to continue</Text>
-
             {!!apiError && (
               <View style={styles.apiErrorBox}>
                 <Text style={styles.apiErrorText}>{apiError}</Text>
@@ -124,6 +122,8 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
             )}
 
             <OtpSignIn onSuccess={handleAuthSuccess} onError={handleAuthError} />
+
+            <Text style={styles.subtitle}>Sign in to continue</Text>
 
             <View style={styles.dividerRow}>
               <View style={styles.dividerLine} />
