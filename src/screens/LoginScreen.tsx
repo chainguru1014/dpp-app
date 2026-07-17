@@ -17,14 +17,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import GoogleAuthButton from '../components/GoogleAuthButton';
 import AppleAuthButton from '../components/AppleAuthButton';
 import OtpSignIn from '../components/OtpSignIn';
-import AudienceToggle from '../components/AudienceToggle';
-import { useI18n } from '../i18n/I18nContext';
 import { colors, spacing, radius, shadow } from '../theme';
 
 type AuthResult = { user: any; token: string; profileCompleted: boolean; mode?: 'signin' | 'signup' };
 
 export default function LoginScreen({ navigation, onLogin, route }: any) {
-  const { t } = useI18n();
   const [apiError, setApiError] = useState('');
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
 
@@ -115,12 +112,6 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
               />
             </View>
 
-            <AudienceToggle
-              value="consumer"
-              onSelectConsumer={() => {}}
-              onSelectStaff={() => navigation.navigate('StaffLogin')}
-            />
-
             {!!apiError && (
               <View style={styles.apiErrorBox}>
                 <Text style={styles.apiErrorText}>{apiError}</Text>
@@ -129,32 +120,19 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
 
             <OtpSignIn onSuccess={handleAuthSuccess} onError={handleAuthError} mode={authMode} />
 
-            <Text style={styles.subtitle}>Sign in to continue</Text>
-
-            <View style={styles.dividerRow}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or</Text>
-              <View style={styles.dividerLine} />
+            <View style={styles.socialRow}>
+              <GoogleAuthButton onSuccess={handleAuthSuccess} onError={handleAuthError} navigation={navigation} />
+              <AppleAuthButton onSuccess={handleAuthSuccess} onError={handleAuthError} />
             </View>
 
-            <GoogleAuthButton onSuccess={handleAuthSuccess} onError={handleAuthError} navigation={navigation} />
-
-            <AppleAuthButton onSuccess={handleAuthSuccess} onError={handleAuthError} />
-
-            <View style={styles.modeTrack}>
-              <TouchableOpacity
-                style={[styles.modeOption, authMode === 'signin' && styles.modeOptionActive]}
-                onPress={() => setAuthMode('signin')}
-              >
-                <Text style={[styles.modeOptionText, authMode === 'signin' && styles.modeOptionTextActive]}>Sign In</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modeOption, authMode === 'signup' && styles.modeOptionActive]}
-                onPress={() => setAuthMode('signup')}
-              >
-                <Text style={[styles.modeOptionText, authMode === 'signup' && styles.modeOptionTextActive]}>Sign Up</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={styles.authModeLink}
+              onPress={() => setAuthMode(authMode === 'signin' ? 'signup' : 'signin')}
+            >
+              <Text style={styles.authModeLinkText}>
+                {authMode === 'signin' ? "Don't have an account? Sign Up" : 'Already have an account? Sign In'}
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -226,33 +204,11 @@ const styles = StyleSheet.create({
     width: 160,
     height: 48,
   },
-  subtitle: {
-    fontSize: 15,
-    fontWeight: '400',
-    color: colors.muted,
-    textAlign: 'center',
-    marginBottom: spacing.xl,
-  },
   title: {
     fontSize: 24,
     fontWeight: '400',
     color: colors.heading,
     marginBottom: spacing.xl,
-  },
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: spacing.md,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: colors.borderStrong,
-  },
-  dividerText: {
-    color: colors.muted,
-    fontSize: 13,
-    marginHorizontal: spacing.md,
   },
   apiErrorBox: {
     backgroundColor: colors.dangerSoft,
@@ -266,30 +222,18 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: 'left',
   },
-  modeTrack: {
+  socialRow: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(0,0,0,0.06)',
-    borderRadius: radius.pill,
-    padding: 4,
-    marginTop: spacing.lg,
+    gap: spacing.sm,
+    width: '100%',
   },
-  modeOption: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: radius.pill,
+  authModeLink: {
+    marginTop: spacing.md,
     alignItems: 'center',
   },
-  modeOptionActive: {
-    backgroundColor: colors.white,
-    ...shadow(1),
-  },
-  modeOptionText: {
-    fontSize: 13,
+  authModeLinkText: {
+    fontSize: 14,
     fontWeight: '400',
-    color: colors.muted,
-  },
-  modeOptionTextActive: {
-    fontWeight: '600',
     color: colors.primary,
   },
 });

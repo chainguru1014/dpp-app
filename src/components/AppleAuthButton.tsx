@@ -19,7 +19,7 @@ import { colors, spacing, radius, fontSize, shadow } from '../theme';
 // into the native iOS/Android builds here (no UIAppFonts entry, no Android
 // fonts.gradle hookup), so an SVG path sidesteps that entirely and renders
 // identically on iOS, Android, and web. Path data: Simple Icons (CC0).
-const AppleLogo = ({ size = 18, color = colors.white }: { size?: number; color?: string }) => (
+const AppleLogo = ({ size = 18, color = '#000000' }: { size?: number; color?: string }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24">
     <Path
       fill={color}
@@ -190,13 +190,13 @@ export default function AppleAuthButton({ onSuccess, onError }: AppleAuthButtonP
         disabled={isLoading}
       >
         {isLoading ? (
-          <ActivityIndicator color={colors.white} />
+          <ActivityIndicator color={colors.primary} />
         ) : (
           <>
             <View style={styles.appleIcon}>
               <AppleLogo />
             </View>
-            <Text style={styles.buttonText}>Continue with Apple</Text>
+            <Text style={styles.buttonText}>Apple</Text>
           </>
         )}
       </TouchableOpacity>
@@ -206,17 +206,19 @@ export default function AppleAuthButton({ onSuccess, onError }: AppleAuthButtonP
 
 const styles = StyleSheet.create({
   container: {
-    width: '100%',
+    flex: 1,
     marginVertical: spacing.sm,
   },
   appleIcon: {
-    marginRight: spacing.md,
+    marginRight: spacing.sm,
   },
   button: {
-    backgroundColor: '#000000',
+    backgroundColor: colors.white,
     borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
     paddingVertical: 14,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
@@ -226,7 +228,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   buttonText: {
-    color: colors.white,
+    color: colors.primary,
     fontSize: fontSize.lg,
     fontWeight: '400',
   },

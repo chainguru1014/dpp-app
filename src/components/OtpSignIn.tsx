@@ -141,10 +141,6 @@ export default function OtpSignIn({ onSuccess, onError, mode }: OtpSignInProps) 
 
   return (
     <View style={styles.container}>
-      <Text style={styles.sectionLabel}>
-        {mode === 'signup' ? 'Create your account with an email code' : 'Sign in with email code'}
-      </Text>
-
       {stage === 'email' ? (
         <>
           <TextInput
@@ -225,12 +221,6 @@ const styles = StyleSheet.create({
   container: {
     width: '100%',
     marginVertical: spacing.sm,
-  },
-  sectionLabel: {
-    fontSize: fontSize.sm,
-    color: colors.muted,
-    textAlign: 'center',
-    marginBottom: spacing.sm,
   },
   helperText: {
     fontSize: fontSize.sm,

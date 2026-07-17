@@ -15,7 +15,6 @@ import {
   GOOGLE_ANDROID_CLIENT_ID,
   GOOGLE_IOS_CLIENT_ID,
 } from '../config/auth';
-import { useI18n } from '../i18n/I18nContext';
 import { colors, spacing, radius, fontSize, shadow } from '../theme';
 
 // Native (Android/iOS) Google Sign-In. Not imported at all on web so the
@@ -42,7 +41,6 @@ declare global {
 const HIDDEN_BUTTON_CONTAINER_ID = 'google-id-hidden-button';
 
 export default function GoogleAuthButton({ onSuccess, onError }: GoogleAuthButtonProps) {
-  const { t } = useI18n();
   const [isLoading, setIsLoading] = useState(false);
   const [gsiReady, setGsiReady] = useState(false);
   const configuredNativeRef = useRef(false);
@@ -243,7 +241,7 @@ export default function GoogleAuthButton({ onSuccess, onError }: GoogleAuthButto
               style={styles.googleIcon}
               resizeMode="contain"
             />
-            <Text style={styles.buttonText}>{t('continueWithGoogle')}</Text>
+            <Text style={styles.buttonText}>Google</Text>
           </>
         )}
       </TouchableOpacity>
@@ -253,7 +251,7 @@ export default function GoogleAuthButton({ onSuccess, onError }: GoogleAuthButto
 
 const styles = StyleSheet.create({
   container: {
-    width: '100%',
+    flex: 1,
     marginVertical: spacing.sm,
   },
   button: {
@@ -262,7 +260,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     paddingVertical: 14,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
@@ -279,6 +277,6 @@ const styles = StyleSheet.create({
   googleIcon: {
     width: 20,
     height: 20,
-    marginRight: spacing.md,
+    marginRight: spacing.sm,
   },
 });
