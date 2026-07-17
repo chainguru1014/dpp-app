@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
+import AiConciergeConsentScreen from '../screens/AiConciergeConsentScreen';
 import HomeScreen from '../screens/HomeScreen';
 import ShopNowScreen from '../screens/ShopNowScreen';
 import ScannerScreen from '../screens/ScannerScreen';
@@ -147,7 +148,15 @@ export default function AppNavigator({ navigationRef }: { navigationRef: any }) 
   return (
     <Stack.Navigator
       screenOptions={{ headerShown: false }}
-      initialRouteName={user ? (user.actorKind === 'Employee' ? 'EmployeeHome' : 'Home') : 'Login'}
+      initialRouteName={
+        !user
+          ? 'Login'
+          : user.actorKind === 'Employee'
+          ? 'EmployeeHome'
+          : !user.aiConciergeConsentAt
+          ? 'AiConciergeConsent'
+          : 'Home'
+      }
     >
       <Stack.Screen name="Login">
         {(props) => <LoginScreen {...props} onLogin={handleLogin} />}
@@ -163,6 +172,10 @@ export default function AppNavigator({ navigationRef }: { navigationRef: any }) 
 
       <Stack.Screen name="Register">
         {(props) => <RegisterScreen {...props} onLogin={handleLogin} />}
+      </Stack.Screen>
+
+      <Stack.Screen name="AiConciergeConsent">
+        {(props) => <AiConciergeConsentScreen {...props} onLogin={handleLogin} />}
       </Stack.Screen>
 
       <Stack.Screen name="EditProfile">

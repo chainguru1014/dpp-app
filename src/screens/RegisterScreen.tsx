@@ -173,6 +173,17 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
       onLogin?.(tagged);
       const redirectTo = route?.params?.redirectTo;
       const redirectParams = route?.params?.redirectParams;
+      // Brand-new account, first time reaching Home — gate on the AI
+      // Concierge consent screen first, same as LoginScreen.finalizeLogin.
+      if (!tagged.aiConciergeConsentAt) {
+        navigation.replace('AiConciergeConsent', {
+          partialUser: tagged,
+          token: data.token || token,
+          redirectTo,
+          redirectParams,
+        });
+        return;
+      }
       if (redirectTo) {
         navigation.replace(redirectTo, redirectParams || {});
       } else {
