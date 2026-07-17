@@ -143,16 +143,6 @@ export default function AiConciergeConsentScreen({ navigation, route, onLogin }:
               <Text style={styles.title}>Meet Your AI Concierge</Text>
               <Text style={styles.paragraph}>Discover products you'll love.</Text>
 
-              <TouchableOpacity style={styles.consentRow} onPress={() => setConsent((c) => !c)} activeOpacity={0.8}>
-                <View style={[styles.checkbox, consent && styles.checkboxChecked]}>
-                  {consent && <Text style={styles.checkboxMark}>✓</Text>}
-                </View>
-                <Text style={styles.consentLabel}>
-                  I agree to let the AI Concierge of this app learn from my scans, favorites, and browsing
-                  history to personalize my experience.
-                </Text>
-              </TouchableOpacity>
-
               <Text style={styles.sectionTitle}>Scan the products you love.</Text>
               <Text style={styles.paragraph}>
                 Your AI Concierge learns your preferences and recommends products you'll love—across brands.
@@ -165,6 +155,18 @@ export default function AiConciergeConsentScreen({ navigation, route, onLogin }:
                 Your profile cannot be used to identify you personally. Your scans and preferences are linked
                 only to your in-app profile—not to your real identity.
               </Text>
+
+              {/* Placed after all the explanatory content, on purpose — the
+                  user should read what they're agreeing to before the checkbox. */}
+              <TouchableOpacity style={styles.consentRow} onPress={() => setConsent((c) => !c)} activeOpacity={0.8}>
+                <View style={[styles.checkbox, consent && styles.checkboxChecked]}>
+                  {consent && <Text style={styles.checkboxMark}>✓</Text>}
+                </View>
+                <Text style={styles.consentLabel}>
+                  I agree to let the AI Concierge of this app learn from my scans, favorites, and browsing
+                  history to personalize my experience.
+                </Text>
+              </TouchableOpacity>
 
               {mode === 'preview' && (
                 <Text style={styles.previewNote}>Sign in to save this preference to your account.</Text>
@@ -273,14 +275,7 @@ const styles = StyleSheet.create({
   consentRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
     marginVertical: spacing.md,
-    ...shadow(1),
   },
   checkbox: {
     width: 24,
