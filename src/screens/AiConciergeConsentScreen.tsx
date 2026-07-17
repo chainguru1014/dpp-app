@@ -229,11 +229,20 @@ const styles = StyleSheet.create({
     borderRadius: radius.xl,
     width: '100%',
     maxWidth: 420,
-    maxHeight: Math.round(screenHeight * 0.78),
+    // A little taller than the sign-in/sign-up card's own cap (0.7, see
+    // RegisterScreen) — this screen has more text content — but capped well
+    // short of full-screen so it can't run off a smaller iOS device; any
+    // overflow past this scrolls (see cardScroll's `flex: 1` below), it
+    // doesn't get clipped.
+    maxHeight: Math.round(screenHeight * 0.72),
     overflow: 'hidden',
     ...shadow(3),
   },
-  cardScroll: { width: '100%', flexShrink: 1 },
+  // `flex: 1` (not just flexShrink) is what actually bounds the ScrollView to
+  // the card's maxHeight on iOS — without it the content can render past the
+  // card and get silently clipped by `overflow: 'hidden'` above instead of
+  // scrolling.
+  cardScroll: { width: '100%', flex: 1 },
   cardScrollContent: { paddingHorizontal: spacing.xxxl, paddingTop: spacing.xxxl, paddingBottom: spacing.md },
   cardFooter: {
     flexShrink: 0,
