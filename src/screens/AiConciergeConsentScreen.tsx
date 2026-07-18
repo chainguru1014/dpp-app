@@ -36,11 +36,17 @@ import { colors, spacing, radius, shadow } from '../theme';
 //  - 'preview': nobody is signed in (Privacy Preferences tapped from a
 //    signed-out Login screen) — informational only, nothing is persisted,
 //    since there's no account to attach a decision to yet.
+// `null` = no explicit choice made yet, which is what keeps the primary
+// button disabled below. Only a user who already has a recorded decision
+// (aiConciergeConsentAt set) starts pre-selected; a fresh onboarding/preview
+// visit always requires an active choice.
+const initialConsentFor = (user: any): boolean | null => (user?.aiConciergeConsentAt ? !!user.aiConciergeConsent : null);
+
 export default function AiConciergeConsentScreen({ navigation, route, onLogin }: any) {
   const [sourceUser, setSourceUser] = useState<any>(route?.params?.partialUser ?? undefined);
   const [token, setToken] = useState<string>(route?.params?.token || '');
   const [resolved, setResolved] = useState(!!route?.params?.partialUser);
-  const [consent, setConsent] = useState<boolean>(!!route?.params?.partialUser?.aiConciergeConsent);
+  const [consent, setConsent] = useState<boolean | null>(initialConsentFor(route?.params?.partialUser));
   const [saving, setSaving] = useState(false);
   const [apiError, setApiError] = useState('');
 
@@ -55,7 +61,7 @@ export default function AiConciergeConsentScreen({ navigation, route, onLogin }:
         const parsed = storedUser && storedUser !== 'null' && storedUser !== 'undefined' ? JSON.parse(storedUser) : null;
         if (parsed) {
           setSourceUser(parsed);
-          setConsent(!!parsed.aiConciergeConsent);
+          setConsent(initialConsentFor(parsed));
         }
         setToken(storedToken || '');
       } catch (err) {
@@ -80,6 +86,7 @@ export default function AiConciergeConsentScreen({ navigation, route, onLogin }:
       navigation.goBack();
       return;
     }
+    if (consent === null) return;
     setApiError('');
     setSaving(true);
     try {
@@ -157,16 +164,33 @@ export default function AiConciergeConsentScreen({ navigation, route, onLogin }:
               </Text>
 
               {/* Placed after all the explanatory content, on purpose — the
-                  user should read what they're agreeing to before the checkbox. */}
-              <TouchableOpacity style={styles.consentRow} onPress={() => setConsent((c) => !c)} activeOpacity={0.8}>
-                <View style={[styles.checkbox, consent && styles.checkboxChecked]}>
-                  {consent && <Text style={styles.checkboxMark}>✓</Text>}
-                </View>
-                <Text style={styles.consentLabel}>
-                  I agree to let the AI Concierge of this app learn from my scans, favorites, and browsing
-                  history to personalize my experience.
-                </Text>
-              </TouchableOpacity>
+                  user should read what they're agreeing to before choosing.
+                  Nothing is pre-selected for a fresh visit, and the primary
+                  button below stays disabled until one of these is picked. */}
+              <Text style={styles.consentLabel}>
+                I agree to let the AI Concierge of this app learn from my scans, favorites, and browsing
+                history to personalize my experience.
+              </Text>
+              <View style={styles.consentButtonRow}>
+                <TouchableOpacity
+                  style={[styles.consentButton, consent === true && styles.consentButtonAgreeActive]}
+                  onPress={() => setConsent(true)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.consentButtonText, consent === true && styles.consentButtonTextActive]}>
+                    I Agree
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.consentButton, consent === false && styles.consentButtonDisagreeActive]}
+                  onPress={() => setConsent(false)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.consentButtonText, consent === false && styles.consentButtonTextActive]}>
+                    I Disagree
+                  </Text>
+                </TouchableOpacity>
+              </View>
 
               {mode === 'preview' && (
                 <Text style={styles.previewNote}>Sign in to save this preference to your account.</Text>
@@ -181,9 +205,9 @@ export default function AiConciergeConsentScreen({ navigation, route, onLogin }:
 
             <View style={styles.cardFooter}>
               <TouchableOpacity
-                style={[styles.button, saving && styles.buttonDisabled]}
+                style={[styles.button, (saving || consent === null) && styles.buttonDisabled]}
                 onPress={handleSubmit}
-                disabled={saving}
+                disabled={saving || consent === null}
               >
                 <Text style={styles.buttonText}>
                   {saving
@@ -223,18 +247,19 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },
-  centerWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl, width: '100%' },
+  centerWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg, width: '100%' },
   card: {
     backgroundColor: '#f3f4f6',
     borderRadius: radius.xl,
     width: '100%',
-    maxWidth: 420,
-    // A little taller than the sign-in/sign-up card's own cap (0.7, see
-    // RegisterScreen) — this screen has more text content — but capped well
-    // short of full-screen so it can't run off a smaller iOS device; any
-    // overflow past this scrolls (see cardScroll's `flex: 1` below), it
-    // doesn't get clipped.
-    maxHeight: Math.round(screenHeight * 0.72),
+    // Wider than the sign-in/sign-up card so the longer explanatory text
+    // wraps into fewer lines and fits without needing to scroll.
+    maxWidth: 520,
+    // Taller cap too (was 0.72) — combined with the extra width, this keeps
+    // the full-length copy visible without scrolling on most devices; any
+    // overflow past this still scrolls (see cardScroll's `flex: 1` below)
+    // rather than getting clipped, as a fallback for smaller screens.
+    maxHeight: Math.round(screenHeight * 0.85),
     overflow: 'hidden',
     ...shadow(3),
   },
@@ -243,12 +268,12 @@ const styles = StyleSheet.create({
   // card and get silently clipped by `overflow: 'hidden'` above instead of
   // scrolling.
   cardScroll: { width: '100%', flex: 1 },
-  cardScrollContent: { paddingHorizontal: spacing.xxxl, paddingTop: spacing.xxxl, paddingBottom: spacing.md },
+  cardScrollContent: { paddingHorizontal: spacing.xl, paddingTop: spacing.xxl, paddingBottom: spacing.md },
   cardFooter: {
     flexShrink: 0,
-    paddingHorizontal: spacing.xxxl,
+    paddingHorizontal: spacing.xl,
     paddingTop: spacing.md,
-    paddingBottom: spacing.xxxl,
+    paddingBottom: spacing.xxl,
     borderTopWidth: 1,
     borderTopColor: 'rgba(15,30,60,0.08)',
   },
@@ -281,39 +306,43 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: spacing.sm,
   },
-  consentRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginVertical: spacing.md,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: radius.sm,
-    borderWidth: 2,
-    borderColor: colors.border,
-    marginRight: spacing.md,
-    marginTop: 1,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  checkboxChecked: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent,
-  },
-  checkboxMark: {
-    color: colors.white,
-    fontSize: 15,
-    fontWeight: '400',
-    lineHeight: 17,
-  },
   consentLabel: {
-    flex: 1,
     fontSize: 14,
     lineHeight: 20,
     color: colors.text,
+    marginTop: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  consentButtonRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  consentButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+  },
+  consentButtonAgreeActive: {
+    backgroundColor: colors.success,
+    borderColor: colors.success,
+  },
+  consentButtonDisagreeActive: {
+    backgroundColor: colors.danger,
+    borderColor: colors.danger,
+  },
+  consentButtonText: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: colors.text,
+  },
+  consentButtonTextActive: {
+    color: colors.white,
+    fontWeight: '600',
   },
   previewNote: {
     fontSize: 13,
