@@ -3,12 +3,12 @@ import {
   View,
   TouchableOpacity,
   Text,
-  Image,
   StyleSheet,
   ActivityIndicator,
   Platform,
   Alert,
 } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { API_BASE_URL } from '../config/api';
 import {
   GOOGLE_WEB_CLIENT_ID,
@@ -16,6 +16,18 @@ import {
   GOOGLE_IOS_CLIENT_ID,
 } from '../config/auth';
 import { colors, spacing, radius, fontSize, shadow } from '../theme';
+
+// Monochrome Google "G" mark (Simple Icons, CC0) — white so it reads against
+// this button's black background, mirroring how AppleAuthButton draws its
+// glyph as an inline SVG rather than a bundled PNG.
+const GoogleLogo = ({ size = 18, color = '#ffffff' }: { size?: number; color?: string }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24">
+    <Path
+      fill={color}
+      d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"
+    />
+  </Svg>
+);
 
 // Native (Android/iOS) Google Sign-In. Not imported at all on web so the
 // native module is never touched there.
@@ -233,14 +245,12 @@ export default function GoogleAuthButton({ onSuccess, onError }: GoogleAuthButto
         disabled={isLoading}
       >
         {isLoading ? (
-          <ActivityIndicator color={colors.accent} />
+          <ActivityIndicator color={colors.white} />
         ) : (
           <>
-            <Image
-              source={require('../assets/icons8-google-50.png')}
-              style={styles.googleIcon}
-              resizeMode="contain"
-            />
+            <View style={styles.googleIcon}>
+              <GoogleLogo />
+            </View>
             <Text style={styles.buttonText}>Google</Text>
           </>
         )}
@@ -255,10 +265,10 @@ const styles = StyleSheet.create({
     marginVertical: spacing.sm,
   },
   button: {
-    backgroundColor: colors.surface,
+    backgroundColor: '#000000',
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#000000',
     paddingVertical: 14,
     paddingHorizontal: spacing.md,
     alignItems: 'center',
@@ -270,13 +280,11 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   buttonText: {
-    color: colors.text,
+    color: colors.white,
     fontSize: fontSize.lg,
     fontWeight: '400',
   },
   googleIcon: {
-    width: 20,
-    height: 20,
     marginRight: spacing.sm,
   },
 });
