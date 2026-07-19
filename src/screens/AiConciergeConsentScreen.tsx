@@ -253,8 +253,9 @@ const styles = StyleSheet.create({
     borderRadius: radius.xl,
     width: '100%',
     // Wider than the sign-in/sign-up card so the longer explanatory text
-    // wraps into fewer lines and fits without needing to scroll.
-    maxWidth: 560,
+    // wraps into fewer lines and fits without needing to scroll — but not
+    // so wide that it overflows a phone-width viewport.
+    maxWidth: 460,
     // Taller cap too (was 0.72, then 0.85) — combined with the extra width,
     // this keeps the full-length copy visible without scrolling on most
     // devices; any overflow past this still scrolls (see cardScroll's
