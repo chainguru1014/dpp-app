@@ -254,12 +254,13 @@ const styles = StyleSheet.create({
     width: '100%',
     // Wider than the sign-in/sign-up card so the longer explanatory text
     // wraps into fewer lines and fits without needing to scroll.
-    maxWidth: 520,
-    // Taller cap too (was 0.72) — combined with the extra width, this keeps
-    // the full-length copy visible without scrolling on most devices; any
-    // overflow past this still scrolls (see cardScroll's `flex: 1` below)
-    // rather than getting clipped, as a fallback for smaller screens.
-    maxHeight: Math.round(screenHeight * 0.85),
+    maxWidth: 560,
+    // Taller cap too (was 0.72, then 0.85) — combined with the extra width,
+    // this keeps the full-length copy visible without scrolling on most
+    // devices; any overflow past this still scrolls (see cardScroll's
+    // `flex: 1` below) rather than getting clipped, as a fallback for
+    // smaller screens.
+    maxHeight: Math.round(screenHeight * 0.94),
     overflow: 'hidden',
     ...shadow(3),
   },
@@ -328,8 +329,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   consentButtonAgreeActive: {
-    backgroundColor: colors.success,
-    borderColor: colors.success,
+    // Deliberately a brighter green than the shared `colors.success` token
+    // (which is a muted forest green used for status text elsewhere) — this
+    // button should read as vividly "agreed", not just a generic success state.
+    backgroundColor: '#22c55e',
+    borderColor: '#22c55e',
   },
   consentButtonDisagreeActive: {
     backgroundColor: colors.danger,

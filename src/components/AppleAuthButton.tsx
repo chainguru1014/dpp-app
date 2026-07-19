@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   buttonText: {
-    color: colors.primary,
+    color: '#000000',
     fontSize: fontSize.lg,
     fontWeight: '400',
   },

@@ -8,11 +8,9 @@ import {
   Alert,
   Image,
   ImageBackground,
-  Dimensions,
   TouchableOpacity,
 } from 'react-native';
 
-const screenHeight = Dimensions.get('window').height;
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import GoogleAuthButton from '../components/GoogleAuthButton';
 import AppleAuthButton from '../components/AppleAuthButton';
@@ -95,7 +93,8 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
 
   return (
     <View style={styles.container}>
-      {/* Background: image covers top 55%, plain colour fills the rest */}
+      {/* Background image covers the full page (was just the top 55%, with a
+          plain colour fill below it) */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <ImageBackground
           source={require('../assets/bg-login.jpg')}
@@ -104,7 +103,6 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
         >
           <View style={styles.bgOverlay} />
         </ImageBackground>
-        <View style={styles.bgBottom} />
       </View>
 
       {/* Title floated at the top over the image */}
@@ -165,7 +163,6 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
 }
 
 const webFill = Platform.OS === 'web' ? ({ minHeight: '100vh' } as any) : {};
-const bgImageHeight: any = Platform.OS === 'web' ? '55vh' : screenHeight * 0.55;
 
 const styles = StyleSheet.create({
   container: {
@@ -174,15 +171,11 @@ const styles = StyleSheet.create({
     ...webFill,
   },
   bgImage: {
-    height: bgImageHeight,
+    flex: 1,
   },
   bgOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.28)',
-  },
-  bgBottom: {
-    flex: 1,
-    backgroundColor: '#e8ecf0',
   },
   kav: {
     ...StyleSheet.absoluteFillObject,
