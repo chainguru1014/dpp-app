@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.xl,
     padding: spacing.xxxl,
     width: '100%',
-    maxWidth: 380,
+    maxWidth: 340,
     ...shadow(3),
   },
   logoContainer: {

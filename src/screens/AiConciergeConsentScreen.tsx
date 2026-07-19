@@ -129,9 +129,14 @@ export default function AiConciergeConsentScreen({ navigation, route, onLogin }:
 
   return (
     <View style={styles.container}>
-      <ImageBackground source={require('../assets/bg-login.jpg')} style={styles.imageBg} resizeMode="cover">
-        <Text style={styles.pageTitle}>Digital Product Passport</Text>
-      </ImageBackground>
+      {/* Same full-page background treatment as LoginScreen (was previously
+          just the top 55%, with a plain colour fill below it). */}
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        <ImageBackground source={require('../assets/bg-login.jpg')} style={styles.imageBg} resizeMode="cover">
+          <View style={styles.bgOverlay} />
+        </ImageBackground>
+      </View>
+      <Text style={styles.pageTitle}>Digital Product Passport</Text>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.centeredOverlay}>
         <View style={styles.centerWrap}>
           <View style={styles.card}>
@@ -232,9 +237,14 @@ const screenHeight = Dimensions.get('window').height;
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   loadingContainer: { alignItems: 'center', justifyContent: 'center' },
-  imageBg: { width: '100%', height: screenHeight * 0.55 },
+  imageBg: { flex: 1 },
+  bgOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.28)' },
   centeredOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   pageTitle: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     color: '#ffffff',
     fontSize: 22,
     fontWeight: '600',
@@ -246,6 +256,7 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
+    zIndex: 10,
   },
   centerWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg, width: '100%' },
   card: {
@@ -255,7 +266,7 @@ const styles = StyleSheet.create({
     // Wider than the sign-in/sign-up card so the longer explanatory text
     // wraps into fewer lines and fits without needing to scroll — but not
     // so wide that it overflows a phone-width viewport.
-    maxWidth: 460,
+    maxWidth: 400,
     // Taller cap too (was 0.72, then 0.85) — combined with the extra width,
     // this keeps the full-length copy visible without scrolling on most
     // devices; any overflow past this still scrolls (see cardScroll's
