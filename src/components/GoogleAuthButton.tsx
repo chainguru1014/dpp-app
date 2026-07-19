@@ -17,10 +17,10 @@ import {
 } from '../config/auth';
 import { colors, spacing, radius, fontSize, shadow } from '../theme';
 
-// Monochrome Google "G" mark (Simple Icons, CC0) — white so it reads against
-// this button's black background, mirroring how AppleAuthButton draws its
-// glyph as an inline SVG rather than a bundled PNG.
-const GoogleLogo = ({ size = 18, color = '#ffffff' }: { size?: number; color?: string }) => (
+// Monochrome Google "G" mark (Simple Icons, CC0) — black to match this
+// button's white background, mirroring how AppleAuthButton draws its glyph
+// as an inline SVG rather than a bundled PNG.
+const GoogleLogo = ({ size = 18, color = '#000000' }: { size?: number; color?: string }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24">
     <Path
       fill={color}
@@ -245,7 +245,7 @@ export default function GoogleAuthButton({ onSuccess, onError }: GoogleAuthButto
         disabled={isLoading}
       >
         {isLoading ? (
-          <ActivityIndicator color={colors.white} />
+          <ActivityIndicator color={colors.text} />
         ) : (
           <>
             <View style={styles.googleIcon}>
@@ -265,10 +265,10 @@ const styles = StyleSheet.create({
     marginVertical: spacing.sm,
   },
   button: {
-    backgroundColor: '#000000',
+    backgroundColor: colors.white,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: '#000000',
+    borderColor: colors.border,
     paddingVertical: 14,
     paddingHorizontal: spacing.md,
     alignItems: 'center',
@@ -280,7 +280,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   buttonText: {
-    color: colors.white,
+    color: '#000000',
     fontSize: fontSize.lg,
     fontWeight: '400',
   },
