@@ -15,12 +15,12 @@ import {
   GOOGLE_ANDROID_CLIENT_ID,
   GOOGLE_IOS_CLIENT_ID,
 } from '../config/auth';
-import { colors, spacing, radius, fontSize, shadow } from '../theme';
+import { colors, spacing, radius, shadow } from '../theme';
 
 // Monochrome Google "G" mark (Simple Icons, CC0) — black to match this
 // button's white background, mirroring how AppleAuthButton draws its glyph
 // as an inline SVG rather than a bundled PNG.
-const GoogleLogo = ({ size = 18, color = '#000000' }: { size?: number; color?: string }) => (
+const GoogleLogo = ({ size = 14, color = '#000000' }: { size?: number; color?: string }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24">
     <Path
       fill={color}
@@ -264,12 +264,15 @@ const styles = StyleSheet.create({
     flex: 1,
     marginVertical: spacing.sm,
   },
+  // Height matches the frontend project's SMALL_CONTROL_HEIGHT (27, see
+  // AuthPage.js) so the two projects' controls line up.
   button: {
     backgroundColor: colors.white,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingVertical: 14,
+    height: 27,
+    paddingVertical: 0,
     paddingHorizontal: spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
@@ -281,7 +284,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#000000',
-    fontSize: fontSize.lg,
+    fontSize: 13,
     fontWeight: '400',
   },
   googleIcon: {

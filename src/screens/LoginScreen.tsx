@@ -177,8 +177,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.28)',
   },
+  // Higher zIndex than pageTitle below — the card is opaque, so if it grows
+  // tall enough to reach the title's area, it should cover the title rather
+  // than the title floating on top of the card.
   kav: {
     ...StyleSheet.absoluteFillObject,
+    zIndex: 20,
   },
   pageTitle: {
     position: 'absolute',

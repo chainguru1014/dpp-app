@@ -11,7 +11,7 @@ import {
 import Svg, { Path } from 'react-native-svg';
 import { API_BASE_URL } from '../config/api';
 import { APPLE_WEB_CLIENT_ID } from '../config/auth';
-import { colors, spacing, radius, fontSize, shadow } from '../theme';
+import { colors, spacing, radius, shadow } from '../theme';
 
 // Apple logomark as an inline SVG (react-native-svg, already a project
 // dependency) rather than a font icon or bundled asset — GoogleAuthButton
@@ -19,7 +19,7 @@ import { colors, spacing, radius, fontSize, shadow } from '../theme';
 // into the native iOS/Android builds here (no UIAppFonts entry, no Android
 // fonts.gradle hookup), so an SVG path sidesteps that entirely and renders
 // identically on iOS, Android, and web. Path data: Simple Icons (CC0).
-const AppleLogo = ({ size = 18, color = '#000000' }: { size?: number; color?: string }) => (
+const AppleLogo = ({ size = 14, color = '#000000' }: { size?: number; color?: string }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24">
     <Path
       fill={color}
@@ -212,12 +212,15 @@ const styles = StyleSheet.create({
   appleIcon: {
     marginRight: spacing.sm,
   },
+  // Height matches the frontend project's SMALL_CONTROL_HEIGHT (27, see
+  // AuthPage.js) so the two projects' controls line up.
   button: {
     backgroundColor: colors.white,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingVertical: 14,
+    height: 27,
+    paddingVertical: 0,
     paddingHorizontal: spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
@@ -229,7 +232,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#000000',
-    fontSize: fontSize.lg,
+    fontSize: 13,
     fontWeight: '400',
   },
 });

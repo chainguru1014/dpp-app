@@ -228,13 +228,16 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     textAlign: 'center',
   },
+  // Height matches the frontend project's SMALL_CONTROL_HEIGHT (27, see
+  // AuthPage.js) so the two projects' controls line up.
   input: {
     backgroundColor: colors.white,
     borderRadius: radius.pill,
-    paddingVertical: 13,
+    height: 27,
+    paddingVertical: 0,
     paddingHorizontal: 18,
     marginBottom: spacing.md,
-    fontSize: 16,
+    fontSize: 13,
     color: colors.text,
     borderWidth: 1,
     borderColor: colors.borderStrong,
@@ -242,7 +245,8 @@ const styles = StyleSheet.create({
   button: {
     backgroundColor: colors.primary,
     borderRadius: radius.pill,
-    paddingVertical: 14,
+    height: 27,
+    paddingVertical: 0,
     alignItems: 'center',
     justifyContent: 'center',
     ...shadow(1),
@@ -252,7 +256,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: colors.white,
-    fontSize: fontSize.lg,
+    fontSize: 13,
     fontWeight: '400',
   },
   linkButton: {

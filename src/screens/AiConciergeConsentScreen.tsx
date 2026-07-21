@@ -147,7 +147,7 @@ export default function AiConciergeConsentScreen({ navigation, route, onLogin }:
             >
               <Image
                 source={require('../assets/yometel-logo-trans.png')}
-                style={{ width: 140, height: 42, marginBottom: spacing.lg, alignSelf: 'center' }}
+                style={{ width: 120, height: 36, marginBottom: spacing.sm, alignSelf: 'center' }}
                 resizeMode="contain"
               />
 
@@ -239,7 +239,10 @@ const styles = StyleSheet.create({
   loadingContainer: { alignItems: 'center', justifyContent: 'center' },
   imageBg: { flex: 1 },
   bgOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.28)' },
-  centeredOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  // Higher zIndex than pageTitle below — the card is opaque, so if it grows
+  // tall enough to reach the title's area, it should cover the title rather
+  // than the title floating on top of the card.
+  centeredOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 20 },
   pageTitle: {
     position: 'absolute',
     top: 0,
@@ -281,17 +284,20 @@ const styles = StyleSheet.create({
   // card and get silently clipped by `overflow: 'hidden'` above instead of
   // scrolling.
   cardScroll: { width: '100%', flex: 1 },
-  cardScrollContent: { paddingHorizontal: spacing.xl, paddingTop: spacing.xxl, paddingBottom: spacing.md },
+  cardScrollContent: { paddingHorizontal: spacing.xl, paddingTop: spacing.lg, paddingBottom: spacing.sm },
   cardFooter: {
     flexShrink: 0,
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.xxl,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.lg,
     borderTopWidth: 1,
     borderTopColor: 'rgba(15,30,60,0.08)',
   },
+  // Smaller font sizes + tighter line-heights/paragraph spacing than before —
+  // this content was overflowing the card (and getting clipped) on shorter
+  // devices; denser typography fits it without relying on scrolling.
   welcome: {
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: '600',
     color: colors.muted,
     textAlign: 'center',
@@ -300,40 +306,44 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   title: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: '400',
     color: colors.heading,
     textAlign: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   sectionTitle: {
-    fontSize: 17,
+    fontSize: 14,
     fontWeight: '600',
     color: colors.heading,
-    marginTop: spacing.lg,
+    marginTop: spacing.sm,
     marginBottom: spacing.xs,
   },
   paragraph: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 12,
+    lineHeight: 16,
     color: colors.text,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
   consentLabel: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 12,
+    lineHeight: 16,
     color: colors.text,
-    marginTop: spacing.sm,
-    marginBottom: spacing.md,
+    marginTop: spacing.xs,
+    marginBottom: spacing.sm,
   },
   consentButtonRow: {
     flexDirection: 'row',
-    gap: spacing.md,
-    marginBottom: spacing.sm,
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
   },
+  // Height matches the frontend project's SMALL_CONTROL_HEIGHT /
+  // CONSENT_BUTTON_HEIGHT (27, see AuthPage.js / AiConciergeConsentPage).
   consentButton: {
     flex: 1,
-    paddingVertical: 12,
+    height: 27,
+    paddingVertical: 0,
+    justifyContent: 'center',
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
@@ -352,7 +362,7 @@ const styles = StyleSheet.create({
     borderColor: colors.danger,
   },
   consentButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '400',
     color: colors.text,
   },
@@ -361,22 +371,26 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   previewNote: {
-    fontSize: 13,
+    fontSize: 12,
     fontStyle: 'italic',
     color: colors.muted,
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
   },
+  // Height matches the frontend project's CONSENT_BUTTON_HEIGHT (27, see
+  // AiConciergeConsentPage).
   button: {
     backgroundColor: colors.accent,
     borderRadius: radius.pill,
-    paddingVertical: 15,
+    height: 27,
+    paddingVertical: 0,
+    justifyContent: 'center',
     paddingHorizontal: spacing.lg,
     alignItems: 'center',
     marginTop: spacing.sm,
     ...shadow(1),
   },
   buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: colors.white, fontSize: 16, fontWeight: '400' },
+  buttonText: { color: colors.white, fontSize: 13, fontWeight: '400' },
   apiErrorBox: {
     backgroundColor: colors.dangerSoft,
     borderRadius: radius.md,
