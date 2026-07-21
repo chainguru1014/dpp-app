@@ -153,9 +153,8 @@ export default function AiConciergeConsentScreen({ navigation, route, onLogin }:
 
               <Text style={styles.welcome}>Welcome</Text>
               <Text style={styles.title}>Meet Your AI Concierge</Text>
-              <Text style={styles.paragraph}>Discover products you'll love.</Text>
 
-              <Text style={styles.sectionTitle}>Scan the products you love.</Text>
+              <Text style={styles.sectionTitle}>Scan the products you like, discover what you like next.</Text>
               <Text style={styles.paragraph}>
                 Your AI Concierge learns your preferences and recommends products you'll love—across brands.
               </Text>
@@ -182,7 +181,7 @@ export default function AiConciergeConsentScreen({ navigation, route, onLogin }:
                   onPress={() => setConsent(true)}
                   activeOpacity={0.8}
                 >
-                  <Text style={[styles.consentButtonText, consent === true && styles.consentButtonTextActive]}>
+                  <Text style={[styles.consentButtonText, consent === true && styles.consentButtonTextAgreeActive]}>
                     I Agree
                   </Text>
                 </TouchableOpacity>
@@ -191,7 +190,7 @@ export default function AiConciergeConsentScreen({ navigation, route, onLogin }:
                   onPress={() => setConsent(false)}
                   activeOpacity={0.8}
                 >
-                  <Text style={[styles.consentButtonText, consent === false && styles.consentButtonTextActive]}>
+                  <Text style={[styles.consentButtonText, consent === false && styles.consentButtonTextDisagreeActive]}>
                     I Disagree
                   </Text>
                 </TouchableOpacity>
@@ -351,23 +350,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   consentButtonAgreeActive: {
-    // Deliberately a brighter green than the shared `colors.success` token
-    // (which is a muted forest green used for status text elsewhere) — this
-    // button should read as vividly "agreed", not just a generic success state.
-    backgroundColor: '#22c55e',
-    borderColor: '#22c55e',
+    // The app's dark blue (colors.primaryDark) — matches the Continue/Save
+    // Preferences/Close button below and the frontend project's equivalent.
+    backgroundColor: colors.primaryDark,
+    borderColor: colors.primaryDark,
   },
   consentButtonDisagreeActive: {
-    backgroundColor: colors.danger,
-    borderColor: colors.danger,
+    backgroundColor: '#e5e7eb',
+    borderColor: '#e5e7eb',
   },
   consentButtonText: {
     fontSize: 13,
     fontWeight: '400',
     color: colors.text,
   },
-  consentButtonTextActive: {
+  consentButtonTextAgreeActive: {
     color: colors.white,
+    fontWeight: '600',
+  },
+  consentButtonTextDisagreeActive: {
+    color: colors.primaryDark,
     fontWeight: '600',
   },
   previewNote: {
@@ -377,9 +379,10 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   // Height matches the frontend project's CONSENT_BUTTON_HEIGHT (27, see
-  // AiConciergeConsentPage).
+  // AiConciergeConsentPage). Dark blue background (colors.primaryDark) to
+  // match the I Agree active state above.
   button: {
-    backgroundColor: colors.accent,
+    backgroundColor: colors.primaryDark,
     borderRadius: radius.pill,
     height: 27,
     paddingVertical: 0,
