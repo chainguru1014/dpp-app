@@ -59,11 +59,13 @@ function ImageSlider({
   images,
   name,
   model,
+  pmcCode,
   getFileUrl,
 }: {
   images: string[];
   name?: string;
   model?: string;
+  pmcCode?: string;
   getFileUrl: (filename: string) => string;
 }) {
   const [pageWidth, setPageWidth] = useState(width);
@@ -87,6 +89,7 @@ function ImageSlider({
       <View style={styles.sliderTextHeader}>
         <Text style={styles.productName}>{name || '—'}</Text>
         <Text style={styles.productModel}>{model || '—'}</Text>
+        {!!pmcCode && <Text style={styles.pmcBadge}>PMC: {pmcCode}</Text>}
       </View>
 
       <ScrollView
@@ -1139,9 +1142,6 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
         {productData?._id && (
           <Text style={styles.productIdText}>{t('productIdColon')}: {productData._id}</Text>
         )}
-        {productData?.pmc_code && (
-          <Text style={styles.productIdText}>{t('pmcCodeColon')}: {productData.pmc_code}</Text>
-        )}
         {materials.map((row: any, i: number) => (
           <Text key={i} style={styles.materialText}>
             {row.material || '—'} {row.percent != null ? `${row.percent}%` : ''}
@@ -1283,6 +1283,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
         images={images}
         name={productData?.name}
         model={productData?.model}
+        pmcCode={productData?.pmc_code}
         getFileUrl={getFileUrl}
       />
     );
@@ -1922,6 +1923,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.muted,
     textAlign: 'center',
+  },
+  pmcBadge: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primaryDark,
+    textAlign: 'center',
+    marginTop: 4,
   },
   sliderTextHeader: {
     paddingHorizontal: 20,

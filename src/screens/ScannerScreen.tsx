@@ -509,7 +509,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
             onPress={submitManualEntry}
             disabled={!manualValue.trim() || loading}
           >
-            <Text style={styles.photoScanButtonText}>{loading ? 'Looking up…' : 'Look up'}</Text>
+            <Text style={styles.photoScanButtonText}>{loading ? 'Checking…' : 'Check'}</Text>
           </TouchableOpacity>
         </View>
       )}
