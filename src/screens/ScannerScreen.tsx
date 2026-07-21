@@ -9,6 +9,7 @@ import {
   PermissionsAndroid,
   Platform,
   Image,
+  TextInput,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../config/api';
@@ -48,6 +49,12 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
   const [webPhotoMode, setWebPhotoMode] = useState(false);
   const [nfcAvailable, setNfcAvailable] = useState(false);
   const [nfcReading, setNfcReading] = useState(false);
+  // Manual-entry fallback (web only) — a browser can't decode a 1D barcode or
+  // read NFC/RFID off a live feed, so this lets those identifier types still
+  // be exercised from a laptop by typing the value instead of scanning it.
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualType, setManualType] = useState<'barcode' | 'nfc' | 'rfid' | 'gs1dl'>('barcode');
+  const [manualValue, setManualValue] = useState('');
   const isMountedRef = useRef(true);
   const isProcessingScanRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -451,6 +458,64 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
     }
   };
 
+  const MANUAL_TYPES: { value: 'barcode' | 'nfc' | 'rfid' | 'gs1dl'; label: string }[] = [
+    { value: 'barcode', label: 'Barcode' },
+    { value: 'nfc', label: 'NFC' },
+    { value: 'rfid', label: 'RFID' },
+    { value: 'gs1dl', label: 'GS1 Link' },
+  ];
+
+  const submitManualEntry = () => {
+    const value = manualValue.trim();
+    if (!value || loading) return;
+    handleScannedCode(value, manualType);
+  };
+
+  const renderManualEntry = (light = false) => (
+    <View style={styles.manualWrap}>
+      <TouchableOpacity onPress={() => setManualOpen((v) => !v)} disabled={loading}>
+        <Text style={[styles.scanCaptionLink, light && styles.scanCaptionLinkDark]}>
+          {manualOpen ? 'Hide manual entry' : 'Enter code manually'}
+        </Text>
+      </TouchableOpacity>
+      {manualOpen && (
+        <View style={styles.manualCard}>
+          <View style={styles.manualChipRow}>
+            {MANUAL_TYPES.map((opt) => (
+              <TouchableOpacity
+                key={opt.value}
+                style={[styles.manualChip, manualType === opt.value && styles.manualChipActive]}
+                onPress={() => setManualType(opt.value)}
+              >
+                <Text style={[styles.manualChipText, manualType === opt.value && styles.manualChipTextActive]}>
+                  {opt.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <TextInput
+            style={styles.manualInput}
+            value={manualValue}
+            onChangeText={setManualValue}
+            placeholder="Paste or type the identifier value"
+            placeholderTextColor="rgba(11,18,32,0.4)"
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!loading}
+            onSubmitEditing={submitManualEntry}
+          />
+          <TouchableOpacity
+            style={[styles.manualSubmit, (!manualValue.trim() || loading) && styles.manualSubmitDisabled]}
+            onPress={submitManualEntry}
+            disabled={!manualValue.trim() || loading}
+          >
+            <Text style={styles.photoScanButtonText}>{loading ? 'Looking up…' : 'Look up'}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+
   if (hasPermission === null) {
     return (
       <AppLayout
@@ -507,6 +572,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
             </TouchableOpacity>
             {loading && <ActivityIndicator size="small" color={colors.accent} style={{ marginTop: 14 }} />}
           </View>
+          {renderManualEntry(true)}
         </View>
       </AppLayout>
     );
@@ -560,6 +626,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
               </TouchableOpacity>
             )}
           </View>
+          {renderManualEntry()}
         </View>
       </AppLayout>
     );
@@ -749,6 +816,71 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     textAlign: 'center',
     textDecorationLine: 'underline',
+  },
+  // Same link, readable on the light photo-scan background instead of the
+  // dark camera-viewport background scanCaptionLink was designed for.
+  scanCaptionLinkDark: {
+    color: colors.accent,
+  },
+  manualWrap: {
+    marginTop: spacing.md,
+    alignItems: 'center',
+    width: '100%',
+  },
+  manualCard: {
+    marginTop: spacing.md,
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
+    ...shadow(2),
+  },
+  manualChipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  manualChip: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.pill,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+  },
+  manualChipActive: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  manualChipText: {
+    fontSize: 13,
+    color: colors.text,
+  },
+  manualChipTextActive: {
+    color: '#fff',
+  },
+  manualInput: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    fontSize: 14,
+    color: colors.text,
+    marginBottom: spacing.md,
+  },
+  manualSubmit: {
+    backgroundColor: colors.accent,
+    borderRadius: radius.md,
+    paddingVertical: 12,
+    alignItems: 'center',
+    ...shadow(1),
+  },
+  manualSubmitDisabled: {
+    opacity: 0.5,
   },
   photoContainer: {
     flex: 1,
