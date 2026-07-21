@@ -194,9 +194,7 @@ export default function AiConciergeConsentScreen({ navigation, route, onLogin }:
                 onPress={handleSubmit}
                 disabled={saving || consent === null}
               >
-                <Text style={styles.buttonText}>
-                  {saving ? 'Saving…' : mode === 'review' ? 'Save Preferences' : 'Continue'}
-                </Text>
+                <Text style={styles.buttonText}>{saving ? 'Saving…' : 'Continue'}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -304,7 +302,7 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     color: colors.text,
     marginTop: spacing.xs,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.lg,
   },
   consentButtonRow: {
     flexDirection: 'row',

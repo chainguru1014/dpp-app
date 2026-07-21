@@ -823,7 +823,7 @@ const styles = StyleSheet.create({
     color: colors.accent,
   },
   manualWrap: {
-    marginTop: spacing.md - 20,
+    marginTop: spacing.md - 40,
     alignItems: 'center',
     width: '100%',
   },
