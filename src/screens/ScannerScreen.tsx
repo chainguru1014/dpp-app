@@ -811,6 +811,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   scanCaptionLink: {
+    marginBottom: 20,
     color: '#fff',
     fontSize: 14,
     fontWeight: '400',
