@@ -48,7 +48,6 @@ export default function AiConciergeConsentScreen({ navigation, route, onLogin }:
   const [resolved, setResolved] = useState(!!route?.params?.partialUser);
   const [consent, setConsent] = useState<boolean | null>(initialConsentFor(route?.params?.partialUser));
   const [saving, setSaving] = useState(false);
-  const [apiError, setApiError] = useState('');
 
   useEffect(() => {
     if (resolved) return;
@@ -87,8 +86,12 @@ export default function AiConciergeConsentScreen({ navigation, route, onLogin }:
       return;
     }
     if (consent === null) return;
-    setApiError('');
     setSaving(true);
+
+    // Best-effort save: this is a preference, not a gate, so an auth/network
+    // hiccup on the API call must never trap the user on this screen — they
+    // still proceed into the app either way. Mirrors the same best-effort
+    // pattern ScannerScreen uses for scan/record.
     try {
       const response = await fetch(`${API_BASE_URL}auth/ai-concierge-consent`, {
         method: 'POST',
@@ -100,22 +103,24 @@ export default function AiConciergeConsentScreen({ navigation, route, onLogin }:
         body: JSON.stringify({ consent }),
       });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok || data.status !== 'success') {
-        throw new Error(data?.message || 'Could not save your preference. Please try again.');
-      }
-      const updatedUser = { ...sourceUser, ...(data.user || {}), actorKind: 'User' };
-      await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
-      onLogin?.(updatedUser);
-      if (mode === 'onboarding') {
-        if (redirectTo) navigation.replace(redirectTo, redirectParams || {});
-        else navigation.replace('Home');
+      if (response.ok && data.status === 'success') {
+        const updatedUser = { ...sourceUser, ...(data.user || {}), actorKind: 'User' };
+        await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+        onLogin?.(updatedUser);
       } else {
-        navigation.goBack();
+        console.warn('Could not save AI Concierge consent:', data?.message || response.status);
       }
     } catch (err: any) {
-      setApiError(err?.message || 'Network error, please try again.');
+      console.warn('Could not save AI Concierge consent:', err?.message || err);
     } finally {
       setSaving(false);
+    }
+
+    if (mode === 'onboarding') {
+      if (redirectTo) navigation.replace(redirectTo, redirectParams || {});
+      else navigation.replace('Home');
+    } else {
+      navigation.goBack();
     }
   };
 
@@ -198,12 +203,6 @@ export default function AiConciergeConsentScreen({ navigation, route, onLogin }:
 
               {mode === 'preview' && (
                 <Text style={styles.previewNote}>Sign in to save this preference to your account.</Text>
-              )}
-
-              {!!apiError && (
-                <View style={styles.apiErrorBox}>
-                  <Text style={styles.apiErrorText}>{apiError}</Text>
-                </View>
               )}
             </ScrollView>
 
@@ -394,12 +393,4 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: { opacity: 0.6 },
   buttonText: { color: colors.white, fontSize: 13, fontWeight: '400' },
-  apiErrorBox: {
-    backgroundColor: colors.dangerSoft,
-    borderRadius: radius.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-    marginTop: spacing.md,
-  },
-  apiErrorText: { color: colors.danger, fontSize: 13, textAlign: 'left' },
 });
