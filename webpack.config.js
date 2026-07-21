@@ -16,6 +16,8 @@ module.exports = {
       'react-native-qrcode-scanner': false,
       'react-native-camera': false,
       'react-native-permissions': false,
+      '@invertase/react-native-apple-authentication': false,
+      'react-native-worklets-core': false,
     },
   },
   module: {
