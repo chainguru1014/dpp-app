@@ -89,7 +89,7 @@ function ImageSlider({
       <View style={styles.sliderTextHeader}>
         <Text style={styles.productName}>{name || '—'}</Text>
         <Text style={styles.productModel}>{model || '—'}</Text>
-        {!!pmcCode && <Text style={styles.pmcBadge}>PMC: {pmcCode}</Text>}
+        {!!pmcCode && <Text style={styles.pmcBadge}>ID: {pmcCode}</Text>}
       </View>
 
       <ScrollView
@@ -1927,7 +1927,7 @@ const styles = StyleSheet.create({
   pmcBadge: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.primaryDark,
+    color: colors.muted,
     textAlign: 'center',
     marginTop: 4,
   },
