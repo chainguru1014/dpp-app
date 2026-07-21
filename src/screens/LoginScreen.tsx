@@ -44,19 +44,6 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
     if (onLogin) {
       onLogin(tagged);
     }
-    // First login ever (or any older account that predates this feature and
-    // never decided) — gate on the AI Concierge personalization consent
-    // screen before Home, same pattern as the profile-completion gate above.
-    // See AiConciergeConsentScreen.
-    if (!tagged.aiConciergeConsentAt) {
-      navigation.replace('AiConciergeConsent', {
-        partialUser: tagged,
-        token,
-        redirectTo: route?.params?.redirectTo,
-        redirectParams: route?.params?.redirectParams,
-      });
-      return;
-    }
     goAfterAuth();
   };
 
@@ -146,12 +133,12 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
             </TouchableOpacity>
 
             {/* GDPR: lets a user reopen the AI Concierge consent screen at any
-                time to review or change their choice — see AiConciergeConsentScreen,
-                which resolves the current user from AsyncStorage when reached
-                with no params like this. */}
+                time to review or change their locally-stored choice — see
+                AiConciergeConsentScreen. reviewMode distinguishes this from
+                the pre-login gate visit (which has no route params). */}
             <TouchableOpacity
               style={styles.privacyLink}
-              onPress={() => navigation.navigate('AiConciergeConsent')}
+              onPress={() => navigation.navigate('AiConciergeConsent', { reviewMode: true })}
             >
               <Text style={styles.privacyLinkText}>Privacy Preferences</Text>
             </TouchableOpacity>

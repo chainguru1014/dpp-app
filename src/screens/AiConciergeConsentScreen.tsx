@@ -15,112 +15,97 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../config/api';
 import { colors, spacing, radius, shadow } from '../theme';
+import { getStoredAiConciergeConsent, setStoredAiConciergeConsent } from '../utils/aiConciergeConsent';
 
-// Shown once after a User's first login — LoginScreen.finalizeLogin and
-// RegisterScreen.handleCompleteProfile both route here whenever
-// `aiConciergeConsentAt` is still unset on the account — and reachable any
-// time after via the "Privacy Preferences" link on LoginScreen, so a user
-// can change or withdraw consent per GDPR.
+// The pre-login consent gate — AppNavigator's initialRouteName sends every
+// fresh app instance here first until a local choice exists (see
+// aiConciergeConsent.ts), regardless of whether anyone is signed in yet.
+// Also reachable any time after via the "Privacy Preferences" link on
+// LoginScreen (passing `reviewMode: true`), so a user can change or
+// withdraw their choice per GDPR.
 //
-// The user record to act on is resolved from whichever source is available:
-// route params first (passed by the login/profile-completion gate, which
-// already has the freshly-authenticated user + token in hand), falling back
-// to AsyncStorage (covers a bare app relaunch that lands here directly, and
-// the Privacy Preferences link, which has neither).
+// The choice itself is device-local, not account-bound — deciding happens
+// before login, so there's no account yet to attach it to. If a session
+// happens to exist (review mode, already signed in), submitting also
+// best-effort syncs to the backend so the account record stays current;
+// that sync is never allowed to block navigation (see handleSubmit).
 //
-// Three derived modes:
-//  - 'onboarding': no decision recorded yet — submitting always proceeds
-//    into the app (Home or the original redirect target).
-//  - 'review': already decided once, revisiting via Privacy Preferences —
-//    submitting just returns to where they came from.
-//  - 'preview': nobody is signed in (Privacy Preferences tapped from a
-//    signed-out Login screen) — informational only, nothing is persisted,
-//    since there's no account to attach a decision to yet.
+// Two modes:
+//  - 'gate': the pre-login initial visit — submitting always continues to
+//    Login next.
+//  - 'review': revisiting via Privacy Preferences — submitting returns to
+//    wherever the link was opened from.
 // `null` = no explicit choice made yet, which is what keeps the primary
-// button disabled below. Only a user who already has a recorded decision
-// (aiConciergeConsentAt set) starts pre-selected; a fresh onboarding/preview
-// visit always requires an active choice.
-const initialConsentFor = (user: any): boolean | null => (user?.aiConciergeConsentAt ? !!user.aiConciergeConsent : null);
-
+// button disabled below. A prior local choice (either mode) starts
+// pre-selected so the user sees what they picked last time.
 export default function AiConciergeConsentScreen({ navigation, route, onLogin }: any) {
-  const [sourceUser, setSourceUser] = useState<any>(route?.params?.partialUser ?? undefined);
-  const [token, setToken] = useState<string>(route?.params?.token || '');
-  const [resolved, setResolved] = useState(!!route?.params?.partialUser);
-  const [consent, setConsent] = useState<boolean | null>(initialConsentFor(route?.params?.partialUser));
+  const reviewMode = !!route?.params?.reviewMode;
+  const [token, setToken] = useState<string>('');
+  const [resolved, setResolved] = useState(false);
+  const [consent, setConsent] = useState<boolean | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (resolved) return;
     (async () => {
       try {
-        const [storedUser, storedToken] = await Promise.all([
-          AsyncStorage.getItem('user'),
+        const [storedToken, storedChoice] = await Promise.all([
           AsyncStorage.getItem('userToken'),
+          getStoredAiConciergeConsent(),
         ]);
-        const parsed = storedUser && storedUser !== 'null' && storedUser !== 'undefined' ? JSON.parse(storedUser) : null;
-        if (parsed) {
-          setSourceUser(parsed);
-          setConsent(initialConsentFor(parsed));
-        }
         setToken(storedToken || '');
+        if (storedChoice) setConsent(storedChoice.consent);
       } catch (err) {
-        console.error('Failed to load stored user for the consent screen:', err);
+        console.error('Failed to load stored AI Concierge consent state:', err);
       } finally {
         setResolved(true);
       }
     })();
-  }, [resolved]);
+  }, []);
 
-  const mode: 'onboarding' | 'review' | 'preview' = !sourceUser
-    ? 'preview'
-    : !sourceUser.aiConciergeConsentAt
-    ? 'onboarding'
-    : 'review';
-
-  const redirectTo = route?.params?.redirectTo;
-  const redirectParams = route?.params?.redirectParams;
+  const mode: 'gate' | 'review' = reviewMode ? 'review' : 'gate';
 
   const handleSubmit = async () => {
-    if (mode === 'preview') {
-      navigation.goBack();
-      return;
-    }
     if (consent === null) return;
     setSaving(true);
 
-    // Best-effort save: this is a preference, not a gate, so an auth/network
-    // hiccup on the API call must never trap the user on this screen — they
-    // still proceed into the app either way. Mirrors the same best-effort
-    // pattern ScannerScreen uses for scan/record.
-    try {
-      const response = await fetch(`${API_BASE_URL}auth/ai-concierge-consent`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ consent }),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (response.ok && data.status === 'success') {
-        const updatedUser = { ...sourceUser, ...(data.user || {}), actorKind: 'User' };
-        await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
-        onLogin?.(updatedUser);
-      } else {
-        console.warn('Could not save AI Concierge consent:', data?.message || response.status);
+    await setStoredAiConciergeConsent(consent);
+
+    // Best-effort account sync: only meaningful if a session happens to
+    // exist (review mode revisited while signed in) — in gate mode there is
+    // no token yet, so this is skipped entirely. Never blocks navigation
+    // below, same reasoning as ScannerScreen's best-effort scan/record.
+    if (token) {
+      try {
+        const response = await fetch(`${API_BASE_URL}auth/ai-concierge-consent`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ consent }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (response.ok && data.status === 'success' && data.user) {
+          const storedUser = await AsyncStorage.getItem('user');
+          const parsed = storedUser && storedUser !== 'null' && storedUser !== 'undefined' ? JSON.parse(storedUser) : {};
+          const updatedUser = { ...parsed, ...data.user, actorKind: 'User' };
+          await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+          onLogin?.(updatedUser);
+        } else if (!response.ok) {
+          console.warn('Could not sync AI Concierge consent to account:', data?.message || response.status);
+        }
+      } catch (err: any) {
+        console.warn('Could not sync AI Concierge consent to account:', err?.message || err);
       }
-    } catch (err: any) {
-      console.warn('Could not save AI Concierge consent:', err?.message || err);
-    } finally {
-      setSaving(false);
     }
 
-    if (mode === 'onboarding') {
-      if (redirectTo) navigation.replace(redirectTo, redirectParams || {});
-      else navigation.replace('Home');
-    } else {
+    setSaving(false);
+
+    if (mode === 'review') {
       navigation.goBack();
+    } else {
+      navigation.replace('Login');
     }
   };
 
@@ -201,9 +186,6 @@ export default function AiConciergeConsentScreen({ navigation, route, onLogin }:
                 </TouchableOpacity>
               </View>
 
-              {mode === 'preview' && (
-                <Text style={styles.previewNote}>Sign in to save this preference to your account.</Text>
-              )}
             </ScrollView>
 
             <View style={styles.cardFooter}>
@@ -213,13 +195,7 @@ export default function AiConciergeConsentScreen({ navigation, route, onLogin }:
                 disabled={saving || consent === null}
               >
                 <Text style={styles.buttonText}>
-                  {saving
-                    ? 'Saving…'
-                    : mode === 'onboarding'
-                    ? 'Continue'
-                    : mode === 'review'
-                    ? 'Save Preferences'
-                    : 'Close'}
+                  {saving ? 'Saving…' : mode === 'review' ? 'Save Preferences' : 'Continue'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -370,12 +346,6 @@ const styles = StyleSheet.create({
   consentButtonTextDisagreeActive: {
     color: colors.primaryDark,
     fontWeight: '600',
-  },
-  previewNote: {
-    fontSize: 12,
-    fontStyle: 'italic',
-    color: colors.muted,
-    marginTop: spacing.xs,
   },
   // Height matches the frontend project's CONSENT_BUTTON_HEIGHT (27, see
   // AiConciergeConsentPage). Dark blue background (colors.primaryDark) to

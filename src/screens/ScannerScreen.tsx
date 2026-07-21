@@ -823,7 +823,7 @@ const styles = StyleSheet.create({
     color: colors.accent,
   },
   manualWrap: {
-    marginTop: spacing.md,
+    marginTop: spacing.md - 20,
     alignItems: 'center',
     width: '100%',
   },
@@ -876,6 +876,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
     borderRadius: radius.md,
     paddingVertical: 12,
+    marginBottom: 20,
     alignItems: 'center',
     ...shadow(1),
   },
