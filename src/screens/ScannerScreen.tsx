@@ -19,6 +19,7 @@ import { useIsFocused } from '@react-navigation/native';
 import { colors, radius, spacing, shadow } from '../theme';
 import NativeCodeScanner, { isNativeCodeScannerAvailable, ScannedCodeFormat } from '../components/NativeCodeScanner';
 import { isNfcSupported, readNfcTag } from '../utils/nfc';
+import { decodeEan13FromImageData } from '../utils/ean13Decoder';
 
 // Conditionally import the web QR reader — native scanning goes through
 // NativeCodeScanner (react-native-vision-camera), which reads QR + the
@@ -150,8 +151,11 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
     }
   };
 
-  // Decode a QR code from a picked/captured image (works over http, no camera
-  // stream needed). Uses jsQR on a canvas — web only.
+  // Decode a QR code — or, failing that, an EAN-13 barcode — from a
+  // picked/captured image (works over http, no camera stream needed). Uses
+  // jsQR on a canvas for QR; falls back to a dependency-free EAN-13 reader
+  // (see utils/ean13Decoder) for barcodes, since there's no camera-frame
+  // barcode scanner available on web. Web only.
   const decodeImageFromFile = (file: any) => {
     const w: any = globalThis as any;
     setLoading(true);
@@ -174,9 +178,15 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
             // eslint-disable-next-line @typescript-eslint/no-var-requires
             const jsQR = require('jsqr').default || require('jsqr');
             const code = jsQR(imageData.data, cw, ch);
-            setLoading(false);
             if (code && code.data) {
+              setLoading(false);
               handleScannedCode(String(code.data), 'qr');
+              return;
+            }
+            const barcodeValue = decodeEan13FromImageData(imageData);
+            setLoading(false);
+            if (barcodeValue) {
+              handleScannedCode(barcodeValue, 'barcode');
             } else {
               Alert.alert(t('error'), t('noQrInImage'));
             }
