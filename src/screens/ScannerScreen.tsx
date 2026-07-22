@@ -20,19 +20,7 @@ import { colors, radius, spacing, shadow } from '../theme';
 import NativeCodeScanner, { isNativeCodeScannerAvailable, ScannedCodeFormat } from '../components/NativeCodeScanner';
 import { isNfcSupported, readNfcTag } from '../utils/nfc';
 import { decodeEan13FromImageData } from '../utils/ean13Decoder';
-
-// Conditionally import the web QR reader — native scanning goes through
-// NativeCodeScanner (react-native-vision-camera), which reads QR + the
-// common 1D/2D barcode formats in one pass.
-let QrReader: any = null;
-
-if (Platform.OS === 'web') {
-  try {
-    QrReader = require('react-qr-reader');
-  } catch (e) {
-    console.warn('Web QR reader not available:', e);
-  }
-}
+import WebCodeScanner from '../components/WebCodeScanner';
 
 interface ScannerScreenProps {
   navigation: any;
@@ -567,7 +555,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
   }
 
   // Web photo-scan mode (http / no live camera) — clean light layout.
-  if (Platform.OS === 'web' && (webPhotoMode || !QrReader)) {
+  if (Platform.OS === 'web' && webPhotoMode) {
     return (
       <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton={true}>
         <View style={styles.photoContainer}>
@@ -606,18 +594,9 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
           </View>
           <View style={styles.scanViewport}>
             <View style={styles.webScannerContainer}>
-              <QrReader
-                delay={300}
-                showViewFinder={false}
-                onError={(err: any) => {
-                  console.error('QR Scanner Error:', err);
-                }}
-                onScan={(data: string | null) => {
-                  if (data) {
-                    handleScannedCode(data, 'qr');
-                  }
-                }}
-                style={styles.webScanner}
+              <WebCodeScanner
+                active={isFocused && !loading}
+                onScan={(value, format) => handleScannedCode(value, format)}
               />
             </View>
             <View pointerEvents="none" style={styles.frameOverlay}>
@@ -790,11 +769,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#000',
-  },
-  webScanner: {
-    width: '100%',
-    maxWidth: 500,
-    height: '100%',
   },
   // Light frame over the camera viewport (replaces the library's coral default).
   frameOverlay: {
