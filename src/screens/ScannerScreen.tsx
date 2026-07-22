@@ -694,6 +694,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
               </TouchableOpacity>
             ) : null}
           </View>
+          {renderManualEntry()}
         </View>
       </AppLayout>
     );
