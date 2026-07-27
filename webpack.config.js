@@ -18,6 +18,8 @@ module.exports = {
       'react-native-permissions': false,
       '@invertase/react-native-apple-authentication': false,
       'react-native-worklets-core': false,
+      '@react-native-ml-kit/barcode-scanning': false,
+      'react-native-image-picker': false,
     },
   },
   module: {

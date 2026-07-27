@@ -21,6 +21,16 @@ import NativeCodeScanner, { isNativeCodeScannerAvailable, ScannedCodeFormat } fr
 import { isNfcSupported, readNfcTag } from '../utils/nfc';
 import { decodeEan13FromImageData } from '../utils/ean13Decoder';
 import WebCodeScanner from '../components/WebCodeScanner';
+import { isNativeImageScanAvailable, scanBarcodeFromImageUri } from '../utils/nativeImageScan';
+
+// Guarded the same defensive way as the native code scanner/NFC modules —
+// degrades gracefully if the native module isn't linked/rebuilt yet.
+let launchImageLibrary: any = null;
+try {
+  launchImageLibrary = require('react-native-image-picker').launchImageLibrary;
+} catch (e) {
+  console.warn('react-native-image-picker not available:', e);
+}
 
 interface ScannerScreenProps {
   navigation: any;
@@ -216,6 +226,36 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
     } catch (err) {
       Alert.alert(t('error'), t('photoScanNotSupported'));
     }
+  };
+
+  // Native (Android/iOS) equivalent of openPhotoScan/decodeImageFromFile
+  // above — those use browser-only DOM/canvas APIs and only ever ran on web.
+  // Picks a gallery image via react-native-image-picker, then decodes it
+  // on-device with ML Kit (see utils/nativeImageScan), covering the exact
+  // same QR + 1D/2D barcode formats the live NativeCodeScanner reads.
+  const pickNativePhotoAndScan = () => {
+    if (!launchImageLibrary || !isNativeImageScanAvailable()) {
+      Alert.alert(t('error'), t('photoScanNotSupported'));
+      return;
+    }
+    launchImageLibrary({ mediaType: 'photo', selectionLimit: 1, includeBase64: false }, async (response: any) => {
+      if (response?.didCancel || response?.errorCode) return;
+      const uri = response?.assets && response.assets[0] && response.assets[0].uri;
+      if (!uri) return;
+      setLoading(true);
+      try {
+        const result = await scanBarcodeFromImageUri(uri);
+        setLoading(false);
+        if (result) {
+          handleScannedCode(result.value, result.format);
+        } else {
+          Alert.alert(t('error'), t('noQrInImage'));
+        }
+      } catch (err) {
+        setLoading(false);
+        Alert.alert(t('error'), t('couldNotReadImage'));
+      }
+    });
   };
 
   // Anything that isn't our own QR carries no product_id at all — resolve it
@@ -669,19 +709,30 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
                 <ActivityIndicator size="small" color="#fff" />
                 <Text style={styles.loadingPillText}>{t('loadingProductInfo')}</Text>
               </View>
-            ) : nfcAvailable ? (
-              <TouchableOpacity
-                style={styles.loadingPill}
-                onPress={handleNfcScanPress}
-                disabled={nfcReading}
-              >
-                {nfcReading ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={styles.loadingPillText}>{t('nfcScanButton')}</Text>
+            ) : (
+              <>
+                {nfcAvailable && (
+                  <TouchableOpacity
+                    style={styles.loadingPill}
+                    onPress={handleNfcScanPress}
+                    disabled={nfcReading}
+                  >
+                    {nfcReading ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={styles.loadingPillText}>{t('nfcScanButton')}</Text>
+                    )}
+                  </TouchableOpacity>
                 )}
-              </TouchableOpacity>
-            ) : null}
+                {isNativeImageScanAvailable() && (
+                  <TouchableOpacity onPress={pickNativePhotoAndScan}>
+                    <Text style={[styles.scanCaptionLink, nfcAvailable && { marginTop: spacing.md }]}>
+                      {t('photoScanButton')}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </>
+            )}
           </View>
           {renderManualEntry()}
         </View>
@@ -703,6 +754,17 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
             <Image source={require('../assets/qr-code.png')} style={styles.stateIconDanger} resizeMode="contain" />
           </View>
           <Text style={styles.stateTitle}>{t('qrScannerUnavailable')}</Text>
+          {isNativeImageScanAvailable() && (
+            <TouchableOpacity
+              style={[styles.photoScanButton, { marginTop: spacing.lg }]}
+              onPress={pickNativePhotoAndScan}
+              disabled={loading}
+            >
+              <Text style={styles.photoScanButtonText}>
+                {loading ? t('loading') : t('photoScanButton')}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     </AppLayout>
