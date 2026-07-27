@@ -1,28 +1,26 @@
 import React, { useEffect, useRef } from 'react';
-import { decodeEan13FromImageData } from '../utils/ean13Decoder';
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const jsQR = require('jsqr').default || require('jsqr');
+import { BrowserMultiFormatReader } from '@zxing/browser';
+import { BarcodeFormat } from '@zxing/library';
 
 interface WebCodeScannerProps {
   active: boolean;
   onScan: (value: string, format: 'qr' | 'barcode') => void;
 }
 
-const SCAN_INTERVAL_MS = 300;
-
 // Replaces react-qr-reader for the web live-camera view: that library only
-// ever decodes QR codes, so a barcode never had any detection path on a live
-// web camera feed (QR and GS1-DL — a QR — worked; a real 1D barcode never
-// could). This drives its own getUserMedia stream, snapshotting frames onto
-// an offscreen canvas and running jsQR first, then falling back to the
-// dependency-free EAN-13 reader (see utils/ean13Decoder) — same fallback
-// order as the photo-upload path in ScannerScreen.decodeImageFromFile.
+// ever decoded QR codes, and the jsQR + hand-rolled EAN-13 row-decoder combo
+// that briefly replaced it (see git history) was accurate enough for a
+// cropped, well-lit photo but too strict for a live feed — a barcode at an
+// angle, at a different scale, or with screen moire (e.g. scanning a barcode
+// shown on another device's display, as opposed to a printed one) routinely
+// failed to decode even though the exact same frame worked fine through the
+// photo-upload path. ZXing (used by countless production web scanners)
+// handles that real-world variance; it also covers every format
+// NativeCodeScanner reads on-device, so behavior matches across platforms.
 export default function WebCodeScanner({ active, onScan }: WebCodeScannerProps) {
   const videoRef = useRef<any>(null);
-  const canvasRef = useRef<any>(null);
-  const streamRef = useRef<any>(null);
-  const intervalRef = useRef<any>(null);
+  const readerRef = useRef<BrowserMultiFormatReader | null>(null);
+  const controlsRef = useRef<{ stop: () => void } | null>(null);
   const lastValueRef = useRef<string>('');
 
   useEffect(() => {
@@ -38,48 +36,24 @@ export default function WebCodeScanner({ active, onScan }: WebCodeScannerProps) 
       }, 2500);
     };
 
-    const scanFrame = () => {
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      if (!video || !canvas || video.readyState < 2) return;
-      const w = video.videoWidth;
-      const h = video.videoHeight;
-      if (!w || !h) return;
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      ctx.drawImage(video, 0, 0, w, h);
-      const imageData = ctx.getImageData(0, 0, w, h);
-
-      const qrResult = jsQR(imageData.data, w, h);
-      if (qrResult && qrResult.data) {
-        report(String(qrResult.data), 'qr');
-        return;
-      }
-      const barcodeValue = decodeEan13FromImageData(imageData);
-      if (barcodeValue) {
-        report(barcodeValue, 'barcode');
-      }
-    };
-
     const start = async () => {
       try {
-        const nav: any = (globalThis as any).navigator;
-        const stream = await nav.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: 'environment' } },
-          audio: false,
-        });
+        const reader = new BrowserMultiFormatReader();
+        readerRef.current = reader;
+        const controls = await reader.decodeFromVideoDevice(
+          undefined,
+          videoRef.current,
+          (result: any, err: any) => {
+            if (cancelled || !result) return;
+            const format = result.getBarcodeFormat ? result.getBarcodeFormat() : null;
+            report(String(result.getText()), format === BarcodeFormat.QR_CODE ? 'qr' : 'barcode');
+          }
+        );
         if (cancelled) {
-          stream.getTracks().forEach((t: any) => t.stop());
+          controls.stop();
           return;
         }
-        streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play();
-        }
-        intervalRef.current = setInterval(scanFrame, SCAN_INTERVAL_MS);
+        controlsRef.current = controls;
       } catch (err) {
         console.error('Camera access failed:', err);
       }
@@ -89,27 +63,20 @@ export default function WebCodeScanner({ active, onScan }: WebCodeScannerProps) 
 
     return () => {
       cancelled = true;
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t: any) => t.stop());
-        streamRef.current = null;
+      if (controlsRef.current) {
+        controlsRef.current.stop();
+        controlsRef.current = null;
       }
     };
   }, [active, onScan]);
 
   return (
-    <>
-      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-      <video
-        ref={videoRef}
-        playsInline
-        muted
-        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-      />
-      <canvas ref={canvasRef} style={{ display: 'none' }} />
-    </>
+    // eslint-disable-next-line jsx-a11y/media-has-caption
+    <video
+      ref={videoRef}
+      playsInline
+      muted
+      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+    />
   );
 }

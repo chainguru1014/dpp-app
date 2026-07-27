@@ -19,7 +19,8 @@ import { useIsFocused } from '@react-navigation/native';
 import { colors, radius, spacing, shadow } from '../theme';
 import NativeCodeScanner, { isNativeCodeScannerAvailable, ScannedCodeFormat } from '../components/NativeCodeScanner';
 import { isNfcSupported, readNfcTag } from '../utils/nfc';
-import { decodeEan13FromImageData } from '../utils/ean13Decoder';
+import { BrowserMultiFormatReader } from '@zxing/browser';
+import { BarcodeFormat } from '@zxing/library';
 import WebCodeScanner from '../components/WebCodeScanner';
 import { isNativeImageScanAvailable, scanBarcodeFromImageUri } from '../utils/nativeImageScan';
 
@@ -149,11 +150,12 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
     }
   };
 
-  // Decode a QR code — or, failing that, an EAN-13 barcode — from a
-  // picked/captured image (works over http, no camera stream needed). Uses
-  // jsQR on a canvas for QR; falls back to a dependency-free EAN-13 reader
-  // (see utils/ean13Decoder) for barcodes, since there's no camera-frame
-  // barcode scanner available on web. Web only.
+  // Decode a QR code or 1D/2D barcode from a picked/captured image (works
+  // over http, no camera stream needed). Uses the same ZXing decoder
+  // WebCodeScanner uses for the live feed — previously this used jsQR (QR
+  // only) plus a hand-rolled, angle/scale-sensitive EAN-13 reader, which
+  // decoded a clean upload fine but was too strict for anything off-axis.
+  // Web only.
   const decodeImageFromFile = (file: any) => {
     const w: any = globalThis as any;
     setLoading(true);
@@ -161,36 +163,16 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
       const reader = new w.FileReader();
       reader.onload = () => {
         const img = new w.Image();
-        img.onload = () => {
+        img.onload = async () => {
           try {
-            const maxDim = 1200;
-            const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
-            const cw = Math.max(1, Math.round(img.width * scale));
-            const ch = Math.max(1, Math.round(img.height * scale));
-            const canvas = w.document.createElement('canvas');
-            canvas.width = cw;
-            canvas.height = ch;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, cw, ch);
-            const imageData = ctx.getImageData(0, 0, cw, ch);
-            // eslint-disable-next-line @typescript-eslint/no-var-requires
-            const jsQR = require('jsqr').default || require('jsqr');
-            const code = jsQR(imageData.data, cw, ch);
-            if (code && code.data) {
-              setLoading(false);
-              handleScannedCode(String(code.data), 'qr');
-              return;
-            }
-            const barcodeValue = decodeEan13FromImageData(imageData);
+            const codeReader = new BrowserMultiFormatReader();
+            const result = await codeReader.decodeFromImageElement(img);
             setLoading(false);
-            if (barcodeValue) {
-              handleScannedCode(barcodeValue, 'barcode');
-            } else {
-              Alert.alert(t('error'), t('noQrInImage'));
-            }
+            const format = result.getBarcodeFormat ? result.getBarcodeFormat() : null;
+            handleScannedCode(String(result.getText()), format === BarcodeFormat.QR_CODE ? 'qr' : 'barcode');
           } catch (err) {
             setLoading(false);
-            Alert.alert(t('error'), t('couldNotReadImage'));
+            Alert.alert(t('error'), t('noQrInImage'));
           }
         };
         img.onerror = () => {
