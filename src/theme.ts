@@ -18,7 +18,7 @@ export const colors = {
   navy: '#2f80c8',
   primary: '#2f80c8',
   primaryDark: '#266aa8',
-  accent: '#1976d2',
+  accent: '#2f80c8',
 
   // Top bar / header surface (bright azure blue)
   header: '#2f80c8',

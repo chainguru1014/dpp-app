@@ -6,7 +6,7 @@ const size = 48;
 const stroke = 1.7;
 
 // Brand-aligned colours: blue accent when picked, soft slate otherwise.
-const ACTIVE = '#1976d2';
+const ACTIVE = '#2f80c8';
 const IDLE = '#5b6b8c';
 
 const common = {
@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   symbolContainerSelected: {
-    borderColor: '#1976d2',
+    borderColor: '#2f80c8',
     backgroundColor: '#eaf2fd',
   },
   iconWrapper: {

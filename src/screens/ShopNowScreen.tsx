@@ -16,7 +16,7 @@ const { width } = Dimensions.get('window');
 
 const NAVY = '#2f80c8';
 const PRIMARY = '#2f80c8';
-const ACCENT = '#1976d2';
+const ACCENT = '#2f80c8';
 const LIGHT_BG = '#f4f7fc';
 
 interface ShopNowScreenProps {
