@@ -760,7 +760,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         onLogout={onLogout}
         showBackButton={true}
       >
-        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        <ScrollView style={styles.container} contentContainerStyle={styles.containerContent} showsVerticalScrollIndicator={false}>
           <View style={styles.scanViewport}>
             <View style={styles.webScannerContainer}>
               <WebCodeScanner
@@ -808,7 +808,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         onLogout={onLogout}
         showBackButton={true}
       >
-        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        <ScrollView style={styles.container} contentContainerStyle={styles.containerContent} showsVerticalScrollIndicator={false}>
           <View style={styles.scanViewport}>
             <NativeCodeScanner active={isFocused && !loading} onScan={handleScannedCode} torch={torchOn} />
             <View pointerEvents="none" style={styles.frameOverlay}>
@@ -859,6 +859,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: DARK,
+  },
+  // contentContainerStyle for the ScrollView wrapping scanViewport+whiteBoard
+  // — flexGrow:1 lets whiteBoard (flex:1 below) stretch to the bottom of the
+  // screen instead of leaving a dark gap above the bottom nav when its own
+  // content is shorter than the available height.
+  containerContent: {
+    flexGrow: 1,
   },
   camera: {
     flex: 1,
@@ -952,6 +959,7 @@ const styles = StyleSheet.create({
   // White board below the camera viewport (consumer flow) — Upload Photo /
   // Enter Manually, replacing the old dark-viewport link style.
   whiteBoard: {
+    flex: 1,
     backgroundColor: colors.surface,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,

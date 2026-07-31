@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useId } from 'react';
 import {
   View,
   StyleSheet,
@@ -89,6 +89,12 @@ export default function AppLayout({
 }: AppLayoutProps) {
   const { t, locale, setLocale, languages } = useI18n();
   const route = useRoute();
+  // Unique per mounted instance — react-navigation keeps previous stack
+  // screens (each with their own AppLayout) mounted underneath the active
+  // one, and on web a fixed <Defs> id collides across all of them, so
+  // whichever one wins the DOM race renders the gradient (or none of them
+  // reliably do). useId() guarantees no collision.
+  const gradientId = `topBarGradient-${useId()}`;
   const isHomeRoute = route.name === 'Home' || route.name === 'EmployeeHome';
   const routeTitleKey = ROUTE_TITLE_KEYS[route.name];
   const computedTitle = title ?? (isHomeRoute ? BRAND_TITLE : routeTitleKey ? t(routeTitleKey as any) : undefined);
@@ -271,12 +277,12 @@ export default function AppLayout({
       <View style={styles.topBar}>
         <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
           <Defs>
-            <SvgLinearGradient id="topBarGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <SvgLinearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
               <Stop offset="0%" stopColor={colors.header} stopOpacity={1} />
               <Stop offset="100%" stopColor={colors.headerLight} stopOpacity={1} />
             </SvgLinearGradient>
           </Defs>
-          <Rect x={0} y={0} width="100%" height="100%" fill="url(#topBarGradient)" />
+          <Rect x={0} y={0} width="100%" height="100%" fill={`url(#${gradientId})`} />
         </Svg>
         {showBackButton ? (
           <TouchableOpacity

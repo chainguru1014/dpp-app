@@ -102,6 +102,7 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
     <AppLayout navigation={navigation} user={user} onLogout={onLogout}>
       <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
         <Text style={styles.selectorTitle}>{t('locSelectorTitle')}</Text>
+        <Text style={styles.selectorSubtitle}>{t('locSelectorSubtitle')}</Text>
         <View style={styles.locationGrid}>
           {SCAN_LOCATION_TYPES.map((opt) => {
             const selected = scanLocationType === opt.key;
@@ -110,9 +111,9 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
                 key={opt.key}
                 style={[styles.locationTile, selected && styles.locationTileSelected]}
                 onPress={() => handleSelectScanLocation(opt.key)}
-                activeOpacity={0.8}
+                activeOpacity={0.7}
               >
-                <Icon name={opt.icon} size={22} color={selected ? '#fff' : colors.primary} />
+                <Icon name={opt.icon} size={20} color={selected ? '#fff' : colors.primary} style={styles.locationTileIcon} />
                 <Text style={[styles.locationTileText, selected && styles.locationTileTextSelected]}>
                   {t(opt.labelKey as any)}
                 </Text>
@@ -180,31 +181,32 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   container: { padding: spacing.xl, paddingBottom: spacing.xxxl },
-  selectorTitle: { fontSize: 15, fontWeight: '600', color: colors.heading, marginBottom: spacing.sm },
+  // Matches EmployeeHomeScreen's Worker Operations tile style exactly (same
+  // card proportions/shadow/radius) — selected state is a solid blue fill,
+  // same as that screen's reference "current step" look.
+  selectorTitle: { fontSize: 22, fontWeight: '600', color: colors.heading, marginBottom: spacing.xs },
+  selectorSubtitle: { fontSize: 14, color: colors.muted, marginBottom: spacing.xl },
   locationGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
+    gap: spacing.md,
+    marginBottom: spacing.xl,
   },
   locationTile: {
-    width: '31%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
+    width: '47%',
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xs,
+    padding: spacing.lg,
+    ...shadow(1),
   },
   locationTileSelected: {
     backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
-  locationTileText: { fontSize: 11, fontWeight: '600', color: colors.primary },
+  locationTileIcon: { marginBottom: spacing.xs },
+  locationTileText: { fontSize: 15, fontWeight: '600', color: colors.text },
   locationTileTextSelected: { color: '#fff' },
   statRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
   statTile: {
