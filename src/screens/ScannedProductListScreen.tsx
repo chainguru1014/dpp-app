@@ -53,7 +53,7 @@ export default function ScannedProductListScreen({
   const [ownedProducts, setOwnedProducts] = useState<any[]>([]);
   const [soldProducts, setSoldProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [topTab, setTopTab] = useState<'myproducts' | 'album' | 'sold'>('myproducts');
+  const [topTab, setTopTab] = useState<'album' | 'sold'>('album');
   const [bottomTab, setBottomTab] = useState<'scanned' | 'liked' | 'disliked'>('scanned');
 
   useEffect(() => {
@@ -588,12 +588,10 @@ export default function ScannedProductListScreen({
             {/* Top panel: My Products / My Album / Sold */}
             <View style={[styles.panel, { height: PANEL_HEIGHT }]}>
               <View style={styles.tabRow}>
-                {renderTab('myproducts', t('myProductsOwned'), require('../assets/cart.png'), topTab, setTopTab)}
                 {renderTab('album', t('myAlbum'), require('../assets/add-image.png'), topTab, setTopTab)}
                 {renderTab('sold', t('sellSection'), require('../assets/send.png'), topTab, setTopTab)}
               </View>
               <ScrollView style={styles.panelBody} contentContainerStyle={styles.panelBodyContent}>
-                {topTab === 'myproducts' && renderGrid(myProductsList, renderOwnedItem, 'mp', t('noOwnedProducts'))}
                 {topTab === 'album' && renderGrid(albumItems, renderProductItem, 'al', t('noItems'))}
                 {topTab === 'sold' && renderGrid(soldProducts, renderSoldItem, 'sd', t('noSoldProducts'))}
               </ScrollView>

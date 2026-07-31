@@ -355,6 +355,7 @@ export default function AppLayout({
               onPress={handleHome}
               activeOpacity={0.7}
             >
+              {isHomeSelected && <View style={styles.bottomTabIndicator} />}
               <Image
                 source={require('../assets/home.png')}
                 style={[styles.bottomTabIcon, isHomeSelected && styles.bottomTabIconSelected]}
@@ -370,6 +371,7 @@ export default function AppLayout({
               onPress={handleScan}
               activeOpacity={0.7}
             >
+              {isScanSelected && <View style={styles.bottomTabIndicator} />}
               <Icon
                 name="crop-free"
                 size={BOTTOM_TAB_ICON_SIZE}
@@ -385,8 +387,9 @@ export default function AppLayout({
               onPress={handleProducts}
               activeOpacity={0.7}
             >
+              {isProductsSelected && <View style={styles.bottomTabIndicator} />}
               <Icon
-                name="assignment"
+                name="article"
                 size={BOTTOM_TAB_ICON_SIZE}
                 color={isProductsSelected ? colors.primary : '#333333'}
               />
@@ -400,6 +403,7 @@ export default function AppLayout({
               onPress={handleSettings}
               activeOpacity={0.7}
             >
+              {isSettingsSelected && <View style={styles.bottomTabIndicator} />}
               <Image
                 source={require('../assets/setting.png')}
                 style={[styles.bottomTabIcon, isSettingsSelected && styles.bottomTabIconSelected]}
@@ -595,7 +599,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 15,
-    backgroundColor: colors.navy,
     overflow: 'hidden',
     borderBottomWidth: 1,
     borderBottomColor: colors.navy,
@@ -628,7 +631,7 @@ const styles = StyleSheet.create({
   topBarRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 14,
   },
   topBarAvatarIcon: {
     width: 26,
@@ -650,7 +653,7 @@ const styles = StyleSheet.create({
   // ROUTE_TITLE_KEYS / BRAND_TITLE / the title/subtitle props above.
   titleBlock: {
     flex: 1,
-    marginLeft: 10,
+    marginLeft: 18,
     justifyContent: 'center',
   },
   titleText: {
@@ -715,11 +718,17 @@ const styles = StyleSheet.create({
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    borderTopWidth: 2,
-    borderTopColor: 'transparent',
   },
-  bottomTabSelected: {
-    borderTopColor: colors.primary,
+  bottomTabSelected: {},
+  // Short centered indicator (replaces a full-width top border) shown above
+  // the icon on the active tab only.
+  bottomTabIndicator: {
+    position: 'absolute',
+    top: 0,
+    width: 20,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: colors.primary,
   },
   bottomTabIcon: {
     width: BOTTOM_TAB_ICON_SIZE,

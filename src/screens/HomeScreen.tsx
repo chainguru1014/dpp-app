@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, useWindowDimensions } from 'react-native';
 import Svg, { Rect } from 'react-native-svg';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 import AppLayout from '../components/AppLayout';
 import { useI18n } from '../i18n/I18nContext';
 import { API_BASE_URL } from '../config/api';
@@ -22,6 +24,19 @@ const TYPE_META: Record<string, { labelKey: string; color: string }> = {
   receive: { labelKey: 'received', color: colors.accent },
 };
 
+const SCAN_LOCATION_STORAGE_KEY = 'scanLocationType';
+
+// Where the consumer is scanning from — purely a local preference today (no
+// backend field yet to attach it to); persisted so it survives app restarts.
+const SCAN_LOCATION_TYPES: { key: string; labelKey: string; icon: string }[] = [
+  { key: 'store', labelKey: 'locTypeStore', icon: 'store' },
+  { key: 'factory', labelKey: 'locTypeFactory', icon: 'factory' },
+  { key: 'warehouse', labelKey: 'locTypeWarehouse', icon: 'warehouse' },
+  { key: 'p2p', labelKey: 'locTypeP2P', icon: 'swap-horiz' },
+  { key: 'home', labelKey: 'locTypeHome', icon: 'home' },
+  { key: 'other', labelKey: 'locTypeOther', icon: 'more-horiz' },
+];
+
 // Consumer Home — a simple stats dashboard (owned-products + scan-history
 // analytics) instead of the old banner slider. Reuses the same endpoints
 // ScannedProductListScreen/HistoryScreen already call — no new backend work.
@@ -33,6 +48,18 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
   const [soldCount, setSoldCount] = useState(0);
   const [scannedCount, setScannedCount] = useState(0);
   const [activityCounts, setActivityCounts] = useState<Record<string, number>>({});
+  const [scanLocationType, setScanLocationType] = useState<string>('store');
+
+  useEffect(() => {
+    AsyncStorage.getItem(SCAN_LOCATION_STORAGE_KEY).then((stored) => {
+      if (stored) setScanLocationType(stored);
+    });
+  }, []);
+
+  const handleSelectScanLocation = (key: string) => {
+    setScanLocationType(key);
+    AsyncStorage.setItem(SCAN_LOCATION_STORAGE_KEY, key).catch(() => {});
+  };
 
   useEffect(() => {
     (async () => {
@@ -74,7 +101,25 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
   return (
     <AppLayout navigation={navigation} user={user} onLogout={onLogout}>
       <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
-        <Text style={styles.heading}>{t('dashboardTitle')}</Text>
+        <Text style={styles.selectorTitle}>{t('locSelectorTitle')}</Text>
+        <View style={styles.locationGrid}>
+          {SCAN_LOCATION_TYPES.map((opt) => {
+            const selected = scanLocationType === opt.key;
+            return (
+              <TouchableOpacity
+                key={opt.key}
+                style={[styles.locationTile, selected && styles.locationTileSelected]}
+                onPress={() => handleSelectScanLocation(opt.key)}
+                activeOpacity={0.8}
+              >
+                <Icon name={opt.icon} size={22} color={selected ? '#fff' : colors.primary} />
+                <Text style={[styles.locationTileText, selected && styles.locationTileTextSelected]}>
+                  {t(opt.labelKey as any)}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
 
         {loading ? (
           <ActivityIndicator size="large" color={colors.accent} style={{ marginTop: spacing.xl }} />
@@ -135,7 +180,32 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   container: { padding: spacing.xl, paddingBottom: spacing.xxxl },
-  heading: { fontSize: 22, fontWeight: '600', color: colors.heading, marginBottom: spacing.lg },
+  selectorTitle: { fontSize: 15, fontWeight: '600', color: colors.heading, marginBottom: spacing.sm },
+  locationGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  locationTile: {
+    width: '31%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xs,
+  },
+  locationTileSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  locationTileText: { fontSize: 11, fontWeight: '600', color: colors.primary },
+  locationTileTextSelected: { color: '#fff' },
   statRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
   statTile: {
     flex: 1,

@@ -585,7 +585,8 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
   // White board below the camera viewport: today's scanned-products strip
   // (latest on the right, highlighted), then "Upload Photo" (reuses the
   // existing openPhotoScan/pickNativePhotoAndScan handlers) and "Enter
-  // Manually" (drives renderManualEntry's manualOpen state via hideToggle).
+  // Manually"/"Hide" (drives renderManualEntry's manualOpen state via
+  // hideToggle).
   const renderWhiteBoard = () => {
     const onUploadPhoto = Platform.OS === 'web' ? openPhotoScan : pickNativePhotoAndScan;
     return (
@@ -604,11 +605,13 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
                   {!!scan.image && (
                     <Image source={{ uri: scan.image }} style={styles.recentScanImage} resizeMode="cover" />
                   )}
-                  <Text style={styles.recentScanId}>{index + 1}</Text>
-                  <Text style={styles.recentScanTime}>
-                    {new Date(scan.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </Text>
-                  <Text style={styles.recentScanName} numberOfLines={1}>{scan.name}</Text>
+                  <View style={styles.recentScanDetail}>
+                    <Text style={styles.recentScanId}>{index + 1}</Text>
+                    <Text style={styles.recentScanTime}>
+                      {new Date(scan.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </Text>
+                    <Text style={styles.recentScanName} numberOfLines={1}>{scan.name}</Text>
+                  </View>
                 </View>
               );
             })}
@@ -623,7 +626,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         ) : (
           <View style={styles.whiteBoardRow}>
             <TouchableOpacity style={styles.whiteBoardButton} onPress={onUploadPhoto} activeOpacity={0.8}>
-              <VectorIcon name="photo-library" size={22} color={colors.primary} />
+              <VectorIcon name="photo-library" size={18} color={colors.primary} />
               <Text style={styles.whiteBoardButtonText}>{t('scanUploadPhoto')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -631,8 +634,10 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
               onPress={() => setManualOpen((v) => !v)}
               activeOpacity={0.8}
             >
-              <VectorIcon name="edit" size={22} color={colors.primary} />
-              <Text style={styles.whiteBoardButtonText}>{t('scanEnterManually')}</Text>
+              <VectorIcon name="edit" size={18} color={colors.primary} />
+              <Text style={styles.whiteBoardButtonText}>
+                {manualOpen ? t('scanHideManual') : t('scanEnterManually')}
+              </Text>
             </TouchableOpacity>
           </View>
         )}
@@ -660,6 +665,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
   const renderCameraOverlay = (showTorch: boolean) => (
     <>
       <View pointerEvents="none" style={styles.overlayHintWrap}>
+        <VectorIcon name="qr-code" size={16} color="#fff" style={styles.overlayHintIcon} />
         <Text style={styles.overlayHintText}>{t('scannerScanHint')}</Text>
       </View>
       <View style={styles.overlayCornerRow}>
@@ -754,7 +760,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         onLogout={onLogout}
         showBackButton={true}
       >
-        <View style={styles.container}>
+        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
           <View style={styles.scanViewport}>
             <View style={styles.webScannerContainer}>
               <WebCodeScanner
@@ -768,7 +774,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
             {renderCameraOverlay(false)}
           </View>
           {renderWhiteBoard()}
-        </View>
+        </ScrollView>
       </AppLayout>
     );
   }
@@ -802,7 +808,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         onLogout={onLogout}
         showBackButton={true}
       >
-        <View style={styles.container}>
+        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
           <View style={styles.scanViewport}>
             <NativeCodeScanner active={isFocused && !loading} onScan={handleScannedCode} torch={torchOn} />
             <View pointerEvents="none" style={styles.frameOverlay}>
@@ -811,7 +817,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
             {renderCameraOverlay(true)}
           </View>
           {renderWhiteBoard()}
-        </View>
+        </ScrollView>
       </AppLayout>
     );
   }
@@ -863,7 +869,15 @@ const styles = StyleSheet.create({
     top: spacing.lg,
     left: spacing.xl,
     right: spacing.xl,
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
+  },
+  overlayHintIcon: {
+    marginRight: 6,
+    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   overlayHintText: {
     color: '#fff',
@@ -897,10 +911,11 @@ const styles = StyleSheet.create({
   },
   // Camera viewport + frame
   scanViewport: {
-    flex: 1,
-    // Guarantee a tall camera area even if the flex chain collapses on web,
-    // so the centred frame lands on the middle of the camera view.
-    minHeight: 420,
+    // Fixed (not flex:1) so the white board below — recent scans strip,
+    // buttons, and the manual-entry card when expanded — always has room to
+    // render in full without clipping against the bottom nav or needing a
+    // scrollbar on typical phone screens.
+    height: 300,
     width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
@@ -952,7 +967,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   recentScanCard: {
-    width: 74,
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: 150,
     marginRight: spacing.sm,
     backgroundColor: colors.surfaceAlt,
     borderRadius: radius.md,
@@ -984,37 +1001,46 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   recentScanImage: {
-    width: '100%',
-    height: 48,
+    width: 44,
+    height: 44,
     borderRadius: radius.sm,
     backgroundColor: colors.border,
+  },
+  recentScanDetail: {
+    flex: 1,
+    marginLeft: spacing.sm,
   },
   recentScanId: {
     fontSize: 11,
     fontWeight: '700',
     color: colors.primary,
-    marginTop: 4,
   },
   recentScanTime: {
     fontSize: 9,
     color: colors.muted,
   },
   recentScanName: {
-    fontSize: 9,
+    fontSize: 10,
     color: colors.text,
+    fontWeight: '500',
   },
+  // Horizontal pill buttons (icon left of text), matching the corporate Scan
+  // Operation screen's Review/Manual button style.
   whiteBoardRow: {
     flexDirection: 'row',
     gap: spacing.md,
   },
   whiteBoardButton: {
     flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
     backgroundColor: colors.surfaceAlt,
-    borderRadius: radius.lg,
+    borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingVertical: spacing.lg,
+    paddingVertical: spacing.md,
   },
   whiteBoardButtonText: {
     color: colors.primary,
@@ -1062,7 +1088,7 @@ const styles = StyleSheet.create({
     color: colors.accent,
   },
   manualWrap: {
-    marginTop: spacing.md - 40,
+    marginTop: spacing.lg,
     alignItems: 'center',
     width: '100%',
   },
@@ -1077,25 +1103,28 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     ...shadow(2),
   },
+  // All 4 chips must fit on one line — flex evenly instead of wrapping.
   manualChipRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
+    flexWrap: 'nowrap',
+    gap: spacing.xs,
     marginBottom: spacing.md,
   },
   manualChip: {
+    flex: 1,
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.pill,
     paddingVertical: 6,
-    paddingHorizontal: 14,
+    paddingHorizontal: 4,
   },
   manualChipActive: {
     backgroundColor: colors.accent,
     borderColor: colors.accent,
   },
   manualChipText: {
-    fontSize: 13,
+    fontSize: 11,
     color: colors.text,
   },
   manualChipTextActive: {
