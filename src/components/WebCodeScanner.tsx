@@ -1,10 +1,23 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { BrowserMultiFormatReader } from '@zxing/browser';
 import { BarcodeFormat, NotFoundException } from '@zxing/library';
 
 interface WebCodeScannerProps {
   active: boolean;
   onScan: (value: string, format: 'qr' | 'barcode') => void;
+  // 'once' (default) suppresses re-firing the same value for 2500ms — what
+  // the consumer ScannerScreen relies on. 'continuous' fires onScan on every
+  // decoded frame with no suppression, for callers (the corporate capture
+  // screen) that need a live "is a code currently in view" signal rather
+  // than a one-shot detection.
+  mode?: 'once' | 'continuous';
+}
+
+export interface WebCodeScannerHandle {
+  // Snapshots the current video frame as a JPEG data URL, or null if the
+  // stream isn't ready yet. Used by the corporate capture screen's Capture
+  // button — reuses the same video element already driving live detection.
+  captureFrame: () => string | null;
 }
 
 const SCAN_INTERVAL_MS = 300;
@@ -20,7 +33,7 @@ const SCAN_INTERVAL_MS = 300;
 // underlying decoder as the photo-upload path, far more tolerant of a live
 // feed's rotation/scale/moiré than the jsQR(QR-only) + hand-rolled EAN-13
 // reader this used to run.
-export default function WebCodeScanner({ active, onScan }: WebCodeScannerProps) {
+function WebCodeScanner({ active, onScan, mode = 'once' }: WebCodeScannerProps, ref: React.Ref<WebCodeScannerHandle>) {
   const videoRef = useRef<any>(null);
   const canvasRef = useRef<any>(null);
   const streamRef = useRef<any>(null);
@@ -28,11 +41,32 @@ export default function WebCodeScanner({ active, onScan }: WebCodeScannerProps) 
   const readerRef = useRef<BrowserMultiFormatReader | null>(null);
   const lastValueRef = useRef<string>('');
 
+  useImperativeHandle(ref, () => ({
+    captureFrame: () => {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      if (!video || !canvas || video.readyState < 2) return null;
+      const w = video.videoWidth;
+      const h = video.videoHeight;
+      if (!w || !h) return null;
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return null;
+      ctx.drawImage(video, 0, 0, w, h);
+      return canvas.toDataURL('image/jpeg', 0.85);
+    },
+  }));
+
   useEffect(() => {
     if (!active) return undefined;
     let cancelled = false;
 
     const report = (value: string, format: 'qr' | 'barcode') => {
+      if (mode === 'continuous') {
+        onScan(value, format);
+        return;
+      }
       if (lastValueRef.current === value) return;
       lastValueRef.current = value;
       onScan(value, format);
@@ -105,7 +139,7 @@ export default function WebCodeScanner({ active, onScan }: WebCodeScannerProps) 
         streamRef.current = null;
       }
     };
-  }, [active, onScan]);
+  }, [active, onScan, mode]);
 
   return (
     <>
@@ -120,3 +154,5 @@ export default function WebCodeScanner({ active, onScan }: WebCodeScannerProps) 
     </>
   );
 }
+
+export default forwardRef(WebCodeScanner);

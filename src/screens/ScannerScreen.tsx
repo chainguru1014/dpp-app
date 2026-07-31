@@ -491,13 +491,18 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
     handleScannedCode(value, manualType);
   };
 
-  const renderManualEntry = (light = false) => (
+  // hideToggle: skip the link this renders by default — used when a caller
+  // (the white board below) provides its own "Enter Manually" button that
+  // drives the same manualOpen state instead.
+  const renderManualEntry = (light = false, hideToggle = false) => (
     <View style={styles.manualWrap}>
-      <TouchableOpacity onPress={() => setManualOpen((v) => !v)} disabled={loading}>
-        <Text style={[styles.scanCaptionLink, light && styles.scanCaptionLinkDark]}>
-          {manualOpen ? 'Hide manual entry' : 'Enter code manually'}
-        </Text>
-      </TouchableOpacity>
+      {!hideToggle && (
+        <TouchableOpacity onPress={() => setManualOpen((v) => !v)} disabled={loading}>
+          <Text style={[styles.scanCaptionLink, light && styles.scanCaptionLinkDark]}>
+            {manualOpen ? 'Hide manual entry' : 'Enter code manually'}
+          </Text>
+        </TouchableOpacity>
+      )}
       {manualOpen && (
         <View style={styles.manualCard}>
           <View style={styles.manualChipRow}>
@@ -535,6 +540,48 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
       )}
     </View>
   );
+
+  // White board below the camera viewport: "Upload Photo" (reuses the
+  // existing openPhotoScan/pickNativePhotoAndScan handlers) and "Enter
+  // Manually" (drives renderManualEntry's manualOpen state via hideToggle).
+  const renderWhiteBoard = () => {
+    const onUploadPhoto = Platform.OS === 'web' ? openPhotoScan : pickNativePhotoAndScan;
+    return (
+      <View style={styles.whiteBoard}>
+        {loading ? (
+          <View style={styles.loadingPillLight}>
+            <ActivityIndicator size="small" color={colors.accent} />
+            <Text style={styles.loadingPillLightText}>{t('loadingProductInfo')}</Text>
+          </View>
+        ) : (
+          <View style={styles.whiteBoardRow}>
+            <TouchableOpacity style={styles.whiteBoardButton} onPress={onUploadPhoto} activeOpacity={0.8}>
+              <Image source={require('../assets/qr-code.png')} style={styles.whiteBoardIcon} resizeMode="contain" />
+              <Text style={styles.whiteBoardButtonText}>{t('scanUploadPhoto')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.whiteBoardButton}
+              onPress={() => setManualOpen((v) => !v)}
+              activeOpacity={0.8}
+            >
+              <Image source={require('../assets/menu.png')} style={styles.whiteBoardIcon} resizeMode="contain" />
+              <Text style={styles.whiteBoardButtonText}>{t('scanEnterManually')}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        {Platform.OS !== 'web' && nfcAvailable && !loading && (
+          <TouchableOpacity style={styles.whiteBoardNfc} onPress={handleNfcScanPress} disabled={nfcReading}>
+            {nfcReading ? (
+              <ActivityIndicator size="small" color={colors.accent} />
+            ) : (
+              <Text style={styles.whiteBoardNfcText}>{t('nfcScanButton')}</Text>
+            )}
+          </TouchableOpacity>
+        )}
+        {renderManualEntry(false, true)}
+      </View>
+    );
+  };
 
   if (hasPermission === null) {
     return (
@@ -625,19 +672,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
               <View style={styles.scanFrame} />
             </View>
           </View>
-          <View style={styles.bottomContent}>
-            {loading ? (
-              <View style={styles.loadingPill}>
-                <ActivityIndicator size="small" color="#fff" />
-                <Text style={styles.loadingPillText}>{t('loadingProductInfo')}</Text>
-              </View>
-            ) : (
-              <TouchableOpacity onPress={openPhotoScan}>
-                <Text style={styles.scanCaptionLink}>{t('photoScanButton')}</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-          {renderManualEntry()}
+          {renderWhiteBoard()}
         </View>
       </AppLayout>
     );
@@ -685,38 +720,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
               <View style={styles.scanFrame} />
             </View>
           </View>
-          <View style={styles.bottomContent}>
-            {loading ? (
-              <View style={styles.loadingPill}>
-                <ActivityIndicator size="small" color="#fff" />
-                <Text style={styles.loadingPillText}>{t('loadingProductInfo')}</Text>
-              </View>
-            ) : (
-              <>
-                {nfcAvailable && (
-                  <TouchableOpacity
-                    style={styles.loadingPill}
-                    onPress={handleNfcScanPress}
-                    disabled={nfcReading}
-                  >
-                    {nfcReading ? (
-                      <ActivityIndicator size="small" color="#fff" />
-                    ) : (
-                      <Text style={styles.loadingPillText}>{t('nfcScanButton')}</Text>
-                    )}
-                  </TouchableOpacity>
-                )}
-                {isNativeImageScanAvailable() && (
-                  <TouchableOpacity onPress={pickNativePhotoAndScan}>
-                    <Text style={[styles.scanCaptionLink, nfcAvailable && { marginTop: spacing.md }]}>
-                      {t('photoScanButton')}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </>
-            )}
-          </View>
-          {renderManualEntry()}
+          {renderWhiteBoard()}
         </View>
       </AppLayout>
     );
@@ -833,6 +837,63 @@ const styles = StyleSheet.create({
     paddingTop: spacing.lg,
     paddingHorizontal: spacing.xl,
     alignItems: 'center',
+  },
+  // White board below the camera viewport (consumer flow) — Upload Photo /
+  // Enter Manually, replacing the old dark-viewport link style.
+  whiteBoard: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    paddingTop: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.xl,
+    ...shadow(2),
+  },
+  whiteBoardRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  whiteBoardButton: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: spacing.lg,
+  },
+  whiteBoardIcon: {
+    width: 26,
+    height: 26,
+    tintColor: colors.primary,
+    marginBottom: spacing.sm,
+  },
+  whiteBoardButtonText: {
+    color: colors.primary,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  whiteBoardNfc: {
+    marginTop: spacing.md,
+    alignItems: 'center',
+  },
+  whiteBoardNfcText: {
+    color: colors.primary,
+    fontSize: 13,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+  },
+  loadingPillLight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+  },
+  loadingPillLightText: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: '400',
   },
   scanCaption: {
     color: 'rgba(255,255,255,0.82)',

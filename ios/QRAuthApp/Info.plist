@@ -56,7 +56,7 @@
 		</dict>
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string></string>
+	<string>Used to tag corporate scan captures with the location where they were taken.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Used to scan a QR code or barcode from a photo in your library.</string>
 	<key>UILaunchStoryboardName</key>

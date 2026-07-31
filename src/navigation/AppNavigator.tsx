@@ -21,6 +21,8 @@ import HistoryScreen from '../screens/HistoryScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import StaffLoginScreen from '../screens/StaffLoginScreen';
 import EmployeeHomeScreen from '../screens/EmployeeHomeScreen';
+import CorporateScannerScreen from '../screens/CorporateScannerScreen';
+import CorporateReviewScreen from '../screens/CorporateReviewScreen';
 import { getStoredAiConciergeConsent } from '../utils/aiConciergeConsent';
 
 const Stack = createNativeStackNavigator();
@@ -174,6 +176,14 @@ export default function AppNavigator({ navigationRef }: { navigationRef: any }) 
 
       <Stack.Screen name="EmployeeHome">
         {(props) => <EmployeeHomeScreen {...props} user={user} onLogout={handleLogout} />}
+      </Stack.Screen>
+
+      <Stack.Screen name="CorporateScanner">
+        {(props) => <CorporateScannerScreen {...props} user={user} onLogout={handleLogout} />}
+      </Stack.Screen>
+
+      <Stack.Screen name="CorporateReview">
+        {(props) => <CorporateReviewScreen {...props} user={user} onLogout={handleLogout} />}
       </Stack.Screen>
 
       <Stack.Screen name="Register">

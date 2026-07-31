@@ -20,6 +20,10 @@ module.exports = {
       'react-native-worklets-core': false,
       '@react-native-ml-kit/barcode-scanning': false,
       'react-native-image-picker': false,
+      // Native-only GPS/device-info libs for the corporate capture flow —
+      // deviceCapture.ts already branches to browser APIs on web.
+      'react-native-geolocation-service': false,
+      'react-native-device-info': false,
     },
   },
   module: {

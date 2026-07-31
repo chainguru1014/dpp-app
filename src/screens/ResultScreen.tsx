@@ -1393,7 +1393,6 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
       onActionMenuPress={handleActionMenuPress}
       isBrandFollowed={isBrandFollowed}
       isInAlbum={isInAlbum}
-      useActionMenuCenter={true}
       isProductDetailPage={true}
     >
       <ScrollView

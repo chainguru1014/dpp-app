@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { useRoute } from '@react-navigation/native';
 import { useI18n } from '../i18n/I18nContext';
 import NotificationPanel from './NotificationPanel';
 import NotificationDetailModal from './NotificationDetailModal';
@@ -34,12 +35,33 @@ interface AppLayoutProps {
   onSettingsMenuPress?: (settingKey: string) => void;
   isBrandFollowed?: boolean;
   isInAlbum?: boolean;
-  useActionMenuCenter?: boolean;
   isProductDetailPage?: boolean;
+  // Overrides the top-bar center content. When omitted, falls back to
+  // ROUTE_TITLE_KEYS[route.name] (a per-screen page title), then to the
+  // Home/EmployeeHome brand title, then to the generic DPP eyebrow text —
+  // see the title-resolution block in the component body.
+  title?: string;
+  subtitle?: string;
 }
 
-const TOP_BAR_HEIGHT = 70;
-const BOTTOM_BAR_HEIGHT = 70;
+// Static page-title map for screens that don't need a dynamic title (the
+// corporate Scan/Review screens pass an explicit `title`/`subtitle` instead,
+// since theirs depends on route params). Keeps most existing screens from
+// needing any prop changes at all.
+const ROUTE_TITLE_KEYS: Record<string, string> = {
+  ScannedProducts: 'titleScannedProducts',
+  EditProfile: 'titleEditProfile',
+  PurchaseHistory: 'titlePurchaseHistory',
+  History: 'titleHistory',
+  FavoriteBrands: 'titleFavoriteBrands',
+  Notifications: 'titleNotifications',
+  Scanner: 'titleScanner',
+};
+
+const BRAND_TITLE = 'Yometel DPP';
+
+const TOP_BAR_HEIGHT = 56;
+const BOTTOM_BAR_HEIGHT = 64;
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CONTENT_TOP = SCREEN_HEIGHT / 2;
@@ -59,19 +81,33 @@ export default function AppLayout({
   onSettingsMenuPress,
   isBrandFollowed = false,
   isInAlbum = false,
-  useActionMenuCenter = false,
   isProductDetailPage = false,
+  title,
+  subtitle,
 }: AppLayoutProps) {
   const { t, locale, setLocale, languages } = useI18n();
+  const route = useRoute();
+  const isHomeRoute = route.name === 'Home' || route.name === 'EmployeeHome';
+  const routeTitleKey = ROUTE_TITLE_KEYS[route.name];
+  const computedTitle = title ?? (isHomeRoute ? BRAND_TITLE : routeTitleKey ? t(routeTitleKey as any) : undefined);
+  const computedSubtitle = subtitle;
   const [settingsVisible, setSettingsVisible] = useState(false);
-  const [actionMenuVisible, setActionMenuVisible] = useState(false);
-  const [extraMenuVisible, setExtraMenuVisible] = useState(false);
   const [langMenuVisible, setLangMenuVisible] = useState(false);
   const [langPopover, setLangPopover] = useState({ top: 76, right: 16 });
+  const [avatarMenuVisible, setAvatarMenuVisible] = useState(false);
+  const [avatarPopover, setAvatarPopover] = useState({ top: 62, right: 16 });
   const worldIconRef = useRef<View>(null);
+  const avatarIconRef = useRef<View>(null);
   const isAuthenticated = !!user;
+  const isEmployeeActor = user?.actorKind === 'Employee';
   const [notifPanelVisible, setNotifPanelVisible] = useState(false);
   const [notifDetail, setNotifDetail] = useState<any>(null);
+
+  // Corporate/employee sessions "Review" their operational scan captures via
+  // the corporate Review History screen; consumer sessions browse their own
+  // scanned Products via ScannedProducts — same bottom-bar slot, same icon,
+  // different label/target.
+  const productsTarget = isEmployeeActor ? 'CorporateReview' : 'ScannedProducts';
 
   const handleNotifications = () => {
     if (!isAuthenticated) {
@@ -100,14 +136,30 @@ export default function AppLayout({
     });
   };
 
+  const openAvatarMenu = () => {
+    if (!isAuthenticated) {
+      onGuestAction?.();
+      return;
+    }
+    avatarIconRef.current?.measureInWindow((x, y, width, height) => {
+      setAvatarPopover({
+        top: y + height + 6,
+        right: Math.max(12, SCREEN_WIDTH - x - width),
+      });
+      setAvatarMenuVisible(true);
+    });
+  };
+
   const handleProfile = () => {
     setSettingsVisible(false);
+    setAvatarMenuVisible(false);
     if (!isAuthenticated) return;
     navigation.navigate('EditProfile');
   };
 
   const handleLogout = async () => {
     setSettingsVisible(false);
+    setAvatarMenuVisible(false);
     const performLogout = async () => {
       await AsyncStorage.removeItem('userToken');
       await AsyncStorage.removeItem('user');
@@ -140,15 +192,15 @@ export default function AppLayout({
       onGuestAction?.();
       return;
     }
-    navigation.navigate('Home');
+    navigation.navigate(isEmployeeActor ? 'EmployeeHome' : 'Home');
   };
 
-  const handleBookmark = () => {
+  const handleProducts = () => {
     if (!isAuthenticated) {
       onGuestAction?.();
       return;
     }
-    navigation.navigate('ScannedProducts');
+    navigation.navigate(productsTarget);
   };
 
   const handleSettings = () => {
@@ -159,7 +211,7 @@ export default function AppLayout({
     setSettingsVisible(true);
   };
 
-  // Center button is always the QR scanner on every page.
+  // Scan tab is always the QR scanner on every page.
   const handleScan = () => {
     if (!isAuthenticated) {
       onGuestAction?.();
@@ -168,28 +220,10 @@ export default function AppLayout({
     navigation.navigate('Scanner');
   };
 
-  const closeActionMenu = () => {
-    setActionMenuVisible(false);
-  };
-
-  // Right-side menu button. On the product detail page it is the 3-line product
-  // action menu; on every other page it opens the history/data menu.
-  const handleExtraMenu = () => {
-    if (isProductDetailPage || useActionMenuCenter) {
-      setActionMenuVisible(true);
-      return;
-    }
-    if (!isAuthenticated) {
-      onGuestAction?.();
-      return;
-    }
-    setExtraMenuVisible(true);
-  };
-
-  // Navigation for the 4 history/data items (shared by the new menu button and,
-  // on the product detail page, the center action menu).
+  // Navigation for the "History & Data" items — always available from
+  // Settings now that the standalone 3-line menu button is gone.
   const handleExtraMenuItemPress = (itemKey: string) => {
-    setExtraMenuVisible(false);
+    setSettingsVisible(false);
     if (onSettingsMenuPress) {
       onSettingsMenuPress(itemKey);
       return;
@@ -213,27 +247,22 @@ export default function AppLayout({
     { key: 'toggleFollowBrand', label: isBrandFollowed ? t('unfollowBrand') : t('followBrand'), iconSource: require('../assets/add-friend.png') },
     { key: 'introduceBrandToFriend', label: t('introduceBrand'), iconSource: require('../assets/connection.png') },
   ];
-  const commonCenterMenuItems = [
-    { key: 'scanQr', label: t('homeScanQr'), iconSource: require('../assets/qr-code.png') },
-  ];
 
-  // The 4 history/data items. Opened from the new 3-line menu button in the bottom
-  // bar, and (on the product detail page) also appended to the center action menu.
+  // History/data items — always shown in Settings. On the product detail page
+  // the product action items above are shown too (formerly a separate 3-line
+  // menu button; that button is gone, its content now lives here).
   const extraMenuItems = [
     { key: 'purchaseHistory', label: t('purchaseHistory'), iconSource: require('../assets/purchase-history.png') },
     { key: 'viewHistory', label: t('productHistory'), iconSource: require('../assets/history.png') },
     { key: 'favoriteBrands', label: t('favoriteBrands'), iconSource: require('../assets/favorite.png') },
   ];
 
-  // Center menu list. On the product detail page the original action items get the
-  // 4 history/data items appended ("nav" kind), otherwise it's the plain scan item.
-  const centerMenuItems =
-    isProductDetailPage || useActionMenuCenter
-      ? [
-          ...actionMenuItems.map((item) => ({ ...item, kind: 'action' as const })),
-          ...extraMenuItems.map((item) => ({ ...item, kind: 'nav' as const })),
-        ]
-      : commonCenterMenuItems.map((item) => ({ ...item, kind: 'center' as const }));
+  const settingsMenuItems = isProductDetailPage
+    ? [
+        ...actionMenuItems.map((item) => ({ ...item, kind: 'action' as const })),
+        ...extraMenuItems.map((item) => ({ ...item, kind: 'nav' as const })),
+      ]
+    : extraMenuItems.map((item) => ({ ...item, kind: 'nav' as const }));
 
   return (
     <View style={styles.container}>
@@ -260,143 +289,118 @@ export default function AppLayout({
           </View>
         )}
 
-        <View style={styles.dppBadge}>
-          <Text style={styles.dppBadgeText}>{t('homeHeroEyebrow')}</Text>
+        <View style={styles.titleBlock}>
+          <Text style={styles.titleText} numberOfLines={1}>
+            {computedTitle ?? t('homeHeroEyebrow')}
+          </Text>
+          {!!computedSubtitle && (
+            <Text style={styles.subtitleText} numberOfLines={1}>
+              {computedSubtitle}
+            </Text>
+          )}
         </View>
 
-        <TouchableOpacity
-          onPress={handleNotifications}
-          style={[styles.iconButton, styles.navBtnOnDark]}
-          activeOpacity={0.7}
-        >
-          <View ref={worldIconRef}>
-            <Icon name="notifications" size={24} color={colors.white} />
-            <NotificationBadge userId={user?._id ? String(user._id) : undefined} />
-          </View>
-        </TouchableOpacity>
+        <View style={styles.topBarRight}>
+          <TouchableOpacity
+            onPress={handleNotifications}
+            style={[styles.iconButton, styles.navBtnOnDark]}
+            activeOpacity={0.7}
+          >
+            <View ref={worldIconRef}>
+              <Icon name="notifications" size={22} color={colors.white} />
+              <NotificationBadge userId={user?._id ? String(user._id) : undefined} />
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={openAvatarMenu}
+            style={[styles.iconButton, styles.navBtnOnDark]}
+            activeOpacity={0.7}
+          >
+            <View ref={avatarIconRef}>
+              <Image
+                source={require('../assets/account.png')}
+                style={styles.topBarAvatarIcon}
+                resizeMode="contain"
+              />
+            </View>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={[styles.content, useCenterTop && styles.contentCentered, hideBottomBar && styles.contentWithoutBottomBar]}>
         {children}
       </View>
 
-      {!hideBottomBar && (
-      <View style={styles.bottomBar}>
-        <TouchableOpacity
-          style={styles.bottomIconButton}
-          onPress={handleHome}
-          activeOpacity={0.7}
-        >
-          <Image
-            source={require('../assets/home.png')}
-            style={styles.bottomIcon}
-            resizeMode="contain"
-          />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.bottomIconButton, styles.bottomIconNudgeLeft]}
-          onPress={handleBookmark}
-          activeOpacity={0.7}
-        >
-          <Image
-            source={require('../assets/bookmark.png')}
-            style={styles.bottomIcon}
-            resizeMode="contain"
-          />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.bottomScanButton}
-          onPress={handleScan}
-          activeOpacity={0.85}
-        >
-          <View style={styles.bottomScanOuter}>
-            <View style={styles.bottomScanCircle}>
+      {!hideBottomBar && (() => {
+        const isHomeSelected = route.name === 'Home' || route.name === 'EmployeeHome';
+        const isScanSelected = route.name === 'Scanner';
+        const isProductsSelected = route.name === productsTarget;
+        const isSettingsSelected = settingsVisible;
+        return (
+          <View style={styles.bottomBar}>
+            <TouchableOpacity
+              style={[styles.bottomTab, isHomeSelected && styles.bottomTabSelected]}
+              onPress={handleHome}
+              activeOpacity={0.7}
+            >
               <Image
-                source={require('../assets/logo-y-mark.png')}
-                style={styles.bottomScanIcon}
+                source={require('../assets/home.png')}
+                style={[styles.bottomTabIcon, isHomeSelected && styles.bottomTabIconSelected]}
                 resizeMode="contain"
               />
-            </View>
+              <Text style={[styles.bottomTabLabel, isHomeSelected && styles.bottomTabLabelSelected]}>
+                {t('bottomHome')}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.bottomTab, isScanSelected && styles.bottomTabSelected]}
+              onPress={handleScan}
+              activeOpacity={0.7}
+            >
+              <Image
+                source={require('../assets/qr-code.png')}
+                style={[styles.bottomTabIcon, isScanSelected && styles.bottomTabIconSelected]}
+                resizeMode="contain"
+              />
+              <Text style={[styles.bottomTabLabel, isScanSelected && styles.bottomTabLabelSelected]}>
+                {t('bottomScan')}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.bottomTab, isProductsSelected && styles.bottomTabSelected]}
+              onPress={handleProducts}
+              activeOpacity={0.7}
+            >
+              <Image
+                source={require('../assets/bookmark.png')}
+                style={[styles.bottomTabIcon, isProductsSelected && styles.bottomTabIconSelected]}
+                resizeMode="contain"
+              />
+              <Text style={[styles.bottomTabLabel, isProductsSelected && styles.bottomTabLabelSelected]}>
+                {isEmployeeActor ? t('bottomReview') : t('bottomProducts')}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.bottomTab, isSettingsSelected && styles.bottomTabSelected]}
+              onPress={handleSettings}
+              activeOpacity={0.7}
+            >
+              <Image
+                source={require('../assets/setting.png')}
+                style={[styles.bottomTabIcon, isSettingsSelected && styles.bottomTabIconSelected]}
+                resizeMode="contain"
+              />
+              <Text style={[styles.bottomTabLabel, isSettingsSelected && styles.bottomTabLabelSelected]}>
+                {t('bottomSettings')}
+              </Text>
+            </TouchableOpacity>
           </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.bottomIconButton, styles.bottomIconNudgeRight]}
-          onPress={handleExtraMenu}
-          activeOpacity={0.7}
-        >
-          <Image
-            source={require('../assets/menus.png')}
-            style={styles.bottomIcon}
-            resizeMode="contain"
-          />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.bottomIconButton}
-          onPress={handleSettings}
-          activeOpacity={0.7}
-        >
-          <Image
-            source={require('../assets/setting.png')}
-            style={styles.bottomIcon}
-            resizeMode="contain"
-          />
-        </TouchableOpacity>
-      </View>
-      )}
-
-      <Modal
-        visible={(isProductDetailPage || useActionMenuCenter) && actionMenuVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={closeActionMenu}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={closeActionMenu}
-        >
-          <View style={styles.settingsContainer}>
-            <Text style={styles.settingsTitle}>{t('menu')}</Text>
-            <Text style={styles.settingsSubtitle}>{t('quickActionsSubtitle')}</Text>
-
-            <ScrollView style={styles.menuScroll} showsVerticalScrollIndicator={true}>
-            {centerMenuItems.map((item, index, list) => (
-              <View key={item.label}>
-                {item.kind === 'nav' && (index === 0 || list[index - 1].kind !== 'nav') ? (
-                  <Text style={styles.menuSectionLabel}>{t('historyAndData')}</Text>
-                ) : null}
-                <TouchableOpacity
-                  style={styles.menuItem}
-                  onPress={() => {
-                    closeActionMenu();
-                    if (item.kind === 'nav') {
-                      handleExtraMenuItemPress(item.key);
-                    } else if (item.kind === 'action') {
-                      onActionMenuPress?.(item.key);
-                    } else if (item.key === 'scanQr') {
-                      if (!isAuthenticated) {
-                        onGuestAction?.();
-                      } else {
-                        navigation.navigate('Scanner');
-                      }
-                    }
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Image source={item.iconSource} style={styles.menuItemIcon} resizeMode="contain" />
-                  <Text style={styles.menuItemText}>{item.label}</Text>
-                </TouchableOpacity>
-                {index < list.length - 1 ? <View style={styles.menuDivider} /> : null}
-              </View>
-            ))}
-            </ScrollView>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+        );
+      })()}
 
       <Modal
         visible={settingsVisible}
@@ -411,91 +415,140 @@ export default function AppLayout({
         >
           <View style={styles.settingsContainer}>
             <Text style={styles.settingsTitle}>{t('settings')}</Text>
-            <Text style={styles.settingsSubtitle}>{t('settingsSubtitle')}</Text>
+            <Text style={styles.settingsSubtitle}>
+              {isEmployeeActor ? t('settingsLanguageOnlySubtitle') : t('settingsSubtitle')}
+            </Text>
 
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={handleProfile}
-              activeOpacity={0.7}
-            >
-              <Image
-                source={require('../assets/account.png')}
-                style={styles.menuIcon}
-                resizeMode="contain"
-              />
-              <Text style={styles.menuItemText}>{t('profile')}</Text>
-            </TouchableOpacity>
-
-            <View style={styles.menuDivider} />
-
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => {
-                setSettingsVisible(false);
-                openLanguageMenu();
-              }}
-              activeOpacity={0.7}
-            >
-              <Image
-                source={require('../assets/world.png')}
-                style={styles.menuIcon}
-                resizeMode="contain"
-              />
-              <Text style={styles.menuItemText}>{t('language')}</Text>
-            </TouchableOpacity>
-
-            <View style={styles.menuDivider} />
-
-            {isAuthenticated && (
+            {isEmployeeActor ? (
+              // Corporate/employee sessions get Language only — Profile and
+              // Logout are already reachable via the top-bar avatar dropdown,
+              // and the History&Data/product-action items don't apply to a
+              // corporate operational session.
               <TouchableOpacity
                 style={styles.menuItem}
-                onPress={handleLogout}
+                onPress={() => {
+                  setSettingsVisible(false);
+                  openLanguageMenu();
+                }}
                 activeOpacity={0.7}
               >
                 <Image
-                  source={require('../assets/logout (1).png')}
+                  source={require('../assets/world.png')}
                   style={styles.menuIcon}
                   resizeMode="contain"
                 />
-                <Text style={[styles.menuItemText, { color: '#d32f2f' }]}>
-                  {t('logout')}
-                </Text>
+                <Text style={styles.menuItemText}>{t('language')}</Text>
               </TouchableOpacity>
+            ) : (
+              <ScrollView style={styles.menuScroll} showsVerticalScrollIndicator={true}>
+                {settingsMenuItems.map((item, index, list) => (
+                  <View key={item.label}>
+                    {item.kind === 'nav' && (index === 0 || list[index - 1].kind !== 'nav') ? (
+                      <Text style={styles.menuSectionLabel}>{t('historyAndData')}</Text>
+                    ) : null}
+                    <TouchableOpacity
+                      style={styles.menuItem}
+                      onPress={() => {
+                        if (item.kind === 'nav') {
+                          handleExtraMenuItemPress(item.key);
+                        } else {
+                          setSettingsVisible(false);
+                          onActionMenuPress?.(item.key);
+                        }
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Image source={item.iconSource} style={styles.menuItemIcon} resizeMode="contain" />
+                      <Text style={styles.menuItemText}>{item.label}</Text>
+                    </TouchableOpacity>
+                    <View style={styles.menuDivider} />
+                  </View>
+                ))}
+
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  onPress={handleProfile}
+                  activeOpacity={0.7}
+                >
+                  <Image
+                    source={require('../assets/account.png')}
+                    style={styles.menuIcon}
+                    resizeMode="contain"
+                  />
+                  <Text style={styles.menuItemText}>{t('profile')}</Text>
+                </TouchableOpacity>
+
+                <View style={styles.menuDivider} />
+
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  onPress={() => {
+                    setSettingsVisible(false);
+                    openLanguageMenu();
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Image
+                    source={require('../assets/world.png')}
+                    style={styles.menuIcon}
+                    resizeMode="contain"
+                  />
+                  <Text style={styles.menuItemText}>{t('language')}</Text>
+                </TouchableOpacity>
+
+                {isAuthenticated && (
+                  <>
+                    <View style={styles.menuDivider} />
+                    <TouchableOpacity
+                      style={styles.menuItem}
+                      onPress={handleLogout}
+                      activeOpacity={0.7}
+                    >
+                      <Image
+                        source={require('../assets/logout (1).png')}
+                        style={styles.menuIcon}
+                        resizeMode="contain"
+                      />
+                      <Text style={[styles.menuItemText, { color: '#d32f2f' }]}>
+                        {t('logout')}
+                      </Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </ScrollView>
             )}
           </View>
         </TouchableOpacity>
       </Modal>
 
       <Modal
-        visible={extraMenuVisible}
+        visible={avatarMenuVisible}
         transparent
-        animationType="fade"
-        onRequestClose={() => setExtraMenuVisible(false)}
+        animationType="none"
+        onRequestClose={() => setAvatarMenuVisible(false)}
       >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setExtraMenuVisible(false)}
-        >
-          <View style={styles.settingsContainer}>
-            <Text style={styles.settingsTitle}>{t('menu')}</Text>
-            <Text style={styles.settingsSubtitle}>{t('historyBrandsData')}</Text>
-
-            {extraMenuItems.map((item, index, list) => (
-              <View key={item.label}>
-                <TouchableOpacity
-                  style={styles.menuItem}
-                  onPress={() => handleExtraMenuItemPress(item.key)}
-                  activeOpacity={0.7}
-                >
-                  <Image source={item.iconSource} style={styles.menuItemIcon} resizeMode="contain" />
-                  <Text style={styles.menuItemText}>{item.label}</Text>
+        <TouchableWithoutFeedback onPress={() => setAvatarMenuVisible(false)}>
+          <View style={styles.langOverlay}>
+            <View
+              style={[
+                styles.langPopover,
+                styles.avatarPopover,
+                { position: 'absolute', top: avatarPopover.top, right: avatarPopover.right },
+              ]}
+            >
+              <TouchableOpacity style={styles.avatarMenuItem} onPress={handleProfile} activeOpacity={0.7}>
+                <Image source={require('../assets/account.png')} style={styles.avatarMenuIcon} resizeMode="contain" />
+                <Text style={styles.avatarMenuText}>{t('profile')}</Text>
+              </TouchableOpacity>
+              {isAuthenticated && (
+                <TouchableOpacity style={styles.avatarMenuItem} onPress={handleLogout} activeOpacity={0.7}>
+                  <Image source={require('../assets/logout (1).png')} style={styles.avatarMenuIcon} resizeMode="contain" />
+                  <Text style={[styles.avatarMenuText, { color: '#d32f2f' }]}>{t('logout')}</Text>
                 </TouchableOpacity>
-                {index < list.length - 1 ? <View style={styles.menuDivider} /> : null}
-              </View>
-            ))}
+              )}
+            </View>
           </View>
-        </TouchableOpacity>
+        </TouchableWithoutFeedback>
       </Modal>
 
       <Modal
@@ -613,6 +666,16 @@ const styles = StyleSheet.create({
     height: 22,
     tintColor: '#fff',
   },
+  topBarRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  topBarAvatarIcon: {
+    width: 22,
+    height: 22,
+    tintColor: '#fff',
+  },
   // White circular badge holding the blue Y logo on the top bar
   // (matches the bottom-center button).
   logoBadge: {
@@ -623,17 +686,27 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
   },
-  dppBadge: {
+  // Left-aligned title block next to the logo/back-button — replaces the old
+  // always-centered "DIGITAL PRODUCT PASSPORT" eyebrow badge. See
+  // ROUTE_TITLE_KEYS / BRAND_TITLE / the title/subtitle props above.
+  titleBlock: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
+    marginLeft: 10,
     justifyContent: 'center',
   },
-  dppBadgeText: {
+  titleText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+    textAlign: 'left',
+  },
+  subtitleText: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 12,
     fontWeight: '400',
-    letterSpacing: 1.2,
+    marginTop: 1,
+    textAlign: 'left',
   },
   menuIcon: {
     width: 22,
@@ -674,59 +747,37 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 12,
   },
-  bottomIconButton: {
+  // Each of the 4 bottom-bar tabs: plain icon + label, black/dark-gray when
+  // unselected, navy with a thin top-border indicator line when selected —
+  // no more react-navigation tab bar, so "selected" is derived from the
+  // current route name (see useRoute() above) and compared per-tab.
+  bottomTab: {
     flex: 1,
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
+    borderTopWidth: 2,
+    borderTopColor: 'transparent',
   },
-  // Nudge the 2nd / 4th icons away from the center scan button for a more even fit.
-  bottomIconNudgeLeft: {
-    transform: [{ translateX: -5 }],
+  bottomTabSelected: {
+    borderTopColor: colors.primary,
   },
-  bottomIconNudgeRight: {
-    transform: [{ translateX: 5 }],
+  bottomTabIcon: {
+    width: 24,
+    height: 24,
+    tintColor: '#333333',
   },
-  bottomIcon: {
-    width: 26,
-    height: 26,
+  bottomTabIconSelected: {
     tintColor: colors.primary,
   },
-  bottomScanButton: {
-    flex: 1,
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
+  bottomTabLabel: {
+    fontSize: 11,
+    color: '#333333',
+    marginTop: 3,
   },
-  // Outer white circle (white outline ring) with the soft blue glow.
-  bottomScanOuter: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
-    marginTop: -30,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: colors.header,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 8,
-  },
-  // Inner blue ring around the white center that holds the logo.
-  bottomScanCircle: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: colors.header,
-  },
-  bottomScanIcon: {
-    width: 32,
-    height: 32,
+  bottomTabLabelSelected: {
+    color: colors.primary,
+    fontWeight: '600',
   },
   modalOverlay: {
     flex: 1,
@@ -817,6 +868,28 @@ const styles = StyleSheet.create({
   },
   langTextActive: {
     color: colors.accent,
+    fontWeight: '400',
+  },
+  avatarPopover: {
+    minWidth: 160,
+    paddingHorizontal: 4,
+  },
+  avatarMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderRadius: radius.sm,
+  },
+  avatarMenuIcon: {
+    width: 20,
+    height: 20,
+    tintColor: colors.primary,
+  },
+  avatarMenuText: {
+    marginLeft: 12,
+    fontSize: 15,
+    color: colors.text,
     fontWeight: '400',
   },
 });
