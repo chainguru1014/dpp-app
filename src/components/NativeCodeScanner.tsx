@@ -24,13 +24,14 @@ export type ScannedCodeFormat = 'qr' | 'barcode';
 interface NativeCodeScannerProps {
   active: boolean;
   onScan: (value: string, format: ScannedCodeFormat) => void;
+  torch?: boolean;
 }
 
 // Reads QR codes and the common 1D/2D product-barcode formats in one pass.
 // react-native-vision-camera's built-in codeScanner (v3.5+) decodes on-device
 // natively — no JS frame processor, so no Reanimated/worklets dependency
 // (this app deliberately doesn't carry Reanimated; see REANIMATED_FIX.md).
-export default function NativeCodeScanner({ active, onScan }: NativeCodeScannerProps) {
+export default function NativeCodeScanner({ active, onScan, torch = false }: NativeCodeScannerProps) {
   const device = useCameraDevice('back');
   const codeScanner = useCodeScanner({
     codeTypes: [
@@ -55,6 +56,7 @@ export default function NativeCodeScanner({ active, onScan }: NativeCodeScannerP
       device={device}
       isActive={active}
       codeScanner={codeScanner}
+      torch={torch ? 'on' : 'off'}
     />
   );
 }

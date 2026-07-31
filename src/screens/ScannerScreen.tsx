@@ -10,7 +10,9 @@ import {
   Platform,
   Image,
   TextInput,
+  ScrollView,
 } from 'react-native';
+import VectorIcon from 'react-native-vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../config/api';
 import AppLayout from '../components/AppLayout';
@@ -55,6 +57,8 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
   const [manualOpen, setManualOpen] = useState(false);
   const [manualType, setManualType] = useState<'barcode' | 'nfc' | 'rfid' | 'gs1dl'>('barcode');
   const [manualValue, setManualValue] = useState('');
+  const [recentScans, setRecentScans] = useState<{ id: string; image: string; name: string; time: number }[]>([]);
+  const [torchOn, setTorchOn] = useState(false);
   const isMountedRef = useRef(true);
   const isProcessingScanRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -64,6 +68,43 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
   React.useEffect(() => {
     requestCameraPermission();
   }, []);
+
+  const getScanImageUrl = (filename: string) => {
+    if (!filename) return '';
+    if (/^https?:\/\//i.test(filename)) return filename;
+    return `${API_BASE_URL}files/${String(filename).replace(/^\/+/, '')}`;
+  };
+
+  // Today's scans for this user, oldest-first (latest lands on the right of
+  // the strip, matching the corporate Scan Operation screen's layout).
+  const loadRecentScans = async () => {
+    if (!user?._id) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}qrcode/scan/list?user_id=${encodeURIComponent(String(user._id))}`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.status !== 'success' || !Array.isArray(data?.data)) return;
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      const todays = data.data
+        .filter((p: any) => (p?.scannedAt || 0) >= startOfDay.getTime())
+        .sort((a: any, b: any) => (a.scannedAt || 0) - (b.scannedAt || 0))
+        .slice(-8)
+        .map((p: any) => ({
+          id: `${p?._id || ''}-${p?.scannedAt || ''}`,
+          image: getScanImageUrl(Array.isArray(p?.images) ? p.images[0] : ''),
+          name: p?.name || '',
+          time: p?.scannedAt || 0,
+        }));
+      if (isMountedRef.current) setRecentScans(todays);
+    } catch (err) {
+      console.error('Failed to load recent scans:', err);
+    }
+  };
+
+  React.useEffect(() => {
+    if (isFocused) loadRecentScans();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFocused, user?._id]);
 
   React.useEffect(() => {
     if (Platform.OS === 'web') return;
@@ -541,13 +582,39 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
     </View>
   );
 
-  // White board below the camera viewport: "Upload Photo" (reuses the
+  // White board below the camera viewport: today's scanned-products strip
+  // (latest on the right, highlighted), then "Upload Photo" (reuses the
   // existing openPhotoScan/pickNativePhotoAndScan handlers) and "Enter
   // Manually" (drives renderManualEntry's manualOpen state via hideToggle).
   const renderWhiteBoard = () => {
     const onUploadPhoto = Platform.OS === 'web' ? openPhotoScan : pickNativePhotoAndScan;
     return (
       <View style={styles.whiteBoard}>
+        {recentScans.length > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.recentScansStrip}>
+            {recentScans.map((scan, index) => {
+              const isLatest = index === recentScans.length - 1;
+              return (
+                <View key={scan.id} style={[styles.recentScanCard, isLatest && styles.recentScanCardLatest]}>
+                  {isLatest && (
+                    <View style={styles.recentScanLatestBadge}>
+                      <Text style={styles.recentScanLatestBadgeText}>✓</Text>
+                    </View>
+                  )}
+                  {!!scan.image && (
+                    <Image source={{ uri: scan.image }} style={styles.recentScanImage} resizeMode="cover" />
+                  )}
+                  <Text style={styles.recentScanId}>{index + 1}</Text>
+                  <Text style={styles.recentScanTime}>
+                    {new Date(scan.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </Text>
+                  <Text style={styles.recentScanName} numberOfLines={1}>{scan.name}</Text>
+                </View>
+              );
+            })}
+          </ScrollView>
+        )}
+
         {loading ? (
           <View style={styles.loadingPillLight}>
             <ActivityIndicator size="small" color={colors.accent} />
@@ -556,7 +623,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         ) : (
           <View style={styles.whiteBoardRow}>
             <TouchableOpacity style={styles.whiteBoardButton} onPress={onUploadPhoto} activeOpacity={0.8}>
-              <Image source={require('../assets/qr-code.png')} style={styles.whiteBoardIcon} resizeMode="contain" />
+              <VectorIcon name="photo-library" size={22} color={colors.primary} />
               <Text style={styles.whiteBoardButtonText}>{t('scanUploadPhoto')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -564,7 +631,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
               onPress={() => setManualOpen((v) => !v)}
               activeOpacity={0.8}
             >
-              <Image source={require('../assets/menu.png')} style={styles.whiteBoardIcon} resizeMode="contain" />
+              <VectorIcon name="edit" size={22} color={colors.primary} />
               <Text style={styles.whiteBoardButtonText}>{t('scanEnterManually')}</Text>
             </TouchableOpacity>
           </View>
@@ -582,6 +649,39 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
       </View>
     );
   };
+
+  const handleHelpPress = () => {
+    Alert.alert(t('scannerScanHint'), t('scanHelpBody'));
+  };
+
+  // Overlaid directly on the camera feed: hint pill at the top, torch
+  // (native only — browsers can't reliably drive it) at bottom-left, help at
+  // bottom-right.
+  const renderCameraOverlay = (showTorch: boolean) => (
+    <>
+      <View pointerEvents="none" style={styles.overlayHintWrap}>
+        <Text style={styles.overlayHintText}>{t('scannerScanHint')}</Text>
+      </View>
+      <View style={styles.overlayCornerRow}>
+        {showTorch ? (
+          <TouchableOpacity
+            style={styles.overlayCornerButton}
+            onPress={() => setTorchOn((v) => !v)}
+            activeOpacity={0.75}
+          >
+            <VectorIcon name={torchOn ? 'flash-on' : 'flash-off'} size={20} color="#fff" />
+            <Text style={styles.overlayCornerText}>{t('scanTorchLabel')}</Text>
+          </TouchableOpacity>
+        ) : (
+          <View />
+        )}
+        <TouchableOpacity style={styles.overlayCornerButton} onPress={handleHelpPress} activeOpacity={0.75}>
+          <VectorIcon name="help-outline" size={20} color="#fff" />
+          <Text style={styles.overlayCornerText}>{t('scanHelpLabel')}</Text>
+        </TouchableOpacity>
+      </View>
+    </>
+  );
 
   if (hasPermission === null) {
     return (
@@ -655,12 +755,6 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         showBackButton={true}
       >
         <View style={styles.container}>
-          <View style={styles.topContent}>
-            <View style={styles.hintCard}>
-              <Image source={require('../assets/qr-code.png')} style={styles.hintIcon} resizeMode="contain" />
-              <Text style={styles.hintText}>{t('scannerScanHint')}</Text>
-            </View>
-          </View>
           <View style={styles.scanViewport}>
             <View style={styles.webScannerContainer}>
               <WebCodeScanner
@@ -671,6 +765,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
             <View pointerEvents="none" style={styles.frameOverlay}>
               <View style={styles.scanFrame} />
             </View>
+            {renderCameraOverlay(false)}
           </View>
           {renderWhiteBoard()}
         </View>
@@ -708,17 +803,12 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         showBackButton={true}
       >
         <View style={styles.container}>
-          <View style={styles.topContent}>
-            <View style={styles.hintCard}>
-              <Image source={require('../assets/qr-code.png')} style={styles.hintIcon} resizeMode="contain" />
-              <Text style={styles.hintText}>{t('scannerScanHint')}</Text>
-            </View>
-          </View>
           <View style={styles.scanViewport}>
-            <NativeCodeScanner active={isFocused && !loading} onScan={handleScannedCode} />
+            <NativeCodeScanner active={isFocused && !loading} onScan={handleScannedCode} torch={torchOn} />
             <View pointerEvents="none" style={styles.frameOverlay}>
               <View style={styles.scanFrame} />
             </View>
+            {renderCameraOverlay(true)}
           </View>
           {renderWhiteBoard()}
         </View>
@@ -767,37 +857,43 @@ const styles = StyleSheet.create({
   camera: {
     flex: 1,
   },
-  topContent: {
-    paddingTop: spacing.xl,
-    paddingHorizontal: spacing.xl,
+  // Hint text overlaid directly on the camera feed (top of the viewport).
+  overlayHintWrap: {
+    position: 'absolute',
+    top: spacing.lg,
+    left: spacing.xl,
+    right: spacing.xl,
     alignItems: 'center',
   },
-  // Branded scan hint
-  hintCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'center',
-    gap: spacing.sm,
-    maxWidth: 460,
-    backgroundColor: 'rgba(47,128,200,0.92)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
-    borderRadius: radius.pill,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    ...shadow(2),
-  },
-  hintIcon: {
-    width: 18,
-    height: 18,
-    tintColor: '#fff',
-  },
-  hintText: {
+  overlayHintText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '400',
-    flexShrink: 1,
     textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  // Torch (bottom-left) / help (bottom-right) overlaid on the camera feed.
+  overlayCornerRow: {
+    position: 'absolute',
+    left: spacing.lg,
+    right: spacing.lg,
+    bottom: spacing.lg,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+  },
+  overlayCornerButton: {
+    alignItems: 'center',
+  },
+  overlayCornerText: {
+    color: '#fff',
+    fontSize: 11,
+    marginTop: 2,
+    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   // Camera viewport + frame
   scanViewport: {
@@ -849,6 +945,64 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
     ...shadow(2),
   },
+  // Today's scanned-products strip — oldest to latest (left to right), the
+  // latest card gets a blue border + checkmark badge (matches the corporate
+  // Scan Operation screen's "Latest" treatment).
+  recentScansStrip: {
+    marginBottom: spacing.md,
+  },
+  recentScanCard: {
+    width: 74,
+    marginRight: spacing.sm,
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.xs,
+    position: 'relative',
+  },
+  recentScanCardLatest: {
+    borderColor: colors.primary,
+    borderWidth: 2,
+    backgroundColor: colors.surface,
+  },
+  recentScanLatestBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
+  recentScanLatestBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  recentScanImage: {
+    width: '100%',
+    height: 48,
+    borderRadius: radius.sm,
+    backgroundColor: colors.border,
+  },
+  recentScanId: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.primary,
+    marginTop: 4,
+  },
+  recentScanTime: {
+    fontSize: 9,
+    color: colors.muted,
+  },
+  recentScanName: {
+    fontSize: 9,
+    color: colors.text,
+  },
   whiteBoardRow: {
     flexDirection: 'row',
     gap: spacing.md,
@@ -861,12 +1015,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     paddingVertical: spacing.lg,
-  },
-  whiteBoardIcon: {
-    width: 26,
-    height: 26,
-    tintColor: colors.primary,
-    marginBottom: spacing.sm,
   },
   whiteBoardButtonText: {
     color: colors.primary,

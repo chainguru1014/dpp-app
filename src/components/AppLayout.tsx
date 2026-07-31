@@ -14,12 +14,13 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import Svg, { Defs, LinearGradient as SvgLinearGradient, Stop, Rect } from 'react-native-svg';
 import { useRoute } from '@react-navigation/native';
 import { useI18n } from '../i18n/I18nContext';
 import NotificationPanel from './NotificationPanel';
 import NotificationDetailModal from './NotificationDetailModal';
 import NotificationBadge from './NotificationBadge';
-import { colors, radius, shadow, gradients } from '../theme';
+import { colors, radius, shadow } from '../theme';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -61,7 +62,8 @@ const ROUTE_TITLE_KEYS: Record<string, string> = {
 const BRAND_TITLE = 'Yometel DPP';
 
 const TOP_BAR_HEIGHT = 56;
-const BOTTOM_BAR_HEIGHT = 64;
+const BOTTOM_BAR_HEIGHT = 54;
+const BOTTOM_TAB_ICON_SIZE = 20;
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CONTENT_TOP = SCREEN_HEIGHT / 2;
@@ -266,7 +268,16 @@ export default function AppLayout({
 
   return (
     <View style={styles.container}>
-      <View style={[styles.topBar, gradients.header]}>
+      <View style={styles.topBar}>
+        <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
+          <Defs>
+            <SvgLinearGradient id="topBarGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <Stop offset="0%" stopColor={colors.header} stopOpacity={1} />
+              <Stop offset="100%" stopColor={colors.headerLight} stopOpacity={1} />
+            </SvgLinearGradient>
+          </Defs>
+          <Rect x={0} y={0} width="100%" height="100%" fill="url(#topBarGradient)" />
+        </Svg>
         {showBackButton ? (
           <TouchableOpacity
             onPress={handleBack}
@@ -307,7 +318,7 @@ export default function AppLayout({
             activeOpacity={0.7}
           >
             <View ref={worldIconRef}>
-              <Icon name="notifications" size={22} color={colors.white} />
+              <Icon name="notifications" size={26} color={colors.white} />
               <NotificationBadge userId={user?._id ? String(user._id) : undefined} />
             </View>
           </TouchableOpacity>
@@ -359,10 +370,10 @@ export default function AppLayout({
               onPress={handleScan}
               activeOpacity={0.7}
             >
-              <Image
-                source={require('../assets/qr-code.png')}
-                style={[styles.bottomTabIcon, isScanSelected && styles.bottomTabIconSelected]}
-                resizeMode="contain"
+              <Icon
+                name="crop-free"
+                size={BOTTOM_TAB_ICON_SIZE}
+                color={isScanSelected ? colors.primary : '#333333'}
               />
               <Text style={[styles.bottomTabLabel, isScanSelected && styles.bottomTabLabelSelected]}>
                 {t('bottomScan')}
@@ -374,10 +385,10 @@ export default function AppLayout({
               onPress={handleProducts}
               activeOpacity={0.7}
             >
-              <Image
-                source={require('../assets/bookmark.png')}
-                style={[styles.bottomTabIcon, isProductsSelected && styles.bottomTabIconSelected]}
-                resizeMode="contain"
+              <Icon
+                name="assignment"
+                size={BOTTOM_TAB_ICON_SIZE}
+                color={isProductsSelected ? colors.primary : '#333333'}
               />
               <Text style={[styles.bottomTabLabel, isProductsSelected && styles.bottomTabLabelSelected]}>
                 {isEmployeeActor ? t('bottomReview') : t('bottomProducts')}
@@ -419,29 +430,12 @@ export default function AppLayout({
               {isEmployeeActor ? t('settingsLanguageOnlySubtitle') : t('settingsSubtitle')}
             </Text>
 
-            {isEmployeeActor ? (
-              // Corporate/employee sessions get Language only — Profile and
-              // Logout are already reachable via the top-bar avatar dropdown,
-              // and the History&Data/product-action items don't apply to a
-              // corporate operational session.
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={() => {
-                  setSettingsVisible(false);
-                  openLanguageMenu();
-                }}
-                activeOpacity={0.7}
-              >
-                <Image
-                  source={require('../assets/world.png')}
-                  style={styles.menuIcon}
-                  resizeMode="contain"
-                />
-                <Text style={styles.menuItemText}>{t('language')}</Text>
-              </TouchableOpacity>
-            ) : (
-              <ScrollView style={styles.menuScroll} showsVerticalScrollIndicator={true}>
-                {settingsMenuItems.map((item, index, list) => (
+            {/* Profile and Logout live in the top-bar avatar dropdown only —
+                this sheet is History&Data/product-actions (consumer) or
+                nothing (employee) plus Language, never Profile/Logout. */}
+            <ScrollView style={styles.menuScroll} showsVerticalScrollIndicator={true}>
+              {!isEmployeeActor &&
+                settingsMenuItems.map((item, index, list) => (
                   <View key={item.label}>
                     {item.kind === 'nav' && (index === 0 || list[index - 1].kind !== 'nav') ? (
                       <Text style={styles.menuSectionLabel}>{t('historyAndData')}</Text>
@@ -465,58 +459,22 @@ export default function AppLayout({
                   </View>
                 ))}
 
-                <TouchableOpacity
-                  style={styles.menuItem}
-                  onPress={handleProfile}
-                  activeOpacity={0.7}
-                >
-                  <Image
-                    source={require('../assets/account.png')}
-                    style={styles.menuIcon}
-                    resizeMode="contain"
-                  />
-                  <Text style={styles.menuItemText}>{t('profile')}</Text>
-                </TouchableOpacity>
-
-                <View style={styles.menuDivider} />
-
-                <TouchableOpacity
-                  style={styles.menuItem}
-                  onPress={() => {
-                    setSettingsVisible(false);
-                    openLanguageMenu();
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Image
-                    source={require('../assets/world.png')}
-                    style={styles.menuIcon}
-                    resizeMode="contain"
-                  />
-                  <Text style={styles.menuItemText}>{t('language')}</Text>
-                </TouchableOpacity>
-
-                {isAuthenticated && (
-                  <>
-                    <View style={styles.menuDivider} />
-                    <TouchableOpacity
-                      style={styles.menuItem}
-                      onPress={handleLogout}
-                      activeOpacity={0.7}
-                    >
-                      <Image
-                        source={require('../assets/logout (1).png')}
-                        style={styles.menuIcon}
-                        resizeMode="contain"
-                      />
-                      <Text style={[styles.menuItemText, { color: '#d32f2f' }]}>
-                        {t('logout')}
-                      </Text>
-                    </TouchableOpacity>
-                  </>
-                )}
-              </ScrollView>
-            )}
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  setSettingsVisible(false);
+                  openLanguageMenu();
+                }}
+                activeOpacity={0.7}
+              >
+                <Image
+                  source={require('../assets/world.png')}
+                  style={styles.menuIcon}
+                  resizeMode="contain"
+                />
+                <Text style={styles.menuItemText}>{t('language')}</Text>
+              </TouchableOpacity>
+            </ScrollView>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -638,6 +596,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 15,
     backgroundColor: colors.navy,
+    overflow: 'hidden',
     borderBottomWidth: 1,
     borderBottomColor: colors.navy,
     zIndex: 1000,
@@ -648,22 +607,22 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
   iconButton: {
-    width: 40,
-    height: 40,
+    width: 32,
+    height: 32,
     justifyContent: 'center',
     alignItems: 'center',
   },
   navBtn: {
-    borderRadius: 20,
+    borderRadius: 16,
     backgroundColor: colors.surfaceAlt,
   },
   navBtnOnDark: {
-    borderRadius: 20,
+    borderRadius: 16,
     backgroundColor: 'rgba(255,255,255,0.16)',
   },
   topBarIcon: {
-    width: 22,
-    height: 22,
+    width: 26,
+    height: 26,
     tintColor: '#fff',
   },
   topBarRight: {
@@ -672,14 +631,14 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   topBarAvatarIcon: {
-    width: 22,
-    height: 22,
+    width: 26,
+    height: 26,
     tintColor: '#fff',
   },
   // White circular badge holding the blue Y logo on the top bar
   // (matches the bottom-center button).
   logoBadge: {
-    borderRadius: 20,
+    borderRadius: 16,
     backgroundColor: '#fff',
   },
   topBarLogoIcon: {
@@ -763,17 +722,17 @@ const styles = StyleSheet.create({
     borderTopColor: colors.primary,
   },
   bottomTabIcon: {
-    width: 24,
-    height: 24,
+    width: BOTTOM_TAB_ICON_SIZE,
+    height: BOTTOM_TAB_ICON_SIZE,
     tintColor: '#333333',
   },
   bottomTabIconSelected: {
     tintColor: colors.primary,
   },
   bottomTabLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#333333',
-    marginTop: 3,
+    marginTop: 2,
   },
   bottomTabLabelSelected: {
     color: colors.primary,
