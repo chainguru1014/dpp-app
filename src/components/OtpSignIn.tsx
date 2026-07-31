@@ -15,7 +15,7 @@ interface OtpSignInProps {
   // Called with the envelope returned by POST auth/otp/verify: { user, token, profileCompleted, ... }
   // plus the mode this verification ran under, so the parent can decide
   // whether an incomplete profile should block sign-in (see LoginScreen).
-  onSuccess: (result: { user: any; token: string; profileCompleted: boolean; mode: 'signin' | 'signup' }) => void;
+  onSuccess: (result: { user: any; token: string; profileCompleted: boolean; mode: 'signin' | 'signup'; actorKind: 'User' | 'Employee' }) => void;
   onError?: (error: string) => void;
   // Controlled by the parent (LoginScreen) so the Sign In/Sign Up toggle can
   // be rendered at the bottom of the card instead of inline here.
@@ -128,6 +128,7 @@ export default function OtpSignIn({ onSuccess, onError, mode }: OtpSignInProps) 
         token: data.token || '',
         profileCompleted: userData.profileCompleted !== false,
         mode,
+        actorKind: data.actorKind === 'Employee' ? 'Employee' : 'User',
       });
     } catch (e: any) {
       reportError(e?.message || 'Network error, please try again.');

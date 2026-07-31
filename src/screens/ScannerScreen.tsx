@@ -604,12 +604,14 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
                 const isLatest = index === recentScans.length - 1;
                 return (
                   <View key={scan.id} style={[styles.recentScanCard, isLatest && styles.recentScanCardLatest]}>
-                    <View style={styles.recentScanCheckBadge}>
-                      <VectorIcon name="check" size={12} color="#fff" />
+                    <View style={styles.recentScanImageWrap}>
+                      {!!scan.image && (
+                        <Image source={{ uri: scan.image }} style={styles.recentScanImage} resizeMode="cover" />
+                      )}
+                      <View style={styles.recentScanCheckBadge}>
+                        <VectorIcon name="check" size={10} color="#fff" />
+                      </View>
                     </View>
-                    {!!scan.image && (
-                      <Image source={{ uri: scan.image }} style={styles.recentScanImage} resizeMode="cover" />
-                    )}
                     <View style={styles.recentScanDetail}>
                       <Text style={styles.recentScanId}>{index + 1}</Text>
                       <Text style={styles.recentScanTime}>
@@ -1011,15 +1013,22 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     backgroundColor: colors.surface,
   },
-  // Every card gets a check-in-circle badge (dark blue, not green); the
+  recentScanImageWrap: {
+    position: 'relative',
+    width: 44,
+    height: 44,
+  },
+  // Every card gets a check-in-circle badge (dark blue, not green), inset
+  // into the image's own top-right corner (not the outer card) so it sits
+  // inside the thumbnail's rounded edge instead of overhanging it. The
   // latest card is additionally distinguished by its blue card border above.
   recentScanCheckBadge: {
     position: 'absolute',
-    top: -6,
-    right: -6,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    top: 2,
+    right: 2,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',

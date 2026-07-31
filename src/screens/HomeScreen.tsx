@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, useWindowDimensions } from 'react-native';
 import Svg, { Rect } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import VectorIcon from 'react-native-vector-icons/MaterialIcons';
 import AppLayout from '../components/AppLayout';
 import { useI18n } from '../i18n/I18nContext';
 import { API_BASE_URL } from '../config/api';
@@ -25,15 +26,19 @@ const TYPE_META: Record<string, { labelKey: string; color: string }> = {
 
 const SCAN_LOCATION_STORAGE_KEY = 'scanLocationType';
 
+// Shared height for both the location tiles and the stat tiles below them so
+// the two rows visually align (see locationTile/statTile styles).
+const TILE_HEIGHT = 64;
+
 // Where the consumer is scanning from — purely a local preference today (no
 // backend field yet to attach it to); persisted so it survives app restarts.
-const SCAN_LOCATION_TYPES: { key: string; labelKey: string }[] = [
-  { key: 'store', labelKey: 'locTypeStore' },
-  { key: 'factory', labelKey: 'locTypeFactory' },
-  { key: 'warehouse', labelKey: 'locTypeWarehouse' },
-  { key: 'p2p', labelKey: 'locTypeP2P' },
-  { key: 'home', labelKey: 'locTypeHome' },
-  { key: 'other', labelKey: 'locTypeOther' },
+const SCAN_LOCATION_TYPES: { key: string; labelKey: string; icon: string }[] = [
+  { key: 'store', labelKey: 'locTypeStore', icon: 'store' },
+  { key: 'factory', labelKey: 'locTypeFactory', icon: 'factory' },
+  { key: 'warehouse', labelKey: 'locTypeWarehouse', icon: 'warehouse' },
+  { key: 'p2p', labelKey: 'locTypeP2P', icon: 'swap-horiz' },
+  { key: 'home', labelKey: 'locTypeHome', icon: 'home' },
+  { key: 'other', labelKey: 'locTypeOther', icon: 'more-horiz' },
 ];
 
 // Consumer Home — a simple stats dashboard (owned-products + scan-history
@@ -103,24 +108,34 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
         <Text style={styles.selectorTitle}>{t('locSelectorTitle')}</Text>
         <Text style={styles.selectorSubtitle}>{t('locSelectorSubtitle')}</Text>
         <View style={styles.locationGrid}>
-          {SCAN_LOCATION_TYPES.map((opt, index) => {
-            const selected = scanLocationType === opt.key;
-            return (
-              <TouchableOpacity
-                key={opt.key}
-                style={[styles.locationTile, selected && styles.locationTileSelected]}
-                onPress={() => handleSelectScanLocation(opt.key)}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.locationNumberText, selected && styles.locationNumberTextSelected]}>
-                  {index + 1}
-                </Text>
-                <Text style={[styles.locationTileText, selected && styles.locationTileTextSelected]} numberOfLines={1}>
-                  {t(opt.labelKey as any)}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
+          {[0, 1, 2].map((rowIndex) => (
+            <View key={rowIndex} style={styles.locationRow}>
+              {SCAN_LOCATION_TYPES.slice(rowIndex * 2, rowIndex * 2 + 2).map((opt, i) => {
+                const index = rowIndex * 2 + i;
+                const selected = scanLocationType === opt.key;
+                return (
+                  <TouchableOpacity
+                    key={opt.key}
+                    style={[styles.locationTile, selected && styles.locationTileSelected]}
+                    onPress={() => handleSelectScanLocation(opt.key)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.locationNumberPart, selected && styles.locationNumberPartSelected]}>
+                      <Text style={[styles.locationNumberText, selected && styles.locationNumberTextSelected]}>
+                        {index + 1}
+                      </Text>
+                    </View>
+                    <View style={styles.locationIconPart}>
+                      <VectorIcon name={opt.icon} size={20} color="#141a24" />
+                      <Text style={styles.locationTileText} numberOfLines={1}>
+                        {t(opt.labelKey as any)}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          ))}
         </View>
 
         {loading ? (
@@ -182,45 +197,59 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   container: { padding: spacing.xl, paddingBottom: spacing.xxxl },
-  // Plain vertical stack — number as bare colored text on top, label below —
-  // exactly matching EmployeeHomeScreen's Worker Operations tile (no
-  // separate badge box). Selected fills the whole card solid blue with
-  // white text, same as that screen's reference "current step" look.
+  // Two-part card — left is a number "chip" (gray bg/blue text unselected,
+  // dark-blue bg/white text selected), right is icon+label (always white
+  // bg/near-black text, unchanged by selection — only the card's border
+  // turns dark blue). Both sides share TILE_HEIGHT so they align with each
+  // other and with the stat row below.
   selectorTitle: { fontSize: 22, fontWeight: '600', color: colors.heading, marginBottom: spacing.xs },
   selectorSubtitle: { fontSize: 14, color: colors.muted, marginBottom: spacing.lg },
-  locationGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
-  },
+  locationGrid: { gap: spacing.sm, marginBottom: spacing.lg },
+  locationRow: { flexDirection: 'row', gap: spacing.sm },
   locationTile: {
-    width: '47%',
-    backgroundColor: colors.surface,
+    flex: 1,
+    flexDirection: 'row',
+    minHeight: TILE_HEIGHT,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
+    overflow: 'hidden',
     ...shadow(1),
   },
   locationTileSelected: {
-    backgroundColor: colors.primary,
     borderColor: colors.primary,
+    borderWidth: 2,
   },
-  locationNumberText: { fontSize: 13, fontWeight: '700', color: colors.primary, marginBottom: 2 },
+  locationNumberPart: {
+    width: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surfaceAlt,
+  },
+  locationNumberPartSelected: {
+    backgroundColor: colors.primary,
+  },
+  locationNumberText: { fontSize: 15, fontWeight: '700', color: colors.primary },
   locationNumberTextSelected: { color: '#fff' },
-  locationTileText: { fontSize: 15, fontWeight: '600', color: colors.text },
-  locationTileTextSelected: { color: '#fff' },
+  locationIconPart: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.sm,
+  },
+  locationTileText: { fontSize: 13, fontWeight: '600', color: '#141a24', flexShrink: 1 },
   statRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
   statTile: {
     flex: 1,
+    minHeight: TILE_HEIGHT,
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingVertical: spacing.md,
     alignItems: 'center',
+    justifyContent: 'center',
     ...shadow(1),
   },
   statValue: { fontSize: 20, fontWeight: '700', color: colors.primary },

@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import FeatherIcon from 'react-native-vector-icons/Feather';
 import Svg, { Defs, LinearGradient as SvgLinearGradient, Stop, Rect } from 'react-native-svg';
 import { useRoute } from '@react-navigation/native';
 import { useI18n } from '../i18n/I18nContext';
@@ -394,8 +395,8 @@ export default function AppLayout({
               activeOpacity={0.7}
             >
               {isProductsSelected && <View style={styles.bottomTabIndicator} />}
-              <Icon
-                name="article"
+              <FeatherIcon
+                name="file-text"
                 size={BOTTOM_TAB_ICON_SIZE}
                 color={isProductsSelected ? colors.primary : '#333333'}
               />

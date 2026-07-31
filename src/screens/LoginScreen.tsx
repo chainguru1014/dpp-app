@@ -17,13 +17,20 @@ import AppleAuthButton from '../components/AppleAuthButton';
 import OtpSignIn from '../components/OtpSignIn';
 import { colors, spacing, radius, shadow } from '../theme';
 
-type AuthResult = { user: any; token: string; profileCompleted: boolean; mode?: 'signin' | 'signup' };
+type AuthResult = { user: any; token: string; profileCompleted: boolean; mode?: 'signin' | 'signup'; actorKind?: 'User' | 'Employee' };
 
 export default function LoginScreen({ navigation, onLogin, route }: any) {
   const [apiError, setApiError] = useState('');
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
 
-  const goAfterAuth = () => {
+  // Corporate employee sessions always land on the operations home, never on
+  // the consumer redirect target the route may have been carrying (e.g. a
+  // deep link into a product page) — that flow doesn't apply to staff.
+  const goAfterAuth = (actorKind: 'User' | 'Employee') => {
+    if (actorKind === 'Employee') {
+      navigation.replace('EmployeeHome');
+      return;
+    }
     const redirectTo = route?.params?.redirectTo;
     const redirectParams = route?.params?.redirectParams;
     if (redirectTo) {
@@ -34,17 +41,17 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
   };
 
   // Tag the session with which kind of account this is so ownership-transfer
-  // confirmation can identify the acting party (User vs Company/brand).
-  // All three passwordless methods (Google/Apple/OTP) are User-only —
-  // there is no Company/brand equivalent for any of them.
-  const finalizeLogin = async (userData: any, token: string) => {
-    const tagged = { ...userData, actorKind: 'User' };
+  // confirmation can identify the acting party (User vs Company/brand), and
+  // so the rest of the app (AppLayout, product-facing screens) knows which
+  // UI branch to render — see isEmployeeActor usage throughout.
+  const finalizeLogin = async (userData: any, token: string, actorKind: 'User' | 'Employee') => {
+    const tagged = { ...userData, actorKind };
     await AsyncStorage.setItem('userToken', token || '');
     await AsyncStorage.setItem('user', JSON.stringify(tagged));
     if (onLogin) {
       onLogin(tagged);
     }
-    goAfterAuth();
+    goAfterAuth(actorKind);
   };
 
   // Shared handler for all three passwordless methods. If the backend says
@@ -56,9 +63,13 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
   // email that's already registered, so an incomplete profile there means an
   // old abandoned signup, not someone who needs onboarding right now.
   // Google/Apple and OTP signup are unaffected and keep the redirect.
-  const handleAuthSuccess = async ({ user, token, profileCompleted, mode }: AuthResult) => {
+  // Employee accounts have no profile-completion concept at all (no
+  // Register-screen equivalent for staff), so that branch never applies
+  // regardless of the flag's value.
+  const handleAuthSuccess = async ({ user, token, profileCompleted, mode, actorKind }: AuthResult) => {
     setApiError('');
-    if (!profileCompleted && mode !== 'signin') {
+    const kind: 'User' | 'Employee' = actorKind === 'Employee' ? 'Employee' : 'User';
+    if (kind === 'User' && !profileCompleted && mode !== 'signin') {
       const tagged = { ...user, actorKind: 'User' };
       await AsyncStorage.setItem('userToken', token || '');
       await AsyncStorage.setItem('user', JSON.stringify(tagged));
@@ -71,7 +82,7 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
       });
       return;
     }
-    await finalizeLogin(user, token);
+    await finalizeLogin(user, token, kind);
   };
 
   const handleAuthError = (message: string) => {
