@@ -395,7 +395,7 @@ export default function AppLayout({
             >
               {isProductsSelected && <View style={styles.bottomTabIndicator} />}
               <Icon
-                name="description"
+                name="article"
                 size={BOTTOM_TAB_ICON_SIZE}
                 color={isProductsSelected ? colors.primary : '#333333'}
               />

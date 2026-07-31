@@ -576,9 +576,6 @@ export default function ScannedProductListScreen({
       showBackButton={true}
     >
       <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={[ui.screenTitle, styles.headerTitle]}>{t('myProductsTitle')}</Text>
-        </View>
         {loading ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>{t('loading')}</Text>

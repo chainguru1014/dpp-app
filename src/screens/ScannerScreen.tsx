@@ -592,30 +592,36 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
     return (
       <View style={styles.whiteBoard}>
         {recentScans.length > 0 && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.recentScansStrip}>
-            {recentScans.map((scan, index) => {
-              const isLatest = index === recentScans.length - 1;
-              return (
-                <View key={scan.id} style={[styles.recentScanCard, isLatest && styles.recentScanCardLatest]}>
-                  {isLatest && (
-                    <View style={styles.recentScanLatestBadge}>
-                      <Text style={styles.recentScanLatestBadgeText}>✓</Text>
+          <>
+            <View style={styles.recentScansHeader}>
+              <Text style={styles.recentScansHeaderText}>{t('scanRecentScansLabel')}</Text>
+              <Text style={styles.recentScansCount}>
+                {t('scanTodayCountLabel').replace('{count}', String(recentScans.length))}
+              </Text>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.recentScansStrip}>
+              {recentScans.map((scan, index) => {
+                const isLatest = index === recentScans.length - 1;
+                return (
+                  <View key={scan.id} style={[styles.recentScanCard, isLatest && styles.recentScanCardLatest]}>
+                    <View style={styles.recentScanCheckBadge}>
+                      <VectorIcon name="check" size={12} color="#fff" />
                     </View>
-                  )}
-                  {!!scan.image && (
-                    <Image source={{ uri: scan.image }} style={styles.recentScanImage} resizeMode="cover" />
-                  )}
-                  <View style={styles.recentScanDetail}>
-                    <Text style={styles.recentScanId}>{index + 1}</Text>
-                    <Text style={styles.recentScanTime}>
-                      {new Date(scan.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </Text>
-                    <Text style={styles.recentScanName} numberOfLines={1}>{scan.name}</Text>
+                    {!!scan.image && (
+                      <Image source={{ uri: scan.image }} style={styles.recentScanImage} resizeMode="cover" />
+                    )}
+                    <View style={styles.recentScanDetail}>
+                      <Text style={styles.recentScanId}>{index + 1}</Text>
+                      <Text style={styles.recentScanTime}>
+                        {new Date(scan.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </Text>
+                      <Text style={styles.recentScanName} numberOfLines={1}>{scan.name}</Text>
+                    </View>
                   </View>
-                </View>
-              );
-            })}
-          </ScrollView>
+                );
+              })}
+            </ScrollView>
+          </>
         )}
 
         {loading ? (
@@ -677,7 +683,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
           activeOpacity={0.75}
         >
           <VectorIcon name={torchOn ? 'flash-on' : 'flash-off'} size={20} color="#fff" />
-          <Text style={styles.overlayCornerText}>{t('scanTorchLabel')}</Text>
+          <Text style={styles.overlayCornerText}>{torchOn ? t('scanTorchOn') : t('scanTorchOff')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.overlayCornerButton} onPress={handleHelpPress} activeOpacity={0.75}>
           <VectorIcon name="help-outline" size={20} color="#fff" />
@@ -914,13 +920,14 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
-  // Camera viewport + frame
+  // Camera viewport + frame. flex:1 (with a floor) so it fills whatever
+  // space the white board below doesn't need — the board is content-sized
+  // (see whiteBoard), so this is what actually keeps the board flush against
+  // the bottom nav with no gap, shrinking the camera as the board grows
+  // (manual entry open) and expanding it back when the board is small.
   scanViewport: {
-    // Fixed (not flex:1) so the white board below — recent scans strip,
-    // buttons, and the manual-entry card when expanded — always has room to
-    // render in full without clipping against the bottom nav or needing a
-    // scrollbar on typical phone screens.
-    height: 300,
+    flex: 1,
+    minHeight: 180,
     width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
@@ -975,6 +982,14 @@ const styles = StyleSheet.create({
   // sibling to bound it can stretch its single-row content to fill
   // whatever vertical space its (now non-flex) parent happens to have,
   // ballooning the card height when there's only one scan to show.
+  recentScansHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  recentScansHeaderText: { fontSize: 13, fontWeight: '700', color: colors.heading },
+  recentScansCount: { fontSize: 12, color: colors.muted },
   recentScansStrip: {
     height: 64,
     marginBottom: spacing.md,
@@ -996,7 +1011,9 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     backgroundColor: colors.surface,
   },
-  recentScanLatestBadge: {
+  // Every card gets a check-in-circle badge (dark blue, not green); the
+  // latest card is additionally distinguished by its blue card border above.
+  recentScanCheckBadge: {
     position: 'absolute',
     top: -6,
     right: -6,
@@ -1007,11 +1024,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1,
-  },
-  recentScanLatestBadgeText: {
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: '700',
   },
   recentScanImage: {
     width: 44,

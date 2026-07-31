@@ -112,12 +112,10 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
                 onPress={() => handleSelectScanLocation(opt.key)}
                 activeOpacity={0.7}
               >
-                <View style={[styles.locationNumberBadge, selected && styles.locationNumberBadgeSelected]}>
-                  <Text style={[styles.locationNumberText, selected && styles.locationNumberTextSelected]}>
-                    {index + 1}
-                  </Text>
-                </View>
-                <Text style={styles.locationTileText} numberOfLines={1}>
+                <Text style={[styles.locationNumberText, selected && styles.locationNumberTextSelected]}>
+                  {index + 1}
+                </Text>
+                <Text style={[styles.locationTileText, selected && styles.locationTileTextSelected]} numberOfLines={1}>
                   {t(opt.labelKey as any)}
                 </Text>
               </TouchableOpacity>
@@ -184,10 +182,10 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   container: { padding: spacing.xl, paddingBottom: spacing.xxxl },
-  // Numbered badge on the left (gray/blue-text unselected, blue/white-text
-  // selected) + a white card body with a blue border when selected — matches
-  // EmployeeHomeScreen's Worker Operations numbering, adapted with an
-  // explicit badge instead of bare number text.
+  // Plain vertical stack — number as bare colored text on top, label below —
+  // exactly matching EmployeeHomeScreen's Worker Operations tile (no
+  // separate badge box). Selected fills the whole card solid blue with
+  // white text, same as that screen's reference "current step" look.
   selectorTitle: { fontSize: 22, fontWeight: '600', color: colors.heading, marginBottom: spacing.xs },
   selectorSubtitle: { fontSize: 14, color: colors.muted, marginBottom: spacing.lg },
   locationGrid: {
@@ -198,33 +196,22 @@ const styles = StyleSheet.create({
   },
   locationTile: {
     width: '47%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: colors.border,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.md,
     paddingHorizontal: spacing.md,
+    ...shadow(1),
   },
   locationTileSelected: {
+    backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
-  locationNumberBadge: {
-    width: 26,
-    height: 26,
-    borderRadius: radius.sm,
-    backgroundColor: colors.surfaceAlt,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  locationNumberBadgeSelected: {
-    backgroundColor: colors.primary,
-  },
-  locationNumberText: { fontSize: 13, fontWeight: '700', color: colors.primary },
+  locationNumberText: { fontSize: 13, fontWeight: '700', color: colors.primary, marginBottom: 2 },
   locationNumberTextSelected: { color: '#fff' },
-  locationTileText: { flex: 1, fontSize: 13, fontWeight: '600', color: colors.text },
+  locationTileText: { fontSize: 15, fontWeight: '600', color: colors.text },
+  locationTileTextSelected: { color: '#fff' },
   statRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
   statTile: {
     flex: 1,
