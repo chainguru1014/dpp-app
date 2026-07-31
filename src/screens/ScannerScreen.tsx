@@ -11,6 +11,7 @@ import {
   Image,
   TextInput,
   ScrollView,
+  Modal,
 } from 'react-native';
 import VectorIcon from 'react-native-vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -59,6 +60,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
   const [manualValue, setManualValue] = useState('');
   const [recentScans, setRecentScans] = useState<{ id: string; image: string; name: string; time: number }[]>([]);
   const [torchOn, setTorchOn] = useState(false);
+  const [helpVisible, setHelpVisible] = useState(false);
   const isMountedRef = useRef(true);
   const isProcessingScanRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -604,14 +606,14 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
                 const isLatest = index === recentScans.length - 1;
                 return (
                   <View key={scan.id} style={[styles.recentScanCard, isLatest && styles.recentScanCardLatest]}>
-                    <View style={styles.recentScanImageWrap}>
-                      {!!scan.image && (
-                        <Image source={{ uri: scan.image }} style={styles.recentScanImage} resizeMode="cover" />
-                      )}
+                    {isLatest && (
                       <View style={styles.recentScanCheckBadge}>
                         <VectorIcon name="check" size={10} color="#fff" />
                       </View>
-                    </View>
+                    )}
+                    {!!scan.image && (
+                      <Image source={{ uri: scan.image }} style={styles.recentScanImage} resizeMode="cover" />
+                    )}
                     <View style={styles.recentScanDetail}>
                       <Text style={styles.recentScanId}>{index + 1}</Text>
                       <Text style={styles.recentScanTime}>
@@ -663,8 +665,11 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
     );
   };
 
+  // Alert.alert is a no-op on web (react-native-web ships an empty stub), so
+  // this uses an in-app Modal instead — it renders identically on both
+  // native and web.
   const handleHelpPress = () => {
-    Alert.alert(t('scannerScanHint'), t('scanHelpBody'));
+    setHelpVisible(true);
   };
 
   // Overlaid directly on the camera feed: hint pill at the top, torch
@@ -692,6 +697,17 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
           <Text style={styles.overlayCornerText}>{t('scanHelpLabel')}</Text>
         </TouchableOpacity>
       </View>
+      <Modal visible={helpVisible} transparent animationType="fade" onRequestClose={() => setHelpVisible(false)}>
+        <TouchableOpacity style={styles.helpOverlay} activeOpacity={1} onPress={() => setHelpVisible(false)}>
+          <View style={styles.helpCard}>
+            <Text style={styles.helpTitle}>{t('scannerScanHint')}</Text>
+            <Text style={styles.helpBody}>{t('scanHelpBody')}</Text>
+            <TouchableOpacity style={styles.helpCloseButton} onPress={() => setHelpVisible(false)} activeOpacity={0.8}>
+              <Text style={styles.helpCloseButtonText}>{t('close')}</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </>
   );
 
@@ -969,7 +985,7 @@ const styles = StyleSheet.create({
   // entry card is closed, grows to show it in full when open. See
   // container's comment above for why a shorter card doesn't leave a dark gap.
   whiteBoard: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceAlt,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
     paddingTop: spacing.lg,
@@ -1001,7 +1017,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: 150,
     marginRight: spacing.sm,
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: colors.surface,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
@@ -1011,21 +1027,14 @@ const styles = StyleSheet.create({
   recentScanCardLatest: {
     borderColor: colors.primary,
     borderWidth: 2,
-    backgroundColor: colors.surface,
   },
-  recentScanImageWrap: {
-    position: 'relative',
-    width: 44,
-    height: 44,
-  },
-  // Every card gets a check-in-circle badge (dark blue, not green), inset
-  // into the image's own top-right corner (not the outer card) so it sits
-  // inside the thumbnail's rounded edge instead of overhanging it. The
-  // latest card is additionally distinguished by its blue card border above.
+  // Only the latest card gets a check-in-circle badge (dark blue), inset
+  // into the card's own top-right corner so it sits inside the rounded
+  // border instead of overhanging it.
   recentScanCheckBadge: {
     position: 'absolute',
-    top: 2,
-    right: 2,
+    top: 4,
+    right: 4,
     width: 16,
     height: 16,
     borderRadius: 8,
@@ -1070,7 +1079,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.xs,
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: colors.surface,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.border,
@@ -1103,6 +1112,30 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '400',
   },
+  helpOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(11,18,32,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.xl,
+  },
+  helpCard: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.xl,
+    ...shadow(3),
+  },
+  helpTitle: { fontSize: 17, fontWeight: '700', color: colors.heading, marginBottom: spacing.sm },
+  helpBody: { fontSize: 14, color: colors.text, lineHeight: 20, marginBottom: spacing.lg },
+  helpCloseButton: {
+    backgroundColor: colors.primary,
+    borderRadius: radius.pill,
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+  },
+  helpCloseButtonText: { color: '#fff', fontSize: 14, fontWeight: '700' },
   scanCaption: {
     color: 'rgba(255,255,255,0.82)',
     fontSize: 13,

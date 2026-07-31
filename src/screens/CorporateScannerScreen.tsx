@@ -13,6 +13,9 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused } from '@react-navigation/native';
+import { BrowserMultiFormatReader } from '@zxing/browser';
+import { BarcodeFormat } from '@zxing/library';
+import VectorIcon from 'react-native-vector-icons/MaterialIcons';
 import AppLayout from '../components/AppLayout';
 import { useI18n } from '../i18n/I18nContext';
 import { API_BASE_URL } from '../config/api';
@@ -21,6 +24,16 @@ import WebCodeScanner, { WebCodeScannerHandle } from '../components/WebCodeScann
 import CaptureCameraView, { CaptureCameraHandle, isCaptureCameraAvailable, CapturedCodeFormat } from '../components/CaptureCameraView';
 import { getCurrentLocation, getDeviceInfo } from '../utils/deviceCapture';
 import { uploadCaptureImage } from '../utils/uploadCapture';
+import { isNativeImageScanAvailable, scanBarcodeFromImageUri } from '../utils/nativeImageScan';
+
+// Guarded the same defensive way as ScannerScreen.tsx — degrades gracefully
+// if the native module isn't linked/rebuilt yet.
+let launchImageLibrary: any = null;
+try {
+  launchImageLibrary = require('react-native-image-picker').launchImageLibrary;
+} catch (e) {
+  console.warn('react-native-image-picker not available:', e);
+}
 
 const LIVENESS_TIMEOUT_MS = 700;
 
@@ -51,13 +64,16 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [step, setStep] = useState<ProcessStep | null>(null);
   const [captures, setCaptures] = useState<CaptureDoc[]>([]);
-  const [liveCode, setLiveCode] = useState<{ value: string; format: CapturedCodeFormat } | null>(null);
+  const [liveCode, setLiveCode] = useState<{ value: string; format: CapturedCodeFormat; manual?: boolean } | null>(null);
   const [capturing, setCapturing] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [manualValue, setManualValue] = useState('');
+  const [verifying, setVerifying] = useState(false);
+  const [codeUnrecognized, setCodeUnrecognized] = useState(false);
 
   const tokenRef = useRef<string>('');
   const lastSeenAtRef = useRef<number>(0);
+  const lastCheckedValueRef = useRef<string>('');
   const livenessIntervalRef = useRef<any>(null);
   const nativeCameraRef = useRef<CaptureCameraHandle>(null);
   const webScannerRef = useRef<WebCodeScannerHandle>(null);
@@ -129,28 +145,159 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   }, [stepIndex]);
 
   // Liveness: clears liveCode after LIVENESS_TIMEOUT_MS of no detection, so
-  // the Capture button disables again once the code leaves the frame.
+  // the Capture button disables again once the code leaves the frame. Also
+  // resets lastCheckedValueRef so the same code re-entering the frame later
+  // gets re-verified rather than silently skipped.
   useEffect(() => {
     livenessIntervalRef.current = setInterval(() => {
-      if (liveCode && Date.now() - lastSeenAtRef.current > LIVENESS_TIMEOUT_MS) {
+      // Manual entry has no camera frame continuously refreshing
+      // lastSeenAtRef — it stays enabled until captured or replaced, not on
+      // a liveness timer.
+      if (liveCode && !liveCode.manual && Date.now() - lastSeenAtRef.current > LIVENESS_TIMEOUT_MS) {
         setLiveCode(null);
+        setCodeUnrecognized(false);
+        lastCheckedValueRef.current = '';
       }
     }, 200);
     return () => clearInterval(livenessIntervalRef.current);
   }, [liveCode]);
 
-  const handleScan = (value: string, format: CapturedCodeFormat) => {
+  // Only a code that resolves to one of our own registered products (a valid
+  // security/encrypted QR, a GS1 Digital Link, or a barcode already mapped
+  // via the admin's identifier registry — the same resolution paths the
+  // consumer ScannerScreen uses) is allowed to enable the Capture button.
+  // An unrecognized code in frame leaves the button disabled.
+  const verifyScannedCode = async (value: string, format: CapturedCodeFormat): Promise<boolean> => {
+    try {
+      if (format === 'qr') {
+        const productUrlMatch = value.match(/\/product\/([^/?#]+)\/([^/?#]+)/i);
+        let res: Response;
+        let data: any;
+        if (productUrlMatch) {
+          res = await fetch(`${API_BASE_URL}qrcode/resolve-url`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ qrUrl: value }),
+          });
+          data = await res.json().catch(() => ({}));
+        } else {
+          let encryptData = value;
+          if (encryptData.includes('qrcode=')) {
+            const [rawParam] = encryptData.split('qrcode=').slice(1);
+            encryptData = rawParam?.split('&')[0] || '';
+          }
+          res = await fetch(`${API_BASE_URL}qrcode/decrypt`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ encryptData }),
+          });
+          data = await res.json().catch(() => ({}));
+        }
+        if (res.ok && data.status === 'success') return true;
+
+        // Not one of our own QR formats — maybe a GS1 Digital Link.
+        const gs1Res = await fetch(`${API_BASE_URL}pmc/lookup`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ source_type: 'gs1dl', raw_value: value }),
+        });
+        const gs1Data = await gs1Res.json().catch(() => ({}));
+        return gs1Res.ok && gs1Data.status === 'success';
+      }
+
+      const res = await fetch(`${API_BASE_URL}pmc/lookup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source_type: 'barcode', raw_value: value }),
+      });
+      const data = await res.json().catch(() => ({}));
+      return res.ok && data.status === 'success';
+    } catch (err) {
+      console.error('verifyScannedCode failed:', err);
+      return false;
+    }
+  };
+
+  const handleScan = (value: string, format: CapturedCodeFormat, manual = false) => {
     lastSeenAtRef.current = Date.now();
-    setLiveCode({ value, format });
+    if (value === lastCheckedValueRef.current) return;
+    lastCheckedValueRef.current = value;
+    setVerifying(true);
+    verifyScannedCode(value, format).then((recognized) => {
+      if (lastCheckedValueRef.current !== value) return; // stale result — a different code is now in frame
+      setVerifying(false);
+      setCodeUnrecognized(!recognized);
+      setLiveCode(recognized ? { value, format, manual } : null);
+    });
+  };
+
+  // Decode a QR/barcode from a picked photo, then run it through the same
+  // verification gate as a live scan (handleScan) — an uploaded photo of an
+  // unregistered code still leaves the Capture button disabled.
+  const decodeImageFromFile = (file: any) => {
+    const w: any = globalThis as any;
+    try {
+      const reader = new w.FileReader();
+      reader.onload = () => {
+        const img = new w.Image();
+        img.onload = async () => {
+          try {
+            const codeReader = new BrowserMultiFormatReader();
+            const result = await codeReader.decodeFromImageElement(img);
+            const format = result.getBarcodeFormat ? result.getBarcodeFormat() : null;
+            handleScan(String(result.getText()), format === BarcodeFormat.QR_CODE ? 'qr' : 'barcode');
+          } catch (err) {
+            console.error('decodeImageFromFile failed:', err);
+          }
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('decodeImageFromFile failed:', err);
+    }
+  };
+
+  const openPhotoScan = () => {
+    const w: any = globalThis as any;
+    try {
+      const input = w.document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.setAttribute('capture', 'environment');
+      input.onchange = (ev: any) => {
+        const file = ev?.target?.files && ev.target.files[0];
+        if (file) decodeImageFromFile(file);
+      };
+      input.click();
+    } catch (err) {
+      console.error('openPhotoScan failed:', err);
+    }
+  };
+
+  const pickNativePhotoAndScan = () => {
+    if (!launchImageLibrary || !isNativeImageScanAvailable()) return;
+    launchImageLibrary({ mediaType: 'photo', selectionLimit: 1, includeBase64: false }, async (response: any) => {
+      if (response?.didCancel || response?.errorCode) return;
+      const uri = response?.assets && response.assets[0] && response.assets[0].uri;
+      if (!uri) return;
+      try {
+        const result = await scanBarcodeFromImageUri(uri);
+        if (result) handleScan(result.value, result.format);
+      } catch (err) {
+        console.error('pickNativePhotoAndScan failed:', err);
+      }
+    });
   };
 
   const handleManualSubmit = () => {
     const value = manualValue.trim();
     if (!value) return;
-    lastSeenAtRef.current = Date.now();
-    setLiveCode({ value, format: 'barcode' });
     setManualOpen(false);
     setManualValue('');
+    // Same verification gate as a live camera scan — manual entry doesn't
+    // bypass the "must already be a registered product" requirement.
+    handleScan(value, 'barcode', true);
   };
 
   const handleCapture = async () => {
@@ -289,6 +436,38 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
           ))}
         </ScrollView>
 
+        {!!codeUnrecognized && !liveCode && (
+          <Text style={styles.unrecognizedText}>{t('corpCodeUnrecognized')}</Text>
+        )}
+
+        <TouchableOpacity
+          style={[styles.captureButton, (!liveCode || capturing) && styles.captureButtonDisabled]}
+          onPress={handleCapture}
+          disabled={!liveCode || capturing}
+        >
+          {capturing || verifying ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.captureButtonText}>{t('corpCaptureButton')}</Text>
+          )}
+        </TouchableOpacity>
+
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={Platform.OS === 'web' ? openPhotoScan : pickNativePhotoAndScan}
+          >
+            <VectorIcon name="photo-library" size={16} color={colors.primary} />
+            <Text style={styles.secondaryButtonText}>{t('scanUploadPhoto')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.secondaryButton} onPress={() => setManualOpen((v) => !v)}>
+            <VectorIcon name="edit" size={16} color={colors.primary} />
+            <Text style={styles.secondaryButtonText}>
+              {manualOpen ? t('scanHideManual') : t('corpManualEntryButton')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         {manualOpen && (
           <View style={styles.manualCard}>
             <TextInput
@@ -303,27 +482,6 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
             </TouchableOpacity>
           </View>
         )}
-
-        <View style={styles.actionRow}>
-          <TouchableOpacity style={styles.secondaryButton} onPress={() => setManualOpen((v) => !v)}>
-            <Text style={styles.secondaryButtonText}>{t('corpManualEntryButton')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate('CorporateReview', { stepIndex })}>
-            <Text style={styles.secondaryButtonText}>{t('corpReviewButton')}</Text>
-          </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity
-          style={[styles.captureButton, (!liveCode || capturing) && styles.captureButtonDisabled]}
-          onPress={handleCapture}
-          disabled={!liveCode || capturing}
-        >
-          {capturing ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Text style={styles.captureButtonText}>{t('corpCaptureButton')}</Text>
-          )}
-        </TouchableOpacity>
       </View>
     </AppLayout>
   );
@@ -409,15 +567,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   manualSubmitText: { color: '#fff', fontSize: 13, fontWeight: '600' },
-  actionRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
+  actionRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
   secondaryButton: {
     flex: 1,
+    flexDirection: 'row',
+    gap: spacing.xs,
     backgroundColor: colors.surfaceAlt,
     borderRadius: radius.md,
     paddingVertical: 12,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   secondaryButtonText: { color: colors.primary, fontSize: 13, fontWeight: '600' },
+  unrecognizedText: { color: colors.danger, fontSize: 12, textAlign: 'center', marginBottom: spacing.sm },
   captureButton: {
     backgroundColor: colors.primary,
     borderRadius: radius.pill,

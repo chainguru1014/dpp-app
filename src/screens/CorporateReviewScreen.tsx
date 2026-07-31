@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import VectorIcon from 'react-native-vector-icons/MaterialIcons';
 import AppLayout from '../components/AppLayout';
 import { useI18n } from '../i18n/I18nContext';
 import { API_BASE_URL } from '../config/api';
@@ -96,10 +97,10 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
     { key: 'week', label: t('corpThisWeek') },
     { key: 'month', label: t('corpThisMonth') },
   ];
-  const filterOptions: { key: FilterTab; label: string }[] = [
-    { key: 'newest', label: t('corpFilterNewest') },
-    { key: 'all', label: t('corpFilterAll') },
-    { key: 'flagged', label: t('corpFilterFlagged') },
+  const filterOptions: { key: FilterTab; label: string; icon: string }[] = [
+    { key: 'newest', label: t('corpFilterNewest'), icon: 'schedule' },
+    { key: 'all', label: t('corpFilterAll'), icon: 'grid-view' },
+    { key: 'flagged', label: t('corpFilterFlagged'), icon: 'star-border' },
   ];
 
   return (
@@ -143,6 +144,12 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
               style={[styles.tab, filter === opt.key && styles.tabActive]}
               onPress={() => setFilter(opt.key)}
             >
+              <VectorIcon
+                name={opt.icon}
+                size={14}
+                color={filter === opt.key ? '#fff' : colors.muted}
+                style={styles.tabIcon}
+              />
               <Text style={[styles.tabText, filter === opt.key && styles.tabTextActive]}>{opt.label}</Text>
             </TouchableOpacity>
           ))}
@@ -170,30 +177,37 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
                       <Text style={styles.rowRef} numberOfLines={1}>{doc.refNumber}</Text>
                       <Text style={styles.rowTime}>{new Date(doc.capturedAt).toLocaleTimeString()}</Text>
                     </View>
-                    <View style={[styles.badge, index === 0 && styles.badgeLatest]}>
-                      <Text style={[styles.badgeText, index === 0 && styles.badgeTextLatest]}>
+                    <View style={[styles.badge, index === 0 ? styles.badgeLatest : styles.badgeSaved]}>
+                      <Text style={styles.badgeTextOnColor}>
                         {index === 0 ? t('corpLatestBadge') : t('corpSavedBadge')}
                       </Text>
                     </View>
                     <TouchableOpacity onPress={() => toggleFlag(doc._id)} style={styles.flagButton}>
-                      <Text style={{ color: doc.flagged ? colors.warning : colors.muted }}>★</Text>
+                      <VectorIcon
+                        name={doc.flagged ? 'star' : 'star-border'}
+                        size={18}
+                        color={doc.flagged ? colors.warning : colors.muted}
+                      />
                     </TouchableOpacity>
                   </TouchableOpacity>
 
                   {expanded && (
                     <View style={styles.detailPanel}>
-                      <DetailRow label={t('corpTerminalIdLabel')} value={doc.terminalId || '—'} />
-                      <DetailRow label={t('corpWorkerLabel')} value={doc.workerLabel || '—'} />
+                      <DetailRow icon="smartphone" label={t('corpTerminalIdLabel')} value={doc.terminalId || '—'} />
+                      <DetailRow icon="person" label={t('corpWorkerLabel')} value={doc.workerLabel || '—'} />
                       <DetailRow
+                        icon="place"
                         label={t('corpLocationLabel')}
                         value={doc.location?.latitude != null ? `${doc.location.latitude.toFixed(4)}, ${doc.location.longitude?.toFixed(4)}` : '—'}
                       />
                       <DetailRow
+                        icon="gps-fixed"
                         label={t('corpGpsLabel')}
                         value={doc.location?.accuracy != null ? `±${Math.round(doc.location.accuracy)}m` : '—'}
                       />
-                      <DetailRow label={t('corpCapturedViaLabel')} value={doc.identifierType || '—'} />
+                      <DetailRow icon="photo-camera" label={t('corpCapturedViaLabel')} value={doc.identifierType || '—'} />
                       <DetailRow
+                        icon="tablet-mac"
                         label={t('corpCapturedDeviceLabel')}
                         value={doc.device?.model ? `${doc.device.model} (${doc.device.os} ${doc.device.osVersion})` : '—'}
                       />
@@ -209,9 +223,12 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
   );
 }
 
-const DetailRow = ({ label, value }: { label: string; value: string }) => (
+const DetailRow = ({ icon, label, value }: { icon: string; label: string; value: string }) => (
   <View style={styles.detailRow}>
-    <Text style={styles.detailLabel}>{label}</Text>
+    <View style={styles.detailLabelWrap}>
+      <VectorIcon name={icon} size={14} color={colors.muted} style={styles.detailIcon} />
+      <Text style={styles.detailLabel}>{label}</Text>
+    </View>
     <Text style={styles.detailValue} numberOfLines={1}>{value}</Text>
   </View>
 );
@@ -238,7 +255,16 @@ const styles = StyleSheet.create({
   periodChipText: { fontSize: 11, color: colors.muted },
   periodChipTextActive: { color: '#fff', fontWeight: '600' },
   tabRow: { flexDirection: 'row', marginBottom: spacing.md, gap: spacing.sm },
-  tab: { flex: 1, paddingVertical: 10, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, alignItems: 'center' },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    paddingVertical: 10,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabIcon: { marginRight: 6 },
   tabActive: { backgroundColor: colors.primary },
   tabText: { fontSize: 13, color: colors.muted, fontWeight: '600' },
   tabTextActive: { color: '#fff' },
@@ -258,8 +284,9 @@ const styles = StyleSheet.create({
   rowTime: { fontSize: 12, color: colors.muted },
   badge: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, marginRight: spacing.sm },
   badgeLatest: { backgroundColor: colors.primary },
+  badgeSaved: { backgroundColor: colors.success },
   badgeText: { fontSize: 11, color: colors.muted, fontWeight: '600' },
-  badgeTextLatest: { color: '#fff' },
+  badgeTextOnColor: { fontSize: 11, color: '#fff', fontWeight: '600' },
   flagButton: { padding: 4 },
   detailPanel: {
     borderTopWidth: 1,
@@ -267,7 +294,9 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     backgroundColor: colors.surfaceAlt,
   },
-  detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
+  detailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },
+  detailLabelWrap: { flexDirection: 'row', alignItems: 'center' },
+  detailIcon: { marginRight: 6 },
   detailLabel: { fontSize: 12, color: colors.muted },
   detailValue: { fontSize: 12, color: colors.text, fontWeight: '600', flexShrink: 1, textAlign: 'right', marginLeft: spacing.md },
 });

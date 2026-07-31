@@ -438,7 +438,7 @@ export default function AppLayout({
           <View style={styles.settingsContainer}>
             <Text style={styles.settingsTitle}>{t('settings')}</Text>
             <Text style={styles.settingsSubtitle}>
-              {isEmployeeActor ? t('settingsLanguageOnlySubtitle') : t('settingsSubtitle')}
+              {t('settingsSubtitle')}
             </Text>
 
             {/* Profile and Logout live in the top-bar avatar dropdown only —
@@ -469,22 +469,6 @@ export default function AppLayout({
                     <View style={styles.menuDivider} />
                   </View>
                 ))}
-
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={() => {
-                  setSettingsVisible(false);
-                  openLanguageMenu();
-                }}
-                activeOpacity={0.7}
-              >
-                <Image
-                  source={require('../assets/world.png')}
-                  style={styles.menuIcon}
-                  resizeMode="contain"
-                />
-                <Text style={styles.menuItemText}>{t('language')}</Text>
-              </TouchableOpacity>
             </ScrollView>
           </View>
         </TouchableOpacity>
@@ -508,6 +492,17 @@ export default function AppLayout({
               <TouchableOpacity style={styles.avatarMenuItem} onPress={handleProfile} activeOpacity={0.7}>
                 <Image source={require('../assets/account.png')} style={styles.avatarMenuIcon} resizeMode="contain" />
                 <Text style={styles.avatarMenuText}>{t('profile')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.avatarMenuItem}
+                onPress={() => {
+                  setAvatarMenuVisible(false);
+                  openLanguageMenu();
+                }}
+                activeOpacity={0.7}
+              >
+                <Image source={require('../assets/world.png')} style={styles.avatarMenuIcon} resizeMode="contain" />
+                <Text style={styles.avatarMenuText}>{t('language')}</Text>
               </TouchableOpacity>
               {isAuthenticated && (
                 <TouchableOpacity style={styles.avatarMenuItem} onPress={handleLogout} activeOpacity={0.7}>

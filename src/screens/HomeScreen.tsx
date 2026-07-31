@@ -28,7 +28,7 @@ const SCAN_LOCATION_STORAGE_KEY = 'scanLocationType';
 
 // Shared height for both the location tiles and the stat tiles below them so
 // the two rows visually align (see locationTile/statTile styles).
-const TILE_HEIGHT = 64;
+const TILE_HEIGHT = 46;
 
 // Where the consumer is scanning from — purely a local preference today (no
 // backend field yet to attach it to); persisted so it survives app restarts.
@@ -126,7 +126,7 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
                       </Text>
                     </View>
                     <View style={styles.locationIconPart}>
-                      <VectorIcon name={opt.icon} size={20} color="#141a24" />
+                      <VectorIcon name={opt.icon} size={18} color={colors.muted} />
                       <Text style={styles.locationTileText} numberOfLines={1}>
                         {t(opt.labelKey as any)}
                       </Text>
@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     paddingHorizontal: spacing.sm,
   },
-  locationTileText: { fontSize: 13, fontWeight: '600', color: '#141a24', flexShrink: 1 },
+  locationTileText: { fontSize: 13, fontWeight: '600', color: colors.muted, flexShrink: 1 },
   statRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
   statTile: {
     flex: 1,
