@@ -660,27 +660,25 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
   };
 
   // Overlaid directly on the camera feed: hint pill at the top, torch
-  // (native only — browsers can't reliably drive it) at bottom-left, help at
-  // bottom-right.
-  const renderCameraOverlay = (showTorch: boolean) => (
+  // bottom-right. Torch is shown on every platform for a consistent
+  // affordance — the toggle itself is a no-op on web (browsers can't
+  // reliably drive the flashlight), but native gets a real on/off control
+  // with the icon swapping to match.
+  const renderCameraOverlay = () => (
     <>
       <View pointerEvents="none" style={styles.overlayHintWrap}>
         <VectorIcon name="qr-code" size={16} color="#fff" style={styles.overlayHintIcon} />
         <Text style={styles.overlayHintText}>{t('scannerScanHint')}</Text>
       </View>
       <View style={styles.overlayCornerRow}>
-        {showTorch ? (
-          <TouchableOpacity
-            style={styles.overlayCornerButton}
-            onPress={() => setTorchOn((v) => !v)}
-            activeOpacity={0.75}
-          >
-            <VectorIcon name={torchOn ? 'flash-on' : 'flash-off'} size={20} color="#fff" />
-            <Text style={styles.overlayCornerText}>{t('scanTorchLabel')}</Text>
-          </TouchableOpacity>
-        ) : (
-          <View />
-        )}
+        <TouchableOpacity
+          style={styles.overlayCornerButton}
+          onPress={() => setTorchOn((v) => !v)}
+          activeOpacity={0.75}
+        >
+          <VectorIcon name={torchOn ? 'flash-on' : 'flash-off'} size={20} color="#fff" />
+          <Text style={styles.overlayCornerText}>{t('scanTorchLabel')}</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.overlayCornerButton} onPress={handleHelpPress} activeOpacity={0.75}>
           <VectorIcon name="help-outline" size={20} color="#fff" />
           <Text style={styles.overlayCornerText}>{t('scanHelpLabel')}</Text>
@@ -771,7 +769,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
             <View pointerEvents="none" style={styles.frameOverlay}>
               <View style={styles.scanFrame} />
             </View>
-            {renderCameraOverlay(false)}
+            {renderCameraOverlay()}
           </View>
           {renderWhiteBoard()}
         </ScrollView>
@@ -814,7 +812,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
             <View pointerEvents="none" style={styles.frameOverlay}>
               <View style={styles.scanFrame} />
             </View>
-            {renderCameraOverlay(true)}
+            {renderCameraOverlay()}
           </View>
           {renderWhiteBoard()}
         </ScrollView>
@@ -856,14 +854,14 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
 const DARK = '#0b1220';
 
 const styles = StyleSheet.create({
+  // Light (not DARK) — scanViewport below has its own dark background scoped
+  // to just the camera area; leaving this light means any leftover space
+  // below the (dynamically sized) white board reads as part of the page,
+  // not a jarring dark gap above the bottom nav.
   container: {
     flex: 1,
-    backgroundColor: DARK,
+    backgroundColor: colors.bg,
   },
-  // contentContainerStyle for the ScrollView wrapping scanViewport+whiteBoard
-  // — flexGrow:1 lets whiteBoard (flex:1 below) stretch to the bottom of the
-  // screen instead of leaving a dark gap above the bottom nav when its own
-  // content is shorter than the available height.
   containerContent: {
     flexGrow: 1,
   },
@@ -958,8 +956,10 @@ const styles = StyleSheet.create({
   },
   // White board below the camera viewport (consumer flow) — Upload Photo /
   // Enter Manually, replacing the old dark-viewport link style.
+  // Dynamic height (sized to content, not flex:1) — small when the manual
+  // entry card is closed, grows to show it in full when open. See
+  // container's comment above for why a shorter card doesn't leave a dark gap.
   whiteBoard: {
-    flex: 1,
     backgroundColor: colors.surface,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
@@ -971,7 +971,12 @@ const styles = StyleSheet.create({
   // Today's scanned-products strip — oldest to latest (left to right), the
   // latest card gets a blue border + checkmark badge (matches the corporate
   // Scan Operation screen's "Latest" treatment).
+  // Explicit height — without it, a horizontal ScrollView with no flex:1
+  // sibling to bound it can stretch its single-row content to fill
+  // whatever vertical space its (now non-flex) parent happens to have,
+  // ballooning the card height when there's only one scan to show.
   recentScansStrip: {
+    height: 64,
     marginBottom: spacing.md,
   },
   recentScanCard: {

@@ -151,6 +151,11 @@ export default function StaffLoginScreen({ navigation, onLogin }: any) {
                   keyboardType="email-address"
                   editable={!requesting}
                 />
+                {!!error && (
+                  <View style={styles.errorBox}>
+                    <Text style={styles.errorText}>{error}</Text>
+                  </View>
+                )}
                 <TouchableOpacity style={[styles.button, requesting && styles.buttonDisabled]} onPress={handleSendCode} disabled={requesting}>
                   {requesting ? <ActivityIndicator color={colors.white} /> : <Text style={styles.buttonText}>Send code</Text>}
                 </TouchableOpacity>
@@ -168,6 +173,11 @@ export default function StaffLoginScreen({ navigation, onLogin }: any) {
                   maxLength={6}
                   editable={!verifying && !requesting}
                 />
+                {!!error && (
+                  <View style={styles.errorBox}>
+                    <Text style={styles.errorText}>{error}</Text>
+                  </View>
+                )}
                 <TouchableOpacity style={[styles.button, verifying && styles.buttonDisabled]} onPress={handleVerifyCode} disabled={verifying || requesting}>
                   {verifying ? <ActivityIndicator color={colors.white} /> : <Text style={styles.buttonText}>Verify</Text>}
                 </TouchableOpacity>
@@ -177,12 +187,6 @@ export default function StaffLoginScreen({ navigation, onLogin }: any) {
                   </Text>
                 </TouchableOpacity>
               </>
-            )}
-
-            {!!error && (
-              <View style={styles.errorBox}>
-                <Text style={styles.errorText}>{error}</Text>
-              </View>
             )}
           </View>
         </View>
@@ -230,6 +234,6 @@ const styles = StyleSheet.create({
   linkButton: { marginTop: spacing.md, alignItems: 'center' },
   linkText: { color: colors.navy, fontSize: 14, fontWeight: '400' },
   linkTextDisabled: { color: colors.muted },
-  errorBox: { backgroundColor: colors.dangerSoft, borderRadius: radius.md, paddingVertical: spacing.md, paddingHorizontal: spacing.md, marginTop: spacing.md },
+  errorBox: { backgroundColor: colors.dangerSoft, borderRadius: radius.md, paddingVertical: spacing.md, paddingHorizontal: spacing.md, marginBottom: spacing.md },
   errorText: { color: colors.danger, fontSize: 13, textAlign: 'left' },
 });

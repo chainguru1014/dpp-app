@@ -52,9 +52,12 @@ export default function OtpSignIn({ onSuccess, onError, mode }: OtpSignInProps) 
     setError('');
   }, [mode]);
 
+  // Local-only: this component already renders its own error box right below
+  // the email/code input, so it does NOT bubble up via onError — that prop
+  // exists for LoginScreen's Google/Apple buttons, which have no inline
+  // error UI of their own. Bubbling both would show the same message twice.
   const reportError = (msg: string) => {
     setError(msg);
-    onError?.(msg);
   };
 
   const sendCode = async (targetEmail: string) => {
@@ -153,6 +156,11 @@ export default function OtpSignIn({ onSuccess, onError, mode }: OtpSignInProps) 
             keyboardType="email-address"
             editable={!requesting}
           />
+          {!!error && (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          )}
           <TouchableOpacity
             style={[styles.button, requesting && styles.buttonDisabled]}
             onPress={handleSendCode}
@@ -178,6 +186,11 @@ export default function OtpSignIn({ onSuccess, onError, mode }: OtpSignInProps) 
             maxLength={6}
             editable={!verifying && !requesting}
           />
+          {!!error && (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          )}
           <TouchableOpacity
             style={[styles.button, verifying && styles.buttonDisabled]}
             onPress={handleVerifyCode}
@@ -206,12 +219,6 @@ export default function OtpSignIn({ onSuccess, onError, mode }: OtpSignInProps) 
             <Text style={styles.linkText}>Use a different email</Text>
           </TouchableOpacity>
         </>
-      )}
-
-      {!!error && (
-        <View style={styles.errorBox}>
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
       )}
     </View>
   );
@@ -276,7 +283,8 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.md,
-    marginTop: spacing.md,
+    marginTop: -spacing.sm,
+    marginBottom: spacing.md,
   },
   errorText: {
     color: colors.danger,

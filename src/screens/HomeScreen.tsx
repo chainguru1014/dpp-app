@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, useWindowDimensions } from 'react-native';
 import Svg, { Rect } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Icon from 'react-native-vector-icons/MaterialIcons';
 import AppLayout from '../components/AppLayout';
 import { useI18n } from '../i18n/I18nContext';
 import { API_BASE_URL } from '../config/api';
@@ -28,13 +27,13 @@ const SCAN_LOCATION_STORAGE_KEY = 'scanLocationType';
 
 // Where the consumer is scanning from — purely a local preference today (no
 // backend field yet to attach it to); persisted so it survives app restarts.
-const SCAN_LOCATION_TYPES: { key: string; labelKey: string; icon: string }[] = [
-  { key: 'store', labelKey: 'locTypeStore', icon: 'store' },
-  { key: 'factory', labelKey: 'locTypeFactory', icon: 'factory' },
-  { key: 'warehouse', labelKey: 'locTypeWarehouse', icon: 'warehouse' },
-  { key: 'p2p', labelKey: 'locTypeP2P', icon: 'swap-horiz' },
-  { key: 'home', labelKey: 'locTypeHome', icon: 'home' },
-  { key: 'other', labelKey: 'locTypeOther', icon: 'more-horiz' },
+const SCAN_LOCATION_TYPES: { key: string; labelKey: string }[] = [
+  { key: 'store', labelKey: 'locTypeStore' },
+  { key: 'factory', labelKey: 'locTypeFactory' },
+  { key: 'warehouse', labelKey: 'locTypeWarehouse' },
+  { key: 'p2p', labelKey: 'locTypeP2P' },
+  { key: 'home', labelKey: 'locTypeHome' },
+  { key: 'other', labelKey: 'locTypeOther' },
 ];
 
 // Consumer Home — a simple stats dashboard (owned-products + scan-history
@@ -104,7 +103,7 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
         <Text style={styles.selectorTitle}>{t('locSelectorTitle')}</Text>
         <Text style={styles.selectorSubtitle}>{t('locSelectorSubtitle')}</Text>
         <View style={styles.locationGrid}>
-          {SCAN_LOCATION_TYPES.map((opt) => {
+          {SCAN_LOCATION_TYPES.map((opt, index) => {
             const selected = scanLocationType === opt.key;
             return (
               <TouchableOpacity
@@ -113,8 +112,12 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
                 onPress={() => handleSelectScanLocation(opt.key)}
                 activeOpacity={0.7}
               >
-                <Icon name={opt.icon} size={20} color={selected ? '#fff' : colors.primary} style={styles.locationTileIcon} />
-                <Text style={[styles.locationTileText, selected && styles.locationTileTextSelected]}>
+                <View style={[styles.locationNumberBadge, selected && styles.locationNumberBadgeSelected]}>
+                  <Text style={[styles.locationNumberText, selected && styles.locationNumberTextSelected]}>
+                    {index + 1}
+                  </Text>
+                </View>
+                <Text style={styles.locationTileText} numberOfLines={1}>
                   {t(opt.labelKey as any)}
                 </Text>
               </TouchableOpacity>
@@ -181,33 +184,47 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   container: { padding: spacing.xl, paddingBottom: spacing.xxxl },
-  // Matches EmployeeHomeScreen's Worker Operations tile style exactly (same
-  // card proportions/shadow/radius) — selected state is a solid blue fill,
-  // same as that screen's reference "current step" look.
+  // Numbered badge on the left (gray/blue-text unselected, blue/white-text
+  // selected) + a white card body with a blue border when selected — matches
+  // EmployeeHomeScreen's Worker Operations numbering, adapted with an
+  // explicit badge instead of bare number text.
   selectorTitle: { fontSize: 22, fontWeight: '600', color: colors.heading, marginBottom: spacing.xs },
-  selectorSubtitle: { fontSize: 14, color: colors.muted, marginBottom: spacing.xl },
+  selectorSubtitle: { fontSize: 14, color: colors.muted, marginBottom: spacing.lg },
   locationGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.md,
-    marginBottom: spacing.xl,
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
   },
   locationTile: {
     width: '47%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.border,
-    padding: spacing.lg,
-    ...shadow(1),
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
   },
   locationTileSelected: {
-    backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
-  locationTileIcon: { marginBottom: spacing.xs },
-  locationTileText: { fontSize: 15, fontWeight: '600', color: colors.text },
-  locationTileTextSelected: { color: '#fff' },
+  locationNumberBadge: {
+    width: 26,
+    height: 26,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  locationNumberBadgeSelected: {
+    backgroundColor: colors.primary,
+  },
+  locationNumberText: { fontSize: 13, fontWeight: '700', color: colors.primary },
+  locationNumberTextSelected: { color: '#fff' },
+  locationTileText: { flex: 1, fontSize: 13, fontWeight: '600', color: colors.text },
   statRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
   statTile: {
     flex: 1,
@@ -215,11 +232,11 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingVertical: spacing.lg,
+    paddingVertical: spacing.md,
     alignItems: 'center',
     ...shadow(1),
   },
-  statValue: { fontSize: 24, fontWeight: '700', color: colors.primary },
+  statValue: { fontSize: 20, fontWeight: '700', color: colors.primary },
   statLabel: { fontSize: 11, color: colors.muted, marginTop: 4, textAlign: 'center' },
   card: {
     backgroundColor: colors.surface,

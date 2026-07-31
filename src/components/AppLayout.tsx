@@ -277,7 +277,7 @@ export default function AppLayout({
       <View style={styles.topBar}>
         <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
           <Defs>
-            <SvgLinearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
+            <SvgLinearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
               <Stop offset="0%" stopColor={colors.header} stopOpacity={1} />
               <Stop offset="100%" stopColor={colors.headerLight} stopOpacity={1} />
             </SvgLinearGradient>
@@ -395,7 +395,7 @@ export default function AppLayout({
             >
               {isProductsSelected && <View style={styles.bottomTabIndicator} />}
               <Icon
-                name="article"
+                name="description"
                 size={BOTTOM_TAB_ICON_SIZE}
                 color={isProductsSelected ? colors.primary : '#333333'}
               />
@@ -630,8 +630,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.16)',
   },
   topBarIcon: {
-    width: 26,
-    height: 26,
+    width: 20,
+    height: 20,
     tintColor: '#fff',
   },
   topBarRight: {
@@ -731,8 +731,8 @@ const styles = StyleSheet.create({
   bottomTabIndicator: {
     position: 'absolute',
     top: 0,
-    width: 20,
-    height: 3,
+    width: 40,
+    height: 4,
     borderRadius: 2,
     backgroundColor: colors.primary,
   },
