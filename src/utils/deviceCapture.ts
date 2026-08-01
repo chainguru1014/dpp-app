@@ -21,6 +21,10 @@ export interface CapturedLocation {
   latitude: number;
   longitude: number;
   accuracy: number | null;
+  // Reverse-geocoded "City, Country" (best-effort, blank on any failure —
+  // see resolveAddress). Shown as the Review page's "Location" field, with
+  // the raw latitude/longitude shown separately under "GPS".
+  address: string;
 }
 
 export interface CapturedDevice {
@@ -28,6 +32,37 @@ export interface CapturedDevice {
   os: string;
   osVersion: string;
 }
+
+// Best-effort reverse geocode via OpenStreetMap's Nominatim (free, no API
+// key). Never throws — blank on any failure, timeout, or missing network,
+// same degrade-gracefully contract as the rest of this file.
+const resolveAddress = async (latitude: number, longitude: number): Promise<string> => {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`,
+      { headers: { Accept: 'application/json' }, signal: controller.signal }
+    );
+    clearTimeout(timeoutId);
+    const data = await res.json().catch(() => null);
+    const addr = data?.address;
+    if (!addr) return '';
+    const place = addr.city || addr.town || addr.village || addr.county || addr.state || '';
+    const country = addr.country_code ? String(addr.country_code).toUpperCase() : (addr.country || '');
+    if (place && country) return `${place}, ${country}`;
+    return place || country || '';
+  } catch (err) {
+    return '';
+  }
+};
+
+const buildLocation = async (latitude: number, longitude: number, accuracy: number | null): Promise<CapturedLocation> => ({
+  latitude,
+  longitude,
+  accuracy,
+  address: await resolveAddress(latitude, longitude),
+});
 
 // Best-effort GPS fix for the corporate capture flow. Never throws — returns
 // null on missing permission, unavailable hardware, timeout, or (on web) no
@@ -41,11 +76,7 @@ export const getCurrentLocation = (): Promise<CapturedLocation | null> => {
         return;
       }
       geo.getCurrentPosition(
-        (pos: any) => resolve({
-          latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude,
-          accuracy: pos.coords.accuracy ?? null,
-        }),
+        async (pos: any) => resolve(await buildLocation(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy ?? null)),
         () => resolve(null),
         { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
       );
@@ -59,11 +90,7 @@ export const getCurrentLocation = (): Promise<CapturedLocation | null> => {
 
     const requestFix = () => {
       Geolocation.getCurrentPosition(
-        (pos: any) => resolve({
-          latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude,
-          accuracy: pos.coords.accuracy ?? null,
-        }),
+        async (pos: any) => resolve(await buildLocation(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy ?? null)),
         () => resolve(null),
         { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
       );

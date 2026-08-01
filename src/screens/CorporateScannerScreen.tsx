@@ -36,6 +36,8 @@ interface CaptureDoc {
   refNumber: string;
   imagePath: string;
   capturedAt: string;
+  productId?: string;
+  qrcodeId?: string;
 }
 
 interface CorporateScannerScreenProps {
@@ -53,7 +55,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [step, setStep] = useState<ProcessStep | null>(null);
   const [captures, setCaptures] = useState<CaptureDoc[]>([]);
-  const [liveCode, setLiveCode] = useState<{ value: string; format: CapturedCodeFormat; manual?: boolean } | null>(null);
+  const [liveCode, setLiveCode] = useState<{ value: string; format: CapturedCodeFormat; manual?: boolean; productId?: string; qrcodeId?: string } | null>(null);
   const [capturing, setCapturing] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [codeUnrecognized, setCodeUnrecognized] = useState(false);
@@ -155,9 +157,18 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   // security/encrypted QR, a GS1 Digital Link, or a barcode already mapped
   // via the admin's identifier registry — the same resolution paths the
   // consumer ScannerScreen uses) is allowed to enable the Capture button.
-  // An unrecognized code in frame leaves the button disabled.
-  const verifyScannedCode = async (value: string, format: CapturedCodeFormat): Promise<boolean> => {
+  // An unrecognized code in frame leaves the button disabled. Also returns
+  // the resolved product/qrcode id (when the response carries one) so
+  // handleCapture can snapshot it onto the CaptureRecord — that's what lets
+  // a recent-capture thumbnail navigate straight to the product's detail page.
+  const verifyScannedCode = async (value: string, format: CapturedCodeFormat): Promise<{ recognized: boolean; productId?: string; qrcodeId?: string }> => {
     try {
+      const extractIds = (productData: any) => ({
+        recognized: true,
+        productId: productData?._id ? String(productData._id) : undefined,
+        qrcodeId: productData?.token_id != null ? String(productData.token_id) : undefined,
+      });
+
       if (format === 'qr') {
         const productUrlMatch = value.match(/\/product\/([^/?#]+)\/([^/?#]+)/i);
         let res: Response;
@@ -182,7 +193,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
           });
           data = await res.json().catch(() => ({}));
         }
-        if (res.ok && data.status === 'success') return true;
+        if (res.ok && data.status === 'success') return extractIds(data.data);
 
         // Not one of our own QR formats — maybe a GS1 Digital Link.
         const gs1Res = await fetch(`${API_BASE_URL}pmc/lookup`, {
@@ -191,7 +202,8 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
           body: JSON.stringify({ source_type: 'gs1dl', raw_value: value }),
         });
         const gs1Data = await gs1Res.json().catch(() => ({}));
-        return gs1Res.ok && gs1Data.status === 'success';
+        if (gs1Res.ok && gs1Data.status === 'success') return extractIds(gs1Data.data);
+        return { recognized: false };
       }
 
       const res = await fetch(`${API_BASE_URL}pmc/lookup`, {
@@ -200,10 +212,11 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
         body: JSON.stringify({ source_type: 'barcode', raw_value: value }),
       });
       const data = await res.json().catch(() => ({}));
-      return res.ok && data.status === 'success';
+      if (res.ok && data.status === 'success') return extractIds(data.data);
+      return { recognized: false };
     } catch (err) {
       console.error('verifyScannedCode failed:', err);
-      return false;
+      return { recognized: false };
     }
   };
 
@@ -212,11 +225,11 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
     if (value === lastCheckedValueRef.current) return;
     lastCheckedValueRef.current = value;
     setVerifying(true);
-    verifyScannedCode(value, format).then((recognized) => {
+    verifyScannedCode(value, format).then(({ recognized, productId, qrcodeId }) => {
       if (lastCheckedValueRef.current !== value) return; // stale result — a different code is now in frame
       setVerifying(false);
       setCodeUnrecognized(!recognized);
-      setLiveCode(recognized ? { value, format, manual } : null);
+      setLiveCode(recognized ? { value, format, manual, productId, qrcodeId } : null);
     });
   };
 
@@ -249,6 +262,8 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
           rawValue: liveCode.value,
           identifierType: liveCode.format,
           imagePath: imagePath || '',
+          productId: liveCode.productId,
+          qrcodeId: liveCode.qrcodeId,
           location: location || undefined,
           device,
         }),
@@ -367,7 +382,13 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
           {captures.length > 0 && (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.thumbStrip}>
               {captures.map((doc, index) => (
-                <View key={doc._id} style={styles.thumbCard}>
+                <TouchableOpacity
+                  key={doc._id}
+                  style={styles.thumbCard}
+                  activeOpacity={doc.productId ? 0.7 : 1}
+                  disabled={!doc.productId}
+                  onPress={() => navigation.navigate('Result', { productId: doc.productId, qrcodeId: doc.qrcodeId })}
+                >
                   {!!doc.imagePath && (
                     <Image source={{ uri: `${API_BASE_URL.replace(/\/$/, '')}${doc.imagePath}` }} style={styles.thumbImage} />
                   )}
@@ -376,7 +397,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                     <Text style={styles.thumbRef} numberOfLines={1}>{doc.refNumber}</Text>
                     <Text style={styles.thumbTime}>{new Date(doc.capturedAt).toLocaleTimeString()}</Text>
                   </View>
-                </View>
+                </TouchableOpacity>
               ))}
             </ScrollView>
           )}

@@ -23,7 +23,7 @@ interface CaptureDoc {
   workerLabel: string;
   identifierType: string;
   flagged: boolean;
-  location?: { latitude: number | null; longitude: number | null; accuracy: number | null };
+  location?: { latitude: number | null; longitude: number | null; accuracy: number | null; address?: string };
   device?: { model: string; os: string; osVersion: string };
 }
 
@@ -318,12 +318,12 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
                 <DetailRow
                   icon="place"
                   label={t('corpLocationLabel')}
-                  value={detailDoc.location?.latitude != null ? `${detailDoc.location.latitude.toFixed(4)}, ${detailDoc.location.longitude?.toFixed(4)}` : '—'}
+                  value={detailDoc.location?.address || '—'}
                 />
                 <DetailRow
                   icon="gps-fixed"
                   label={t('corpGpsLabel')}
-                  value={detailDoc.location?.accuracy != null ? `±${Math.round(detailDoc.location.accuracy)}m` : '—'}
+                  value={detailDoc.location?.latitude != null ? `${detailDoc.location.latitude.toFixed(4)}, ${detailDoc.location.longitude?.toFixed(4)}` : '—'}
                 />
                 <DetailRow icon="photo-camera" label={t('corpCapturedViaLabel')} value={detailDoc.identifierType || '—'} />
                 <DetailRow icon="tablet-mac" label={t('corpCapturedDeviceLabel')} value={detailDoc.device?.model || '—'} />
