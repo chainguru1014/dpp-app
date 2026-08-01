@@ -964,6 +964,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     position: 'relative',
     backgroundColor: DARK,
+    overflow: 'hidden',
+    // Only the bottom corners — rounds to meet whiteBoard's rounded top
+    // corners right below it instead of showing square dark corners poking
+    // out above the board's rounded edge.
+    borderBottomLeftRadius: radius.xl,
+    borderBottomRightRadius: radius.xl,
   },
   webScannerContainer: {
     // Fill the whole viewport so the camera covers it and the frame centres on it.

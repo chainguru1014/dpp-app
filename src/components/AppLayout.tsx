@@ -62,6 +62,7 @@ const ROUTE_TITLE_KEYS: Record<string, string> = {
 };
 
 const BRAND_TITLE = 'Yometel DPP';
+const EMPLOYEE_BRAND_TITLE = 'Yometel Traceability';
 
 const TOP_BAR_HEIGHT = 56;
 const BOTTOM_BAR_HEIGHT = 54;
@@ -99,12 +100,17 @@ export default function AppLayout({
   const gradientId = `topBarGradient-${useId()}`;
   const isHomeRoute = route.name === 'Home' || route.name === 'EmployeeHome';
   const routeTitleKey = ROUTE_TITLE_KEYS[route.name];
-  const computedTitle = title ?? (isHomeRoute ? BRAND_TITLE : routeTitleKey ? t(routeTitleKey as any) : undefined);
-  // Consumer sessions: every page's top bar shows the selected Home-page
-  // location item as a subtitle (matching the corporate top bar's
-  // step-context subtitle) — cached by HomeScreen so this never needs to
-  // fetch the steps list itself. A screen-supplied `subtitle` prop (e.g.
-  // ResultScreen's product name) always wins.
+  const computedTitle = title ?? (
+    isHomeRoute
+      ? (route.name === 'EmployeeHome' ? EMPLOYEE_BRAND_TITLE : BRAND_TITLE)
+      : routeTitleKey ? t(routeTitleKey as any) : undefined
+  );
+  // Consumer sessions: every page's top bar EXCEPT Home itself shows the
+  // selected Home-page location item as a subtitle (matching the corporate
+  // top bar's step-context subtitle) — cached by HomeScreen so this never
+  // needs to fetch the steps list itself. A screen-supplied `subtitle` prop
+  // (e.g. ResultScreen's product name) always wins. Home/EmployeeHome are
+  // title-only, no subtitle, on both actor kinds.
   const [consumerLocationLabel, setConsumerLocationLabel] = useState<string | undefined>(undefined);
   useEffect(() => {
     if (user?.actorKind === 'Employee') return;
@@ -112,7 +118,7 @@ export default function AppLayout({
       if (stored) setConsumerLocationLabel(stored);
     });
   }, [user?.actorKind]);
-  const computedSubtitle = subtitle ?? (user && user.actorKind !== 'Employee' ? consumerLocationLabel : undefined);
+  const computedSubtitle = subtitle ?? (!isHomeRoute && user && user.actorKind !== 'Employee' ? consumerLocationLabel : undefined);
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [langMenuVisible, setLangMenuVisible] = useState(false);
   const [langPopover, setLangPopover] = useState({ top: 76, right: 16 });
@@ -144,7 +150,7 @@ export default function AppLayout({
       onBackPress();
     } else {
       if (!isAuthenticated) return;
-      navigation.navigate('Home');
+      navigation.navigate(user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Home');
     }
   };
 
@@ -459,11 +465,11 @@ export default function AppLayout({
             </Text>
 
             {/* Profile and Logout live in the top-bar avatar dropdown only —
-                this sheet is History&Data/product-actions (consumer) or
-                nothing (employee) plus Language, never Profile/Logout. */}
+                this sheet is History&Data/product-actions, same submenu for
+                both consumer and corporate/employee sessions, never
+                Profile/Logout. */}
             <ScrollView style={styles.menuScroll} showsVerticalScrollIndicator={true}>
-              {!isEmployeeActor &&
-                settingsMenuItems.map((item, index, list) => (
+              {settingsMenuItems.map((item, index, list) => (
                   <View key={item.label}>
                     {item.kind === 'nav' && (index === 0 || list[index - 1].kind !== 'nav') ? (
                       <Text style={styles.menuSectionLabel}>{t('historyAndData')}</Text>

@@ -452,9 +452,13 @@ const styles = StyleSheet.create({
   // Camera viewport + overlay — deliberately the same visual treatment as
   // the consumer ScannerScreen's camera (frame size/color, hint pill,
   // torch/help corner buttons) per explicit "same as normal user's camera
-  // UI" request.
+  // UI" request. flex:1 (with a floor) so it fills whatever space
+  // bottomBoard doesn't need — bottomBoard is content-sized, so this is
+  // what keeps it flush against the bottom nav with no gap, matching the
+  // consumer ScannerScreen's scanViewport/whiteBoard relationship.
   scanViewport: {
-    height: 280,
+    flex: 1,
+    minHeight: 220,
     borderRadius: radius.lg,
     overflow: 'hidden',
     backgroundColor: DARK,
