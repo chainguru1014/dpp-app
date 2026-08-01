@@ -35,13 +35,14 @@ interface CaptureCameraViewProps {
   // applies its own debounce on top. The corporate capture screen needs this
   // raw continuous signal to know "is a code currently in view" right now.
   onScan: (value: string, format: CapturedCodeFormat) => void;
+  torch?: boolean;
 }
 
 // Caller MUST check isCaptureCameraAvailable() before rendering this — the
 // hooks below are called unconditionally (same contract as
 // NativeCodeScanner.tsx) and are only safe to call once the native module is
 // confirmed linked.
-function CaptureCameraView({ active, onScan }: CaptureCameraViewProps, ref: React.Ref<CaptureCameraHandle>) {
+function CaptureCameraView({ active, onScan, torch }: CaptureCameraViewProps, ref: React.Ref<CaptureCameraHandle>) {
   const device = useCameraDevice('back');
   const cameraRef = useRef<any>(null);
 
@@ -83,6 +84,7 @@ function CaptureCameraView({ active, onScan }: CaptureCameraViewProps, ref: Reac
       isActive={active}
       codeScanner={codeScanner}
       photo={true}
+      torch={torch ? 'on' : 'off'}
     />
   );
 }

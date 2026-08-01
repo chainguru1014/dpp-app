@@ -31,14 +31,25 @@ const TYPE_LABEL_KEYS: Record<string, string> = {
   general: 'stepTypeGeneral',
 };
 
+const SELECTED_STEP_STORAGE_KEY = 'employeeSelectedStepIndex';
+
 // "Worker Operations" home screen for corporate/employee sessions — a numbered
 // grid of the company's process step labels (managed by a Supervisor from the
 // frontend admin's Process Step Labels page). Tapping a tile opens a Scan
-// Operation session (CorporateScannerScreen) for that step.
+// Operation session (CorporateScannerScreen) for that step, and the tapped
+// step is remembered (AsyncStorage) so it's still shown highlighted if the
+// worker comes back to this screen (via Back or a refresh).
 export default function EmployeeHomeScreen({ navigation, user, onLogout }: any) {
   const { t } = useI18n();
   const [steps, setSteps] = useState<ProcessStep[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedStep, setSelectedStep] = useState<number | null>(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem(SELECTED_STEP_STORAGE_KEY).then((stored) => {
+      if (stored != null) setSelectedStep(Number(stored));
+    });
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -59,6 +70,12 @@ export default function EmployeeHomeScreen({ navigation, user, onLogout }: any) 
     })();
   }, []);
 
+  const handleSelectStep = (index: number) => {
+    setSelectedStep(index);
+    AsyncStorage.setItem(SELECTED_STEP_STORAGE_KEY, String(index)).catch(() => {});
+    navigation.navigate('CorporateScanner', { stepIndex: index });
+  };
+
   return (
     <AppLayout navigation={navigation} user={user} onLogout={onLogout}>
       <ScrollView contentContainerStyle={styles.container}>
@@ -69,15 +86,16 @@ export default function EmployeeHomeScreen({ navigation, user, onLogout }: any) 
           <View style={styles.grid}>
             {steps.map((step, index) => {
               const typeLabelKey = TYPE_LABEL_KEYS[step.type];
+              const selected = selectedStep === index;
               return (
                 <TouchableOpacity
                   key={index}
-                  style={styles.tile}
+                  style={[styles.tile, selected && styles.tileSelected]}
                   activeOpacity={0.7}
-                  onPress={() => navigation.navigate('CorporateScanner', { stepIndex: index })}
+                  onPress={() => handleSelectStep(index)}
                 >
-                  <View style={styles.tileNumberBadge}>
-                    <Text style={styles.tileNumber}>{index + 1}</Text>
+                  <View style={[styles.tileNumberBadge, selected && styles.tileNumberBadgeSelected]}>
+                    <Text style={[styles.tileNumber, selected && styles.tileNumberSelected]}>{index + 1}</Text>
                   </View>
                   <View style={styles.tileTextBlock}>
                     <Text style={styles.tileEntity} numberOfLines={1}>{step.entity}</Text>
@@ -97,11 +115,14 @@ export default function EmployeeHomeScreen({ navigation, user, onLogout }: any) 
 
 const styles = StyleSheet.create({
   container: { padding: spacing.xl, paddingBottom: spacing.xxxl },
-  title: { fontSize: 22, fontWeight: '600', color: colors.heading, marginBottom: spacing.xs },
+  title: { fontSize: 22, fontWeight: '600', color: '#000', marginBottom: spacing.xs },
   subtitle: { fontSize: 14, color: colors.muted, marginBottom: spacing.xl },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
   // Number badge on the left, Entity/Type stacked on the right — matches the
   // frontend admin's Process Step Labels ordering (Entity first, Type below).
+  // Selected state (persisted, see SELECTED_STEP_STORAGE_KEY) mirrors the
+  // consumer HomeScreen's location tiles: dark-blue card border, dark-blue
+  // number badge with white number text — entity/type stay unchanged.
   tile: {
     width: '47%',
     flexDirection: 'row',
@@ -114,6 +135,10 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     ...shadow(1),
   },
+  tileSelected: {
+    borderColor: colors.primary,
+    borderWidth: 2,
+  },
   tileNumberBadge: {
     width: 32,
     height: 32,
@@ -122,8 +147,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  tileNumberBadgeSelected: {
+    backgroundColor: colors.primary,
+  },
   tileNumber: { fontSize: 14, fontWeight: '700', color: colors.primary },
+  tileNumberSelected: { color: '#fff' },
   tileTextBlock: { flex: 1 },
   tileEntity: { fontSize: 14, fontWeight: '700', color: colors.text },
-  tileType: { fontSize: 12, color: colors.primary, marginTop: 2 },
+  tileType: { fontSize: 12, color: '#000', marginTop: 2 },
 });

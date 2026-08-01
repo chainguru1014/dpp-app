@@ -8,13 +8,11 @@ import {
   PermissionsAndroid,
   Platform,
   Image,
-  TextInput,
   ScrollView,
+  Modal,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused } from '@react-navigation/native';
-import { BrowserMultiFormatReader } from '@zxing/browser';
-import { BarcodeFormat } from '@zxing/library';
 import VectorIcon from 'react-native-vector-icons/MaterialIcons';
 import AppLayout from '../components/AppLayout';
 import { useI18n } from '../i18n/I18nContext';
@@ -24,16 +22,6 @@ import WebCodeScanner, { WebCodeScannerHandle } from '../components/WebCodeScann
 import CaptureCameraView, { CaptureCameraHandle, isCaptureCameraAvailable, CapturedCodeFormat } from '../components/CaptureCameraView';
 import { getCurrentLocation, getDeviceInfo } from '../utils/deviceCapture';
 import { uploadCaptureImage } from '../utils/uploadCapture';
-import { isNativeImageScanAvailable, scanBarcodeFromImageUri } from '../utils/nativeImageScan';
-
-// Guarded the same defensive way as ScannerScreen.tsx — degrades gracefully
-// if the native module isn't linked/rebuilt yet.
-let launchImageLibrary: any = null;
-try {
-  launchImageLibrary = require('react-native-image-picker').launchImageLibrary;
-} catch (e) {
-  console.warn('react-native-image-picker not available:', e);
-}
 
 const LIVENESS_TIMEOUT_MS = 700;
 
@@ -66,10 +54,10 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   const [captures, setCaptures] = useState<CaptureDoc[]>([]);
   const [liveCode, setLiveCode] = useState<{ value: string; format: CapturedCodeFormat; manual?: boolean } | null>(null);
   const [capturing, setCapturing] = useState(false);
-  const [manualOpen, setManualOpen] = useState(false);
-  const [manualValue, setManualValue] = useState('');
   const [verifying, setVerifying] = useState(false);
   const [codeUnrecognized, setCodeUnrecognized] = useState(false);
+  const [torchOn, setTorchOn] = useState(false);
+  const [helpVisible, setHelpVisible] = useState(false);
 
   const tokenRef = useRef<string>('');
   const lastSeenAtRef = useRef<number>(0);
@@ -231,75 +219,6 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
     });
   };
 
-  // Decode a QR/barcode from a picked photo, then run it through the same
-  // verification gate as a live scan (handleScan) — an uploaded photo of an
-  // unregistered code still leaves the Capture button disabled.
-  const decodeImageFromFile = (file: any) => {
-    const w: any = globalThis as any;
-    try {
-      const reader = new w.FileReader();
-      reader.onload = () => {
-        const img = new w.Image();
-        img.onload = async () => {
-          try {
-            const codeReader = new BrowserMultiFormatReader();
-            const result = await codeReader.decodeFromImageElement(img);
-            const format = result.getBarcodeFormat ? result.getBarcodeFormat() : null;
-            handleScan(String(result.getText()), format === BarcodeFormat.QR_CODE ? 'qr' : 'barcode');
-          } catch (err) {
-            console.error('decodeImageFromFile failed:', err);
-          }
-        };
-        img.src = reader.result;
-      };
-      reader.readAsDataURL(file);
-    } catch (err) {
-      console.error('decodeImageFromFile failed:', err);
-    }
-  };
-
-  const openPhotoScan = () => {
-    const w: any = globalThis as any;
-    try {
-      const input = w.document.createElement('input');
-      input.type = 'file';
-      input.accept = 'image/*';
-      input.setAttribute('capture', 'environment');
-      input.onchange = (ev: any) => {
-        const file = ev?.target?.files && ev.target.files[0];
-        if (file) decodeImageFromFile(file);
-      };
-      input.click();
-    } catch (err) {
-      console.error('openPhotoScan failed:', err);
-    }
-  };
-
-  const pickNativePhotoAndScan = () => {
-    if (!launchImageLibrary || !isNativeImageScanAvailable()) return;
-    launchImageLibrary({ mediaType: 'photo', selectionLimit: 1, includeBase64: false }, async (response: any) => {
-      if (response?.didCancel || response?.errorCode) return;
-      const uri = response?.assets && response.assets[0] && response.assets[0].uri;
-      if (!uri) return;
-      try {
-        const result = await scanBarcodeFromImageUri(uri);
-        if (result) handleScan(result.value, result.format);
-      } catch (err) {
-        console.error('pickNativePhotoAndScan failed:', err);
-      }
-    });
-  };
-
-  const handleManualSubmit = () => {
-    const value = manualValue.trim();
-    if (!value) return;
-    setManualOpen(false);
-    setManualValue('');
-    // Same verification gate as a live camera scan — manual entry doesn't
-    // bypass the "must already be a registered product" requirement.
-    handleScan(value, 'barcode', true);
-  };
-
   const handleCapture = async () => {
     if (!liveCode || capturing) return;
     setCapturing(true);
@@ -334,7 +253,12 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
         }),
       });
 
-      setLiveCode(null);
+      // Deliberately NOT clearing liveCode here — continuous capture: as long
+      // as the same registered code stays in frame, Capture should stay
+      // enabled for the next press rather than requiring the code to leave
+      // and re-enter the frame first. It still clears via the liveness timer
+      // once the code actually leaves frame, or updates immediately once a
+      // different code is detected.
       await loadCaptures();
     } catch (err) {
       console.error('Capture failed:', err);
@@ -371,7 +295,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
     }
     if (isCaptureCameraAvailable()) {
       return (
-        <CaptureCameraView ref={nativeCameraRef} active={isFocused} onScan={handleScan} />
+        <CaptureCameraView ref={nativeCameraRef} active={isFocused} onScan={handleScan} torch={torchOn} />
       );
     }
     return (
@@ -393,18 +317,22 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
       <View style={styles.container}>
         <View style={styles.infoStrip}>
           <View style={styles.infoCell}>
+            <VectorIcon name="event" size={14} color={colors.primary} />
             <Text style={styles.infoLabel}>{t('corpDateLabel')}</Text>
             <Text style={styles.infoValue} numberOfLines={1}>{dateLabel}</Text>
           </View>
           <View style={styles.infoCell}>
+            <VectorIcon name="show-chart" size={14} color={colors.primary} />
             <Text style={styles.infoLabel}>{t('corpTodayScans')}</Text>
             <Text style={styles.infoValue} numberOfLines={1}>{captures.length}</Text>
           </View>
           <View style={styles.infoCell}>
+            <VectorIcon name="description" size={14} color={colors.primary} />
             <Text style={styles.infoLabel}>{t('corpCurrentRef')}</Text>
             <Text style={styles.infoValue} numberOfLines={1}>{currentRef}</Text>
           </View>
           <View style={styles.infoCell}>
+            <VectorIcon name="person" size={14} color={colors.primary} />
             <Text style={styles.infoLabel}>{t('corpTerminal')}</Text>
             <Text style={styles.infoValue} numberOfLines={1}>Terminal {user?.terminalId || '—'}</Text>
           </View>
@@ -415,8 +343,21 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
           <View pointerEvents="none" style={styles.frameOverlay}>
             <View style={[styles.scanFrame, !!liveCode && styles.scanFrameActive]} />
           </View>
+          <View pointerEvents="none" style={styles.overlayHintWrap}>
+            <VectorIcon name="qr-code" size={16} color="#fff" style={styles.overlayHintIcon} />
+            <Text style={styles.overlayHintText}>{t('corpScanHint')}</Text>
+          </View>
+          <View style={styles.overlayCornerRow}>
+            <TouchableOpacity style={styles.overlayCornerButton} onPress={() => setTorchOn((v) => !v)} activeOpacity={0.75}>
+              <VectorIcon name={torchOn ? 'flash-on' : 'flash-off'} size={20} color="#fff" />
+              <Text style={styles.overlayCornerText}>{torchOn ? t('scanTorchOn') : t('scanTorchOff')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.overlayCornerButton} onPress={() => setHelpVisible(true)} activeOpacity={0.75}>
+              <VectorIcon name="help-outline" size={20} color="#fff" />
+              <Text style={styles.overlayCornerText}>{t('scanHelpLabel')}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-        <Text style={styles.hintText}>{t('corpScanHint')}</Text>
 
         <View style={styles.thumbRow}>
           <Text style={styles.thumbHeading}>{t('corpRecentCaptures')}</Text>
@@ -448,41 +389,25 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
           {capturing || verifying ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
-            <Text style={styles.captureButtonText}>{t('corpCaptureButton')}</Text>
+            <>
+              <VectorIcon name="photo-camera" size={16} color="#fff" />
+              <Text style={styles.captureButtonText}>{t('corpCaptureButton')}</Text>
+            </>
           )}
         </TouchableOpacity>
+      </View>
 
-        <View style={styles.actionRow}>
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={Platform.OS === 'web' ? openPhotoScan : pickNativePhotoAndScan}
-          >
-            <VectorIcon name="photo-library" size={16} color={colors.primary} />
-            <Text style={styles.secondaryButtonText}>{t('scanUploadPhoto')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.secondaryButton} onPress={() => setManualOpen((v) => !v)}>
-            <VectorIcon name="edit" size={16} color={colors.primary} />
-            <Text style={styles.secondaryButtonText}>
-              {manualOpen ? t('scanHideManual') : t('corpManualEntryButton')}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {manualOpen && (
-          <View style={styles.manualCard}>
-            <TextInput
-              style={styles.manualInput}
-              placeholder={t('corpManualEntryValue')}
-              placeholderTextColor={colors.placeholder}
-              value={manualValue}
-              onChangeText={setManualValue}
-            />
-            <TouchableOpacity style={styles.manualSubmit} onPress={handleManualSubmit}>
-              <Text style={styles.manualSubmitText}>{t('corpManualEntrySubmit')}</Text>
+      <Modal visible={helpVisible} transparent animationType="fade" onRequestClose={() => setHelpVisible(false)}>
+        <TouchableOpacity style={styles.helpOverlay} activeOpacity={1} onPress={() => setHelpVisible(false)}>
+          <View style={styles.helpCard}>
+            <Text style={styles.helpTitle}>{t('scannerScanHint')}</Text>
+            <Text style={styles.helpBody}>{t('scanHelpBody')}</Text>
+            <TouchableOpacity style={styles.helpCloseButton} onPress={() => setHelpVisible(false)} activeOpacity={0.8}>
+              <Text style={styles.helpCloseButtonText}>{t('close')}</Text>
             </TouchableOpacity>
           </View>
-        )}
-      </View>
+        </TouchableOpacity>
+      </Modal>
     </AppLayout>
   );
 }
@@ -501,9 +426,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     ...shadow(1),
   },
-  infoCell: { flex: 1, alignItems: 'center' },
-  infoLabel: { fontSize: 11, color: colors.muted, marginBottom: 2 },
+  infoCell: { flex: 1, alignItems: 'center', gap: 2 },
+  infoLabel: { fontSize: 11, color: colors.muted },
   infoValue: { fontSize: 13, fontWeight: '600', color: colors.text },
+  // Camera viewport + overlay — deliberately the same visual treatment as
+  // the consumer ScannerScreen's camera (frame size/color, hint pill,
+  // torch/help corner buttons) per explicit "same as normal user's camera
+  // UI" request.
   scanViewport: {
     height: 280,
     borderRadius: radius.lg,
@@ -517,21 +446,65 @@ const styles = StyleSheet.create({
   stateText: { color: '#fff', fontSize: 13, textAlign: 'center', paddingHorizontal: spacing.lg },
   frameOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center' },
   scanFrame: {
-    width: 200,
-    height: 200,
+    width: 240,
+    height: 240,
     borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.85)',
+    borderColor: 'rgba(255,255,255,0.92)',
     borderRadius: radius.lg,
     backgroundColor: 'transparent',
   },
   scanFrameActive: {
     borderColor: colors.primary,
   },
-  hintText: { textAlign: 'center', color: colors.muted, fontSize: 12, marginTop: spacing.sm, marginBottom: spacing.md },
-  thumbRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
-  thumbHeading: { fontSize: 14, fontWeight: '600', color: colors.heading },
-  seeAllLink: { fontSize: 12, color: colors.primary },
-  thumbStrip: { marginBottom: spacing.md },
+  overlayHintWrap: {
+    position: 'absolute',
+    top: spacing.lg,
+    left: spacing.xl,
+    right: spacing.xl,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  overlayHintIcon: {
+    marginRight: 6,
+    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  overlayHintText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '400',
+    textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  overlayCornerRow: {
+    position: 'absolute',
+    left: spacing.lg,
+    right: spacing.lg,
+    bottom: spacing.lg,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+  },
+  overlayCornerButton: { alignItems: 'center' },
+  overlayCornerText: {
+    color: '#fff',
+    fontSize: 11,
+    marginTop: 2,
+    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  thumbRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.md, marginBottom: spacing.sm },
+  thumbHeading: { fontSize: 14, fontWeight: '600', color: colors.muted },
+  seeAllLink: { fontSize: 12, color: colors.muted },
+  // Explicit height — without it a horizontal ScrollView with no flex:1
+  // sibling can stretch its single-row content to fill leftover vertical
+  // space, ballooning card height when there's only one capture to show.
+  thumbStrip: { height: 100, marginBottom: spacing.md },
   thumbCard: {
     width: 84,
     marginRight: spacing.sm,
@@ -544,51 +517,43 @@ const styles = StyleSheet.create({
   thumbImage: { width: '100%', height: 60, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt },
   thumbRef: { fontSize: 10, fontWeight: '600', color: colors.text, marginTop: 4 },
   thumbTime: { fontSize: 9, color: colors.muted },
-  manualCard: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  manualInput: {
-    flex: 1,
-    backgroundColor: colors.fieldBg,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: colors.text,
-  },
-  manualSubmit: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    justifyContent: 'center',
-  },
-  manualSubmitText: { color: '#fff', fontSize: 13, fontWeight: '600' },
-  actionRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
-  secondaryButton: {
-    flex: 1,
-    flexDirection: 'row',
-    gap: spacing.xs,
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: radius.md,
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  secondaryButtonText: { color: colors.primary, fontSize: 13, fontWeight: '600' },
   unrecognizedText: { color: colors.danger, fontSize: 12, textAlign: 'center', marginBottom: spacing.sm },
   captureButton: {
+    height: 35,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
     backgroundColor: colors.primary,
     borderRadius: radius.pill,
-    paddingVertical: 15,
-    alignItems: 'center',
     ...shadow(1),
   },
   captureButtonDisabled: {
     backgroundColor: colors.borderStrong,
   },
-  captureButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  captureButtonText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  helpOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(11,18,32,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.xl,
+  },
+  helpCard: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.xl,
+    ...shadow(3),
+  },
+  helpTitle: { fontSize: 17, fontWeight: '700', color: colors.heading, marginBottom: spacing.sm },
+  helpBody: { fontSize: 14, color: colors.text, lineHeight: 20, marginBottom: spacing.lg },
+  helpCloseButton: {
+    backgroundColor: colors.primary,
+    borderRadius: radius.pill,
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+  },
+  helpCloseButtonText: { color: '#fff', fontSize: 14, fontWeight: '700' },
 });

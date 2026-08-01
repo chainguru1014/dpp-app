@@ -1075,6 +1075,7 @@ const styles = StyleSheet.create({
   },
   whiteBoardButton: {
     flex: 1,
+    height: 35,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1083,7 +1084,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingVertical: spacing.md,
   },
   whiteBoardButtonText: {
     color: colors.primary,
