@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, Dimensions }
 import AppLayout from '../components/AppLayout';
 import { API_BASE_URL } from '../config/api';
 import { useI18n } from '../i18n/I18nContext';
-import { colors, spacing, radius, ui, shadow } from '../theme';
+import { colors, spacing, radius, shadow } from '../theme';
 
 // On web the flex chain can collapse to 0 height; pin a min height for the list.
 const { height: screenH } = Dimensions.get('window');
@@ -97,7 +97,6 @@ export default function PurchaseHistoryScreen({ navigation, user, onLogout }: Pu
   return (
     <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton={true}>
       <View style={styles.container}>
-        <Text style={[ui.screenTitle, styles.title]}>Purchase History</Text>
         {loading ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>{t('loading')}</Text>
@@ -122,7 +121,6 @@ export default function PurchaseHistoryScreen({ navigation, user, onLogout }: Pu
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg, padding: spacing.lg },
-  title: { marginBottom: spacing.lg },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xxxl },
   emptyText: { color: colors.muted, fontSize: 15, textAlign: 'center' },
   flatList: { flex: 1, minHeight: LIST_MIN_H },

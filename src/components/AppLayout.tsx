@@ -15,6 +15,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import FeatherIcon from 'react-native-vector-icons/Feather';
+import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Svg, { Defs, LinearGradient as SvgLinearGradient, Stop, Rect } from 'react-native-svg';
 import { useRoute } from '@react-navigation/native';
 import { useI18n } from '../i18n/I18nContext';
@@ -333,7 +334,7 @@ export default function AppLayout({
         <View style={styles.topBarRight}>
           <TouchableOpacity
             onPress={handleNotifications}
-            style={[styles.iconButton, styles.navBtnOnDark]}
+            style={styles.iconButton}
             activeOpacity={0.7}
           >
             <View ref={worldIconRef}>
@@ -344,15 +345,11 @@ export default function AppLayout({
 
           <TouchableOpacity
             onPress={openAvatarMenu}
-            style={[styles.iconButton, styles.navBtnOnDark]}
+            style={styles.iconButton}
             activeOpacity={0.7}
           >
             <View ref={avatarIconRef}>
-              <Image
-                source={require('../assets/account.png')}
-                style={styles.topBarAvatarIcon}
-                resizeMode="contain"
-              />
+              <Icon name="account-circle" size={28} color={colors.white} />
             </View>
           </TouchableOpacity>
         </View>
@@ -391,8 +388,8 @@ export default function AppLayout({
               activeOpacity={0.7}
             >
               {isScanSelected && <View style={styles.bottomTabIndicator} />}
-              <Icon
-                name="crop-free"
+              <MaterialCommunityIcon
+                name="scan-helper"
                 size={BOTTOM_TAB_ICON_SIZE}
                 color={isScanSelected ? colors.primary : '#333333'}
               />
@@ -652,11 +649,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-  },
-  topBarAvatarIcon: {
-    width: 26,
-    height: 26,
-    tintColor: '#fff',
   },
   // White circular badge holding the blue Y logo on the top bar
   // (matches the bottom-center button).

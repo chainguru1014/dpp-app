@@ -59,7 +59,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
   const [manualOpen, setManualOpen] = useState(false);
   const [manualType, setManualType] = useState<'barcode' | 'nfc' | 'rfid' | 'gs1dl'>('barcode');
   const [manualValue, setManualValue] = useState('');
-  const [recentScans, setRecentScans] = useState<{ id: string; image: string; name: string; time: number }[]>([]);
+  const [recentScans, setRecentScans] = useState<{ id: string; image: string; name: string; time: number; productId?: string; qrcodeId?: string; productData?: any }[]>([]);
   const [torchOn, setTorchOn] = useState(false);
   const [helpVisible, setHelpVisible] = useState(false);
   const isMountedRef = useRef(true);
@@ -97,6 +97,9 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
           image: getScanImageUrl(Array.isArray(p?.images) ? p.images[0] : ''),
           name: p?.name || '',
           time: p?.scannedAt || 0,
+          productId: p?._id,
+          qrcodeId: p?.token_id != null ? String(p.token_id) : undefined,
+          productData: p,
         }));
       if (isMountedRef.current) setRecentScans(todays);
     } catch (err) {
@@ -522,11 +525,11 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
     }
   };
 
-  const MANUAL_TYPES: { value: 'barcode' | 'nfc' | 'rfid' | 'gs1dl'; label: string }[] = [
-    { value: 'barcode', label: 'Barcode' },
-    { value: 'nfc', label: 'NFC' },
-    { value: 'rfid', label: 'RFID' },
-    { value: 'gs1dl', label: 'GS1 Link' },
+  const MANUAL_TYPES: { value: 'barcode' | 'nfc' | 'rfid' | 'gs1dl'; labelKey: 'manualTypeBarcode' | 'manualTypeNfc' | 'manualTypeRfid' | 'manualTypeGs1Link' }[] = [
+    { value: 'barcode', labelKey: 'manualTypeBarcode' },
+    { value: 'nfc', labelKey: 'manualTypeNfc' },
+    { value: 'rfid', labelKey: 'manualTypeRfid' },
+    { value: 'gs1dl', labelKey: 'manualTypeGs1Link' },
   ];
 
   const submitManualEntry = () => {
@@ -543,7 +546,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
       {!hideToggle && (
         <TouchableOpacity onPress={() => setManualOpen((v) => !v)} disabled={loading}>
           <Text style={[styles.scanCaptionLink, light && styles.scanCaptionLinkDark]}>
-            {manualOpen ? 'Hide manual entry' : 'Enter code manually'}
+            {manualOpen ? t('scanHideManualEntry') : t('scanEnterCodeManually')}
           </Text>
         </TouchableOpacity>
       )}
@@ -557,7 +560,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
                 onPress={() => setManualType(opt.value)}
               >
                 <Text style={[styles.manualChipText, manualType === opt.value && styles.manualChipTextActive]}>
-                  {opt.label}
+                  {t(opt.labelKey)}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -566,7 +569,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
             style={styles.manualInput}
             value={manualValue}
             onChangeText={setManualValue}
-            placeholder="Paste or type the identifier value"
+            placeholder={t('scanManualPlaceholder')}
             placeholderTextColor="rgba(11,18,32,0.4)"
             autoCapitalize="none"
             autoCorrect={false}
@@ -578,7 +581,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
             onPress={submitManualEntry}
             disabled={!manualValue.trim() || loading}
           >
-            <Text style={styles.photoScanButtonText}>{loading ? 'Checking…' : 'Check'}</Text>
+            <Text style={styles.photoScanButtonText}>{loading ? t('scanManualChecking') : t('scanManualCheck')}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -606,7 +609,16 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
               {recentScans.map((scan, index) => {
                 const isLatest = index === recentScans.length - 1;
                 return (
-                  <View key={scan.id} style={[styles.recentScanCard, isLatest && styles.recentScanCardLatest]}>
+                  <TouchableOpacity
+                    key={scan.id}
+                    style={[styles.recentScanCard, isLatest && styles.recentScanCardLatest]}
+                    activeOpacity={0.7}
+                    onPress={() => navigation.navigate('Result', {
+                      productData: scan.productData,
+                      productId: scan.productId,
+                      qrcodeId: scan.qrcodeId,
+                    })}
+                  >
                     {isLatest && (
                       <View style={styles.recentScanCheckBadge}>
                         <VectorIcon name="check" size={10} color="#fff" />
@@ -622,7 +634,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
                       </Text>
                       <Text style={styles.recentScanName} numberOfLines={1}>{scan.name}</Text>
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 );
               })}
             </ScrollView>
@@ -983,7 +995,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: radius.xl,
     paddingTop: spacing.lg,
     paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.xl,
+    paddingBottom: spacing.sm,
     ...shadow(2),
   },
   // Today's scanned-products strip — oldest to latest (left to right), the
@@ -1079,7 +1091,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   whiteBoardButtonText: {
-    color: colors.primary,
+    color: colors.muted,
     fontSize: 13,
     fontWeight: '600',
   },
@@ -1191,19 +1203,21 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   manualInput: {
+    height: 32,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.md,
-    paddingVertical: 10,
+    paddingVertical: 0,
     paddingHorizontal: 14,
     fontSize: 14,
     color: colors.text,
     marginBottom: spacing.md,
   },
   manualSubmit: {
+    height: 32,
     backgroundColor: colors.accent,
     borderRadius: radius.md,
-    paddingVertical: 12,
+    justifyContent: 'center',
     marginBottom: 20,
     alignItems: 'center',
     ...shadow(1),
