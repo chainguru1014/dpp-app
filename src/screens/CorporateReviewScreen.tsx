@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, ActivityIndicator, Modal, TouchableWithoutFeedback, Dimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import VectorIcon from 'react-native-vector-icons/MaterialIcons';
+import FeatherIcon from 'react-native-vector-icons/Feather';
 import AppLayout from '../components/AppLayout';
 import { useI18n } from '../i18n/I18nContext';
 import { API_BASE_URL } from '../config/api';
@@ -54,7 +55,8 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
   const [docs, setDocs] = useState<CaptureDoc[]>([]);
   const [period, setPeriod] = useState<PeriodOption>('today');
   const [filter, setFilter] = useState<FilterTab>('newest');
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [detailDoc, setDetailDoc] = useState<CaptureDoc | null>(null);
+  const [detailPos, setDetailPos] = useState({ top: 0, left: 0 });
   const [periodMenuVisible, setPeriodMenuVisible] = useState(false);
   const [periodPopover, setPeriodPopover] = useState({ top: 0, right: 0 });
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
@@ -135,6 +137,20 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
   const visibleDocs = filteredDocs.slice(0, visibleCount);
   const hasMore = visibleCount < filteredDocs.length;
 
+  const DETAIL_POPUP_WIDTH = 240;
+
+  // Shows the tapped row's detail as a floating popup anchored just below
+  // the tap point (mouse click on web, touch on native) — not an inline
+  // panel that pushes the rest of the list down.
+  const openDetail = (doc: CaptureDoc, e: any) => {
+    const { pageY, pageX } = e.nativeEvent;
+    setDetailPos({
+      top: pageY + 8,
+      left: Math.min(Math.max(12, pageX - DETAIL_POPUP_WIDTH / 2), SCREEN_WIDTH - DETAIL_POPUP_WIDTH - 12),
+    });
+    setDetailDoc(doc);
+  };
+
   const openPeriodMenu = () => {
     periodButtonRef.current?.measureInWindow((x: number, y: number, width: number, height: number) => {
       setPeriodPopover({
@@ -189,11 +205,11 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
             <Text style={styles.statValue}>{new Date().toLocaleDateString()}</Text>
           </View>
           <View style={styles.statCell}>
-            <VectorIcon name="description" size={13} color={colors.primary} />
+            <FeatherIcon name="file-text" size={13} color={colors.primary} />
             <Text style={styles.statLabel}>{t('corpRecordsLabel')}</Text>
             <Text style={styles.statValue}>{filteredDocs.length}</Text>
           </View>
-          <View style={[styles.statCell, styles.periodCell]}>
+          <View style={styles.statCell}>
             <VectorIcon name="filter-list" size={13} color={colors.primary} />
             <Text style={styles.statLabel}>{t('corpPeriodLabel')}</Text>
             <TouchableOpacity onPress={openPeriodMenu} activeOpacity={0.7}>
@@ -253,71 +269,35 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
           <Text style={styles.emptyText}>{t('corpNoCaptures')}</Text>
         ) : (
           <ScrollView>
-            {visibleDocs.map((doc, index) => {
-              const expanded = expandedId === doc._id;
-              return (
-                <View key={doc._id} style={styles.row}>
-                  <TouchableOpacity
-                    style={styles.rowHeader}
-                    onPress={() => setExpandedId(expanded ? null : doc._id)}
-                    activeOpacity={0.7}
-                  >
-                    {!!doc.imagePath && (
-                      <Image source={{ uri: `${API_BASE_URL.replace(/\/$/, '')}${doc.imagePath}` }} style={styles.rowImage} />
-                    )}
-                    <View style={styles.rowInfo}>
-                      <Text style={styles.rowRef} numberOfLines={1}>{doc.refNumber}</Text>
-                      <Text style={styles.rowTime}>{new Date(doc.capturedAt).toLocaleTimeString()}</Text>
-                    </View>
-                    <View style={[styles.badge, index === 0 ? styles.badgeLatest : styles.badgeSaved]}>
-                      <Text style={styles.badgeTextOnColor}>
-                        {index === 0 ? t('corpLatestBadge') : t('corpSavedBadge')}
-                      </Text>
-                    </View>
-                    <TouchableOpacity onPress={() => toggleFlag(doc._id)} style={styles.flagButton}>
-                      <VectorIcon
-                        name={doc.flagged ? 'star' : 'star-border'}
-                        size={18}
-                        color={doc.flagged ? colors.warning : colors.muted}
-                      />
-                    </TouchableOpacity>
-                  </TouchableOpacity>
-
-                  {expanded && (
-                    <View style={styles.detailPanel}>
-                      <DetailRow icon="smartphone" label={t('corpTerminalIdLabel')} value={doc.terminalId || '—'} />
-                      <DetailRow icon="person" label={t('corpWorkerLabel')} value={doc.workerLabel || '—'} />
-                      <DetailRow
-                        icon="place"
-                        label={t('corpLocationLabel')}
-                        value={doc.location?.latitude != null ? `${doc.location.latitude.toFixed(4)}, ${doc.location.longitude?.toFixed(4)}` : '—'}
-                      />
-                      <DetailRow
-                        icon="gps-fixed"
-                        label={t('corpGpsLabel')}
-                        value={doc.location?.accuracy != null ? `±${Math.round(doc.location.accuracy)}m` : '—'}
-                      />
-                      <DetailRow icon="photo-camera" label={t('corpCapturedViaLabel')} value={doc.identifierType || '—'} />
-                      <View style={styles.detailRow}>
-                        <View style={styles.detailLabelWrap}>
-                          <VectorIcon name="tablet-mac" size={14} color={colors.muted} style={styles.detailIcon} />
-                          <Text style={styles.detailLabel}>{t('corpCapturedDeviceLabel')}</Text>
-                        </View>
-                        {doc.device?.model ? (
-                          <View style={styles.detailValueLines}>
-                            <Text style={styles.detailValue} numberOfLines={1}>{doc.device.model}</Text>
-                            <Text style={styles.detailValue} numberOfLines={1}>{doc.device.os}</Text>
-                            <Text style={styles.detailValue} numberOfLines={1}>{doc.device.osVersion}</Text>
-                          </View>
-                        ) : (
-                          <Text style={styles.detailValue}>—</Text>
-                        )}
-                      </View>
-                    </View>
+            {visibleDocs.map((doc, index) => (
+              <View key={doc._id} style={styles.row}>
+                <TouchableOpacity
+                  style={styles.rowHeader}
+                  onPress={(e) => openDetail(doc, e)}
+                  activeOpacity={0.7}
+                >
+                  {!!doc.imagePath && (
+                    <Image source={{ uri: `${API_BASE_URL.replace(/\/$/, '')}${doc.imagePath}` }} style={styles.rowImage} />
                   )}
-                </View>
-              );
-            })}
+                  <View style={styles.rowInfo}>
+                    <Text style={styles.rowRef} numberOfLines={1}>{doc.refNumber}</Text>
+                    <Text style={styles.rowTime}>{new Date(doc.capturedAt).toLocaleTimeString()}</Text>
+                  </View>
+                  <View style={[styles.badge, index === 0 ? styles.badgeLatest : styles.badgeSaved]}>
+                    <Text style={styles.badgeTextOnColor}>
+                      {index === 0 ? t('corpLatestBadge') : t('corpSavedBadge')}
+                    </Text>
+                  </View>
+                  <TouchableOpacity onPress={() => toggleFlag(doc._id)} style={styles.flagButton}>
+                    <VectorIcon
+                      name={doc.flagged ? 'star' : 'star-border'}
+                      size={18}
+                      color={doc.flagged ? colors.warning : colors.muted}
+                    />
+                  </TouchableOpacity>
+                </TouchableOpacity>
+              </View>
+            ))}
             {hasMore && (
               <TouchableOpacity style={styles.moreButton} onPress={() => setVisibleCount((c) => c + PAGE_SIZE)} activeOpacity={0.7}>
                 <VectorIcon name="expand-more" size={16} color={colors.primary} />
@@ -327,6 +307,31 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
           </ScrollView>
         )}
       </View>
+
+      <Modal visible={!!detailDoc} transparent animationType="none" onRequestClose={() => setDetailDoc(null)}>
+        <TouchableWithoutFeedback onPress={() => setDetailDoc(null)}>
+          <View style={styles.detailOverlay}>
+            {!!detailDoc && (
+              <View style={[styles.detailPopover, { position: 'absolute', top: detailPos.top, left: detailPos.left }]}>
+                <DetailRow icon="smartphone" label={t('corpTerminalIdLabel')} value={detailDoc.terminalId || '—'} />
+                <DetailRow icon="person" label={t('corpWorkerLabel')} value={detailDoc.workerLabel || '—'} />
+                <DetailRow
+                  icon="place"
+                  label={t('corpLocationLabel')}
+                  value={detailDoc.location?.latitude != null ? `${detailDoc.location.latitude.toFixed(4)}, ${detailDoc.location.longitude?.toFixed(4)}` : '—'}
+                />
+                <DetailRow
+                  icon="gps-fixed"
+                  label={t('corpGpsLabel')}
+                  value={detailDoc.location?.accuracy != null ? `±${Math.round(detailDoc.location.accuracy)}m` : '—'}
+                />
+                <DetailRow icon="photo-camera" label={t('corpCapturedViaLabel')} value={detailDoc.identifierType || '—'} />
+                <DetailRow icon="tablet-mac" label={t('corpCapturedDeviceLabel')} value={detailDoc.device?.model || '—'} />
+              </View>
+            )}
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </AppLayout>
   );
 }
@@ -346,6 +351,7 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
@@ -354,10 +360,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     ...shadow(1),
   },
-  statCell: { alignItems: 'center', gap: 2, marginRight: spacing.lg },
+  statCell: { flex: 1, alignItems: 'center', gap: 2 },
   statLabel: { fontSize: 11, color: colors.muted },
   statValue: { fontSize: 14, fontWeight: '600', color: colors.text },
-  periodCell: { marginRight: 0, marginLeft: 'auto' },
   periodButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -420,19 +425,23 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 11, color: colors.muted, fontWeight: '600' },
   badgeTextOnColor: { fontSize: 11, color: '#fff', fontWeight: '600' },
   flagButton: { padding: 4 },
-  detailPanel: {
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    padding: spacing.md,
+  // Floating popup (not inline) — anchored near the tap point, same
+  // overlay/dismiss pattern as periodOverlay/periodPopover above.
+  detailOverlay: { flex: 1 },
+  detailPopover: {
+    width: 240,
     backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    ...shadow(3),
   },
   detailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },
   detailLabelWrap: { flexDirection: 'row', alignItems: 'center' },
   detailIcon: { marginRight: 6 },
   detailLabel: { fontSize: 12, color: colors.muted },
   detailValue: { fontSize: 12, color: colors.text, fontWeight: '600', flexShrink: 1, textAlign: 'right', marginLeft: spacing.md },
-  // Captured Device: one line each for model/OS/version, right-oriented.
-  detailValueLines: { alignItems: 'flex-end' },
   moreButton: {
     flexDirection: 'row',
     alignItems: 'center',

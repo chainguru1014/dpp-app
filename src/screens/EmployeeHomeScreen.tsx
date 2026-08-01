@@ -33,6 +33,9 @@ const TYPE_LABEL_KEYS: Record<string, string> = {
 
 const SELECTED_STEP_STORAGE_KEY = 'employeeSelectedStepIndex';
 
+// Shared height for the tile so left/right sides align.
+const TILE_HEIGHT = 58;
+
 // "Worker Operations" home screen for corporate/employee sessions — a numbered
 // grid of the company's process step labels (managed by a Supervisor from the
 // frontend admin's Process Step Labels page). Tapping a tile opens a Scan
@@ -94,10 +97,10 @@ export default function EmployeeHomeScreen({ navigation, user, onLogout }: any) 
                   activeOpacity={0.7}
                   onPress={() => handleSelectStep(index)}
                 >
-                  <View style={[styles.tileNumberBadge, selected && styles.tileNumberBadgeSelected]}>
+                  <View style={[styles.tileNumberPart, selected && styles.tileNumberPartSelected]}>
                     <Text style={[styles.tileNumber, selected && styles.tileNumberSelected]}>{index + 1}</Text>
                   </View>
-                  <View style={styles.tileTextBlock}>
+                  <View style={[styles.tileTextPart, selected && styles.tileTextPartSelected]}>
                     <Text style={styles.tileEntity} numberOfLines={1}>{step.entity}</Text>
                     <Text style={styles.tileType} numberOfLines={1}>
                       {typeLabelKey ? t(typeLabelKey as any) : step.type}
@@ -118,41 +121,47 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: '600', color: '#000', marginBottom: spacing.xs },
   subtitle: { fontSize: 14, color: colors.muted, marginBottom: spacing.xl },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
-  // Number badge on the left, Entity/Type stacked on the right — matches the
-  // frontend admin's Process Step Labels ordering (Entity first, Type below).
-  // Selected state (persisted, see SELECTED_STEP_STORAGE_KEY) mirrors the
-  // consumer HomeScreen's location tiles: dark-blue card border, dark-blue
-  // number badge with white number text — entity/type stay unchanged.
+  // Same two-part left/right split as the consumer HomeScreen's location
+  // tiles: full-height number chip on the left, Entity(bold)/Type stacked
+  // on the right — both sides share TILE_HEIGHT, no gap/padding between
+  // them (each side owns its own background so the split reads as one flat
+  // card, not two separate boxes). Selected state differs from consumer's:
+  // the left chip goes dark-blue/white text same as consumer, but the right
+  // side also changes — from white to gray — instead of staying unchanged.
   tile: {
     width: '47%',
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
+    minHeight: TILE_HEIGHT,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: spacing.md,
+    overflow: 'hidden',
     ...shadow(1),
   },
   tileSelected: {
     borderColor: colors.primary,
     borderWidth: 2,
   },
-  tileNumberBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.md,
-    backgroundColor: colors.surfaceAlt,
+  tileNumberPart: {
+    width: 44,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: colors.surfaceAlt,
   },
-  tileNumberBadgeSelected: {
+  tileNumberPartSelected: {
     backgroundColor: colors.primary,
   },
-  tileNumber: { fontSize: 14, fontWeight: '700', color: colors.primary },
+  tileNumber: { fontSize: 15, fontWeight: '700', color: colors.primary },
   tileNumberSelected: { color: '#fff' },
-  tileTextBlock: { flex: 1 },
-  tileEntity: { fontSize: 14, fontWeight: '700', color: colors.text },
-  tileType: { fontSize: 12, color: '#000', marginTop: 2 },
+  tileTextPart: {
+    flex: 1,
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.sm,
+  },
+  tileTextPartSelected: {
+    backgroundColor: colors.surfaceAlt,
+  },
+  tileEntity: { fontSize: 13, fontWeight: '700', color: colors.text },
+  tileType: { fontSize: 13, fontWeight: '400', color: colors.muted, marginTop: 1 },
 });

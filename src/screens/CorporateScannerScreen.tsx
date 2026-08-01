@@ -365,17 +365,22 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
             <Text style={styles.thumbHeading}>{t('corpRecentCaptures')}</Text>
             <Text style={styles.seeAllLink}>{t('scanTodayCountLabel').replace('{count}', String(captures.length))}</Text>
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.thumbStrip}>
-            {captures.map((doc) => (
-              <View key={doc._id} style={styles.thumbCard}>
-                {!!doc.imagePath && (
-                  <Image source={{ uri: `${API_BASE_URL.replace(/\/$/, '')}${doc.imagePath}` }} style={styles.thumbImage} />
-                )}
-                <Text style={styles.thumbRef} numberOfLines={1}>{doc.refNumber}</Text>
-                <Text style={styles.thumbTime}>{new Date(doc.capturedAt).toLocaleTimeString()}</Text>
-              </View>
-            ))}
-          </ScrollView>
+          {captures.length > 0 && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.thumbStrip}>
+              {captures.map((doc, index) => (
+                <View key={doc._id} style={styles.thumbCard}>
+                  {!!doc.imagePath && (
+                    <Image source={{ uri: `${API_BASE_URL.replace(/\/$/, '')}${doc.imagePath}` }} style={styles.thumbImage} />
+                  )}
+                  <View style={styles.thumbDetail}>
+                    <Text style={styles.thumbIndex}>{index + 1}</Text>
+                    <Text style={styles.thumbRef} numberOfLines={1}>{doc.refNumber}</Text>
+                    <Text style={styles.thumbTime}>{new Date(doc.capturedAt).toLocaleTimeString()}</Text>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+          )}
 
           {!!codeUnrecognized && !liveCode && (
             <Text style={styles.unrecognizedText}>{t('corpCodeUnrecognized')}</Text>
@@ -427,7 +432,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceAlt,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
-    padding: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.sm,
   },
   infoStrip: {
     flexDirection: 'row',
@@ -506,9 +513,15 @@ const styles = StyleSheet.create({
   // Explicit height — without it a horizontal ScrollView with no flex:1
   // sibling can stretch its single-row content to fill leftover vertical
   // space, ballooning card height when there's only one capture to show.
-  thumbStrip: { height: 100, marginBottom: spacing.md },
+  // Only rendered at all when there's at least one capture (see JSX) so an
+  // empty step doesn't reserve this space between the header and Capture.
+  thumbStrip: { height: 70, marginBottom: spacing.md },
+  // Horizontal: image on the left, index (dark blue)/ref (gray)/time (gray)
+  // stacked on the right.
   thumbCard: {
-    width: 84,
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: 150,
     marginRight: spacing.sm,
     backgroundColor: colors.surface,
     borderRadius: radius.md,
@@ -516,8 +529,10 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     padding: spacing.xs,
   },
-  thumbImage: { width: '100%', height: 60, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt },
-  thumbRef: { fontSize: 10, fontWeight: '600', color: colors.text, marginTop: 4 },
+  thumbImage: { width: 44, height: 44, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt },
+  thumbDetail: { flex: 1, marginLeft: spacing.sm },
+  thumbIndex: { fontSize: 13, fontWeight: '700', color: colors.primary },
+  thumbRef: { fontSize: 10, fontWeight: '600', color: colors.muted, marginTop: 2 },
   thumbTime: { fontSize: 9, color: colors.muted },
   unrecognizedText: { color: colors.danger, fontSize: 12, textAlign: 'center', marginBottom: spacing.sm },
   captureButton: {
@@ -525,7 +540,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.xs,
+    gap: spacing.sm,
     backgroundColor: colors.primary,
     borderRadius: radius.pill,
     ...shadow(1),

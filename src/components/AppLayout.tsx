@@ -233,10 +233,18 @@ export default function AppLayout({
     setSettingsVisible(true);
   };
 
-  // Scan tab is always the QR scanner on every page.
-  const handleScan = () => {
+  // Consumer sessions get the normal QR Scanner; corporate/employee sessions
+  // get the Capture Operation screen instead, for whichever Worker
+  // Operations step the worker last selected on Home (falls back to the
+  // first step if none has been selected yet this session).
+  const handleScan = async () => {
     if (!isAuthenticated) {
       onGuestAction?.();
+      return;
+    }
+    if (isEmployeeActor) {
+      const stored = await AsyncStorage.getItem('employeeSelectedStepIndex');
+      navigation.navigate('CorporateScanner', { stepIndex: stored != null ? Number(stored) : 0 });
       return;
     }
     navigation.navigate('Scanner');
@@ -361,7 +369,7 @@ export default function AppLayout({
 
       {!hideBottomBar && (() => {
         const isHomeSelected = route.name === 'Home' || route.name === 'EmployeeHome';
-        const isScanSelected = route.name === 'Scanner';
+        const isScanSelected = route.name === 'Scanner' || route.name === 'CorporateScanner';
         const isProductsSelected = route.name === productsTarget;
         const isSettingsSelected = settingsVisible;
         return (

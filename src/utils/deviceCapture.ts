@@ -57,15 +57,37 @@ export const getCurrentLocation = (): Promise<CapturedLocation | null> => {
       return;
     }
 
-    Geolocation.getCurrentPosition(
-      (pos: any) => resolve({
-        latitude: pos.coords.latitude,
-        longitude: pos.coords.longitude,
-        accuracy: pos.coords.accuracy ?? null,
-      }),
-      () => resolve(null),
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
-    );
+    const requestFix = () => {
+      Geolocation.getCurrentPosition(
+        (pos: any) => resolve({
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+          accuracy: pos.coords.accuracy ?? null,
+        }),
+        () => resolve(null),
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
+      );
+    };
+
+    // iOS needs an explicit authorization request before getCurrentPosition
+    // will prompt/succeed (Android's permission is requested separately via
+    // PermissionsAndroid before the capture screen ever mounts its camera —
+    // see CorporateScannerScreen's permission effect). This call itself
+    // triggers the system prompt on first use; a no-op if already granted.
+    if (Platform.OS === 'ios' && typeof Geolocation.requestAuthorization === 'function') {
+      try {
+        const result = Geolocation.requestAuthorization('whenInUse');
+        if (result && typeof result.finally === 'function') {
+          result.finally(requestFix);
+        } else {
+          requestFix();
+        }
+      } catch (err) {
+        requestFix();
+      }
+    } else {
+      requestFix();
+    }
   });
 };
 

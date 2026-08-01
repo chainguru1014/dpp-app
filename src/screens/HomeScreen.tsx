@@ -15,7 +15,6 @@ interface HomeScreenProps {
 
 interface LocationStep {
   entity: string;
-  type: string;
 }
 
 const TYPE_META: Record<string, { labelKey: string; color: string }> = {
@@ -28,21 +27,6 @@ const TYPE_META: Record<string, { labelKey: string; color: string }> = {
   receive: { labelKey: 'received', color: colors.accent },
 };
 
-// Fixed set of location "type" categories — a platform super admin picks
-// one of these (not free text) in the frontend admin's Process Step Labels
-// (Consumer) page, and here it's translated via i18n. Keep in sync with
-// backend/controllers/platformSettingsController.ts's
-// CONSUMER_LOCATION_TYPE_KEYS and frontend's ConsumerLocationStepsPage.js's
-// TYPE_OPTIONS.
-const TYPE_LABEL_KEYS: Record<string, string> = {
-  store: 'locTypeStore',
-  factory: 'locTypeFactory',
-  warehouse: 'locTypeWarehouse',
-  p2p: 'locTypeP2P',
-  home: 'locTypeHome',
-  other: 'locTypeOther',
-};
-
 const SELECTED_STEP_STORAGE_KEY = 'scanLocationStepIndex';
 // Cached display label for the currently selected step — read by AppLayout
 // (on every consumer screen) to show as a subtitle under the page title,
@@ -51,7 +35,7 @@ const SELECTED_STEP_LABEL_STORAGE_KEY = 'consumerSelectedLocationLabel';
 
 // Shared height for both the location tiles and the stat tiles below them so
 // the two rows visually align (see locationTile/statTile styles).
-const TILE_HEIGHT = 46;
+const TILE_HEIGHT = 58;
 
 // Consumer Home — a simple stats dashboard (owned-products + scan-history
 // analytics) instead of the old banner slider. Reuses the same endpoints
@@ -89,10 +73,8 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
   useEffect(() => {
     const step = steps[selectedStep];
     if (!step) return;
-    const typeLabelKey = TYPE_LABEL_KEYS[step.type];
-    const label = `${step.entity} / ${typeLabelKey ? t(typeLabelKey as any) : step.type}`;
-    AsyncStorage.setItem(SELECTED_STEP_LABEL_STORAGE_KEY, label).catch(() => {});
-  }, [steps, selectedStep, t]);
+    AsyncStorage.setItem(SELECTED_STEP_LABEL_STORAGE_KEY, step.entity).catch(() => {});
+  }, [steps, selectedStep]);
 
   const handleSelectScanLocation = (index: number) => {
     setSelectedStep(index);
@@ -147,7 +129,6 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
               {steps.slice(rowIndex * 2, rowIndex * 2 + 2).map((step, i) => {
                 const index = rowIndex * 2 + i;
                 const selected = selectedStep === index;
-                const typeLabelKey = TYPE_LABEL_KEYS[step.type];
                 return (
                   <TouchableOpacity
                     key={index}
@@ -162,9 +143,6 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
                     </View>
                     <View style={styles.locationTextPart}>
                       <Text style={styles.locationEntityText} numberOfLines={1}>{step.entity}</Text>
-                      <Text style={styles.locationTypeText} numberOfLines={1}>
-                        {typeLabelKey ? t(typeLabelKey as any) : step.type}
-                      </Text>
                     </View>
                   </TouchableOpacity>
                 );
@@ -233,10 +211,10 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   container: { padding: spacing.xl, paddingBottom: spacing.xxxl },
   // Two-part card — left is a number "chip" (gray bg/blue text unselected,
-  // dark-blue bg/white text selected), right is Entity/Type stacked text
-  // (always white bg, unchanged by selection — only the card's border turns
-  // dark blue). Both sides share TILE_HEIGHT so they align with each other
-  // and with the stat row below.
+  // dark-blue bg/white text selected), right is the step's name only (no
+  // type/icon — always white bg, unchanged by selection — only the card's
+  // border turns dark blue). Both sides share TILE_HEIGHT so they align
+  // with each other and with the stat row below.
   selectorTitle: { fontSize: 22, fontWeight: '600', color: colors.heading, marginBottom: spacing.xs },
   selectorSubtitle: { fontSize: 14, color: colors.muted, marginBottom: spacing.lg },
   locationGrid: { gap: spacing.sm, marginBottom: spacing.lg },
@@ -272,8 +250,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     paddingHorizontal: spacing.sm,
   },
-  locationEntityText: { fontSize: 13, fontWeight: '700', color: colors.text },
-  locationTypeText: { fontSize: 12, color: '#000', marginTop: 1 },
+  locationEntityText: { fontSize: 14, fontWeight: '700', color: colors.text },
   statRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
   statTile: {
     flex: 1,
