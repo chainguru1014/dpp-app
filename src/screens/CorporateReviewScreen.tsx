@@ -174,7 +174,7 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
   };
 
   const subtitle = stepIndex !== undefined
-    ? (step ? `${stepIndex + 1} ${step.entity} / ${step.type}` : `${stepIndex + 1}`)
+    ? (step ? `${step.entity} / ${step.type}` : undefined)
     : t('corpAllSteps');
 
   const periodOptions: { key: PeriodOption; label: string }[] = [
@@ -430,7 +430,7 @@ const styles = StyleSheet.create({
   detailOverlay: { flex: 1 },
   detailPopover: {
     width: 240,
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: colors.surface,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,

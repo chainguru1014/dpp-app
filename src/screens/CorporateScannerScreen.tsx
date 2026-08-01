@@ -271,8 +271,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   const today = new Date();
   const dateLabel = today.toLocaleDateString();
   const currentRef = captures[0]?.refNumber || '—';
-  const stepNumber = stepIndex + 1;
-  const subtitle = step ? `${stepNumber} ${step.entity} / ${step.type}` : `${stepNumber}`;
+  const subtitle = step ? `${step.entity} / ${step.type}` : undefined;
 
   const renderCamera = () => {
     if (hasPermission === null) {
