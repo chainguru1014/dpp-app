@@ -1,4 +1,4 @@
-import React, { useState, useRef, useId } from 'react';
+import React, { useState, useRef, useId, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -99,7 +99,19 @@ export default function AppLayout({
   const isHomeRoute = route.name === 'Home' || route.name === 'EmployeeHome';
   const routeTitleKey = ROUTE_TITLE_KEYS[route.name];
   const computedTitle = title ?? (isHomeRoute ? BRAND_TITLE : routeTitleKey ? t(routeTitleKey as any) : undefined);
-  const computedSubtitle = subtitle;
+  // Consumer sessions: every page's top bar shows the selected Home-page
+  // location item as a subtitle (matching the corporate top bar's
+  // step-context subtitle) — cached by HomeScreen so this never needs to
+  // fetch the steps list itself. A screen-supplied `subtitle` prop (e.g.
+  // ResultScreen's product name) always wins.
+  const [consumerLocationLabel, setConsumerLocationLabel] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    if (user?.actorKind === 'Employee') return;
+    AsyncStorage.getItem('consumerSelectedLocationLabel').then((stored) => {
+      if (stored) setConsumerLocationLabel(stored);
+    });
+  }, [user?.actorKind]);
+  const computedSubtitle = subtitle ?? (user && user.actorKind !== 'Employee' ? consumerLocationLabel : undefined);
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [langMenuVisible, setLangMenuVisible] = useState(false);
   const [langPopover, setLangPopover] = useState({ top: 76, right: 16 });
@@ -288,7 +300,7 @@ export default function AppLayout({
         {showBackButton ? (
           <TouchableOpacity
             onPress={handleBack}
-            style={[styles.iconButton, styles.navBtnOnDark]}
+            style={[styles.iconButton, styles.backButtonCircle]}
             activeOpacity={0.7}
           >
             <Image
@@ -385,7 +397,7 @@ export default function AppLayout({
                 color={isScanSelected ? colors.primary : '#333333'}
               />
               <Text style={[styles.bottomTabLabel, isScanSelected && styles.bottomTabLabelSelected]}>
-                {t('bottomScan')}
+                {isEmployeeActor ? t('bottomCapture') : t('bottomScan')}
               </Text>
             </TouchableOpacity>
 
@@ -624,6 +636,12 @@ const styles = StyleSheet.create({
   navBtnOnDark: {
     borderRadius: 16,
     backgroundColor: 'rgba(255,255,255,0.16)',
+  },
+  // Back button specifically: solid blue circle (not the translucent-white
+  // treatment other top-bar icons use).
+  backButtonCircle: {
+    borderRadius: 16,
+    backgroundColor: colors.primary,
   },
   topBarIcon: {
     width: 20,

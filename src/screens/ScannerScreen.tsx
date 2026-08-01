@@ -25,6 +25,7 @@ import { isNfcSupported, readNfcTag } from '../utils/nfc';
 import { BrowserMultiFormatReader } from '@zxing/browser';
 import { BarcodeFormat } from '@zxing/library';
 import WebCodeScanner from '../components/WebCodeScanner';
+import ScanFrameCorners from '../components/ScanFrameCorners';
 import { isNativeImageScanAvailable, scanBarcodeFromImageUri } from '../utils/nativeImageScan';
 
 // Guarded the same defensive way as the native code scanner/NFC modules —
@@ -791,7 +792,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
               />
             </View>
             <View pointerEvents="none" style={styles.frameOverlay}>
-              <View style={styles.scanFrame} />
+              <ScanFrameCorners size={240} />
             </View>
             {renderCameraOverlay()}
           </View>
@@ -834,7 +835,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
           <View style={styles.scanViewport}>
             <NativeCodeScanner active={isFocused && !loading} onScan={handleScannedCode} torch={torchOn} />
             <View pointerEvents="none" style={styles.frameOverlay}>
-              <View style={styles.scanFrame} />
+              <ScanFrameCorners size={240} />
             </View>
             {renderCameraOverlay()}
           </View>
@@ -965,14 +966,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  scanFrame: {
-    width: 240,
-    height: 240,
-    borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.92)',
-    borderRadius: radius.lg,
-    backgroundColor: 'transparent',
-  },
   bottomContent: {
     paddingBottom: spacing.xxxl,
     paddingTop: spacing.lg,
@@ -1006,7 +999,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.sm,
   },
-  recentScansHeaderText: { fontSize: 13, fontWeight: '700', color: colors.heading },
+  recentScansHeaderText: { fontSize: 13, fontWeight: '700', color: colors.muted },
   recentScansCount: { fontSize: 12, color: colors.muted },
   recentScansStrip: {
     height: 64,

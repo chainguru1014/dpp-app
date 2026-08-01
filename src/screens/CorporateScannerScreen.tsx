@@ -20,6 +20,7 @@ import { API_BASE_URL } from '../config/api';
 import { colors, radius, spacing, shadow } from '../theme';
 import WebCodeScanner, { WebCodeScannerHandle } from '../components/WebCodeScanner';
 import CaptureCameraView, { CaptureCameraHandle, isCaptureCameraAvailable, CapturedCodeFormat } from '../components/CaptureCameraView';
+import ScanFrameCorners from '../components/ScanFrameCorners';
 import { getCurrentLocation, getDeviceInfo } from '../utils/deviceCapture';
 import { uploadCaptureImage } from '../utils/uploadCapture';
 
@@ -341,7 +342,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
         <View style={styles.scanViewport}>
           {renderCamera()}
           <View pointerEvents="none" style={styles.frameOverlay}>
-            <View style={[styles.scanFrame, !!liveCode && styles.scanFrameActive]} />
+            <ScanFrameCorners size={240} active={!!liveCode} activeColor={colors.primary} />
           </View>
           <View pointerEvents="none" style={styles.overlayHintWrap}>
             <VectorIcon name="qr-code" size={16} color="#fff" style={styles.overlayHintIcon} />
@@ -359,42 +360,42 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
           </View>
         </View>
 
-        <View style={styles.thumbRow}>
-          <Text style={styles.thumbHeading}>{t('corpRecentCaptures')}</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('CorporateReview', { stepIndex })}>
-            <Text style={styles.seeAllLink}>{t('corpSeeAll')}</Text>
+        <View style={styles.bottomBoard}>
+          <View style={styles.thumbRow}>
+            <Text style={styles.thumbHeading}>{t('corpRecentCaptures')}</Text>
+            <Text style={styles.seeAllLink}>{t('scanTodayCountLabel').replace('{count}', String(captures.length))}</Text>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.thumbStrip}>
+            {captures.map((doc) => (
+              <View key={doc._id} style={styles.thumbCard}>
+                {!!doc.imagePath && (
+                  <Image source={{ uri: `${API_BASE_URL.replace(/\/$/, '')}${doc.imagePath}` }} style={styles.thumbImage} />
+                )}
+                <Text style={styles.thumbRef} numberOfLines={1}>{doc.refNumber}</Text>
+                <Text style={styles.thumbTime}>{new Date(doc.capturedAt).toLocaleTimeString()}</Text>
+              </View>
+            ))}
+          </ScrollView>
+
+          {!!codeUnrecognized && !liveCode && (
+            <Text style={styles.unrecognizedText}>{t('corpCodeUnrecognized')}</Text>
+          )}
+
+          <TouchableOpacity
+            style={[styles.captureButton, (!liveCode || capturing) && styles.captureButtonDisabled]}
+            onPress={handleCapture}
+            disabled={!liveCode || capturing}
+          >
+            {capturing || verifying ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <VectorIcon name="photo-camera" size={16} color="#fff" />
+                <Text style={styles.captureButtonText}>{t('corpCaptureButton')}</Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.thumbStrip}>
-          {captures.map((doc) => (
-            <View key={doc._id} style={styles.thumbCard}>
-              {!!doc.imagePath && (
-                <Image source={{ uri: `${API_BASE_URL.replace(/\/$/, '')}${doc.imagePath}` }} style={styles.thumbImage} />
-              )}
-              <Text style={styles.thumbRef} numberOfLines={1}>{doc.refNumber}</Text>
-              <Text style={styles.thumbTime}>{new Date(doc.capturedAt).toLocaleTimeString()}</Text>
-            </View>
-          ))}
-        </ScrollView>
-
-        {!!codeUnrecognized && !liveCode && (
-          <Text style={styles.unrecognizedText}>{t('corpCodeUnrecognized')}</Text>
-        )}
-
-        <TouchableOpacity
-          style={[styles.captureButton, (!liveCode || capturing) && styles.captureButtonDisabled]}
-          onPress={handleCapture}
-          disabled={!liveCode || capturing}
-        >
-          {capturing || verifying ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <>
-              <VectorIcon name="photo-camera" size={16} color="#fff" />
-              <Text style={styles.captureButtonText}>{t('corpCaptureButton')}</Text>
-            </>
-          )}
-        </TouchableOpacity>
       </View>
 
       <Modal visible={helpVisible} transparent animationType="fade" onRequestClose={() => setHelpVisible(false)}>
@@ -416,6 +417,18 @@ const DARK = '#0b1220';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg, padding: spacing.lg },
+  // Bleeds past the container's own padding to sit flush against the
+  // screen edges/bottom nav with rounded top corners — matches the consumer
+  // ScannerScreen's whiteBoard treatment.
+  bottomBoard: {
+    marginTop: spacing.md,
+    marginHorizontal: -spacing.lg,
+    marginBottom: -spacing.lg,
+    backgroundColor: colors.surfaceAlt,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    padding: spacing.lg,
+  },
   infoStrip: {
     flexDirection: 'row',
     backgroundColor: colors.surface,
@@ -445,17 +458,6 @@ const styles = StyleSheet.create({
   stateBox: { flex: 1, width: '100%', justifyContent: 'center', alignItems: 'center' },
   stateText: { color: '#fff', fontSize: 13, textAlign: 'center', paddingHorizontal: spacing.lg },
   frameOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center' },
-  scanFrame: {
-    width: 240,
-    height: 240,
-    borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.92)',
-    borderRadius: radius.lg,
-    backgroundColor: 'transparent',
-  },
-  scanFrameActive: {
-    borderColor: colors.primary,
-  },
   overlayHintWrap: {
     position: 'absolute',
     top: spacing.lg,

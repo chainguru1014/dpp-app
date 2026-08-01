@@ -26,6 +26,11 @@ interface CaptureDoc {
   device?: { model: string; os: string; osVersion: string };
 }
 
+interface ProcessStep {
+  entity: string;
+  type: string;
+}
+
 interface CorporateReviewScreenProps {
   navigation: any;
   route: any;
@@ -33,10 +38,18 @@ interface CorporateReviewScreenProps {
   onLogout?: () => void;
 }
 
+// Same key EmployeeHomeScreen persists the tapped Worker Operations tile
+// under — read here so landing on Review via the bottom tab (no explicit
+// stepIndex param) defaults to whatever step the worker last selected on
+// Home, instead of "All steps".
+const SELECTED_STEP_STORAGE_KEY = 'employeeSelectedStepIndex';
+
 export default function CorporateReviewScreen({ navigation, route, user, onLogout }: CorporateReviewScreenProps) {
   const { t } = useI18n();
-  const stepIndex: number | undefined = route?.params?.stepIndex;
+  const routeStepIndex: number | undefined = route?.params?.stepIndex;
 
+  const [stepIndex, setStepIndex] = useState<number | undefined>(routeStepIndex);
+  const [step, setStep] = useState<ProcessStep | null>(null);
   const [loading, setLoading] = useState(true);
   const [docs, setDocs] = useState<CaptureDoc[]>([]);
   const [period, setPeriod] = useState<PeriodOption>('today');
@@ -47,6 +60,36 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const tokenRef = useRef<string>('');
   const periodButtonRef = useRef<View>(null);
+
+  useEffect(() => {
+    if (routeStepIndex !== undefined) return;
+    AsyncStorage.getItem(SELECTED_STEP_STORAGE_KEY).then((stored) => {
+      if (stored != null) setStepIndex(Number(stored));
+    });
+  }, [routeStepIndex]);
+
+  // Only needed to render the Entity/Type subtitle (matching Scan
+  // Operation's subtitle style) — the capture list itself is fetched by
+  // `load()` below using stepIndex directly, not this.
+  useEffect(() => {
+    if (stepIndex === undefined) {
+      setStep(null);
+      return;
+    }
+    (async () => {
+      const token = await AsyncStorage.getItem('userToken');
+      try {
+        const res = await fetch(`${API_BASE_URL}company/process-steps`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        const data = await res.json().catch(() => ({}));
+        const steps: ProcessStep[] = data?.data?.processSteps || [];
+        setStep(steps[stepIndex] || null);
+      } catch (err) {
+        console.error('Failed to load process step:', err);
+      }
+    })();
+  }, [stepIndex]);
 
   const load = async () => {
     setLoading(true);
@@ -114,7 +157,9 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
     }
   };
 
-  const subtitle = stepIndex !== undefined ? `${stepIndex + 1}` : t('corpAllSteps');
+  const subtitle = stepIndex !== undefined
+    ? (step ? `${stepIndex + 1} ${step.entity} / ${step.type}` : `${stepIndex + 1}`)
+    : t('corpAllSteps');
 
   const periodOptions: { key: PeriodOption; label: string }[] = [
     { key: 'today', label: t('corpToday') },
