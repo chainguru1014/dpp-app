@@ -23,16 +23,12 @@ import StaffLoginScreen from '../screens/StaffLoginScreen';
 import EmployeeHomeScreen from '../screens/EmployeeHomeScreen';
 import CorporateScannerScreen from '../screens/CorporateScannerScreen';
 import CorporateReviewScreen from '../screens/CorporateReviewScreen';
-import { getStoredAiConciergeConsent } from '../utils/aiConciergeConsent';
 
 const Stack = createNativeStackNavigator();
 
 export default function AppNavigator({ navigationRef }: { navigationRef: any }) {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  // Pre-login gate: shown before Login/Home on every fresh app instance until
-  // the user has made a local AI Concierge choice — see aiConciergeConsent.ts.
-  const [hasAiConsentChoice, setHasAiConsentChoice] = useState(false);
   const prevUserRef = useRef<any>(undefined);
   const handledWebProductPathRef = useRef(false);
 
@@ -111,8 +107,6 @@ export default function AppNavigator({ navigationRef }: { navigationRef: any }) 
           await AsyncStorage.removeItem('user');
         }
       }
-      const consentChoice = await getStoredAiConciergeConsent();
-      setHasAiConsentChoice(!!consentChoice);
     } catch (error) {
       console.error('Auth check error:', error);
     } finally {
@@ -157,12 +151,12 @@ export default function AppNavigator({ navigationRef }: { navigationRef: any }) 
     <Stack.Navigator
       screenOptions={{ headerShown: false }}
       initialRouteName={
-        !hasAiConsentChoice
-          ? 'AiConciergeConsent'
-          : !user
+        !user
           ? 'Login'
           : user.actorKind === 'Employee'
           ? 'EmployeeHome'
+          : !user.aiConciergeConsentAt
+          ? 'AiConciergeConsent'
           : 'Home'
       }
     >

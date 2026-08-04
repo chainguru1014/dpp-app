@@ -1,9 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Local-device record of the AI Concierge personalization choice. Deliberately
-// device-local rather than account-bound: the consent gate now runs before
-// login (see AppNavigator's initialRouteName), so there is no account yet to
-// attach a decision to when it's first made.
+// Local-device record of the AI Concierge personalization choice. The actual
+// gate (see AppNavigator's initialRouteName / LoginScreen's goAfterAuth) is
+// account-bound via the backend's `aiConciergeConsentAt` field, not this —
+// this cache exists only to pre-fill AiConciergeConsentScreen (e.g. the
+// pre-login "Privacy Preferences" review, where no account may exist yet).
 const STORAGE_KEY = 'aiConciergeConsentChoice';
 
 export type AiConciergeConsentChoice = { consent: boolean; decidedAt: number };

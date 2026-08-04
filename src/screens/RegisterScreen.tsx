@@ -173,7 +173,16 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
       onLogin?.(tagged);
       const redirectTo = route?.params?.redirectTo;
       const redirectParams = route?.params?.redirectParams;
-      if (redirectTo) {
+      // First-ever sign-up for this account — route through the AI Concierge
+      // consent gate once (see LoginScreen's goAfterAuth for the sign-in
+      // equivalent), carrying along wherever signup would otherwise have
+      // landed so the gate's Continue button sends the user there next.
+      if (!tagged.aiConciergeConsentAt) {
+        navigation.replace('AiConciergeConsent', {
+          redirectTo: redirectTo || 'Home',
+          redirectParams: redirectParams || {},
+        });
+      } else if (redirectTo) {
         navigation.replace(redirectTo, redirectParams || {});
       } else {
         navigation.replace('Home');

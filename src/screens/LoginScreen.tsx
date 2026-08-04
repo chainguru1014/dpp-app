@@ -25,14 +25,27 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
 
   // Corporate employee sessions always land on the operations home, never on
   // the consumer redirect target the route may have been carrying (e.g. a
-  // deep link into a product page) — that flow doesn't apply to staff.
-  const goAfterAuth = (actorKind: 'User' | 'Employee') => {
+  // deep link into a product page) — that flow doesn't apply to staff, nor
+  // does the AI Concierge consent gate below (backend only tracks it for
+  // User accounts).
+  const goAfterAuth = (actorKind: 'User' | 'Employee', userData?: any) => {
     if (actorKind === 'Employee') {
       navigation.replace('EmployeeHome');
       return;
     }
     const redirectTo = route?.params?.redirectTo;
     const redirectParams = route?.params?.redirectParams;
+    // First-ever sign-in/sign-up for this account (aiConciergeConsentAt unset)
+    // — route through the consent gate once, carrying along wherever this
+    // login would otherwise have landed so the gate's Continue button sends
+    // the user there next instead of back to Login.
+    if (userData && !userData.aiConciergeConsentAt) {
+      navigation.replace('AiConciergeConsent', {
+        redirectTo: redirectTo || 'Home',
+        redirectParams: redirectParams || {},
+      });
+      return;
+    }
     if (redirectTo) {
       navigation.replace(redirectTo, redirectParams || {});
       return;
@@ -51,7 +64,7 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
     if (onLogin) {
       onLogin(tagged);
     }
-    goAfterAuth(actorKind);
+    goAfterAuth(actorKind, tagged);
   };
 
   // Shared handler for all three passwordless methods. If the backend says

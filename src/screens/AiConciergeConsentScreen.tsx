@@ -17,22 +17,25 @@ import { API_BASE_URL } from '../config/api';
 import { colors, spacing, radius, shadow } from '../theme';
 import { getStoredAiConciergeConsent, setStoredAiConciergeConsent } from '../utils/aiConciergeConsent';
 
-// The pre-login consent gate — AppNavigator's initialRouteName sends every
-// fresh app instance here first until a local choice exists (see
-// aiConciergeConsent.ts), regardless of whether anyone is signed in yet.
-// Also reachable any time after via the "Privacy Preferences" link on
-// LoginScreen (passing `reviewMode: true`), so a user can change or
-// withdraw their choice per GDPR.
+// The post-login consent gate — LoginScreen/RegisterScreen route here once,
+// right after a User account's first-ever sign-in or sign-up (checked via
+// `aiConciergeConsentAt` being unset on the account — see their goAfterAuth/
+// profile-completion handlers), carrying `redirectTo`/`redirectParams` for
+// wherever that login would otherwise have landed. It never shows again for
+// that account afterward. Also reachable any time after via the "Privacy
+// Preferences" link on LoginScreen (passing `reviewMode: true`), so a user
+// can change or withdraw their choice per GDPR.
 //
-// The choice itself is device-local, not account-bound — deciding happens
-// before login, so there's no account yet to attach it to. If a session
-// happens to exist (review mode, already signed in), submitting also
-// best-effort syncs to the backend so the account record stays current;
-// that sync is never allowed to block navigation (see handleSubmit).
+// A session always exists by the time this screen is reached (gate mode is
+// post-login now), so submitting always syncs the choice to the backend
+// account; that sync is never allowed to block navigation (see handleSubmit).
+// The local AsyncStorage copy (aiConciergeConsent.ts) is kept only as an
+// offline-friendly cache for pre-filling this screen, not as the source of
+// truth for whether the gate should show.
 //
 // Two modes:
-//  - 'gate': the pre-login initial visit — submitting always continues to
-//    Login next.
+//  - 'gate': the post-login first-ever visit — submitting continues to
+//    `route.params.redirectTo` (defaults to Home) next.
 //  - 'review': revisiting via Privacy Preferences — submitting returns to
 //    wherever the link was opened from.
 // `null` = no explicit choice made yet, which is what keeps the primary
@@ -70,10 +73,10 @@ export default function AiConciergeConsentScreen({ navigation, route, onLogin }:
 
     await setStoredAiConciergeConsent(consent);
 
-    // Best-effort account sync: only meaningful if a session happens to
-    // exist (review mode revisited while signed in) — in gate mode there is
-    // no token yet, so this is skipped entirely. Never blocks navigation
-    // below, same reasoning as ScannerScreen's best-effort scan/record.
+    // Best-effort account sync — a session always exists by now (gate mode
+    // is post-login), so this normally runs in both modes. Never blocks
+    // navigation below, same reasoning as ScannerScreen's best-effort
+    // scan/record.
     if (token) {
       try {
         const response = await fetch(`${API_BASE_URL}auth/ai-concierge-consent`, {
@@ -105,7 +108,9 @@ export default function AiConciergeConsentScreen({ navigation, route, onLogin }:
     if (mode === 'review') {
       navigation.goBack();
     } else {
-      navigation.replace('Login');
+      const redirectTo = route?.params?.redirectTo || 'Home';
+      const redirectParams = route?.params?.redirectParams || {};
+      navigation.replace(redirectTo, redirectParams);
     }
   };
 
