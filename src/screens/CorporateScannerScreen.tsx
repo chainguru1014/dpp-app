@@ -415,7 +415,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
               <ActivityIndicator size="small" color="#fff" />
             ) : (
               <>
-                <VectorIcon name="photo-camera" size={32} color="#fff" />
+                <VectorIcon name="photo-camera" size={25} color="#fff" />
                 <Text style={styles.captureButtonText}>{t('corpCaptureButton')}</Text>
               </>
             )}
@@ -560,7 +560,7 @@ const styles = StyleSheet.create({
   thumbTime: { fontSize: 9, color: colors.muted },
   unrecognizedText: { color: colors.danger, fontSize: 12, textAlign: 'center', marginBottom: spacing.sm },
   captureButton: {
-    height: 70,
+    height: 50,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
