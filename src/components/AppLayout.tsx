@@ -22,6 +22,7 @@ import { useI18n } from '../i18n/I18nContext';
 import NotificationPanel from './NotificationPanel';
 import NotificationDetailModal from './NotificationDetailModal';
 import NotificationBadge from './NotificationBadge';
+import GradientButton from './GradientButton';
 import { colors, radius, shadow } from '../theme';
 
 interface AppLayoutProps {
@@ -305,15 +306,15 @@ export default function AppLayout({
       <View style={styles.topBar}>
         <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
           <Defs>
-            <SvgLinearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
-              <Stop offset="0%" stopColor={colors.header} stopOpacity={1} />
-              <Stop offset="100%" stopColor={colors.headerLight} stopOpacity={1} />
+            <SvgLinearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
+              <Stop offset="0%" stopColor={colors.headerLight} stopOpacity={1} />
+              <Stop offset="100%" stopColor={colors.header} stopOpacity={1} />
             </SvgLinearGradient>
           </Defs>
           <Rect x={0} y={0} width="100%" height="100%" fill={`url(#${gradientId})`} />
         </Svg>
         {showBackButton ? (
-          <TouchableOpacity
+          <GradientButton
             onPress={handleBack}
             style={[styles.iconButton, styles.backButtonCircle]}
             activeOpacity={0.7}
@@ -323,7 +324,7 @@ export default function AppLayout({
               style={styles.topBarIcon}
               resizeMode="contain"
             />
-          </TouchableOpacity>
+          </GradientButton>
         ) : (
           <View style={[styles.iconButton, styles.logoBadge]}>
             <Image

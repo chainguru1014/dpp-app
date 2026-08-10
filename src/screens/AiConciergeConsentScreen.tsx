@@ -14,6 +14,8 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../config/api';
+import GradientButton from '../components/GradientButton';
+import GradientView from '../components/GradientView';
 import { colors, spacing, radius, shadow } from '../theme';
 import { getStoredAiConciergeConsent, setStoredAiConciergeConsent } from '../utils/aiConciergeConsent';
 
@@ -176,6 +178,9 @@ export default function AiConciergeConsentScreen({ navigation, route, onLogin }:
                   onPress={() => setConsent(true)}
                   activeOpacity={0.8}
                 >
+                  {consent === true && (
+                    <GradientView style={[StyleSheet.absoluteFill, { borderRadius: radius.md }]} to={colors.primaryDark} />
+                  )}
                   <Text style={[styles.consentButtonText, consent === true && styles.consentButtonTextAgreeActive]}>
                     I Agree
                   </Text>
@@ -194,13 +199,15 @@ export default function AiConciergeConsentScreen({ navigation, route, onLogin }:
             </ScrollView>
 
             <View style={styles.cardFooter}>
-              <TouchableOpacity
+              <GradientButton
                 style={[styles.button, (saving || consent === null) && styles.buttonDisabled]}
                 onPress={handleSubmit}
                 disabled={saving || consent === null}
+                from={colors.headerLight}
+                to={colors.primaryDark}
               >
                 <Text style={styles.buttonText}>{saving ? 'Saving…' : 'Continue'}</Text>
-              </TouchableOpacity>
+              </GradientButton>
             </View>
           </View>
         </View>

@@ -11,6 +11,8 @@ import {
   Platform,
 } from 'react-native';
 import { useI18n } from '../i18n/I18nContext';
+import GradientButton from './GradientButton';
+import GradientView from './GradientView';
 import { colors, spacing, radius, fontSize, shadow } from '../theme';
 
 interface UserInfoFormProps {
@@ -108,6 +110,9 @@ export default function UserInfoForm({
                       ]}
                       onPress={() => setFormData({ ...formData, gender })}
                     >
+                      {formData.gender === gender && (
+                        <GradientView style={[StyleSheet.absoluteFill, { borderRadius: radius.md }]} />
+                      )}
                       <Text
                         style={[
                           styles.genderOptionText,
@@ -194,6 +199,9 @@ export default function UserInfoForm({
                       ]}
                       onPress={() => setFormData({ ...formData, gender })}
                     >
+                      {formData.gender === gender && (
+                        <GradientView style={[StyleSheet.absoluteFill, { borderRadius: radius.md }]} />
+                      )}
                       <Text
                         style={[
                           styles.genderOptionText,
@@ -212,9 +220,9 @@ export default function UserInfoForm({
             <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
               <Text style={styles.cancelButtonText}>{t('cancel')}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+            <GradientButton style={styles.submitButton} onPress={handleSubmit}>
               <Text style={styles.submitButtonText}>{t('submit')}</Text>
-            </TouchableOpacity>
+            </GradientButton>
           </View>
         </View>
       </View>

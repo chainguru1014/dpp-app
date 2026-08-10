@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Image, TouchableOpacity, Text, useWindowDimensions } from 'react-native';
 import AppLayout from '../components/AppLayout';
+import GradientButton from '../components/GradientButton';
 import { useI18n } from '../i18n/I18nContext';
 import { colors, spacing, radius, shadow } from '../theme';
 
@@ -88,13 +89,13 @@ export default function ScanSuccessfulScreen({
           resizeMode="contain"
         />
 
-        <TouchableOpacity
+        <GradientButton
           style={styles.privacyButton}
           onPress={openPrivatePolicy}
           activeOpacity={0.8}
         >
           <Text style={styles.privacyText}>{t('privatePolicy')}</Text>
-        </TouchableOpacity>
+        </GradientButton>
       </View>
     </AppLayout>
   );

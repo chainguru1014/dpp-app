@@ -14,9 +14,9 @@ import { useI18n } from '../i18n/I18nContext';
 
 const { width } = Dimensions.get('window');
 
-const NAVY = '#2f80c8';
-const PRIMARY = '#2f80c8';
-const ACCENT = '#2f80c8';
+const NAVY = '#1b4f72';
+const PRIMARY = '#1b4f72';
+const ACCENT = '#1b4f72';
 const LIGHT_BG = '#f4f7fc';
 
 interface ShopNowScreenProps {

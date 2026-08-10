@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AppLayout from '../components/AppLayout';
+import GradientView from '../components/GradientView';
 import { useI18n } from '../i18n/I18nContext';
 import { API_BASE_URL } from '../config/api';
 import { colors, spacing, radius, shadow } from '../theme';
@@ -97,9 +98,15 @@ export default function EmployeeHomeScreen({ navigation, user, onLogout }: any) 
                   activeOpacity={0.7}
                   onPress={() => handleSelectStep(index)}
                 >
-                  <View style={[styles.tileNumberPart, selected && styles.tileNumberPartSelected]}>
-                    <Text style={[styles.tileNumber, selected && styles.tileNumberSelected]}>{index + 1}</Text>
-                  </View>
+                  {selected ? (
+                    <GradientView style={[styles.tileNumberPart, styles.tileNumberPartSelected]}>
+                      <Text style={[styles.tileNumber, styles.tileNumberSelected]}>{index + 1}</Text>
+                    </GradientView>
+                  ) : (
+                    <View style={styles.tileNumberPart}>
+                      <Text style={styles.tileNumber}>{index + 1}</Text>
+                    </View>
+                  )}
                   <View style={[styles.tileTextPart, selected && styles.tileTextPartSelected]}>
                     <Text style={styles.tileEntity} numberOfLines={1}>{step.entity}</Text>
                     <Text style={styles.tileType} numberOfLines={1}>

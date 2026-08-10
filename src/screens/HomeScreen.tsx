@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator
 import Svg, { Rect } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AppLayout from '../components/AppLayout';
+import GradientView from '../components/GradientView';
 import { useI18n } from '../i18n/I18nContext';
 import { API_BASE_URL } from '../config/api';
 import { colors, radius, spacing, shadow } from '../theme';
@@ -136,11 +137,17 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
                     onPress={() => handleSelectScanLocation(index)}
                     activeOpacity={0.7}
                   >
-                    <View style={[styles.locationNumberPart, selected && styles.locationNumberPartSelected]}>
-                      <Text style={[styles.locationNumberText, selected && styles.locationNumberTextSelected]}>
-                        {index + 1}
-                      </Text>
-                    </View>
+                    {selected ? (
+                      <GradientView style={[styles.locationNumberPart, styles.locationNumberPartSelected]}>
+                        <Text style={[styles.locationNumberText, styles.locationNumberTextSelected]}>
+                          {index + 1}
+                        </Text>
+                      </GradientView>
+                    ) : (
+                      <View style={styles.locationNumberPart}>
+                        <Text style={styles.locationNumberText}>{index + 1}</Text>
+                      </View>
+                    )}
                     <View style={styles.locationTextPart}>
                       <Text style={styles.locationEntityText} numberOfLines={1}>{step.entity}</Text>
                     </View>
