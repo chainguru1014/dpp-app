@@ -9,7 +9,6 @@ import {
   Alert,
 } from 'react-native';
 import { API_BASE_URL } from '../config/api';
-import GradientButton from './GradientButton';
 import { colors, spacing, radius, fontSize, shadow } from '../theme';
 
 interface OtpSignInProps {
@@ -163,7 +162,7 @@ export default function OtpSignIn({ onSuccess, onError, mode }: OtpSignInProps) 
               <Text style={styles.errorText}>{error}</Text>
             </View>
           )}
-          <GradientButton
+          <TouchableOpacity
             style={[styles.button, requesting && styles.buttonDisabled]}
             onPress={handleSendCode}
             disabled={requesting}
@@ -173,7 +172,7 @@ export default function OtpSignIn({ onSuccess, onError, mode }: OtpSignInProps) 
             ) : (
               <Text style={styles.buttonText}>{mode === 'signup' ? 'Create account' : 'Send code'}</Text>
             )}
-          </GradientButton>
+          </TouchableOpacity>
         </>
       ) : (
         <>
@@ -193,7 +192,7 @@ export default function OtpSignIn({ onSuccess, onError, mode }: OtpSignInProps) 
               <Text style={styles.errorText}>{error}</Text>
             </View>
           )}
-          <GradientButton
+          <TouchableOpacity
             style={[styles.button, verifying && styles.buttonDisabled]}
             onPress={handleVerifyCode}
             disabled={verifying || requesting}
@@ -203,7 +202,7 @@ export default function OtpSignIn({ onSuccess, onError, mode }: OtpSignInProps) 
             ) : (
               <Text style={styles.buttonText}>Verify</Text>
             )}
-          </GradientButton>
+          </TouchableOpacity>
           <TouchableOpacity
             style={styles.linkButton}
             onPress={handleResendCode}

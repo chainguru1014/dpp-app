@@ -14,8 +14,6 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AppLayout from '../components/AppLayout';
-import GradientButton from '../components/GradientButton';
-import GradientView from '../components/GradientView';
 import { API_BASE_URL } from '../config/api';
 import { COUNTRIES } from '../constants/countries';
 import { useI18n } from '../i18n/I18nContext';
@@ -231,9 +229,6 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
                   style={[styles.userTypeButton, profile.userType === type && styles.userTypeButtonActive]}
                   onPress={() => setField('userType', type)}
                 >
-                  {profile.userType === type && (
-                    <GradientView style={[StyleSheet.absoluteFill, { borderRadius: radius.md }]} />
-                  )}
                   <Text style={[styles.userTypeButtonText, profile.userType === type && styles.userTypeButtonTextActive]}>
                     {type === 'client' ? t('client') : t('agent')}
                   </Text>
@@ -256,9 +251,6 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
                       style={[styles.genderOption, profile.gender === option.value && styles.genderOptionSelected]}
                       onPress={() => setField('gender', option.value)}
                     >
-                      {profile.gender === option.value && (
-                        <GradientView style={[StyleSheet.absoluteFill, { borderRadius: radius.md }]} />
-                      )}
                       <Text style={[styles.genderOptionText, profile.gender === option.value && styles.genderOptionTextSelected]}>
                         {option.label}
                       </Text>
@@ -303,9 +295,6 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
                       style={[styles.genderOption, profile.gender === option.value && styles.genderOptionSelected]}
                       onPress={() => setField('gender', option.value)}
                     >
-                      {profile.gender === option.value && (
-                        <GradientView style={[StyleSheet.absoluteFill, { borderRadius: radius.md }]} />
-                      )}
                       <Text style={[styles.genderOptionText, profile.gender === option.value && styles.genderOptionTextSelected]}>
                         {option.label}
                       </Text>
@@ -340,9 +329,9 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
           <TouchableOpacity style={styles.cancelButton} onPress={handleCancel} disabled={loading}>
             <Text style={styles.cancelText}>{t('cancel')}</Text>
           </TouchableOpacity>
-          <GradientButton style={[styles.saveButton, loading && { opacity: 0.6 }]} onPress={saveProfile} disabled={loading}>
+          <TouchableOpacity style={[styles.saveButton, loading && { opacity: 0.6 }]} onPress={saveProfile} disabled={loading}>
             <Text style={styles.saveText}>{loading ? t('saving') : t('save')}</Text>
-          </GradientButton>
+          </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
 
@@ -398,7 +387,7 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
               <TouchableOpacity style={styles.cancelButton} onPress={() => setDobPickerVisible(false)}>
                 <Text style={styles.cancelText}>{t('cancel')}</Text>
               </TouchableOpacity>
-              <GradientButton
+              <TouchableOpacity
                 style={styles.saveButton}
                 onPress={() => {
                   setField('dateOfBirth', formatDate(dobDraft));
@@ -406,7 +395,7 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
                 }}
               >
                 <Text style={styles.saveText}>{t('save')}</Text>
-              </GradientButton>
+              </TouchableOpacity>
             </View>
           </View>
         </View>

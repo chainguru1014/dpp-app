@@ -17,8 +17,6 @@ import VectorIcon from 'react-native-vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../config/api';
 import AppLayout from '../components/AppLayout';
-import GradientButton from '../components/GradientButton';
-import GradientView from '../components/GradientView';
 import { useI18n } from '../i18n/I18nContext';
 import { useIsFocused } from '@react-navigation/native';
 import { colors, radius, spacing, shadow } from '../theme';
@@ -561,9 +559,6 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
                 style={[styles.manualChip, manualType === opt.value && styles.manualChipActive]}
                 onPress={() => setManualType(opt.value)}
               >
-                {manualType === opt.value && (
-                  <GradientView style={[StyleSheet.absoluteFill, { borderRadius: radius.pill }]} />
-                )}
                 <Text style={[styles.manualChipText, manualType === opt.value && styles.manualChipTextActive]}>
                   {t(opt.labelKey)}
                 </Text>
@@ -581,13 +576,13 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
             editable={!loading}
             onSubmitEditing={submitManualEntry}
           />
-          <GradientButton
+          <TouchableOpacity
             style={[styles.manualSubmit, (!manualValue.trim() || loading) && styles.manualSubmitDisabled]}
             onPress={submitManualEntry}
             disabled={!manualValue.trim() || loading}
           >
             <Text style={styles.photoScanButtonText}>{loading ? t('scanManualChecking') : t('scanManualCheck')}</Text>
-          </GradientButton>
+          </TouchableOpacity>
         </View>
       )}
     </View>
@@ -720,9 +715,9 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
           <View style={styles.helpCard}>
             <Text style={styles.helpTitle}>{t('scannerScanHint')}</Text>
             <Text style={styles.helpBody}>{t('scanHelpBody')}</Text>
-            <GradientButton style={styles.helpCloseButton} onPress={() => setHelpVisible(false)} activeOpacity={0.8}>
+            <TouchableOpacity style={styles.helpCloseButton} onPress={() => setHelpVisible(false)} activeOpacity={0.8}>
               <Text style={styles.helpCloseButtonText}>{t('close')}</Text>
-            </GradientButton>
+            </TouchableOpacity>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -778,11 +773,11 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
             <Image source={require('../assets/qr-code.png')} style={styles.photoScanIcon} resizeMode="contain" />
             <Text style={styles.photoScanTitle}>{t('photoScanTitle')}</Text>
             <Text style={styles.photoScanSubtitle}>{t('photoScanSubtitle')}</Text>
-            <GradientButton style={styles.photoScanButton} onPress={openPhotoScan} disabled={loading}>
+            <TouchableOpacity style={styles.photoScanButton} onPress={openPhotoScan} disabled={loading}>
               <Text style={styles.photoScanButtonText}>
                 {loading ? t('loading') : t('photoScanButton')}
               </Text>
-            </GradientButton>
+            </TouchableOpacity>
             {loading && <ActivityIndicator size="small" color={colors.accent} style={{ marginTop: 14 }} />}
           </View>
           {renderManualEntry(true)}
@@ -877,7 +872,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
           </View>
           <Text style={styles.stateTitle}>{t('qrScannerUnavailable')}</Text>
           {isNativeImageScanAvailable() && (
-            <GradientButton
+            <TouchableOpacity
               style={[styles.photoScanButton, { marginTop: spacing.lg }]}
               onPress={pickNativePhotoAndScan}
               disabled={loading}
@@ -885,7 +880,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
               <Text style={styles.photoScanButtonText}>
                 {loading ? t('loading') : t('photoScanButton')}
               </Text>
-            </GradientButton>
+            </TouchableOpacity>
           )}
         </View>
       </View>

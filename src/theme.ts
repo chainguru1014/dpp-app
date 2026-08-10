@@ -97,12 +97,7 @@ export const shadow = (level: 1 | 2 | 3 = 1) => {
 
 const isWeb = Platform.OS === 'web';
 
-/**
- * Web-only CSS gradients (no-op on native — react-native-web renders these
- * as real CSS `background-image`; the native app instead uses GradientView /
- * GradientButton, which draw the same light-to-dark diagonal via
- * react-native-svg since RN has no CSS gradient support).
- */
+/** Web-only CSS gradients (no-op on native, where a solid colour is used instead). */
 export const gradients = {
   hero: isWeb ? ({ backgroundImage: `linear-gradient(135deg, ${colors.headerLight} 0%, ${colors.header} 100%)` } as any) : null,
   header: isWeb ? ({ backgroundImage: `linear-gradient(135deg, ${colors.headerLight} 0%, ${colors.header} 100%)` } as any) : null,

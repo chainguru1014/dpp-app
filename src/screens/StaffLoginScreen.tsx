@@ -13,7 +13,6 @@ import {
   Dimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import GradientButton from '../components/GradientButton';
 import { API_BASE_URL } from '../config/api';
 import { colors, spacing, radius, shadow } from '../theme';
 import AudienceToggle from '../components/AudienceToggle';
@@ -157,9 +156,9 @@ export default function StaffLoginScreen({ navigation, onLogin }: any) {
                     <Text style={styles.errorText}>{error}</Text>
                   </View>
                 )}
-                <GradientButton style={[styles.button, requesting && styles.buttonDisabled]} onPress={handleSendCode} disabled={requesting}>
+                <TouchableOpacity style={[styles.button, requesting && styles.buttonDisabled]} onPress={handleSendCode} disabled={requesting}>
                   {requesting ? <ActivityIndicator color={colors.white} /> : <Text style={styles.buttonText}>Send code</Text>}
-                </GradientButton>
+                </TouchableOpacity>
               </>
             ) : (
               <>
@@ -179,9 +178,9 @@ export default function StaffLoginScreen({ navigation, onLogin }: any) {
                     <Text style={styles.errorText}>{error}</Text>
                   </View>
                 )}
-                <GradientButton style={[styles.button, verifying && styles.buttonDisabled]} onPress={handleVerifyCode} disabled={verifying || requesting}>
+                <TouchableOpacity style={[styles.button, verifying && styles.buttonDisabled]} onPress={handleVerifyCode} disabled={verifying || requesting}>
                   {verifying ? <ActivityIndicator color={colors.white} /> : <Text style={styles.buttonText}>Verify</Text>}
-                </GradientButton>
+                </TouchableOpacity>
                 <TouchableOpacity style={styles.linkButton} onPress={handleResendCode} disabled={verifying || requesting || resendCooldown > 0}>
                   <Text style={[styles.linkText, resendCooldown > 0 && styles.linkTextDisabled]}>
                     {resendCooldown > 0 ? `Resend code (${resendCooldown}s)` : 'Resend code'}

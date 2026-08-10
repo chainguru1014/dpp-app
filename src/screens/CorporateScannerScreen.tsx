@@ -15,7 +15,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused } from '@react-navigation/native';
 import VectorIcon from 'react-native-vector-icons/MaterialIcons';
 import AppLayout from '../components/AppLayout';
-import GradientButton from '../components/GradientButton';
 import { useI18n } from '../i18n/I18nContext';
 import { API_BASE_URL } from '../config/api';
 import { colors, radius, spacing, shadow } from '../theme';
@@ -407,7 +406,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
             <Text style={styles.unrecognizedText}>{t('corpCodeUnrecognized')}</Text>
           )}
 
-          <GradientButton
+          <TouchableOpacity
             style={[styles.captureButton, (!liveCode || capturing) && styles.captureButtonDisabled]}
             onPress={handleCapture}
             disabled={!liveCode || capturing}
@@ -420,7 +419,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                 <Text style={styles.captureButtonText}>{t('corpCaptureButton')}</Text>
               </>
             )}
-          </GradientButton>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -429,9 +428,9 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
           <View style={styles.helpCard}>
             <Text style={styles.helpTitle}>{t('scannerScanHint')}</Text>
             <Text style={styles.helpBody}>{t('scanHelpBody')}</Text>
-            <GradientButton style={styles.helpCloseButton} onPress={() => setHelpVisible(false)} activeOpacity={0.8}>
+            <TouchableOpacity style={styles.helpCloseButton} onPress={() => setHelpVisible(false)} activeOpacity={0.8}>
               <Text style={styles.helpCloseButtonText}>{t('close')}</Text>
-            </GradientButton>
+            </TouchableOpacity>
           </View>
         </TouchableOpacity>
       </Modal>
