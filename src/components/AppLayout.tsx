@@ -648,11 +648,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: 'rgba(255,255,255,0.16)',
   },
-  // Back button specifically: solid blue circle (not the translucent-white
-  // treatment other top-bar icons use).
+  // Back button: just the icon, no filled circle behind it.
   backButtonCircle: {
     borderRadius: 16,
-    backgroundColor: colors.primary,
   },
   topBarIcon: {
     width: 20,
@@ -744,6 +742,7 @@ const styles = StyleSheet.create({
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingTop: 16,
   },
   bottomTabSelected: {},
   // Short centered indicator (replaces a full-width top border) shown above
