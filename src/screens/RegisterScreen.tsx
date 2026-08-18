@@ -17,6 +17,8 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../config/api';
 import { COUNTRIES } from '../constants/countries';
+import GradientButton from '../components/GradientButton';
+import GradientView from '../components/GradientView';
 import { useI18n } from '../i18n/I18nContext';
 import { colors, spacing, radius, shadow } from '../theme';
 
@@ -227,6 +229,9 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
               <View style={styles.userTypeButtons}>
                 {(['client', 'agent'] as const).map((type) => (
                   <TouchableOpacity key={type} style={[styles.userTypeButton, userType === type && styles.userTypeButtonActive]} onPress={() => setUserType(type)}>
+                    {userType === type && (
+                      <GradientView style={[StyleSheet.absoluteFill, { borderRadius: radius.md }]} />
+                    )}
                     <Text style={[styles.userTypeButtonText, userType === type && styles.userTypeButtonTextActive]}>{type === 'client' ? t('client') : t('agent')}</Text>
                   </TouchableOpacity>
                 ))}
@@ -249,6 +254,9 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
                         ]}
                         onPress={() => setField('gender', option.value)}
                       >
+                        {form.gender === option.value && (
+                          <GradientView style={[StyleSheet.absoluteFill, { borderRadius: radius.md }]} />
+                        )}
                         <Text
                           style={[
                             styles.genderOptionText,
@@ -286,6 +294,9 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
                         ]}
                         onPress={() => setField('gender', option.value)}
                       >
+                        {form.gender === option.value && (
+                          <GradientView style={[StyleSheet.absoluteFill, { borderRadius: radius.md }]} />
+                        )}
                         <Text
                           style={[
                             styles.genderOptionText,
@@ -320,9 +331,9 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
 
             {/* Fixed footer — stays below the scrolling fields. */}
             <View style={styles.cardFooter}>
-              <TouchableOpacity style={[styles.button, loading && styles.buttonDisabled]} onPress={handleCompleteProfile} disabled={loading}>
+              <GradientButton style={[styles.button, loading && styles.buttonDisabled]} onPress={handleCompleteProfile} disabled={loading}>
                 <Text style={styles.buttonText}>{loading ? 'Saving...' : 'Save & Continue'}</Text>
-              </TouchableOpacity>
+              </GradientButton>
 
               <TouchableOpacity style={styles.linkButton} onPress={handleCancel}>
                 <Text style={styles.linkText}>Cancel and sign out</Text>
@@ -386,7 +397,7 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
               <TouchableOpacity style={styles.cancelButton} onPress={() => setDobPickerVisible(false)}>
                 <Text style={styles.cancelButtonText}>{t('cancel')}</Text>
               </TouchableOpacity>
-              <TouchableOpacity
+              <GradientButton
                 style={styles.button}
                 onPress={() => {
                   setField('dateOfBirth', formatDate(dobDraft));
@@ -394,7 +405,7 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
                 }}
               >
                 <Text style={styles.buttonText}>{t('save')}</Text>
-              </TouchableOpacity>
+              </GradientButton>
             </View>
           </View>
         </View>

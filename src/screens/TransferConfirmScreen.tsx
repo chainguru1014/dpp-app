@@ -11,6 +11,8 @@ import {
 } from 'react-native';
 import { API_BASE_URL } from '../config/api';
 import AppLayout from '../components/AppLayout';
+import GradientButton from '../components/GradientButton';
+import GradientView from '../components/GradientView';
 import { useI18n } from '../i18n/I18nContext';
 import { colors, radius, spacing, shadow } from '../theme';
 
@@ -171,6 +173,9 @@ export default function TransferConfirmScreen({ route, navigation, user, onLogou
                     disabled={!isPending}
                     onPress={() => setMethod(m)}
                   >
+                    {method === m && (
+                      <GradientView style={[StyleSheet.absoluteFill, { borderRadius: radius.pill }]} />
+                    )}
                     <Text style={[styles.methodChipText, method === m && styles.methodChipTextActive]}>
                       {t(`method_${m}` as any)}
                     </Text>
@@ -186,9 +191,9 @@ export default function TransferConfirmScreen({ route, navigation, user, onLogou
             {!isAuthenticated ? (
               <View style={styles.card}>
                 <Text style={styles.loginNote}>{t('loginToConfirm')}</Text>
-                <TouchableOpacity style={styles.primaryButton} onPress={goLogin}>
+                <GradientButton style={styles.primaryButton} onPress={goLogin}>
                   <Text style={styles.primaryButtonText}>{t('login')}</Text>
-                </TouchableOpacity>
+                </GradientButton>
               </View>
             ) : isPending ? (
               <View style={styles.actionsRow}>
@@ -199,7 +204,7 @@ export default function TransferConfirmScreen({ route, navigation, user, onLogou
                 >
                   <Text style={styles.secondaryButtonText}>{t('rejectTransfer')}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
+                <GradientButton
                   style={[styles.primaryButton, { flex: 1 }, submitting && { opacity: 0.6 }]}
                   disabled={submitting}
                   onPress={() => submit('confirm')}
@@ -207,7 +212,7 @@ export default function TransferConfirmScreen({ route, navigation, user, onLogou
                   <Text style={styles.primaryButtonText}>
                     {submitting ? t('loading') : t('confirmTransfer')}
                   </Text>
-                </TouchableOpacity>
+                </GradientButton>
               </View>
             ) : null}
           </>

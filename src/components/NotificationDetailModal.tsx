@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { API_BASE_URL } from '../config/api';
 import { useI18n } from '../i18n/I18nContext';
+import GradientButton from './GradientButton';
 import { colors, spacing, radius, shadow } from '../theme';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -161,13 +162,13 @@ export default function NotificationDetailModal({ visible, notification, user, o
                       >
                         <Text style={styles.declineText}>{t('decline')}</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity
+                      <GradientButton
                         style={[styles.btn, styles.approveBtn, submitting && { opacity: 0.6 }]}
                         onPress={() => act('confirm')}
                         disabled={submitting}
                       >
                         <Text style={styles.approveText}>{submitting ? '…' : t('approve')}</Text>
-                      </TouchableOpacity>
+                      </GradientButton>
                     </View>
                   ) : (
                     !resultMsg && <Text style={styles.handledMsg}>{t('transferAlreadyHandled')}</Text>

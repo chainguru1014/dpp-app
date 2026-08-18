@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import VectorIcon from 'react-native-vector-icons/MaterialIcons';
 import FeatherIcon from 'react-native-vector-icons/Feather';
 import AppLayout from '../components/AppLayout';
+import GradientView from '../components/GradientView';
 import { useI18n } from '../i18n/I18nContext';
 import { API_BASE_URL } from '../config/api';
 import { colors, radius, spacing, shadow } from '../theme';
@@ -252,10 +253,13 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
               style={[styles.tab, filter === opt.key && styles.tabActive]}
               onPress={() => setFilter(opt.key)}
             >
+              {filter === opt.key && (
+                <GradientView style={[StyleSheet.absoluteFill, { borderRadius: radius.pill }]} />
+              )}
               <VectorIcon
                 name={opt.icon}
                 size={13}
-                color={filter === opt.key ? colors.primary : colors.muted}
+                color={filter === opt.key ? '#fff' : colors.muted}
                 style={styles.tabIcon}
               />
               <Text style={[styles.tabText, filter === opt.key && styles.tabTextActive]}>{opt.label}</Text>
@@ -284,7 +288,7 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
                     <Text style={styles.rowTime}>{new Date(doc.capturedAt).toLocaleTimeString()}</Text>
                   </View>
                   <View style={[styles.badge, index === 0 ? styles.badgeLatest : styles.badgeSaved]}>
-                    <Text style={styles.badgeTextOnColor}>
+                    <Text style={index === 0 ? styles.badgeLatestText : styles.badgeTextOnColor}>
                       {index === 0 ? t('corpLatestBadge') : t('corpSavedBadge')}
                     </Text>
                   </View>
@@ -402,9 +406,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   tabIcon: { marginRight: 4 },
-  tabActive: { backgroundColor: colors.surfaceAlt, borderColor: colors.primary },
+  // GradientView paints the active fill — this just clears the neutral
+  // border/background so it doesn't show through underneath.
+  tabActive: { backgroundColor: 'transparent', borderColor: 'transparent' },
   tabText: { fontSize: 12, color: colors.muted, fontWeight: '600' },
-  tabTextActive: { color: colors.primary },
+  tabTextActive: { color: '#fff' },
   emptyText: { textAlign: 'center', color: colors.muted, marginTop: spacing.xxl },
   row: {
     backgroundColor: colors.surface,
@@ -419,8 +425,10 @@ const styles = StyleSheet.create({
   rowInfo: { flex: 1 },
   rowRef: { fontSize: 14, fontWeight: '600', color: colors.text },
   rowTime: { fontSize: 12, color: colors.muted },
-  badge: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, marginRight: spacing.sm },
-  badgeLatest: { backgroundColor: colors.primary },
+  badge: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, marginRight: spacing.sm, borderWidth: 1, borderColor: 'transparent' },
+  // Latest: outlined (not filled) so it reads distinct from the filled-green Saved badge.
+  badgeLatest: { backgroundColor: colors.surface, borderColor: colors.primary },
+  badgeLatestText: { fontSize: 11, color: colors.primary, fontWeight: '600' },
   badgeSaved: { backgroundColor: colors.success },
   badgeText: { fontSize: 11, color: colors.muted, fontWeight: '600' },
   badgeTextOnColor: { fontSize: 11, color: '#fff', fontWeight: '600' },

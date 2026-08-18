@@ -22,6 +22,7 @@ import { useI18n } from '../i18n/I18nContext';
 import NotificationPanel from './NotificationPanel';
 import NotificationDetailModal from './NotificationDetailModal';
 import NotificationBadge from './NotificationBadge';
+import GradientButton from './GradientButton';
 import { colors, radius, shadow } from '../theme';
 
 interface AppLayoutProps {
@@ -313,7 +314,7 @@ export default function AppLayout({
           <Rect x={0} y={0} width="100%" height="100%" fill={`url(#${gradientId})`} />
         </Svg>
         {showBackButton ? (
-          <TouchableOpacity
+          <GradientButton
             onPress={handleBack}
             style={[styles.iconButton, styles.backButtonCircle]}
             activeOpacity={0.7}
@@ -323,7 +324,7 @@ export default function AppLayout({
               style={styles.topBarIcon}
               resizeMode="contain"
             />
-          </TouchableOpacity>
+          </GradientButton>
         ) : (
           <View style={[styles.iconButton, styles.logoBadge]}>
             <Image
@@ -742,7 +743,7 @@ const styles = StyleSheet.create({
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 16,
+    paddingTop: 11,
   },
   bottomTabSelected: {},
   // Short centered indicator (replaces a full-width top border) shown above
