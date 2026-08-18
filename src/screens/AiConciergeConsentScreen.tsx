@@ -349,13 +349,16 @@ const styles = StyleSheet.create({
   },
   featureRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: spacing.md,
   },
   featureIconCircle: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: colors.surfaceAlt,
+    // A tinted navy (not the near-white surfaceAlt) so the circle actually
+    // reads as a badge against the card's own light-gray background.
+    backgroundColor: 'rgba(27,79,114,0.14)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.sm,

@@ -15,6 +15,10 @@ type Props = ViewProps & {
  * react-native-svg — the same technique AppLayout's top bar already uses,
  * since RN has no CSS gradient support. Use GradientButton instead for
  * anything tappable.
+ *
+ * Clips via a nested `overflow: hidden` layer rather than the SVG rect's own
+ * `rx`, so the shape stays pixel-identical to the original flat-color
+ * version — the outer view keeps the caller's full original style untouched.
  */
 export default function GradientView({ style, children, from = colors.headerLight, to = colors.primary, angle = 'diagonal', ...rest }: Props) {
   const id = useRef(`grad-${Math.random().toString(36).slice(2)}`).current;
@@ -23,15 +27,17 @@ export default function GradientView({ style, children, from = colors.headerLigh
 
   return (
     <View style={style} {...rest}>
-      <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
-        <Defs>
-          <LinearGradient id={id} x1="0%" y1="0%" x2={x2} y2={y2}>
-            <Stop offset="0%" stopColor={from} stopOpacity={1} />
-            <Stop offset="100%" stopColor={to} stopOpacity={1} />
-          </LinearGradient>
-        </Defs>
-        <Rect x={0} y={0} width="100%" height="100%" rx={flat.borderRadius || 0} fill={`url(#${id})`} />
-      </Svg>
+      <View style={[StyleSheet.absoluteFill, { borderRadius: flat.borderRadius, overflow: 'hidden' }]} pointerEvents="none">
+        <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
+          <Defs>
+            <LinearGradient id={id} x1="0%" y1="0%" x2={x2} y2={y2}>
+              <Stop offset="0%" stopColor={from} stopOpacity={1} />
+              <Stop offset="100%" stopColor={to} stopOpacity={1} />
+            </LinearGradient>
+          </Defs>
+          <Rect x={0} y={0} width="100%" height="100%" fill={`url(#${id})`} />
+        </Svg>
+      </View>
       {children}
     </View>
   );
