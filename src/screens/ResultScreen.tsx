@@ -145,6 +145,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
   const { height: windowHeight } = useWindowDimensions();
   const [productData, setProductData] = useState<any>(route?.params?.productData || {});
   const [expandedSections, setExpandedSections] = useState<{ [key: number]: boolean }>({});
+  const [showProductInfo, setShowProductInfo] = useState(false);
   const [showSecurityCheck, setShowSecurityCheck] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
@@ -1434,9 +1435,10 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
           ) : null}
         </View>
 
-        {/* Primary action: Buy (or Transfer when the user owns this product).
-            The buy state follows the transfer: Buy → Requested (pending) →
-            Owned (approved); a declined/none request stays Buy. */}
+        {/* Primary row: Like / Dislike / Buy (or Transfer when the user owns
+            this product). The buy state follows the transfer: Buy →
+            Requested (pending) → Owned (approved); a declined/none request
+            stays Buy. */}
         {(() => {
           const isPending = !isOwnedMode && transferStatus === 'pending' && transferRequestSent;
           const isOwned = !isOwnedMode && transferStatus === 'confirmed';
@@ -1449,76 +1451,85 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
             ? t('owned')
             : t('buy');
           return (
-        <TouchableOpacity
-          style={[
-            styles.primaryActionButton,
-            isOwnedMode && styles.primaryActionButtonTransfer,
-            buyLocked && styles.primaryActionButtonDisabled,
-          ]}
-          onPress={isOwnedMode ? openOwnerTransfer : handleBuy}
-          activeOpacity={0.85}
-          disabled={buyLocked}
-        >
-          <Image
-            source={isOwnedMode ? require('../assets/connection.png') : require('../assets/cart.png')}
-            style={styles.primaryActionIcon}
-          />
-          <Text style={styles.primaryActionText}>
-            {label}
-          </Text>
-          {isOwnedMode && ownedQuantity != null && (
-            <Text style={styles.primaryActionBadge}>{`× ${ownedQuantity}`}</Text>
-          )}
-        </TouchableOpacity>
+            <View style={styles.actionButtonsRow}>
+              <TouchableOpacity
+                style={[styles.actionPill, selectedFeedback === 'like' && styles.actionPillActive]}
+                onPress={handleLike}
+              >
+                <Image
+                  source={require('../assets/like.png')}
+                  style={[styles.actionPillIcon, selectedFeedback === 'like' && styles.actionPillIconActive]}
+                />
+                <Text style={[styles.actionPillText, selectedFeedback === 'like' && styles.actionPillTextActive]}>
+                  {t('like')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionPill, selectedFeedback === 'dislike' && styles.actionPillActive]}
+                onPress={handleDislike}
+              >
+                <Image
+                  source={require('../assets/dislike.png')}
+                  style={[styles.actionPillIcon, selectedFeedback === 'dislike' && styles.actionPillIconActive]}
+                />
+                <Text style={[styles.actionPillText, selectedFeedback === 'dislike' && styles.actionPillTextActive]}>
+                  {t('dislike')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionPill, buyLocked && styles.actionPillDisabled]}
+                onPress={isOwnedMode ? openOwnerTransfer : handleBuy}
+                activeOpacity={0.85}
+                disabled={buyLocked}
+              >
+                <Image
+                  source={isOwnedMode ? require('../assets/connection.png') : require('../assets/cart.png')}
+                  style={styles.actionPillIcon}
+                />
+                <Text style={styles.actionPillText}>
+                  {label}
+                  {isOwnedMode && ownedQuantity != null ? ` ×${ownedQuantity}` : ''}
+                </Text>
+              </TouchableOpacity>
+            </View>
           );
         })()}
 
-        {/* Secondary feedback: Like / Dislike */}
-        <View style={styles.likeDislikeContainer}>
+        {/* Product Information gate: hidden by default, shows the accordion
+            sections below once tapped (and disappears itself). */}
+        {!showProductInfo ? (
           <TouchableOpacity
-            style={[styles.likeDislikeButton, selectedFeedback === 'like' && styles.likeDislikeButtonActive]}
-            onPress={handleLike}
+            style={styles.productInfoButton}
+            onPress={() => setShowProductInfo(true)}
+            activeOpacity={0.85}
           >
-            <Image source={require('../assets/like.png')} style={styles.actionIcon} />
-            <Text style={[styles.likeDislikeText, selectedFeedback === 'like' && styles.likeDislikeTextActive]}>
-              {t('like')}
-            </Text>
+            <Text style={styles.productInfoButtonText}>{t('resultProductInformation')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.likeDislikeButton, selectedFeedback === 'dislike' && styles.likeDislikeButtonDisliked]}
-            onPress={handleDislike}
-          >
-            <Image source={require('../assets/dislike.png')} style={styles.actionIcon} />
-            <Text style={[styles.likeDislikeText, selectedFeedback === 'dislike' && styles.likeDislikeTextActive]}>
-              {t('dislike')}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Accordion Sections */}
-        {sections.map((section) => (
-          <View key={section.id} style={styles.accordionSection}>
-            <TouchableOpacity
-              style={styles.accordionHeader}
-              onPress={() => toggleSection(section.id)}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.accordionHeaderText}>{section.title}</Text>
-              <View style={styles.accordionToggleBadge}>
-                <Icon
-                  name={expandedSections[section.id] ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
-                  size={22}
-                  color={'#fff'}
-                />
-              </View>
-            </TouchableOpacity>
-            {expandedSections[section.id] && (
-              <View style={styles.accordionContent}>
-                {section.id === 0 ? renderProductDetails() : renderSectionContent(section.id)}
-              </View>
-            )}
-          </View>
-        ))}
+        ) : (
+          sections.map((section) => (
+            <View key={section.id} style={styles.accordionSection}>
+              <TouchableOpacity
+                style={styles.accordionHeader}
+                onPress={() => toggleSection(section.id)}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.accordionHeaderText}>{section.title}</Text>
+                <View style={styles.accordionToggleBadge}>
+                  <Icon
+                    name={expandedSections[section.id] ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+                    size={22}
+                    color={'#fff'}
+                  />
+                </View>
+              </TouchableOpacity>
+              {expandedSections[section.id] && (
+                <View style={styles.accordionContent}>
+                  {section.id === 0 ? renderProductDetails() : renderSectionContent(section.id)}
+                </View>
+              )}
+            </View>
+          ))
+        )}
       </ScrollView>
       {/* Keep modal outside ScrollView to avoid RN web content-layer paint issues */}
       <Modal
@@ -2237,85 +2248,68 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 5,
   },
-  primaryActionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'stretch',
-    marginTop: 8,
-    marginBottom: 10,
-    marginHorizontal: 20,
-    paddingVertical: 18,
-    paddingHorizontal: 20,
-    borderRadius: radius.lg,
-    backgroundColor: colors.navy,
-    ...shadow(3),
-  },
-  primaryActionButtonTransfer: {
-    backgroundColor: colors.navy,
-  },
-  primaryActionButtonDisabled: {
-    backgroundColor: colors.muted,
-    opacity: 0.6,
-  },
-  primaryActionIcon: {
-    width: 26,
-    height: 26,
-    tintColor: '#fff',
-    marginRight: 10,
-  },
-  primaryActionText: {
-    fontSize: 18,
-    fontWeight: '400',
-    color: '#fff',
-    letterSpacing: 0.5,
-  },
-  primaryActionBadge: {
-    marginLeft: 10,
-    fontSize: 14,
-    fontWeight: '400',
-    color: '#fff',
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    paddingHorizontal: 10,
-    paddingVertical: 2,
-    borderRadius: radius.pill,
-    overflow: 'hidden',
-  },
-  likeDislikeContainer: {
+  // Like / Dislike / Buy row: three equal pills side by side. Unselected
+  // pills are outlined/white; Like fills solid navy when selected; Buy
+  // (or Transfer, once owned) keeps its own onPress/disabled logic but
+  // shares the same outlined look, dimming when locked.
+  actionButtonsRow: {
     flexDirection: 'row',
     width: '100%',
     paddingHorizontal: 20,
-    paddingBottom: 12,
+    marginTop: 8,
+    marginBottom: 10,
+    gap: 8,
   },
-  likeDislikeButton: {
+  actionPill: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 12,
-    marginHorizontal: 4,
     borderRadius: radius.md,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     ...shadow(1),
   },
-  likeDislikeButtonActive: {
+  actionPillActive: {
     backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
-  likeDislikeButtonDisliked: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+  actionPillDisabled: {
+    opacity: 0.5,
   },
-  likeDislikeText: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: colors.muted,
-    fontWeight: '400',
+  actionPillIcon: {
+    width: 18,
+    height: 18,
+    marginRight: 6,
+    tintColor: colors.text,
   },
-  likeDislikeTextActive: {
+  actionPillIconActive: {
+    tintColor: '#fff',
+  },
+  actionPillText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  actionPillTextActive: {
     color: '#fff',
+  },
+  // Gate button shown instead of the accordion sections until tapped.
+  productInfoButton: {
+    marginHorizontal: 20,
+    marginBottom: 16,
+    borderRadius: radius.lg,
+    paddingVertical: 16,
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    ...shadow(2),
+  },
+  productInfoButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
   cameraContainer: {
     flex: 1,

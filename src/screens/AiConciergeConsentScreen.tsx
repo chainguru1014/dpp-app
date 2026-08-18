@@ -13,8 +13,32 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 import { API_BASE_URL } from '../config/api';
 import { colors, spacing, radius, shadow } from '../theme';
+
+const FEATURES = [
+  {
+    icon: 'qr-code-2',
+    title: 'Personalized just for you',
+    description: "Your AI Concierge learns from your scans, favorites, and browsing habits to recommend products and brands you'll love.",
+  },
+  {
+    icon: 'shield',
+    title: 'Your privacy is our priority',
+    description: 'Your real identity is never saved. Your scans and preferences are linked only to your unique profile, and to what you ask or need help.',
+  },
+  {
+    icon: 'people',
+    title: 'Smarter recommendations',
+    description: "From styling trends to care tips, you'll receive relevant information about your closet and preferences to improve product recommendations and services.",
+  },
+  {
+    icon: 'lock',
+    title: "You're in control",
+    description: 'You can update your preferences and manage data permissions anytime in your account settings.',
+  },
+];
 import { getStoredAiConciergeConsent, setStoredAiConciergeConsent } from '../utils/aiConciergeConsent';
 
 // The post-login consent gate — LoginScreen/RegisterScreen route here once,
@@ -149,18 +173,29 @@ export default function AiConciergeConsentScreen({ navigation, route, onLogin }:
               <Text style={styles.welcome}>Welcome</Text>
               <Text style={styles.title}>Meet Your AI Concierge</Text>
 
-              <Text style={styles.sectionTitle}>Scan the products you like, discover what you like next.</Text>
-              <Text style={styles.paragraph}>
-                Your AI Concierge learns your preferences and recommends products you'll love—across brands.
-              </Text>
-              <Text style={styles.paragraph}>
-                Your preferences and scan history may also be shared with participating brands and retailers
-                to deliver more relevant recommendations and help improve products and services.
-              </Text>
-              <Text style={styles.paragraph}>
-                Your profile cannot be used to identify you personally. Your scans and preferences are linked
-                only to your in-app profile—not to your real identity.
-              </Text>
+              <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <View style={styles.dividerOrnament} />
+                <View style={styles.dividerLine} />
+              </View>
+
+              {FEATURES.map((feature) => (
+                <View key={feature.icon} style={styles.featureRow}>
+                  <View style={styles.featureIconCircle}>
+                    <Icon name={feature.icon} size={20} color={colors.primary} />
+                  </View>
+                  <View style={styles.featureTextWrap}>
+                    <Text style={styles.featureTitle}>{feature.title}</Text>
+                    <Text style={styles.featureDescription}>{feature.description}</Text>
+                  </View>
+                </View>
+              ))}
+
+              <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <View style={styles.dividerOrnament} />
+                <View style={styles.dividerLine} />
+              </View>
 
               {/* Placed after all the explanatory content, on purpose — the
                   user should read what they're agreeing to before choosing.
@@ -289,18 +324,49 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: spacing.sm,
   },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.heading,
-    marginTop: spacing.sm,
-    marginBottom: spacing.xs,
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: spacing.sm,
   },
-  paragraph: {
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.border,
+  },
+  dividerOrnament: {
+    width: 6,
+    height: 6,
+    marginHorizontal: spacing.sm,
+    backgroundColor: colors.border,
+    transform: [{ rotate: '45deg' }],
+  },
+  featureRow: {
+    flexDirection: 'row',
+    marginBottom: spacing.md,
+  },
+  featureIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.sm,
+  },
+  featureTextWrap: {
+    flex: 1,
+  },
+  featureTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.heading,
+    marginBottom: 2,
+  },
+  featureDescription: {
     fontSize: 12,
     lineHeight: 16,
-    color: colors.text,
-    marginBottom: spacing.xs,
+    color: colors.muted,
   },
   consentLabel: {
     fontSize: 12,
