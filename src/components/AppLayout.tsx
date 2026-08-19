@@ -742,7 +742,6 @@ const styles = StyleSheet.create({
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 6,
   },
   bottomTabSelected: {},
   // Short centered indicator (replaces a full-width top border) shown above
