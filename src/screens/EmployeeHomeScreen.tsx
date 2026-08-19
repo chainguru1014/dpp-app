@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AppLayout from '../components/AppLayout';
-import GradientView from '../components/GradientView';
 import { useI18n } from '../i18n/I18nContext';
 import { API_BASE_URL } from '../config/api';
 import { colors, spacing, radius, shadow } from '../theme';
@@ -99,9 +98,9 @@ export default function EmployeeHomeScreen({ navigation, user, onLogout }: any) 
                   onPress={() => handleSelectStep(index)}
                 >
                   {selected ? (
-                    <GradientView style={[styles.tileNumberPart, styles.tileNumberPartSelected]}>
+                    <View style={[styles.tileNumberPart, styles.tileNumberPartSelected]}>
                       <Text style={[styles.tileNumber, styles.tileNumberSelected]}>{index + 1}</Text>
-                    </GradientView>
+                    </View>
                   ) : (
                     <View style={styles.tileNumberPart}>
                       <Text style={styles.tileNumber}>{index + 1}</Text>
@@ -146,7 +145,7 @@ const styles = StyleSheet.create({
     ...shadow(1),
   },
   tileSelected: {
-    borderColor: colors.primary,
+    borderColor: '#4A8DEB',
     borderWidth: 2,
   },
   tileNumberPart: {
@@ -156,9 +155,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceAlt,
   },
   tileNumberPartSelected: {
-    backgroundColor: colors.primary,
+    backgroundColor: '#4A8DEB',
   },
-  tileNumber: { fontSize: 15, fontWeight: '700', color: colors.primary },
+  tileNumber: { fontSize: 15, fontWeight: '700', color: '#4A8DEB' },
   tileNumberSelected: { color: '#fff' },
   tileTextPart: {
     flex: 1,

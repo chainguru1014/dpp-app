@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   FlatList,
   Image,
-  Dimensions,
+  useWindowDimensions,
   ScrollView,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -16,11 +16,17 @@ import { useI18n } from '../i18n/I18nContext';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, spacing, radius, ui, shadow } from '../theme';
 
-const { width, height: screenHeight } = Dimensions.get('window');
-// Top bar (70) + bottom bar (70) from AppLayout, plus this screen's header (~58).
-const WEB_LIST_HEIGHT = Math.max(320, screenHeight - 70 - 70 - 58);
-// The content area is split into two fixed-height, independently scrolling panels.
-const PANEL_HEIGHT = Math.max(180, Math.floor((WEB_LIST_HEIGHT - 16) / 2));
+// Top bar (70) + bottom bar (70) from AppLayout, plus this screen's header
+// (~58). Derived from useWindowDimensions() inside the component (not a
+// module-level Dimensions.get() snapshot) so it stays correct if the
+// viewport differs from whatever size was current when the JS bundle first
+// loaded (e.g. on web) — a stale/undersized value here made the two panels
+// overflow their flex:1 parent with no way to scroll to the rest.
+const panelHeightFor = (screenHeight: number) => {
+  const webListHeight = Math.max(320, screenHeight - 70 - 70 - 58);
+  // The content area is split into two fixed-height, independently scrolling panels.
+  return Math.max(180, Math.floor((webListHeight - 16) / 2));
+};
 
 interface ScannedProduct {
   _id: string;
@@ -48,6 +54,9 @@ export default function ScannedProductListScreen({
   onLogout,
 }: ScannedProductListScreenProps) {
   const { t } = useI18n();
+  const { width, height: screenHeight } = useWindowDimensions();
+  const PANEL_HEIGHT = panelHeightFor(screenHeight);
+  const itemWidth = (width - 70) / 3;
   const [scannedProducts, setScannedProducts] = useState<ScannedProduct[]>([]);
   const [albumItems, setAlbumItems] = useState<ScannedProduct[]>([]);
   const [ownedProducts, setOwnedProducts] = useState<any[]>([]);
@@ -288,7 +297,7 @@ export default function ScannedProductListScreen({
     const isOwned = item.ownedQuantity != null; // ledger holding vs Bought reaction
     return (
       <TouchableOpacity
-        style={styles.productItem}
+        style={[styles.productItem, { width: itemWidth }]}
         onPress={() => (isOwned ? handleOwnedPress(item) : handleProductPress(item))}
         activeOpacity={0.7}
       >
@@ -358,7 +367,7 @@ export default function ScannedProductListScreen({
     const images = Array.isArray(item.images) ? item.images : [];
     const firstImage = images.length > 0 ? images[0] : null;
     return (
-      <TouchableOpacity style={styles.productItem} onPress={() => handleProductPress(item)} activeOpacity={0.7}>
+      <TouchableOpacity style={[styles.productItem, { width: itemWidth }]} onPress={() => handleProductPress(item)} activeOpacity={0.7}>
         {firstImage ? (
           <Image source={{ uri: getFileUrl(firstImage) }} style={styles.productImage} resizeMode="cover" />
         ) : (
@@ -421,7 +430,7 @@ export default function ScannedProductListScreen({
     const firstImage = images.length > 0 ? images[0] : null;
     return (
       <TouchableOpacity
-        style={styles.productItem}
+        style={[styles.productItem, { width: itemWidth }]}
         onPress={() => handleProductPress(item)}
         activeOpacity={0.7}
       >
@@ -627,14 +636,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     // base typography from ui.screenTitle
   },
-  listContent: {
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.xxl,
-  },
-  list: {
-    flex: 1,
-    minHeight: WEB_LIST_HEIGHT,
-  },
   splitWrap: {
     flex: 1,
     paddingHorizontal: spacing.md,
@@ -690,7 +691,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.lg,
   },
   productItem: {
-    width: (width - 70) / 3,
+    // Width is applied inline at each call site (from live useWindowDimensions()).
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     borderWidth: 1,

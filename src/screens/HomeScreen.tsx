@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator
 import Svg, { Rect } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AppLayout from '../components/AppLayout';
-import GradientView from '../components/GradientView';
 import { useI18n } from '../i18n/I18nContext';
 import { API_BASE_URL } from '../config/api';
 import { colors, radius, spacing, shadow } from '../theme';
@@ -138,11 +137,11 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
                     activeOpacity={0.7}
                   >
                     {selected ? (
-                      <GradientView style={[styles.locationNumberPart, styles.locationNumberPartSelected]}>
+                      <View style={[styles.locationNumberPart, styles.locationNumberPartSelected]}>
                         <Text style={[styles.locationNumberText, styles.locationNumberTextSelected]}>
                           {index + 1}
                         </Text>
-                      </GradientView>
+                      </View>
                     ) : (
                       <View style={styles.locationNumberPart}>
                         <Text style={styles.locationNumberText}>{index + 1}</Text>
@@ -237,7 +236,7 @@ const styles = StyleSheet.create({
     ...shadow(1),
   },
   locationTileSelected: {
-    borderColor: colors.primary,
+    borderColor: '#4A8DEB',
     borderWidth: 2,
   },
   locationNumberPart: {
@@ -247,9 +246,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceAlt,
   },
   locationNumberPartSelected: {
-    backgroundColor: colors.primary,
+    backgroundColor: '#4A8DEB',
   },
-  locationNumberText: { fontSize: 15, fontWeight: '700', color: colors.primary },
+  locationNumberText: { fontSize: 15, fontWeight: '700', color: '#4A8DEB' },
   locationNumberTextSelected: { color: '#fff' },
   locationTextPart: {
     flex: 1,
