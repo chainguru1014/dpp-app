@@ -34,13 +34,11 @@ const LIVENESS_TIMEOUT_MS = 700;
 const RFID_POLL_MS = 1500;
 const RFID_WINDOW_SECONDS = 5;
 
-type CaptureType = 'qr' | 'securityQr' | 'barcode' | 'gs1dl' | 'rfid' | 'nfc';
+type CaptureType = 'qr' | 'barcode' | 'rfid' | 'nfc';
 
 const CAPTURE_TYPES: { key: CaptureType; labelKey: any; icon: string }[] = [
   { key: 'qr', labelKey: 'captureTypeQr', icon: 'qr-code' },
-  { key: 'securityQr', labelKey: 'captureTypeSecurityQr', icon: 'verified-user' },
   { key: 'barcode', labelKey: 'captureTypeBarcode', icon: 'view-week' },
-  { key: 'gs1dl', labelKey: 'captureTypeGs1dl', icon: 'link' },
   { key: 'rfid', labelKey: 'captureTypeRfid', icon: 'wifi-tethering' },
   { key: 'nfc', labelKey: 'captureTypeNfc', icon: 'nfc' },
 ];
@@ -102,7 +100,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   const nativeCameraRef = useRef<CaptureCameraHandle>(null);
   const webScannerRef = useRef<WebCodeScannerHandle>(null);
 
-  const isCameraType = captureType === 'qr' || captureType === 'securityQr' || captureType === 'barcode' || captureType === 'gs1dl';
+  const isCameraType = captureType === 'qr' || captureType === 'barcode';
 
   useEffect(() => {
     (async () => {
@@ -430,7 +428,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
       return;
     }
 
-    // Camera-driven types (qr / securityQr / barcode / gs1dl) — unchanged
+    // Camera-driven types (qr / barcode) — unchanged
     // from the original flow, still gated on liveCode.
     if (!liveCode) return;
     setCapturing(true);
