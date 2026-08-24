@@ -226,6 +226,15 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
     const poll = async () => {
       try {
         const res = await fetch(`${API_BASE_URL}rfid/recent?windowSeconds=${RFID_WINDOW_SECONDS}`);
+        // Explicitly treat any non-2xx (404 if the endpoint isn't deployed
+        // yet, 5xx, etc.) as "no tags" rather than trusting the response
+        // body to happen to be empty — Capture must stay disabled whenever
+        // the RFID API call itself didn't succeed, not just when it
+        // succeeds with zero tags.
+        if (!res.ok) {
+          if (!cancelled) setRfidTags([]);
+          return;
+        }
         const data = await res.json().catch(() => ({}));
         if (!cancelled) setRfidTags(data?.data?.tags || []);
       } catch (err) {
