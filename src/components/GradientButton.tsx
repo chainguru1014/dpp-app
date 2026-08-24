@@ -25,19 +25,27 @@ export default function GradientButton({ style, children, from = colors.headerLi
   const id = useRef(`gbtn-${Math.random().toString(36).slice(2)}`).current;
   const flat = (StyleSheet.flatten(style) || {}) as { borderRadius?: number };
 
+  // The gradient overlay is opaque and paints on top of whatever flat
+  // `backgroundColor` the caller's style has -- that's the point when
+  // enabled, but it means a disabled-state gray (e.g. captureButtonDisabled)
+  // was getting silently painted over too, leaving every GradientButton
+  // looking identically "enabled" no matter what `disabled` was set to.
+  // Skip the gradient while disabled so that flat color actually shows.
   return (
     <TouchableOpacity activeOpacity={activeOpacity} {...rest} style={style}>
-      <View style={[StyleSheet.absoluteFill, { borderRadius: flat.borderRadius, overflow: 'hidden' }]} pointerEvents="none">
-        <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
-          <Defs>
-            <LinearGradient id={id} x1="0%" y1="0%" x2="100%" y2="100%">
-              <Stop offset="0%" stopColor={from} stopOpacity={1} />
-              <Stop offset="100%" stopColor={to} stopOpacity={1} />
-            </LinearGradient>
-          </Defs>
-          <Rect x={0} y={0} width="100%" height="100%" fill={`url(#${id})`} />
-        </Svg>
-      </View>
+      {!rest.disabled && (
+        <View style={[StyleSheet.absoluteFill, { borderRadius: flat.borderRadius, overflow: 'hidden' }]} pointerEvents="none">
+          <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
+            <Defs>
+              <LinearGradient id={id} x1="0%" y1="0%" x2="100%" y2="100%">
+                <Stop offset="0%" stopColor={from} stopOpacity={1} />
+                <Stop offset="100%" stopColor={to} stopOpacity={1} />
+              </LinearGradient>
+            </Defs>
+            <Rect x={0} y={0} width="100%" height="100%" fill={`url(#${id})`} />
+          </Svg>
+        </View>
+      )}
       {children}
     </TouchableOpacity>
   );
