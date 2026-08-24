@@ -18,6 +18,7 @@ type FilterTab = 'newest' | 'all' | 'flagged';
 interface CaptureDoc {
   _id: string;
   refNumber: string;
+  rawValue: string;
   imagePath: string;
   capturedAt: string;
   terminalId: string;
@@ -280,8 +281,12 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
                   onPress={(e) => openDetail(doc, e)}
                   activeOpacity={0.7}
                 >
-                  {!!doc.imagePath && (
+                  {doc.imagePath ? (
                     <Image source={{ uri: `${API_BASE_URL.replace(/\/$/, '')}${doc.imagePath}` }} style={styles.rowImage} />
+                  ) : (doc.identifierType === 'rfid' || doc.identifierType === 'nfc') && (
+                    <View style={styles.rowTagIconBox}>
+                      <VectorIcon name={doc.identifierType === 'rfid' ? 'wifi-tethering' : 'nfc'} size={20} color={colors.primary} />
+                    </View>
                   )}
                   <View style={styles.rowInfo}>
                     <Text style={styles.rowRef} numberOfLines={1}>{doc.refNumber}</Text>
@@ -330,6 +335,9 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
                   value={detailDoc.location?.latitude != null ? `${detailDoc.location.latitude.toFixed(4)}, ${detailDoc.location.longitude?.toFixed(4)}` : '—'}
                 />
                 <DetailRow icon="photo-camera" label={t('corpCapturedViaLabel')} value={detailDoc.identifierType || '—'} />
+                {!detailDoc.imagePath && !!detailDoc.rawValue && (
+                  <DetailRow icon="sell" label={t('corpTagValueLabel')} value={detailDoc.rawValue} />
+                )}
                 <DetailRow icon="tablet-mac" label={t('corpCapturedDeviceLabel')} value={detailDoc.device?.model || '—'} />
               </View>
             )}
@@ -422,6 +430,15 @@ const styles = StyleSheet.create({
   },
   rowHeader: { flexDirection: 'row', alignItems: 'center', padding: spacing.md },
   rowImage: { width: 44, height: 44, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt, marginRight: spacing.md },
+  rowTagIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
   rowInfo: { flex: 1 },
   rowRef: { fontSize: 14, fontWeight: '600', color: colors.text },
   rowTime: { fontSize: 12, color: colors.muted },
