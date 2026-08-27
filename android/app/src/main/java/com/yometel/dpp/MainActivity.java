@@ -1,4 +1,4 @@
-package com.qrauthapp;
+package com.yometel.dpp;
 
 import com.facebook.react.ReactActivity;
 import com.facebook.react.ReactActivityDelegate;

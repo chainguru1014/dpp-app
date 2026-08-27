@@ -7,10 +7,10 @@
 // Google Cloud project (APIs & Services > Credentials):
 //   1. A "Web application" client   -> GOOGLE_WEB_CLIENT_ID
 //   2. An "Android" client          -> GOOGLE_ANDROID_CLIENT_ID
-//      (needs the app's package name `com.qrauthapp` + the SHA-1 of the
+//      (needs the app's package name `com.yometel.dpp` + the SHA-1 of the
 //      signing certificate used for the build, debug AND release.)
 //   3. An "iOS" client              -> GOOGLE_IOS_CLIENT_ID
-//      (needs the app's bundle id `com.qrauthapp`.)
+//      (needs the app's bundle id `com.yometel.dpp`.)
 //
 // `@react-native-google-signin/google-signin` is configured with
 // `webClientId` (used to request an ID token whose audience the backend can
@@ -34,7 +34,7 @@ export const GOOGLE_ANDROID_CLIENT_ID = '';
 export const GOOGLE_IOS_CLIENT_ID = '';
 
 // Sign In with Apple has no client-id concept on the NATIVE client side — the
-// entitlement + bundle id (com.qrauthapp) registered in the Apple Developer
+// entitlement + bundle id (com.yometel.dpp) registered in the Apple Developer
 // portal is what ties native requests to the app. Nothing to configure here
 // for native iOS.
 //

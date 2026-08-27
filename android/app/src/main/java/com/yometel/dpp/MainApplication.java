@@ -1,4 +1,4 @@
-package com.qrauthapp;
+package com.yometel.dpp;
 
 import android.app.Application;
 import androidx.multidex.MultiDexApplication;

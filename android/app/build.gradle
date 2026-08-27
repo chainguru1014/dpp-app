@@ -10,13 +10,13 @@ android {
 
     compileSdkVersion rootProject.ext.compileSdkVersion
 
-    namespace "com.qrauthapp"
+    namespace "com.yometel.dpp"
     
     buildFeatures {
         buildConfig true
     }
     defaultConfig {
-        applicationId "com.qrauthapp"
+        applicationId "com.yometel.dpp"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
