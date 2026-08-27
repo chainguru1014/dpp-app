@@ -37,7 +37,7 @@
     "react-native-screens": "~3.22.0",
     "react-native-svg": "^13.14.0",
     "react-native-vector-icons": "^10.0.0",
-    "react-native-vision-camera": "^4.6.4",
+    "react-native-vision-camera": "4.2.1",
     "react-native-web": "^0.19.12",
     "react-qr-reader": "^2.2.1"
   },

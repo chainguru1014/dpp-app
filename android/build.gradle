@@ -2,17 +2,9 @@
 
 buildscript {
     ext {
-        // buildTools + compileSdk bumped to 35 for react-native-vision-camera v4:
-        // it pulls androidx.camera (CameraX) 1.5.0-alpha03, whose AARs are
-        // compiled against API 35 and fail to link against compileSdk 34.
-        // targetSdk stays at 34 on purpose — bumping the *target* opts into
-        // Android 15 behaviour changes (edge-to-edge enforcement etc.) and is
-        // a separate product decision. compileSdk 35 + targetSdk 34 is valid.
-        // AGP 8.1.4 accepts compileSdk 35 via android.suppressUnsupportedCompileSdk
-        // (already set in gradle.properties).
-        buildToolsVersion = "35.0.0"
+        buildToolsVersion = "34.0.0"
         minSdkVersion = 24
-        compileSdkVersion = 35
+        compileSdkVersion = 34
         targetSdkVersion = 34
         ndkVersion = "23.1.7779620"
         kotlinVersion = "1.8.22"
