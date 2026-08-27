@@ -72,6 +72,11 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 const CONTENT_TOP = SCREEN_HEIGHT / 2;
 const BOTTOM_TOP = SCREEN_HEIGHT - BOTTOM_BAR_HEIGHT;
 
+// Fixed popover anchor positions -- see the comment on openAvatarMenu/
+// openLanguageMenu below for why these are static instead of measured.
+const AVATAR_POPOVER_POS = { top: TOP_BAR_HEIGHT + 6, right: 16 };
+const LANG_POPOVER_POS = { top: TOP_BAR_HEIGHT + 20, right: 16 };
+
 export default function AppLayout({
   children,
   navigation,
@@ -121,11 +126,9 @@ export default function AppLayout({
   const computedSubtitle = subtitle ?? (!isHomeRoute && user && user.actorKind !== 'Employee' ? consumerLocationLabel : undefined);
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [langMenuVisible, setLangMenuVisible] = useState(false);
-  const [langPopover, setLangPopover] = useState({ top: 76, right: 16 });
+  const [langPopover, setLangPopover] = useState(LANG_POPOVER_POS);
   const [avatarMenuVisible, setAvatarMenuVisible] = useState(false);
-  const [avatarPopover, setAvatarPopover] = useState({ top: 62, right: 16 });
-  const worldIconRef = useRef<View>(null);
-  const avatarIconRef = useRef<View>(null);
+  const [avatarPopover, setAvatarPopover] = useState(AVATAR_POPOVER_POS);
   const isAuthenticated = !!user;
   const isEmployeeActor = user?.actorKind === 'Employee';
   const [notifPanelVisible, setNotifPanelVisible] = useState(false);
@@ -154,14 +157,19 @@ export default function AppLayout({
     }
   };
 
+  // Both popovers anchor under the avatar icon, whose position in the top
+  // bar is fixed by the layout (same spot on every screen, never varies with
+  // content) -- so rather than measuring it at runtime, just use that fixed
+  // position directly. This used to call `avatarIconRef.current?.measureInWindow(...)`,
+  // but that returned unreliable (near-zero) coordinates on Android even on
+  // a plain, un-modal-preceded icon tap -- not a timing race with the avatar
+  // Modal's teardown (a setTimeout-deferred measurement still failed the
+  // same way), just measureInWindow itself being flaky here -- so the
+  // popover rendered pinned to the top-left corner instead of under the
+  // icon. AVATAR_POPOVER_POS/LANG_POPOVER_POS below are that fixed position.
   const openLanguageMenu = () => {
-    worldIconRef.current?.measureInWindow((x, y, width, height) => {
-      setLangPopover({
-        top: y + height + 6,
-        right: Math.max(12, SCREEN_WIDTH - x - width),
-      });
-      setLangMenuVisible(true);
-    });
+    setLangPopover(LANG_POPOVER_POS);
+    setLangMenuVisible(true);
   };
 
   const openAvatarMenu = () => {
@@ -169,13 +177,8 @@ export default function AppLayout({
       onGuestAction?.();
       return;
     }
-    avatarIconRef.current?.measureInWindow((x, y, width, height) => {
-      setAvatarPopover({
-        top: y + height + 6,
-        right: Math.max(12, SCREEN_WIDTH - x - width),
-      });
-      setAvatarMenuVisible(true);
-    });
+    setAvatarPopover(AVATAR_POPOVER_POS);
+    setAvatarMenuVisible(true);
   };
 
   const handleProfile = () => {
@@ -303,14 +306,22 @@ export default function AppLayout({
   return (
     <View style={styles.container}>
       <View style={styles.topBar}>
-        <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
+        {/* Numeric width/height (not "100%") -- percentage-sized <Svg> on
+            Android doesn't reliably track its parent View's actual
+            flexbox-computed size (a long-standing react-native-svg
+            Android-specific timing issue), so the gradient rect used to
+            render shorter/narrower than the topBar itself, leaving the
+            title/icons poking out past it into the plain white background
+            behind. SCREEN_WIDTH/TOP_BAR_HEIGHT are already fixed constants
+            here, so numeric sizing costs nothing. */}
+        <Svg style={StyleSheet.absoluteFill} width={SCREEN_WIDTH} height={TOP_BAR_HEIGHT}>
           <Defs>
             <SvgLinearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
               <Stop offset="0%" stopColor={colors.headerLight} stopOpacity={1} />
               <Stop offset="100%" stopColor={colors.header} stopOpacity={1} />
             </SvgLinearGradient>
           </Defs>
-          <Rect x={0} y={0} width="100%" height="100%" fill={`url(#${gradientId})`} />
+          <Rect x={0} y={0} width={SCREEN_WIDTH} height={TOP_BAR_HEIGHT} fill={`url(#${gradientId})`} />
         </Svg>
         {showBackButton ? (
           <TouchableOpacity
@@ -351,7 +362,7 @@ export default function AppLayout({
             style={styles.iconButton}
             activeOpacity={0.7}
           >
-            <View ref={worldIconRef}>
+            <View>
               <Icon name="notifications" size={26} color={colors.white} />
               <NotificationBadge userId={user?._id ? String(user._id) : undefined} />
             </View>
@@ -362,7 +373,7 @@ export default function AppLayout({
             style={styles.iconButton}
             activeOpacity={0.7}
           >
-            <View ref={avatarIconRef}>
+            <View>
               <Icon name="account-circle" size={28} color={colors.white} />
             </View>
           </TouchableOpacity>

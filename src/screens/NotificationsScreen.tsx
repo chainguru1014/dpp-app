@@ -3,7 +3,7 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
+  ScrollView,
   TouchableOpacity,
   Dimensions,
 } from 'react-native';
@@ -171,13 +171,11 @@ export default function NotificationsScreen({ navigation, user, onLogout }: Noti
             <Text style={styles.emptyText}>{t('noNotifications')}</Text>
           </View>
         ) : (
-          <FlatList
-            data={items}
-            keyExtractor={(item, idx) => `${item._id || idx}`}
-            style={styles.flatList}
-            contentContainerStyle={styles.list}
-            renderItem={renderItem}
-          />
+          <ScrollView style={styles.flatList} contentContainerStyle={styles.list}>
+            {items.map((item, idx) => (
+              <React.Fragment key={item._id || idx}>{renderItem({ item })}</React.Fragment>
+            ))}
+          </ScrollView>
         )}
       </View>
       <NotificationDetailModal

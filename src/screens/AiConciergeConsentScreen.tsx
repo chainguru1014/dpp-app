@@ -294,6 +294,16 @@ const styles = StyleSheet.create({
     // `flex: 1` below) rather than getting clipped, as a fallback for
     // smaller screens.
     maxHeight: Math.round(screenHeight * 0.94),
+    // `flex: 1` (not just maxHeight) is what actually gives Yoga a definite
+    // size to resolve cardScroll's flex:1 against on Android -- without it,
+    // a flex:1 child inside a purely content-sized (maxHeight-only) parent
+    // silently collapses to zero height there (this diverges from
+    // react-native-web/CSS flexbox, which sizes it fine either way). Costs
+    // the "shrink to fit short content" look on native (the card now always
+    // grows to fill up to maxHeight instead of hugging shorter content), but
+    // this content is long enough that it's rarely short of that anyway, and
+    // an always-visible card beats an invisible one.
+    flex: 1,
     overflow: 'hidden',
     ...shadow(3),
   },

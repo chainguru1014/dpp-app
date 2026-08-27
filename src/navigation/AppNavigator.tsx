@@ -98,7 +98,7 @@ export default function AppNavigator({ navigationRef }: { navigationRef: any }) 
       const userData = await AsyncStorage.getItem('user');
       if (userData && userData !== 'null' && userData !== 'undefined') {
         try {
-          const parsed = JSON.parse(userData);
+          const parsed = JSON.parse(userData as string);
           if (parsed) {
             setUser(parsed);
           }

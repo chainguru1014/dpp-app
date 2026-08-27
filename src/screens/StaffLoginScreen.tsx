@@ -125,7 +125,7 @@ export default function StaffLoginScreen({ navigation, onLogin }: any) {
 
       <Text style={styles.pageTitle}>Digital Product Passport</Text>
 
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} style={styles.kav}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.kav}>
         <View style={styles.centerWrap}>
           <View style={styles.card}>
             <View style={styles.logoContainer}>

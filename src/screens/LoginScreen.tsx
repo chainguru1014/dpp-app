@@ -121,7 +121,7 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
 
       {/* KAV fills the full screen so the card centres against the whole page */}
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.kav}
       >
         <View style={styles.centerWrap}>

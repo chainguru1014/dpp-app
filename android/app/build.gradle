@@ -45,9 +45,9 @@ android {
         }
         release {
             storeFile file('chris_yometel.keystore')
-            storePassword '123456'
+            storePassword '1vQHHoxlblKFZDtxbisgDse1'
             keyAlias 'chris_key'
-            keyPassword '123456'
+            keyPassword '1vQHHoxlblKFZDtxbisgDse1'
         }
     }
     buildTypes {
@@ -58,9 +58,7 @@ android {
             debuggable true
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.release
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
@@ -89,3 +87,10 @@ dependencies {
         implementation jscFlavor
     }
 }
+
+// react-native-vector-icons: bundles the icon font files (MaterialIcons,
+// Feather, MaterialCommunityIcons -- see src/components/AppLayout.tsx and
+// other screens) as Android assets. Without this, every icon in the app
+// (top bar, bottom nav, corporate scanner overlay, etc.) renders as a blank
+// glyph on a real device -- autolinking does NOT do this step for vector-icons.
+apply from: file("../../node_modules/react-native-vector-icons/fonts.gradle")

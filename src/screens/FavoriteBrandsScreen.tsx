@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, Linking, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Linking, Platform } from 'react-native';
 import AppLayout from '../components/AppLayout';
 import { API_BASE_URL } from '../config/api';
 import { useI18n } from '../i18n/I18nContext';
@@ -100,12 +100,10 @@ export default function FavoriteBrandsScreen({ navigation, user, onLogout }: Fav
               <Text style={[styles.headerCell, styles.detailCol]}>{t('brandDetailColumn')}</Text>
               <Text style={[styles.headerCell, styles.imageCol]}>{t('brandImageColumn')}</Text>
             </View>
-            <FlatList
-              data={list}
-              keyExtractor={(item) => item.id}
-              contentContainerStyle={styles.list}
-              renderItem={({ item }) => (
+            <ScrollView contentContainerStyle={styles.list}>
+              {list.map((item) => (
                 <TouchableOpacity
+                  key={item.id}
                   style={styles.row}
                   activeOpacity={0.8}
                   onPress={() => openWebsite(item.website)}
@@ -129,8 +127,8 @@ export default function FavoriteBrandsScreen({ navigation, user, onLogout }: Fav
                     )}
                   </View>
                 </TouchableOpacity>
-              )}
-            />
+              ))}
+            </ScrollView>
           </View>
         )}
       </View>

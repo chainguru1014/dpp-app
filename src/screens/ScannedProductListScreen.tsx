@@ -56,7 +56,10 @@ export default function ScannedProductListScreen({
   const { t } = useI18n();
   const { width, height: screenHeight } = useWindowDimensions();
   const PANEL_HEIGHT = panelHeightFor(screenHeight);
-  const itemWidth = (width - 70) / 3;
+  // Floored -- undivided (width - 70) / 3 can round up by a fraction of a
+  // pixel, which is just enough for flexWrap to push the 3rd item onto the
+  // next row (showing 2-per-row instead of the intended 3).
+  const itemWidth = Math.floor((width - 70) / 3);
   const [scannedProducts, setScannedProducts] = useState<ScannedProduct[]>([]);
   const [albumItems, setAlbumItems] = useState<ScannedProduct[]>([]);
   const [ownedProducts, setOwnedProducts] = useState<any[]>([]);
@@ -550,19 +553,26 @@ export default function ScannedProductListScreen({
     </TouchableOpacity>
   );
 
-  // A 3-column grid of items, or an empty hint.
+  // A 3-column grid of items, or an empty hint. Plain View + flexWrap, not
+  // FlatList -- every item already carries an explicit `width: itemWidth`
+  // (see renderProductItem/renderSoldItem/renderOwnedItem), so a 3-column
+  // grid needs no virtualization logic to lay out, and these grids are
+  // always scrollEnabled={false} anyway (the surrounding panel's own
+  // ScrollView is what scrolls). A FlatList nested inside that ScrollView
+  // hit a native crash here ("Cannot read property 'getItem' of undefined"
+  // inside FlatList's own constructor) -- a plain View sidesteps it entirely
+  // and is simpler for content that was never actually virtualized.
   const renderGrid = (items: any[], renderItem: any, keyPrefix: string, emptyText: string) =>
     !items || items.length === 0 ? (
       <Text style={styles.noItemsText}>{emptyText}</Text>
     ) : (
-      <FlatList
-        data={items}
-        renderItem={renderItem}
-        keyExtractor={(it, idx) => `${keyPrefix}-${it._id || it.transfer_id || it.scannedQRCode || idx}-${idx}`}
-        numColumns={3}
-        scrollEnabled={false}
-        contentContainerStyle={styles.sectionListContent}
-      />
+      <View style={[styles.sectionListContent, styles.gridWrap]}>
+        {items.map((it, idx) => (
+          <React.Fragment key={`${keyPrefix}-${it._id || it.transfer_id || it.scannedQRCode || idx}-${idx}`}>
+            {renderItem({ item: it })}
+          </React.Fragment>
+        ))}
+      </View>
     );
 
   const onlyScannedItems = scannedProducts.filter((p) => !p.feedback);
@@ -597,7 +607,7 @@ export default function ScannedProductListScreen({
                 {renderTab('album', t('myAlbum'), require('../assets/add-image.png'), topTab, setTopTab)}
                 {renderTab('sold', t('sellSection'), require('../assets/send.png'), topTab, setTopTab)}
               </View>
-              <ScrollView style={styles.panelBody} contentContainerStyle={styles.panelBodyContent}>
+              <ScrollView style={styles.panelBody} contentContainerStyle={styles.panelBodyContent} nestedScrollEnabled>
                 {topTab === 'album' && renderGrid(albumItems, renderProductItem, 'al', t('noItems'))}
                 {topTab === 'sold' && renderGrid(soldProducts, renderSoldItem, 'sd', t('noSoldProducts'))}
               </ScrollView>
@@ -610,7 +620,7 @@ export default function ScannedProductListScreen({
                 {renderTab('liked', t('liked'), require('../assets/like.png'), bottomTab, setBottomTab)}
                 {renderTab('disliked', t('disliked'), require('../assets/dislike.png'), bottomTab, setBottomTab)}
               </View>
-              <ScrollView style={styles.panelBody} contentContainerStyle={styles.panelBodyContent}>
+              <ScrollView style={styles.panelBody} contentContainerStyle={styles.panelBodyContent} nestedScrollEnabled>
                 {bottomTab === 'scanned' && renderGrid(onlyScannedItems, renderProductItem, 'os', t('noItems'))}
                 {bottomTab === 'liked' && renderGrid(likedItems, renderProductItem, 'lk', t('noItems'))}
                 {bottomTab === 'disliked' && renderGrid(dislikedItems, renderProductItem, 'dl', t('noItems'))}
@@ -730,6 +740,10 @@ const styles = StyleSheet.create({
   },
   sectionListContent: {
     paddingBottom: spacing.xs,
+  },
+  gridWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
   },
   noItemsText: {
     fontSize: 13,

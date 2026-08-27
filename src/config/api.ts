@@ -17,8 +17,10 @@ import { Platform } from 'react-native';
 // Otherwise use port 5052 directly
 const HOSTING_URL = 'https://api.innosynch.com/';
 
-// Localhost backend for Android emulator (10.0.2.2 maps to host's localhost)
-const LOCALHOST_URL = 'http://localhost:5052/';
+// Localhost backend. Android emulators can't reach the host machine via
+// "localhost" (that resolves to the emulator itself) -- they need the
+// special alias 10.0.2.2 instead. iOS simulator and web can use localhost.
+const LOCALHOST_URL = Platform.OS === 'android' ? 'http://10.0.2.2:5052/' : 'http://localhost:5052/';
 
 // Toggle between local backend and hosted backend.
 // - true  => local backend (Android emulator uses 10.0.2.2)

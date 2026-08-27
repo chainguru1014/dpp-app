@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions } from 'react-native';
 import AppLayout from '../components/AppLayout';
 import { API_BASE_URL } from '../config/api';
 import { useI18n } from '../i18n/I18nContext';
@@ -106,13 +106,11 @@ export default function PurchaseHistoryScreen({ navigation, user, onLogout }: Pu
             <Text style={styles.emptyText}>No purchase history yet</Text>
           </View>
         ) : (
-          <FlatList
-            data={items}
-            keyExtractor={(item, idx) => `${item._id || idx}`}
-            style={styles.flatList}
-            contentContainerStyle={styles.list}
-            renderItem={renderItem}
-          />
+          <ScrollView style={styles.flatList} contentContainerStyle={styles.list}>
+            {items.map((item, idx) => (
+              <React.Fragment key={item._id || idx}>{renderItem({ item })}</React.Fragment>
+            ))}
+          </ScrollView>
         )}
       </View>
     </AppLayout>

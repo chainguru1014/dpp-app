@@ -31,10 +31,17 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
   const [countryModalVisible, setCountryModalVisible] = useState(false);
   const [dobPickerVisible, setDobPickerVisible] = useState(false);
   const [dobDraft, setDobDraft] = useState(new Date(2000, 0, 1));
-  const [fieldErrors, setFieldErrors] = useState<{ gender?: string; age?: string; country?: string }>({});
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [saveError, setSaveError] = useState('');
   const isGoogleProfileCompletion = !!route?.params?.fromGoogle;
+  // userType ('client'/'agent', this screen's own profile shape) now always
+  // follows the session's actorKind ('User'/'Employee') rather than being a
+  // manual toggle -- consumer accounts are always "client", employee/staff
+  // accounts are always "agent". The toggle previously let an Employee
+  // session fill out the wrong (client) field set, which then failed
+  // validation against fields their real record doesn't carry.
   const createProfileFromUser = (sourceUser: any = user) => ({
-    userType: sourceUser?.userType || 'client',
+    userType: sourceUser?.actorKind === 'Employee' ? 'agent' : 'client',
     name: sourceUser?.name || '',
     password: sourceUser?.isGoogleUser ? 'google' : 'google',
     gender: sourceUser?.gender || '',
@@ -95,13 +102,11 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
 
   const setField = (key: string, value: string) => {
     setProfile((prev: any) => ({ ...prev, [key]: value }));
-    if (key === 'gender' || key === 'age' || key === 'country') {
-      setFieldErrors((prev) => ({ ...prev, [key]: undefined }));
-    }
+    setFieldErrors((prev) => (prev[key] ? { ...prev, [key]: '' } : prev));
   };
 
   const validateGoogleRequiredFields = () => {
-    const nextErrors: { gender?: string; age?: string; country?: string } = {};
+    const nextErrors: Record<string, string> = {};
     if (!profile.gender) nextErrors.gender = t('genderRequired');
     if (!profile.age) nextErrors.age = t('ageRequired');
     if (!profile.country) nextErrors.country = t('countryRequired');
@@ -109,27 +114,61 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
     return Object.keys(nextErrors).length === 0;
   };
 
-  const validateProfile = (showAlert = true) => {
+  // Field-by-field validation, replacing the old single "fill in all fields"
+  // alert (which also didn't say WHICH field was missing) and, critically,
+  // no longer uses Alert.alert for the result -- react-native-web's Alert is
+  // a no-op stub there, so a failed validation looked like the Save button
+  // silently did nothing (reported specifically for the agent/employee
+  // form, which has enough required fields that one is easy to miss).
+  // Errors are shown inline under each field instead, which works on every
+  // platform.
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const PHONE_RE = /^[+]?[\d\s\-().]{7,20}$/;
+  const ZIP_RE = /^[A-Za-z0-9][A-Za-z0-9\- ]{1,9}$/;
+
+  const validateProfile = () => {
     if (isGoogleProfileCompletion && profile.userType === 'client') {
       return validateGoogleRequiredFields();
     }
 
+    const errors: Record<string, string> = {};
+    const required = (key: string, label: string) => {
+      if (!String(profile[key] || '').trim()) errors[key] = `${label} is required`;
+    };
+
+    required('name', t('username'));
+
     if (profile.userType === 'client') {
-      if (!profile.name || !profile.password || !profile.gender || !profile.age || !profile.country) {
-        if (showAlert) {
-          Alert.alert(t('error'), t('fillProfileFieldsClient'));
-        }
-        return;
+      required('password', t('password'));
+      if (!profile.gender) errors.gender = t('genderRequired');
+      if (!profile.age) errors.age = t('ageRequired');
+      else if (!/^\d+$/.test(profile.age.trim()) || Number(profile.age) <= 0 || Number(profile.age) > 120) {
+        errors.age = 'Enter a valid age';
       }
+      if (!profile.country) errors.country = t('countryRequired');
     } else {
-      if (!profile.name || !profile.email || !profile.firstName || !profile.lastName || !profile.addressStreet || !profile.addressCity || !profile.addressState || !profile.addressZipCode || !profile.addressCountry || !profile.phoneNumber || !profile.gender || !profile.dateOfBirth) {
-        if (showAlert) {
-          Alert.alert(t('error'), t('fillProfileFieldsAgent'));
-        }
-        return;
+      required('email', t('email'));
+      if (!errors.email && !EMAIL_RE.test(profile.email.trim())) errors.email = 'Enter a valid email address';
+      required('firstName', t('firstName'));
+      required('lastName', t('lastName'));
+      required('addressStreet', t('street'));
+      required('addressCity', t('city'));
+      required('addressState', t('state'));
+      required('addressZipCode', t('zipCode'));
+      if (!errors.addressZipCode && !ZIP_RE.test(profile.addressZipCode.trim())) {
+        errors.addressZipCode = 'Enter a valid zip/postal code';
       }
+      required('addressCountry', t('country'));
+      required('phoneNumber', t('phoneNumber'));
+      if (!errors.phoneNumber && !PHONE_RE.test(profile.phoneNumber.trim())) {
+        errors.phoneNumber = 'Enter a valid phone number';
+      }
+      if (!profile.gender) errors.gender = t('genderRequired');
+      if (!profile.dateOfBirth) errors.dateOfBirth = 'Date of birth is required';
     }
-    return true;
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const saveProfile = async () => {
@@ -138,8 +177,9 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
       return;
     }
 
-    if (!validateProfile(true)) return;
+    if (!validateProfile()) return;
 
+    setSaveError('');
     setLoading(true);
     try {
       const payload: any = {
@@ -174,7 +214,9 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
 
       const data = await response.json();
       if (!response.ok || data.status !== 'success') {
-        Alert.alert(t('error'), data.message || t('failedToUpdateProfile'));
+        const message = data.message || t('failedToUpdateProfile');
+        setSaveError(message);
+        Alert.alert(t('error'), message);
         return;
       }
 
@@ -188,7 +230,9 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
       Alert.alert(t('success'), t('profileUpdated'));
       navigation.navigate('Home');
     } catch (error: any) {
-      Alert.alert(t('error'), error?.message || t('failedToUpdateProfile'));
+      const message = error?.message || t('failedToUpdateProfile');
+      setSaveError(message);
+      Alert.alert(t('error'), message);
     } finally {
       setLoading(false);
     }
@@ -223,31 +267,21 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
         >
           <View style={styles.card}>
             <Text style={styles.header}>{t('editProfile')}</Text>
-            <Text style={styles.label}>{t('userType')}:</Text>
-            <View style={styles.userTypeButtons}>
-              {(['client', 'agent'] as const).map((type) => (
-                <TouchableOpacity
-                  key={type}
-                  style={[styles.userTypeButton, profile.userType === type && styles.userTypeButtonActive]}
-                  onPress={() => setField('userType', type)}
-                >
-                  {profile.userType === type && (
-                    <GradientView style={[StyleSheet.absoluteFill, { borderRadius: radius.md }]} />
-                  )}
-                  <Text style={[styles.userTypeButtonText, profile.userType === type && styles.userTypeButtonTextActive]}>
-                    {type === 'client' ? t('client') : t('agent')}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            {!!saveError && (
+              <View style={styles.saveErrorBanner}>
+                <Text style={styles.saveErrorText}>{saveError}</Text>
+              </View>
+            )}
 
             <Text style={styles.label}>{t('username')}:</Text>
             <TextInput style={styles.input} placeholder={t('username')} value={profile.name} onChangeText={(v) => setField('name', v)} />
+            {!!fieldErrors.name && <Text style={styles.errorText}>{fieldErrors.name}</Text>}
 
             {profile.userType === 'client' ? (
               <>
                 <Text style={styles.label}>{t('password')}:</Text>
                 <TextInput style={styles.input} placeholder={t('password')} value={profile.password} onChangeText={(v) => setField('password', v)} secureTextEntry />
+                {!!fieldErrors.password && <Text style={styles.errorText}>{fieldErrors.password}</Text>}
                 <Text style={styles.label}>{t('gender')}:</Text>
                 <View style={styles.genderContainer}>
                   {genderOptions.map((option) => (
@@ -278,23 +312,32 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
             ) : (
               <>
                 <Text style={styles.label}>{t('email')}:</Text>
-                <TextInput style={styles.input} placeholder={t('email')} value={profile.email} onChangeText={(v) => setField('email', v)} keyboardType="email-address" autoCapitalize="none" />
+                <TextInput style={styles.input} placeholder={t('email')} value={profile.email} onChangeText={(v) => setField('email', v)} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} textContentType="emailAddress" />
+                {!!fieldErrors.email && <Text style={styles.errorText}>{fieldErrors.email}</Text>}
                 <Text style={styles.label}>{t('firstName')}:</Text>
-                <TextInput style={styles.input} placeholder={t('firstName')} value={profile.firstName} onChangeText={(v) => setField('firstName', v)} />
+                <TextInput style={styles.input} placeholder={t('firstName')} value={profile.firstName} onChangeText={(v) => setField('firstName', v)} autoCapitalize="words" textContentType="givenName" />
+                {!!fieldErrors.firstName && <Text style={styles.errorText}>{fieldErrors.firstName}</Text>}
                 <Text style={styles.label}>{t('lastName')}:</Text>
-                <TextInput style={styles.input} placeholder={t('lastName')} value={profile.lastName} onChangeText={(v) => setField('lastName', v)} />
+                <TextInput style={styles.input} placeholder={t('lastName')} value={profile.lastName} onChangeText={(v) => setField('lastName', v)} autoCapitalize="words" textContentType="familyName" />
+                {!!fieldErrors.lastName && <Text style={styles.errorText}>{fieldErrors.lastName}</Text>}
                 <Text style={styles.label}>{t('street')}:</Text>
-                <TextInput style={styles.input} placeholder={t('street')} value={profile.addressStreet} onChangeText={(v) => setField('addressStreet', v)} />
+                <TextInput style={styles.input} placeholder={t('street')} value={profile.addressStreet} onChangeText={(v) => setField('addressStreet', v)} autoCapitalize="words" textContentType="streetAddressLine1" />
+                {!!fieldErrors.addressStreet && <Text style={styles.errorText}>{fieldErrors.addressStreet}</Text>}
                 <Text style={styles.label}>{t('city')}:</Text>
-                <TextInput style={styles.input} placeholder={t('city')} value={profile.addressCity} onChangeText={(v) => setField('addressCity', v)} />
+                <TextInput style={styles.input} placeholder={t('city')} value={profile.addressCity} onChangeText={(v) => setField('addressCity', v)} autoCapitalize="words" textContentType="addressCity" />
+                {!!fieldErrors.addressCity && <Text style={styles.errorText}>{fieldErrors.addressCity}</Text>}
                 <Text style={styles.label}>{t('state')}:</Text>
-                <TextInput style={styles.input} placeholder={t('state')} value={profile.addressState} onChangeText={(v) => setField('addressState', v)} />
+                <TextInput style={styles.input} placeholder={t('state')} value={profile.addressState} onChangeText={(v) => setField('addressState', v)} autoCapitalize="words" textContentType="addressState" />
+                {!!fieldErrors.addressState && <Text style={styles.errorText}>{fieldErrors.addressState}</Text>}
                 <Text style={styles.label}>{t('zipCode')}:</Text>
-                <TextInput style={styles.input} placeholder={t('zipCode')} value={profile.addressZipCode} onChangeText={(v) => setField('addressZipCode', v)} />
+                <TextInput style={styles.input} placeholder={t('zipCode')} value={profile.addressZipCode} onChangeText={(v) => setField('addressZipCode', v)} autoCapitalize="characters" textContentType="postalCode" />
+                {!!fieldErrors.addressZipCode && <Text style={styles.errorText}>{fieldErrors.addressZipCode}</Text>}
                 <Text style={styles.label}>{t('country')}:</Text>
-                <TextInput style={styles.input} placeholder={t('country')} value={profile.addressCountry} onChangeText={(v) => setField('addressCountry', v)} />
+                <TextInput style={styles.input} placeholder={t('country')} value={profile.addressCountry} onChangeText={(v) => setField('addressCountry', v)} autoCapitalize="words" textContentType="countryName" />
+                {!!fieldErrors.addressCountry && <Text style={styles.errorText}>{fieldErrors.addressCountry}</Text>}
                 <Text style={styles.label}>{t('phoneNumber')}:</Text>
-                <TextInput style={styles.input} placeholder={t('phoneNumber')} value={profile.phoneNumber} onChangeText={(v) => setField('phoneNumber', v)} keyboardType="phone-pad" />
+                <TextInput style={styles.input} placeholder={t('phoneNumber')} value={profile.phoneNumber} onChangeText={(v) => setField('phoneNumber', v)} keyboardType="phone-pad" textContentType="telephoneNumber" />
+                {!!fieldErrors.phoneNumber && <Text style={styles.errorText}>{fieldErrors.phoneNumber}</Text>}
                 <Text style={styles.label}>{t('gender')}:</Text>
                 <View style={styles.genderContainer}>
                   {genderOptions.map((option) => (
@@ -312,6 +355,7 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
                     </TouchableOpacity>
                   ))}
                 </View>
+                {!!fieldErrors.gender && <Text style={styles.errorText}>{fieldErrors.gender}</Text>}
                 <Text style={styles.label}>{t('dateOfBirth')}:</Text>
                 <TouchableOpacity
                   style={styles.countryButton}
@@ -324,6 +368,7 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
                     {profile.dateOfBirth || t('selectDateOfBirth')}
                   </Text>
                 </TouchableOpacity>
+                {!!fieldErrors.dateOfBirth && <Text style={styles.errorText}>{fieldErrors.dateOfBirth}</Text>}
               </>
             )}
           </View>
@@ -429,19 +474,15 @@ const styles = StyleSheet.create({
   },
   header: { fontSize: fontSize.xxl, fontWeight: '400', marginBottom: spacing.xl, color: colors.heading },
   label: { fontSize: fontSize.md, fontWeight: '400', color: colors.primaryDark, marginBottom: spacing.sm },
-  userTypeButtons: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.lg },
-  userTypeButton: {
-    flex: 1,
-    paddingVertical: spacing.md,
+  saveErrorBanner: {
+    backgroundColor: colors.dangerSoft,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceAlt,
-    alignItems: 'center',
+    borderColor: colors.danger,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
   },
-  userTypeButtonActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  userTypeButtonText: { color: colors.muted, fontSize: fontSize.md, fontWeight: '400' },
-  userTypeButtonTextActive: { color: colors.white, fontWeight: '400' },
+  saveErrorText: { color: colors.danger, fontSize: fontSize.md },
   input: {
     backgroundColor: colors.fieldBg,
     borderRadius: radius.md,

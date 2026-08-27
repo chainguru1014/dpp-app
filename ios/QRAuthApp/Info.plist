@@ -55,6 +55,26 @@
 			</dict>
 		</dict>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Used to scan QR codes and barcodes to look up product information.</string>
+	<!--
+	  react-native-vector-icons font files (see src/components/AppLayout.tsx
+	  and other screens) -- without these listed here AND added as Xcode
+	  "Copy Bundle Resources", every icon in the app renders as a blank glyph
+	  on a real iPhone. The .ttf files themselves still need to be added to
+	  the QRAuthApp target in Xcode (drag node_modules/react-native-vector-icons/Fonts/*.ttf
+	  into the project, checking "Copy items if needed" and the QRAuthApp target)
+	  since that step can't be done from a plain text edit -- this only
+	  declares the mapping deployment expects the app to have.
+	-->
+	<key>UIAppFonts</key>
+	<array>
+		<string>MaterialIcons.ttf</string>
+		<string>Feather.ttf</string>
+		<string>MaterialCommunityIcons.ttf</string>
+	</array>
+	<key>NFCReaderUsageDescription</key>
+	<string>Used to read NFC tags to look up product information.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Used to tag corporate scan captures with the location where they were taken.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
