@@ -392,6 +392,13 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   };
 
   const handleScan = (value: string, format: CapturedCodeFormat, manual = false) => {
+    // Only accept a detection matching the currently selected capture type
+    // — e.g. a barcode in frame shouldn't enable Capture while "QR Code" is
+    // selected, and vice versa. The camera scans both formats regardless of
+    // selection, so this is what actually enforces the selector's meaning.
+    // Manual entry bypasses this — it's explicitly typed for whichever type
+    // is already selected.
+    if (!manual && format !== captureType) return;
     lastSeenAtRef.current = Date.now();
     if (value === lastCheckedValueRef.current) return;
     lastCheckedValueRef.current = value;
