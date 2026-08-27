@@ -2,9 +2,17 @@
 
 buildscript {
     ext {
-        buildToolsVersion = "34.0.0"
+        // buildTools + compileSdk bumped to 35 for react-native-vision-camera v4:
+        // it pulls androidx.camera (CameraX) 1.5.0-alpha03, whose AARs are
+        // compiled against API 35 and fail to link against compileSdk 34.
+        // targetSdk stays at 34 on purpose — bumping the *target* opts into
+        // Android 15 behaviour changes (edge-to-edge enforcement etc.) and is
+        // a separate product decision. compileSdk 35 + targetSdk 34 is valid.
+        // AGP 8.1.4 accepts compileSdk 35 via android.suppressUnsupportedCompileSdk
+        // (already set in gradle.properties).
+        buildToolsVersion = "35.0.0"
         minSdkVersion = 24
-        compileSdkVersion = 34
+        compileSdkVersion = 35
         targetSdkVersion = 34
         ndkVersion = "23.1.7779620"
         kotlinVersion = "1.8.22"
@@ -53,7 +61,18 @@ subprojects {
         if (project.hasProperty("android")) {
             project.android {
                 if (namespace == null) {
-                    namespace project.group
+                    // @react-native-ml-kit/barcode-scanning 2.0.0's own build.gradle
+                    // doesn't declare a namespace, and the generic `project.group`
+                    // fallback below doesn't match the package="com.rnmlkit.barcodescanning"
+                    // attribute in its AndroidManifest.xml -- AGP 8 treats that
+                    // mismatch as a hard error ("Incorrect package=... found"),
+                    // not just the deprecation warning it logs for every other
+                    // autolinked library here. Pin it explicitly to match.
+                    if (project.name == 'react-native-ml-kit_barcode-scanning') {
+                        namespace 'com.rnmlkit.barcodescanning'
+                    } else {
+                        namespace project.group
+                    }
                 }
                 buildFeatures {
                     buildConfig true

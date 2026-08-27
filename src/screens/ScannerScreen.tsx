@@ -22,7 +22,7 @@ import GradientView from '../components/GradientView';
 import { useI18n } from '../i18n/I18nContext';
 import { useIsFocused } from '@react-navigation/native';
 import { colors, radius, spacing, shadow } from '../theme';
-import NativeCodeScanner, { isNativeCodeScannerAvailable, ScannedCodeFormat } from '../components/NativeCodeScanner';
+import NativeCodeScanner, { isNativeCodeScannerAvailable, requestNativeCameraPermission, ScannedCodeFormat, NativeCodeScannerHandle } from '../components/NativeCodeScanner';
 import { isNfcSupported, readNfcTag } from '../utils/nfc';
 import { BrowserMultiFormatReader } from '@zxing/browser';
 import { BarcodeFormat } from '@zxing/library';
@@ -64,6 +64,13 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
   const [recentScans, setRecentScans] = useState<{ id: string; image: string; name: string; time: number; productId?: string; qrcodeId?: string; productData?: any }[]>([]);
   const [torchOn, setTorchOn] = useState(false);
   const [helpVisible, setHelpVisible] = useState(false);
+  // Camera-freeze recovery (autofocus-hardware-failure class of fault — see
+  // utils/cameraResilience). cameraKey force-remounts the scanner on retry.
+  const [cameraStalled, setCameraStalled] = useState(false);
+  const [focusHintVisible, setFocusHintVisible] = useState(false);
+  const [cameraKey, setCameraKey] = useState(0);
+  const nativeScannerRef = useRef<NativeCodeScannerHandle>(null);
+  const cameraInitializedRef = useRef(false);
   const isMountedRef = useRef(true);
   const isProcessingScanRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -73,6 +80,50 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
   React.useEffect(() => {
     requestCameraPermission();
   }, []);
+
+  // Native camera-freeze watchdog: a failing autofocus actuator can leave
+  // the vision-camera session stuck with no preview and no onError. If the
+  // session hasn't reported onInitialized within a few seconds of (re)mount,
+  // treat the preview as dead and show the recovery card.
+  React.useEffect(() => {
+    if (Platform.OS === 'web' || !isFocused || !isNativeCodeScannerAvailable()) return undefined;
+    cameraInitializedRef.current = false;
+    const timer = setTimeout(() => {
+      if (isMountedRef.current && !cameraInitializedRef.current) {
+        setCameraStalled(true);
+      }
+    }, 8000);
+    return () => clearTimeout(timer);
+  }, [isFocused, cameraKey]);
+
+  const handleCameraInitialized = () => {
+    cameraInitializedRef.current = true;
+    if (isMountedRef.current) setCameraStalled(false);
+  };
+
+  const retryCamera = () => {
+    cameraInitializedRef.current = false;
+    setCameraStalled(false);
+    setFocusHintVisible(false);
+    setCameraKey((k) => k + 1);
+  };
+
+  const forceFocusAndRetry = async () => {
+    try {
+      await nativeScannerRef.current?.lockFocusCenter();
+    } catch (err) {
+      console.warn('forceFocusAndRetry failed:', err);
+    }
+    retryCamera();
+  };
+
+  const showFocusHint = () => {
+    if (!isMountedRef.current) return;
+    setFocusHintVisible(true);
+    setTimeout(() => {
+      if (isMountedRef.current) setFocusHintVisible(false);
+    }, 4500);
+  };
 
   const getScanImageUrl = (filename: string) => {
     if (!filename) return '';
@@ -194,8 +245,21 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         navigation.goBack();
       }
     } else {
-      // iOS - permissions are handled automatically by the library
-      setHasPermission(true);
+      // iOS - react-native-vision-camera does not prompt automatically just
+      // because <Camera> mounts; it must be requested explicitly or the
+      // preview stays black with no permission dialog ever shown.
+      try {
+        const granted = await requestNativeCameraPermission();
+        setHasPermission(granted);
+        if (!granted) {
+          Alert.alert(t('permissionDeniedTitle'), t('cameraRequiredForQr'));
+          navigation.goBack();
+        }
+      } catch (err) {
+        console.warn(err);
+        setHasPermission(false);
+        navigation.goBack();
+      }
     }
   };
 
@@ -305,7 +369,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
     return { response: resp, data: json };
   };
 
-  const handleScannedCode = async (value: any, format: ScannedCodeFormat | 'nfc' | 'rfid' = 'qr') => {
+  const handleScannedCode = async (value: any, format: ScannedCodeFormat | 'nfc' | 'rfid' | 'gs1dl' = 'qr') => {
     if (!isFocused || isProcessingScanRef.current) return;
 
     const currentScannedValue = String(value || '').trim();
@@ -729,6 +793,45 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
     </>
   );
 
+  // Shown over the camera viewport when the feed has frozen (autofocus
+  // hardware fault) or while the watchdog is switching to a fixed focus.
+  const renderCameraResilienceOverlay = () => (
+    <>
+      {focusHintVisible && !cameraStalled && (
+        <View pointerEvents="none" style={styles.focusHintPill}>
+          <ActivityIndicator size="small" color="#fff" />
+          <Text style={styles.focusHintText}>{t('scanFocusAdjustedHint')}</Text>
+        </View>
+      )}
+      {cameraStalled && (
+        <View style={styles.stalledOverlay}>
+          <View style={styles.stalledCard}>
+            <VectorIcon name="error-outline" size={30} color={colors.danger} />
+            <Text style={styles.stalledTitle}>{t('scanCameraStalledTitle')}</Text>
+            <Text style={styles.stalledBody}>{t('scanCameraStalledBody')}</Text>
+            {Platform.OS !== 'web' && (
+              <GradientButton style={styles.stalledButton} onPress={forceFocusAndRetry} activeOpacity={0.85}>
+                <Text style={styles.stalledButtonText}>{t('scanForceFocus')}</Text>
+              </GradientButton>
+            )}
+            <TouchableOpacity style={styles.stalledSecondary} onPress={retryCamera} activeOpacity={0.8}>
+              <VectorIcon name="refresh" size={16} color={colors.primary} />
+              <Text style={styles.stalledSecondaryText}>{t('scanRetryCamera')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.stalledSecondary}
+              onPress={Platform.OS === 'web' ? openPhotoScan : pickNativePhotoAndScan}
+              activeOpacity={0.8}
+            >
+              <VectorIcon name="photo-library" size={16} color={colors.primary} />
+              <Text style={styles.stalledSecondaryText}>{t('scanUploadPhoto')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+    </>
+  );
+
   if (hasPermission === null) {
     return (
       <AppLayout
@@ -804,14 +907,18 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
           <View style={styles.scanViewport}>
             <View style={styles.webScannerContainer}>
               <WebCodeScanner
+                key={cameraKey}
                 active={isFocused && !loading}
                 onScan={(value, format) => handleScannedCode(value, format)}
+                onCameraStalled={() => setCameraStalled(true)}
+                onFocusFallback={showFocusHint}
               />
             </View>
             <View pointerEvents="none" style={styles.frameOverlay}>
               <ScanFrameCorners size={240} />
             </View>
             {renderCameraOverlay()}
+            {renderCameraResilienceOverlay()}
           </View>
           {renderWhiteBoard()}
         </ScrollView>
@@ -850,11 +957,20 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
       >
         <ScrollView style={styles.container} contentContainerStyle={styles.containerContent} showsVerticalScrollIndicator={false}>
           <View style={styles.scanViewport}>
-            <NativeCodeScanner active={isFocused && !loading} onScan={handleScannedCode} torch={torchOn} />
+            <NativeCodeScanner
+              key={cameraKey}
+              ref={nativeScannerRef}
+              active={isFocused && !loading}
+              onScan={handleScannedCode}
+              torch={torchOn}
+              onInitialized={handleCameraInitialized}
+              onError={() => setCameraStalled(true)}
+            />
             <View pointerEvents="none" style={styles.frameOverlay}>
               <ScanFrameCorners size={240} />
             </View>
             {renderCameraOverlay()}
+            {renderCameraResilienceOverlay()}
           </View>
           {renderWhiteBoard()}
         </ScrollView>
@@ -1348,4 +1464,66 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
   },
+  // Transient "adjusting focus" pill (autofocus fallback engaged).
+  focusHintPill: {
+    position: 'absolute',
+    top: spacing.xxxl,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: 'rgba(11,18,32,0.8)',
+    borderRadius: radius.pill,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+  },
+  focusHintText: { color: '#fff', fontSize: 12, fontWeight: '500' },
+  // Full-viewport recovery card shown when the camera feed has frozen.
+  stalledOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(11,18,32,0.82)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.xl,
+  },
+  stalledCard: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.xl,
+    alignItems: 'center',
+    ...shadow(3),
+  },
+  stalledTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.heading,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  stalledBody: {
+    fontSize: 13,
+    color: colors.text,
+    textAlign: 'center',
+    lineHeight: 19,
+    marginBottom: spacing.lg,
+  },
+  stalledButton: {
+    alignSelf: 'stretch',
+    backgroundColor: colors.primary,
+    borderRadius: radius.pill,
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  stalledButtonText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  stalledSecondary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+  },
+  stalledSecondaryText: { color: colors.primary, fontSize: 13, fontWeight: '600' },
 });

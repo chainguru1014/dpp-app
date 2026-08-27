@@ -91,6 +91,10 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   const [rfidTags, setRfidTags] = useState<RfidTag[]>([]);
   const [nfcAvailable, setNfcAvailable] = useState(false);
   const [nfcReading, setNfcReading] = useState(false);
+  // Camera-freeze recovery (autofocus-hardware fault — see utils/cameraResilience).
+  const [cameraStalled, setCameraStalled] = useState(false);
+  const [cameraKey, setCameraKey] = useState(0);
+  const cameraInitializedRef = useRef(false);
 
   const tokenRef = useRef<string>('');
   const lastSeenAtRef = useRef<number>(0);
@@ -200,6 +204,38 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
     if (Platform.OS === 'web') return;
     isNfcSupported().then(setNfcAvailable);
   }, []);
+
+  // Native camera-freeze watchdog — mirrors the consumer ScannerScreen: if
+  // the vision-camera session never reports onInitialized after (re)mount,
+  // the autofocus pipeline is likely stuck; show the recovery card.
+  useEffect(() => {
+    if (Platform.OS === 'web' || !isFocused || !isCameraType || !isCaptureCameraAvailable()) return undefined;
+    cameraInitializedRef.current = false;
+    const timer = setTimeout(() => {
+      if (!cameraInitializedRef.current) setCameraStalled(true);
+    }, 8000);
+    return () => clearTimeout(timer);
+  }, [isFocused, isCameraType, cameraKey]);
+
+  const handleCameraInitialized = () => {
+    cameraInitializedRef.current = true;
+    setCameraStalled(false);
+  };
+
+  const retryCamera = () => {
+    cameraInitializedRef.current = false;
+    setCameraStalled(false);
+    setCameraKey((k) => k + 1);
+  };
+
+  const forceFocusAndRetry = async () => {
+    try {
+      await nativeCameraRef.current?.lockFocusCenter();
+    } catch (err) {
+      console.warn('forceFocusAndRetry failed:', err);
+    }
+    retryCamera();
+  };
 
   // Switching capture type clears whatever the previous type had detected —
   // a stale liveCode/RFID tag from the old mode shouldn't carry over and
@@ -507,12 +543,27 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
     }
     if (Platform.OS === 'web') {
       return (
-        <WebCodeScanner ref={webScannerRef} active={isFocused} onScan={handleScan} mode="continuous" />
+        <WebCodeScanner
+          key={cameraKey}
+          ref={webScannerRef}
+          active={isFocused}
+          onScan={handleScan}
+          mode="continuous"
+          onCameraStalled={() => setCameraStalled(true)}
+        />
       );
     }
     if (isCaptureCameraAvailable()) {
       return (
-        <CaptureCameraView ref={nativeCameraRef} active={isFocused} onScan={handleScan} torch={torchOn} />
+        <CaptureCameraView
+          key={cameraKey}
+          ref={nativeCameraRef}
+          active={isFocused}
+          onScan={handleScan}
+          torch={torchOn}
+          onInitialized={handleCameraInitialized}
+          onError={() => setCameraStalled(true)}
+        />
       );
     }
     return (
@@ -618,6 +669,24 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                 </TouchableOpacity>
               </View>
             </>
+          )}
+          {isCameraType && cameraStalled && (
+            <View style={styles.stalledOverlay}>
+              <View style={styles.stalledCard}>
+                <VectorIcon name="error-outline" size={28} color={colors.danger} />
+                <Text style={styles.stalledTitle}>{t('scanCameraStalledTitle')}</Text>
+                <Text style={styles.stalledBody}>{t('scanCameraStalledBody')}</Text>
+                {Platform.OS !== 'web' && (
+                  <GradientButton style={styles.stalledButton} onPress={forceFocusAndRetry} activeOpacity={0.85}>
+                    <Text style={styles.stalledButtonText}>{t('scanForceFocus')}</Text>
+                  </GradientButton>
+                )}
+                <TouchableOpacity style={styles.stalledSecondary} onPress={retryCamera} activeOpacity={0.8}>
+                  <VectorIcon name="refresh" size={16} color={colors.primary} />
+                  <Text style={styles.stalledSecondaryText}>{t('scanRetryCamera')}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           )}
         </View>
 
@@ -880,4 +949,51 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   helpCloseButtonText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  stalledOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(11,18,32,0.82)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.xl,
+  },
+  stalledCard: {
+    width: '100%',
+    maxWidth: 320,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.xl,
+    alignItems: 'center',
+    ...shadow(3),
+  },
+  stalledTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.heading,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  stalledBody: {
+    fontSize: 12,
+    color: colors.text,
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: spacing.lg,
+  },
+  stalledButton: {
+    alignSelf: 'stretch',
+    backgroundColor: colors.primary,
+    borderRadius: radius.pill,
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  stalledButtonText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  stalledSecondary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+  },
+  stalledSecondaryText: { color: colors.primary, fontSize: 13, fontWeight: '600' },
 });

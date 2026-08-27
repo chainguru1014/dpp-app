@@ -1,6 +1,12 @@
 import React, { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { BrowserMultiFormatReader } from '@zxing/browser';
 import { BarcodeFormat, NotFoundException } from '@zxing/library';
+import {
+  applyDigitalZoom,
+  applyFixedFocusFallback,
+  buildPreprocessedCanvas,
+  buildResilientHints,
+} from '../utils/cameraResilience';
 
 interface WebCodeScannerProps {
   active: boolean;
@@ -11,6 +17,15 @@ interface WebCodeScannerProps {
   // screen) that need a live "is a code currently in view" signal rather
   // than a one-shot detection.
   mode?: 'once' | 'continuous';
+  // Fired once when the live stream has frozen and automatic recovery
+  // (fixed-focus fallback, then a one-time stream restart) did not bring it
+  // back — the screen should offer photo scan / manual entry / a retry.
+  // See utils/cameraResilience for why an AF-hardware fault causes this.
+  onCameraStalled?: () => void;
+  // Fired when the watchdog switched the camera to a fixed/manual focus mode
+  // to work around a stuck autofocus — the screen can surface a brief
+  // "move the phone slightly further away" hint.
+  onFocusFallback?: () => void;
 }
 
 export interface WebCodeScannerHandle {
@@ -21,25 +36,38 @@ export interface WebCodeScannerHandle {
 }
 
 const SCAN_INTERVAL_MS = 300;
+// Stream-liveness watchdog: video.currentTime must keep advancing. Each tick
+// it hasn't is one "stalled" count; the escalation stages below are keyed off
+// that count (≈1s per tick).
+const WATCHDOG_INTERVAL_MS = 1000;
+const STALL_TICKS_FOCUS_FALLBACK = 3; // ~3s frozen -> force fixed focus + zoom
+const STALL_TICKS_RESTART = 6; // ~6s frozen -> restart the stream once
+const STALL_TICKS_GIVE_UP = 10; // ~10s frozen -> hand off to the screen
 
 // Drives its own getUserMedia stream and snapshots frames onto an offscreen
-// canvas (same camera-acquisition approach that was already known to work
-// reliably — using `{ facingMode: 'environment' }` as a hard/exact constraint
-// via ZXing's own decodeFromVideoDevice() instead, as a first pass, produced
-// a solid-black preview on devices/browsers with no rear-facing camera to
-// exactly satisfy it, e.g. a laptop webcam — this keeps the soft `{ ideal:
-// 'environment' }` preference that falls back to whatever camera is
-// available). Per-frame decode uses ZXing's decodeFromCanvas — the same
-// underlying decoder as the photo-upload path, far more tolerant of a live
-// feed's rotation/scale/moiré than the jsQR(QR-only) + hand-rolled EAN-13
-// reader this used to run.
-function WebCodeScanner({ active, onScan, mode = 'once' }: WebCodeScannerProps, ref: React.Ref<WebCodeScannerHandle>) {
+// canvas. Per-frame decode uses ZXing's decodeFromCanvas (same decoder as the
+// photo-upload path). A stuck-autofocus fault freezes the stream rather than
+// erroring, so a watchdog (see the WATCHDOG_* constants) forces a fixed-focus
+// state, then restarts the stream, then finally reports onCameraStalled.
+function WebCodeScanner(
+  { active, onScan, mode = 'once', onCameraStalled, onFocusFallback }: WebCodeScannerProps,
+  ref: React.Ref<WebCodeScannerHandle>,
+) {
   const videoRef = useRef<any>(null);
   const canvasRef = useRef<any>(null);
   const streamRef = useRef<any>(null);
   const intervalRef = useRef<any>(null);
+  const watchdogRef = useRef<any>(null);
   const readerRef = useRef<BrowserMultiFormatReader | null>(null);
   const lastValueRef = useRef<string>('');
+  const emptyFramesRef = useRef<number>(0);
+  // Kept in refs so an inline-arrow callback from the parent doesn't retrigger
+  // the stream-acquisition effect (which would tear down and re-open the
+  // camera on every render).
+  const onCameraStalledRef = useRef(onCameraStalled);
+  const onFocusFallbackRef = useRef(onFocusFallback);
+  onCameraStalledRef.current = onCameraStalled;
+  onFocusFallbackRef.current = onFocusFallback;
 
   useImperativeHandle(ref, () => ({
     captureFrame: () => {
@@ -61,6 +89,10 @@ function WebCodeScanner({ active, onScan, mode = 'once' }: WebCodeScannerProps, 
   useEffect(() => {
     if (!active) return undefined;
     let cancelled = false;
+    let didRestart = false;
+    let gaveUp = false;
+    let stalledTicks = 0;
+    let lastVideoTime = -1;
 
     const report = (value: string, format: 'qr' | 'barcode') => {
       if (mode === 'continuous') {
@@ -75,11 +107,28 @@ function WebCodeScanner({ active, onScan, mode = 'once' }: WebCodeScannerProps, 
       }, 2500);
     };
 
+    // Try to decode `cnv`; returns true on a hit. Kept separate so the
+    // fixed-focus fallback passes below can reuse it on preprocessed frames.
+    const tryDecode = (cnv: any): boolean => {
+      const reader = readerRef.current;
+      if (!reader) return false;
+      try {
+        const result = reader.decodeFromCanvas(cnv);
+        const format = result.getBarcodeFormat ? result.getBarcodeFormat() : null;
+        report(String(result.getText()), format === BarcodeFormat.QR_CODE ? 'qr' : 'barcode');
+        return true;
+      } catch (err) {
+        if (!(err instanceof NotFoundException)) {
+          console.warn('Frame decode error:', err);
+        }
+        return false;
+      }
+    };
+
     const scanFrame = () => {
       const video = videoRef.current;
       const canvas = canvasRef.current;
-      const reader = readerRef.current;
-      if (!video || !canvas || !reader || video.readyState < 2) return;
+      if (!video || !canvas || !readerRef.current || video.readyState < 2) return;
       const w = video.videoWidth;
       const h = video.videoHeight;
       if (!w || !h) return;
@@ -89,20 +138,39 @@ function WebCodeScanner({ active, onScan, mode = 'once' }: WebCodeScannerProps, 
       if (!ctx) return;
       ctx.drawImage(video, 0, 0, w, h);
 
-      try {
-        const result = reader.decodeFromCanvas(canvas);
-        const format = result.getBarcodeFormat ? result.getBarcodeFormat() : null;
-        report(String(result.getText()), format === BarcodeFormat.QR_CODE ? 'qr' : 'barcode');
-      } catch (err) {
-        // NotFoundException just means no code in this frame — expected on
-        // most frames, not a real error.
-        if (!(err instanceof NotFoundException)) {
-          console.warn('Frame decode error:', err);
+      if (tryDecode(canvas)) {
+        emptyFramesRef.current = 0;
+        return;
+      }
+
+      // Nothing on the raw frame. Every few empty frames, spend the extra
+      // cycles on the fixed-focus-resilient passes: a contrast-stretched
+      // full frame, then a center-cropped (digital-zoom) contrast pass for a
+      // dense code that's simply too small/soft at full frame.
+      emptyFramesRef.current += 1;
+      if (emptyFramesRef.current % 3 === 0) {
+        if (tryDecode(buildPreprocessedCanvas(canvas, { cropRatio: 1, contrast: 1.7 }))) {
+          emptyFramesRef.current = 0;
+          return;
+        }
+        if (tryDecode(buildPreprocessedCanvas(canvas, { cropRatio: 0.6, contrast: 1.7 }))) {
+          emptyFramesRef.current = 0;
         }
       }
     };
 
-    const start = async () => {
+    const stopStream = () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t: any) => t.stop());
+        streamRef.current = null;
+      }
+    };
+
+    const startStream = async () => {
       try {
         const nav: any = (globalThis as any).navigator;
         const stream = await nav.mediaDevices.getUserMedia({
@@ -118,26 +186,70 @@ function WebCodeScanner({ active, onScan, mode = 'once' }: WebCodeScannerProps, 
           videoRef.current.srcObject = stream;
           await videoRef.current.play();
         }
-        readerRef.current = new BrowserMultiFormatReader();
+        if (!readerRef.current) {
+          readerRef.current = new BrowserMultiFormatReader(buildResilientHints());
+        }
         intervalRef.current = setInterval(scanFrame, SCAN_INTERVAL_MS);
       } catch (err) {
         console.error('Camera access failed:', err);
+        if (!cancelled && !gaveUp) {
+          gaveUp = true;
+          onCameraStalledRef.current?.();
+        }
       }
     };
 
-    start();
+    // Watchdog — a stuck AF actuator freezes the feed silently (no error
+    // event), so the only signal is currentTime no longer advancing.
+    const watchdog = async () => {
+      const video = videoRef.current;
+      if (!video || video.readyState < 2 || !streamRef.current) return;
+      // A backgrounded tab legitimately stops advancing currentTime — don't
+      // mistake that for an autofocus freeze.
+      const doc: any = (globalThis as any).document;
+      if (doc && doc.hidden) {
+        lastVideoTime = -1;
+        stalledTicks = 0;
+        return;
+      }
+      const t = video.currentTime;
+
+      if (t !== lastVideoTime) {
+        lastVideoTime = t;
+        stalledTicks = 0;
+        return;
+      }
+      stalledTicks += 1;
+
+      if (stalledTicks === STALL_TICKS_FOCUS_FALLBACK) {
+        // Bypass the faulty AF module: pin focus and lean on sensor zoom.
+        const applied = await applyFixedFocusFallback(streamRef.current);
+        await applyDigitalZoom(streamRef.current, 2);
+        if (applied) onFocusFallbackRef.current?.();
+      } else if (stalledTicks === STALL_TICKS_RESTART && !didRestart) {
+        didRestart = true;
+        stopStream();
+        lastVideoTime = -1;
+        stalledTicks = 0;
+        await startStream();
+      } else if (stalledTicks >= STALL_TICKS_GIVE_UP && !gaveUp) {
+        gaveUp = true;
+        onCameraStalledRef.current?.();
+      }
+    };
+
+    startStream();
+    watchdogRef.current = setInterval(watchdog, WATCHDOG_INTERVAL_MS);
 
     return () => {
       cancelled = true;
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
+      if (watchdogRef.current) {
+        clearInterval(watchdogRef.current);
+        watchdogRef.current = null;
       }
+      stopStream();
       readerRef.current = null;
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t: any) => t.stop());
-        streamRef.current = null;
-      }
+      emptyFramesRef.current = 0;
     };
   }, [active, onScan, mode]);
 

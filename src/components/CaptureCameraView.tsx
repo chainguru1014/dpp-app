@@ -26,6 +26,9 @@ export type CapturedCodeFormat = 'qr' | 'barcode';
 export interface CaptureCameraHandle {
   // Takes a still photo and returns its local file URI, or null on failure.
   takePhoto: () => Promise<string | null>;
+  // Forces a one-shot centre focus to break a stuck-autofocus freeze — see
+  // NativeCodeScanner.lockFocusCenter / utils/cameraResilience.
+  lockFocusCenter: () => Promise<void>;
 }
 
 interface CaptureCameraViewProps {
@@ -36,15 +39,19 @@ interface CaptureCameraViewProps {
   // raw continuous signal to know "is a code currently in view" right now.
   onScan: (value: string, format: CapturedCodeFormat) => void;
   torch?: boolean;
+  // Session lifecycle for the screen's freeze watchdog (see NativeCodeScanner).
+  onInitialized?: () => void;
+  onError?: (error: unknown) => void;
 }
 
 // Caller MUST check isCaptureCameraAvailable() before rendering this — the
 // hooks below are called unconditionally (same contract as
 // NativeCodeScanner.tsx) and are only safe to call once the native module is
 // confirmed linked.
-function CaptureCameraView({ active, onScan, torch }: CaptureCameraViewProps, ref: React.Ref<CaptureCameraHandle>) {
+function CaptureCameraView({ active, onScan, torch, onInitialized, onError }: CaptureCameraViewProps, ref: React.Ref<CaptureCameraHandle>) {
   const device = useCameraDevice('back');
   const cameraRef = useRef<any>(null);
+  const layoutRef = useRef<{ width: number; height: number }>({ width: 0, height: 0 });
 
   const codeScanner = useCodeScanner({
     codeTypes: [
@@ -70,6 +77,15 @@ function CaptureCameraView({ active, onScan, torch }: CaptureCameraViewProps, re
         return null;
       }
     },
+    lockFocusCenter: async () => {
+      try {
+        const { width, height } = layoutRef.current;
+        if (!cameraRef.current || !width || !height) return;
+        await cameraRef.current.focus({ x: width / 2, y: height / 2 });
+      } catch (e) {
+        console.warn('lockFocusCenter failed:', e);
+      }
+    },
   }));
 
   if (!device || !Camera) {
@@ -85,6 +101,12 @@ function CaptureCameraView({ active, onScan, torch }: CaptureCameraViewProps, re
       codeScanner={codeScanner}
       photo={true}
       torch={torch ? 'on' : 'off'}
+      onInitialized={onInitialized}
+      onError={onError}
+      onLayout={(e: any) => {
+        const { width, height } = e?.nativeEvent?.layout || {};
+        if (width && height) layoutRef.current = { width, height };
+      }}
     />
   );
 }

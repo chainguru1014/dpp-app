@@ -20,6 +20,14 @@ module.exports = {
       'react-native-worklets-core': false,
       '@react-native-ml-kit/barcode-scanning': false,
       'react-native-image-picker': false,
+      // Native-only camera lib — the web build uses WebCodeScanner instead
+      // (NativeCodeScanner/CaptureCameraView already guard their require()).
+      // v4 re-exports skia/reanimated/worklets proxy modules from its entry
+      // point; stub the whole package plus those transitive optional deps so
+      // webpack doesn't try to resolve them.
+      'react-native-vision-camera': false,
+      '@shopify/react-native-skia': false,
+      'react-native-reanimated': false,
       // Native-only GPS/device-info libs for the corporate capture flow —
       // deviceCapture.ts already branches to browser APIs on web.
       'react-native-geolocation-service': false,
