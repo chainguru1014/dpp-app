@@ -56,29 +56,55 @@ interface ResultScreenProps {
   onLogout?: () => void;
 }
 
-// Paged product-image slider with pagination dots — styled to match the home slider.
+type MediaSlide =
+  | { kind: 'image'; uri: string }
+  | { kind: 'video'; videoId: string; url: string; description?: string };
+
+// Paged product-media slider with pagination dots — product images first, then
+// any YouTube videos at the end. Each slide carries a small badge bottom-right:
+// a camera glyph for photos, a YouTube/"smart-display" glyph for videos. Tapping
+// a video slide opens it in the YouTube app / browser.
 function ImageSlider({
   images,
+  videos,
   name,
   model,
   pmcCode,
   getFileUrl,
+  getYoutubeVideoID,
+  watchLabel,
 }: {
   images: string[];
+  videos?: any[];
   name?: string;
   model?: string;
   pmcCode?: string;
   getFileUrl: (filename: string) => string;
+  getYoutubeVideoID: (url: string) => string | null;
+  watchLabel?: string;
 }) {
   const [pageWidth, setPageWidth] = useState(width);
   const [active, setActive] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
   const imageHeight = Math.min(Math.round((pageWidth - 32) * 1.1), 440);
 
+  const slides: MediaSlide[] = [
+    ...images.map((uri): MediaSlide => ({ kind: 'image', uri })),
+    ...(videos || [])
+      .map((v: any): MediaSlide | null => {
+        const url = typeof v === 'string' ? v : v?.url || '';
+        const videoId = getYoutubeVideoID(url);
+        return videoId
+          ? { kind: 'video', videoId, url, description: typeof v === 'object' ? v?.description : '' }
+          : null;
+      })
+      .filter((s): s is MediaSlide => s != null),
+  ];
+
   const onScroll = (e: any) => {
     if (!pageWidth) return;
     const i = Math.round(e.nativeEvent.contentOffset.x / pageWidth);
-    if (i !== active && i >= 0 && i < images.length) setActive(i);
+    if (i !== active && i >= 0 && i < slides.length) setActive(i);
   };
 
   const goTo = (i: number) => {
@@ -107,22 +133,51 @@ function ImageSlider({
         }}
         style={styles.imageCarousel}
       >
-        {images.map((img: string, index: number) => (
-          <View key={`${img}-${index}`} style={[styles.slidePage, { width: pageWidth }]}>
+        {slides.map((slide, index) => (
+          <View key={index} style={[styles.slidePage, { width: pageWidth }]}>
             <View style={[styles.imageCard, { height: imageHeight }]}>
-              <Image
-                source={{ uri: getFileUrl(img) }}
-                style={styles.carouselImageFull}
-                resizeMode="contain"
-              />
+              {slide.kind === 'video' ? (
+                <TouchableOpacity
+                  style={styles.videoSlideTouch}
+                  activeOpacity={0.85}
+                  onPress={() => Linking.openURL(slide.url)}
+                >
+                  <Image
+                    source={{ uri: `https://img.youtube.com/vi/${slide.videoId}/hqdefault.jpg` }}
+                    style={styles.carouselImageFull}
+                    resizeMode="cover"
+                  />
+                  <View style={styles.videoPlayOverlay}>
+                    <Icon name="play-circle-filled" size={64} color="#fff" />
+                    {!!(slide.description || watchLabel) && (
+                      <Text style={styles.videoSlideCaption} numberOfLines={2}>
+                        {slide.description || watchLabel}
+                      </Text>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              ) : (
+                <Image
+                  source={{ uri: getFileUrl(slide.uri) }}
+                  style={styles.carouselImageFull}
+                  resizeMode="contain"
+                />
+              )}
+              <View style={styles.mediaTypeBadge}>
+                <Icon
+                  name={slide.kind === 'video' ? 'smart-display' : 'photo-camera'}
+                  size={14}
+                  color="#fff"
+                />
+              </View>
             </View>
           </View>
         ))}
       </ScrollView>
 
-      {images.length > 1 && (
+      {slides.length > 1 && (
         <View style={styles.imageDots}>
-          {images.map((_: string, i: number) => (
+          {slides.map((_, i: number) => (
             <TouchableOpacity
               key={i}
               onPress={() => goTo(i)}
@@ -1279,15 +1334,20 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
 
   const renderImageSlider = () => {
     const images = normalizeToStringArray(productData?.images);
-    if (images.length === 0) return null;
+    const videos = normalizeToArray(productData?.videos);
+    const hasVideo = videos.some((v: any) => getYoutubeVideoID(typeof v === 'string' ? v : v?.url));
+    if (images.length === 0 && !hasVideo) return null;
 
     return (
       <ImageSlider
         images={images}
+        videos={videos}
         name={productData?.name}
         model={productData?.model}
         pmcCode={productData?.pmc_code}
         getFileUrl={getFileUrl}
+        getYoutubeVideoID={getYoutubeVideoID}
+        watchLabel={t('watchVideo')}
       />
     );
   };
@@ -1976,6 +2036,37 @@ const styles = StyleSheet.create({
   carouselImageFull: {
     width: '100%',
     height: '100%',
+  },
+  videoSlideTouch: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#000',
+  },
+  videoPlayOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  videoSlideCaption: {
+    marginTop: 8,
+    color: '#fff',
+    fontSize: 13,
+    textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  mediaTypeBadge: {
+    position: 'absolute',
+    right: 10,
+    bottom: 10,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.55)',
   },
   imageDots: {
     flexDirection: 'row',
