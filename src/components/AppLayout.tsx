@@ -15,7 +15,6 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import FeatherIcon from 'react-native-vector-icons/Feather';
-import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Svg, { Defs, LinearGradient as SvgLinearGradient, Stop, Rect } from 'react-native-svg';
 import { useRoute } from '@react-navigation/native';
 import { useI18n } from '../i18n/I18nContext';
@@ -413,8 +412,8 @@ export default function AppLayout({
               activeOpacity={0.7}
             >
               {isScanSelected && <View style={styles.bottomTabIndicator} />}
-              <MaterialCommunityIcon
-                name="scan-helper"
+              <Icon
+                name="qr-code-scanner"
                 size={BOTTOM_TAB_ICON_SIZE}
                 color={isScanSelected ? colors.primary : '#333333'}
               />

@@ -5,12 +5,12 @@ import { name as appName } from './app.json';
 // Load react-native-vector-icons fonts on web. Without an @font-face the glyphs
 // render as empty "tofu" rectangles, so we register the bundled .ttf files here.
 import MaterialIconsFont from 'react-native-vector-icons/Fonts/MaterialIcons.ttf';
-import MaterialCommunityIconsFont from 'react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf';
 import FeatherFont from 'react-native-vector-icons/Fonts/Feather.ttf';
 
+// MaterialCommunityIcons.ttf is ~1.1 MB and was used for a single glyph — that
+// icon now comes from MaterialIcons, so the font is no longer loaded on web.
 const iconFontFaces = `
 @font-face { font-family: 'MaterialIcons'; src: url(${MaterialIconsFont}) format('truetype'); }
-@font-face { font-family: 'MaterialCommunityIcons'; src: url(${MaterialCommunityIconsFont}) format('truetype'); }
 @font-face { font-family: 'Feather'; src: url(${FeatherFont}) format('truetype'); }
 `;
 const iconFontStyle = document.createElement('style');

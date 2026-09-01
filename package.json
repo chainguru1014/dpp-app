@@ -11,8 +11,9 @@
     "lint": "eslint .",
     "serve:web": "node server.js",
     "web": "webpack serve --config webpack.config.js --port 3001 --host 0.0.0.0",
+    "web:prod": "webpack serve --config webpack.config.js --mode production --port 3001 --host 0.0.0.0",
     "get:key": "node get-sample-key.js",
-    "web:build": "webpack --mode production"
+    "web:build": "webpack --config webpack.config.js --mode production"
   },
   "dependencies": {
     "@invertase/react-native-apple-authentication": "^2.5.1",
