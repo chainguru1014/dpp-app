@@ -81,7 +81,11 @@ module.exports = (env, argv) => {
             options: {
               cacheDirectory: true,
               presets: [
-                '@babel/preset-env',
+                // loose:true so preset-env's class-properties / private-methods
+                // / private-property-in-object transforms match the loose:true
+                // that metro-react-native-babel-preset and babel.config.js use
+                // — a mismatch spams a Babel warning for every source file.
+                ['@babel/preset-env', { loose: true, targets: '> 0.5%, last 2 versions, not dead' }],
                 '@babel/preset-react',
                 'module:metro-react-native-babel-preset',
               ],
