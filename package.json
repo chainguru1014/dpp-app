@@ -12,8 +12,9 @@
     "serve:web": "node server.js",
     "web": "webpack serve --config webpack.config.js --port 3001 --host 0.0.0.0",
     "web:prod": "webpack serve --config webpack.config.js --mode production --port 3001 --host 0.0.0.0",
-    "get:key": "node get-sample-key.js",
-    "web:build": "webpack --config webpack.config.js --mode production"
+    "web:build": "webpack --config webpack.config.js --mode production",
+    "web:serve": "node serve-web.js",
+    "get:key": "node get-sample-key.js"
   },
   "dependencies": {
     "@invertase/react-native-apple-authentication": "^2.5.1",
