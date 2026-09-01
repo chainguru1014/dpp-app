@@ -75,9 +75,9 @@ const BOTTOM_TOP = SCREEN_HEIGHT - BOTTOM_BAR_HEIGHT;
 // openLanguageMenu below for why these are static instead of measured.
 const AVATAR_POPOVER_POS = { top: TOP_BAR_HEIGHT + 6, right: 16 };
 const LANG_POPOVER_POS = { top: TOP_BAR_HEIGHT + 20, right: 16 };
-// The hamburger sits just left of the avatar — anchor its dropdown a touch
-// further left so it doesn't run off the right edge.
-const MENU_POPOVER_POS = { top: TOP_BAR_HEIGHT + 6, right: 12 };
+// The hamburger is the right-most top-bar icon — anchor its dropdown near the
+// right edge, under it.
+const MENU_POPOVER_POS = { top: TOP_BAR_HEIGHT + 6, right: 10 };
 
 export default function AppLayout({
   children,
@@ -401,6 +401,16 @@ export default function AppLayout({
             </View>
           </TouchableOpacity>
 
+          <TouchableOpacity
+            onPress={openAvatarMenu}
+            style={styles.iconButton}
+            activeOpacity={0.7}
+          >
+            <View>
+              <Icon name="account-circle" size={28} color={colors.white} />
+            </View>
+          </TouchableOpacity>
+
           {/* Consumer sessions: the hamburger opens the History / product-Menu
               dropdown (there's no bottom bar). Employees keep the bottom bar. */}
           {isAuthenticated && !isEmployeeActor && (
@@ -412,16 +422,6 @@ export default function AppLayout({
               <Icon name="menu" size={26} color={colors.white} />
             </TouchableOpacity>
           )}
-
-          <TouchableOpacity
-            onPress={openAvatarMenu}
-            style={styles.iconButton}
-            activeOpacity={0.7}
-          >
-            <View>
-              <Icon name="account-circle" size={28} color={colors.white} />
-            </View>
-          </TouchableOpacity>
         </View>
       </View>
 
