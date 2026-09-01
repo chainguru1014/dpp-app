@@ -1,4 +1,4 @@
-import React, { useState, useRef, useId, useEffect } from 'react';
+import React, { useState, useId } from 'react';
 import {
   View,
   StyleSheet,
@@ -75,6 +75,9 @@ const BOTTOM_TOP = SCREEN_HEIGHT - BOTTOM_BAR_HEIGHT;
 // openLanguageMenu below for why these are static instead of measured.
 const AVATAR_POPOVER_POS = { top: TOP_BAR_HEIGHT + 6, right: 16 };
 const LANG_POPOVER_POS = { top: TOP_BAR_HEIGHT + 20, right: 16 };
+// The hamburger sits just left of the avatar — anchor its dropdown a touch
+// further left so it doesn't run off the right edge.
+const MENU_POPOVER_POS = { top: TOP_BAR_HEIGHT + 6, right: 12 };
 
 export default function AppLayout({
   children,
@@ -109,25 +112,18 @@ export default function AppLayout({
       ? (route.name === 'EmployeeHome' ? EMPLOYEE_BRAND_TITLE : BRAND_TITLE)
       : routeTitleKey ? t(routeTitleKey as any) : undefined
   );
-  // Consumer sessions: every page's top bar EXCEPT Home itself shows the
-  // selected Home-page location item as a subtitle (matching the corporate
-  // top bar's step-context subtitle) — cached by HomeScreen so this never
-  // needs to fetch the steps list itself. A screen-supplied `subtitle` prop
-  // (e.g. ResultScreen's product name) always wins. Home/EmployeeHome are
-  // title-only, no subtitle, on both actor kinds.
-  const [consumerLocationLabel, setConsumerLocationLabel] = useState<string | undefined>(undefined);
-  useEffect(() => {
-    if (user?.actorKind === 'Employee') return;
-    AsyncStorage.getItem('consumerSelectedLocationLabel').then((stored) => {
-      if (stored) setConsumerLocationLabel(stored);
-    });
-  }, [user?.actorKind]);
-  const computedSubtitle = subtitle ?? (!isHomeRoute && user && user.actorKind !== 'Employee' ? consumerLocationLabel : undefined);
+  // The top bar shows a subtitle only when a screen explicitly passes one
+  // (e.g. the corporate Scan/Review screens). The old consumer "scan location"
+  // subtitle was removed.
+  const computedSubtitle = subtitle ?? undefined;
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [langMenuVisible, setLangMenuVisible] = useState(false);
   const [langPopover, setLangPopover] = useState(LANG_POPOVER_POS);
   const [avatarMenuVisible, setAvatarMenuVisible] = useState(false);
   const [avatarPopover, setAvatarPopover] = useState(AVATAR_POPOVER_POS);
+  // Consumer sessions have no bottom bar — the History / product-Menu items
+  // live in a dropdown off this top-bar hamburger instead.
+  const [menuPopoverVisible, setMenuPopoverVisible] = useState(false);
   const isAuthenticated = !!user;
   const isEmployeeActor = user?.actorKind === 'Employee';
   const [notifPanelVisible, setNotifPanelVisible] = useState(false);
@@ -152,6 +148,13 @@ export default function AppLayout({
   const homeBaseRoute = isEmployeeActor ? 'EmployeeHome' : 'Scanner';
 
   const handleBack = () => {
+    // Consumer sessions have no bottom bar, so the back arrow is the single
+    // "go home" affordance — it always returns to the Scanner, ignoring any
+    // screen-specific onBackPress.
+    if (isAuthenticated && !isEmployeeActor) {
+      navigation.navigate('Scanner');
+      return;
+    }
     if (onBackPress) {
       onBackPress();
     } else {
@@ -182,6 +185,14 @@ export default function AppLayout({
     }
     setAvatarPopover(AVATAR_POPOVER_POS);
     setAvatarMenuVisible(true);
+  };
+
+  const openMenuPopover = () => {
+    if (!isAuthenticated) {
+      onGuestAction?.();
+      return;
+    }
+    setMenuPopoverVisible(true);
   };
 
   const handleProfile = () => {
@@ -313,20 +324,17 @@ export default function AppLayout({
       ]
     : extraMenuItems.map((item) => ({ ...item, kind: 'nav' as const }));
 
-  // Bottom-bar "Settings" slot label + the sheet's own title/subtitle.
-  // Employee: unchanged "Settings". Consumer: "History" normally, "Menu" on
-  // the product detail page (where it's mostly product actions).
-  const settingsSlotLabel = isEmployeeActor
-    ? t('bottomSettings')
-    : isProductDetailPage
-    ? t('menu')
-    : t('titleHistory');
-  const settingsSheetTitle = settingsSlotLabel;
-  const settingsSheetSubtitle = isEmployeeActor
-    ? t('settingsSubtitle')
-    : isProductDetailPage
-    ? t('quickActionsSubtitle')
-    : t('historyBrandsData');
+  // Fire a settings-menu item and close whichever surface opened it (the
+  // employee bottom sheet or the consumer hamburger dropdown).
+  const runSettingsMenuItem = (item: { key: string; kind: 'action' | 'nav' }) => {
+    setSettingsVisible(false);
+    setMenuPopoverVisible(false);
+    if (item.kind === 'nav') {
+      handleExtraMenuItemPress(item.key);
+    } else {
+      onActionMenuPress?.(item.key);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -393,6 +401,18 @@ export default function AppLayout({
             </View>
           </TouchableOpacity>
 
+          {/* Consumer sessions: the hamburger opens the History / product-Menu
+              dropdown (there's no bottom bar). Employees keep the bottom bar. */}
+          {isAuthenticated && !isEmployeeActor && (
+            <TouchableOpacity
+              onPress={openMenuPopover}
+              style={styles.iconButton}
+              activeOpacity={0.7}
+            >
+              <Icon name="menu" size={26} color={colors.white} />
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity
             onPress={openAvatarMenu}
             style={styles.iconButton}
@@ -405,113 +425,90 @@ export default function AppLayout({
         </View>
       </View>
 
-      <View style={[styles.content, useCenterTop && styles.contentCentered, hideBottomBar && styles.contentWithoutBottomBar]}>
+      <View
+        style={[
+          styles.content,
+          useCenterTop && styles.contentCentered,
+          (hideBottomBar || !isEmployeeActor) && styles.contentWithoutBottomBar,
+        ]}
+      >
         {children}
       </View>
 
-      {!hideBottomBar && (() => {
+      {/* Bottom bar: employee sessions only (Home / Capture / Review /
+          Settings). Consumer sessions have no bottom bar — the Scanner is
+          home and the top-bar hamburger holds the History / product-Menu
+          items. */}
+      {!hideBottomBar && isEmployeeActor && (() => {
         const isScanSelected = route.name === 'Scanner' || route.name === 'CorporateScanner';
         const isSettingsSelected = settingsVisible;
+        const isHomeSelected = route.name === 'EmployeeHome';
+        const isProductsSelected = route.name === productsTarget;
+        return (
+          <View style={styles.bottomBar}>
+            <TouchableOpacity
+              style={[styles.bottomTab, isHomeSelected && styles.bottomTabSelected]}
+              onPress={handleHome}
+              activeOpacity={0.7}
+            >
+              {isHomeSelected && <View style={styles.bottomTabIndicator} />}
+              <Image
+                source={require('../assets/home.png')}
+                style={[styles.bottomTabIcon, isHomeSelected && styles.bottomTabIconSelected]}
+                resizeMode="contain"
+              />
+              <Text style={[styles.bottomTabLabel, isHomeSelected && styles.bottomTabLabelSelected]}>
+                {t('bottomHome')}
+              </Text>
+            </TouchableOpacity>
 
-        const scanTab = (
-          <TouchableOpacity
-            style={[styles.bottomTab, isScanSelected && styles.bottomTabSelected]}
-            onPress={handleScan}
-            activeOpacity={0.7}
-          >
-            {isScanSelected && <View style={styles.bottomTabIndicator} />}
-            <Icon
-              name="qr-code-scanner"
-              size={BOTTOM_TAB_ICON_SIZE}
-              color={isScanSelected ? colors.primary : '#333333'}
-            />
-            <Text style={[styles.bottomTabLabel, isScanSelected && styles.bottomTabLabelSelected]}>
-              {isEmployeeActor ? t('bottomCapture') : t('bottomScan')}
-            </Text>
-          </TouchableOpacity>
-        );
+            <TouchableOpacity
+              style={[styles.bottomTab, isScanSelected && styles.bottomTabSelected]}
+              onPress={handleScan}
+              activeOpacity={0.7}
+            >
+              {isScanSelected && <View style={styles.bottomTabIndicator} />}
+              <Icon
+                name="qr-code-scanner"
+                size={BOTTOM_TAB_ICON_SIZE}
+                color={isScanSelected ? colors.primary : '#333333'}
+              />
+              <Text style={[styles.bottomTabLabel, isScanSelected && styles.bottomTabLabelSelected]}>
+                {t('bottomCapture')}
+              </Text>
+            </TouchableOpacity>
 
-        const settingsTab = (
-          <TouchableOpacity
-            style={[styles.bottomTab, isSettingsSelected && styles.bottomTabSelected]}
-            onPress={handleSettings}
-            activeOpacity={0.7}
-          >
-            {isSettingsSelected && <View style={styles.bottomTabIndicator} />}
-            {isEmployeeActor ? (
+            <TouchableOpacity
+              style={[styles.bottomTab, isProductsSelected && styles.bottomTabSelected]}
+              onPress={handleProducts}
+              activeOpacity={0.7}
+            >
+              {isProductsSelected && <View style={styles.bottomTabIndicator} />}
+              <FeatherIcon
+                name="file-text"
+                size={BOTTOM_TAB_ICON_SIZE}
+                color={isProductsSelected ? colors.primary : '#333333'}
+              />
+              <Text style={[styles.bottomTabLabel, isProductsSelected && styles.bottomTabLabelSelected]}>
+                {t('bottomReview')}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.bottomTab, isSettingsSelected && styles.bottomTabSelected]}
+              onPress={handleSettings}
+              activeOpacity={0.7}
+            >
+              {isSettingsSelected && <View style={styles.bottomTabIndicator} />}
               <Image
                 source={require('../assets/setting.png')}
                 style={[styles.bottomTabIcon, isSettingsSelected && styles.bottomTabIconSelected]}
                 resizeMode="contain"
               />
-            ) : (
-              // Consumer: a history clock for the "History" slot, a 3-line
-              // hamburger for the "Menu" slot on the product detail page.
-              <Icon
-                name={isProductDetailPage ? 'menu' : 'history'}
-                size={BOTTOM_TAB_ICON_SIZE}
-                color={isSettingsSelected ? colors.primary : '#333333'}
-              />
-            )}
-            <Text style={[styles.bottomTabLabel, isSettingsSelected && styles.bottomTabLabelSelected]}>
-              {settingsSlotLabel}
-            </Text>
-          </TouchableOpacity>
-        );
-
-        // Employee sessions keep the original 4-tab bar (Home / Capture /
-        // Review / Settings) — their flow is unchanged.
-        if (isEmployeeActor) {
-          const isHomeSelected = route.name === 'EmployeeHome';
-          const isProductsSelected = route.name === productsTarget;
-          return (
-            <View style={styles.bottomBar}>
-              <TouchableOpacity
-                style={[styles.bottomTab, isHomeSelected && styles.bottomTabSelected]}
-                onPress={handleHome}
-                activeOpacity={0.7}
-              >
-                {isHomeSelected && <View style={styles.bottomTabIndicator} />}
-                <Image
-                  source={require('../assets/home.png')}
-                  style={[styles.bottomTabIcon, isHomeSelected && styles.bottomTabIconSelected]}
-                  resizeMode="contain"
-                />
-                <Text style={[styles.bottomTabLabel, isHomeSelected && styles.bottomTabLabelSelected]}>
-                  {t('bottomHome')}
-                </Text>
-              </TouchableOpacity>
-
-              {scanTab}
-
-              <TouchableOpacity
-                style={[styles.bottomTab, isProductsSelected && styles.bottomTabSelected]}
-                onPress={handleProducts}
-                activeOpacity={0.7}
-              >
-                {isProductsSelected && <View style={styles.bottomTabIndicator} />}
-                <FeatherIcon
-                  name="file-text"
-                  size={BOTTOM_TAB_ICON_SIZE}
-                  color={isProductsSelected ? colors.primary : '#333333'}
-                />
-                <Text style={[styles.bottomTabLabel, isProductsSelected && styles.bottomTabLabelSelected]}>
-                  {t('bottomReview')}
-                </Text>
-              </TouchableOpacity>
-
-              {settingsTab}
-            </View>
-          );
-        }
-
-        // Consumer sessions: just Scan + Settings (renamed). Home is gone
-        // (Scanner is the landing screen); "My Products" moved into the
-        // Settings sheet.
-        return (
-          <View style={styles.bottomBar}>
-            {scanTab}
-            {settingsTab}
+              <Text style={[styles.bottomTabLabel, isSettingsSelected && styles.bottomTabLabelSelected]}>
+                {t('bottomSettings')}
+              </Text>
+            </TouchableOpacity>
           </View>
         );
       })()}
@@ -528,15 +525,12 @@ export default function AppLayout({
           onPress={() => setSettingsVisible(false)}
         >
           <View style={styles.settingsContainer}>
-            <Text style={styles.settingsTitle}>{settingsSheetTitle}</Text>
-            <Text style={styles.settingsSubtitle}>
-              {settingsSheetSubtitle}
-            </Text>
+            <Text style={styles.settingsTitle}>{t('settings')}</Text>
+            <Text style={styles.settingsSubtitle}>{t('settingsSubtitle')}</Text>
 
             {/* Profile and Logout live in the top-bar avatar dropdown only —
-                this sheet is History&Data/product-actions, same submenu for
-                both consumer and corporate/employee sessions, never
-                Profile/Logout. */}
+                this sheet is History&Data/product-actions. Employee sessions
+                only (consumers use the top-bar hamburger dropdown instead). */}
             <ScrollView style={styles.menuScroll} showsVerticalScrollIndicator={true}>
               {settingsMenuItems.map((item, index, list) => (
                   <View key={item.label}>
@@ -545,14 +539,7 @@ export default function AppLayout({
                     ) : null}
                     <TouchableOpacity
                       style={styles.menuItem}
-                      onPress={() => {
-                        if (item.kind === 'nav') {
-                          handleExtraMenuItemPress(item.key);
-                        } else {
-                          setSettingsVisible(false);
-                          onActionMenuPress?.(item.key);
-                        }
-                      }}
+                      onPress={() => runSettingsMenuItem(item)}
                       activeOpacity={0.7}
                     >
                       <Image source={item.iconSource} style={styles.menuItemIcon} resizeMode="contain" />
@@ -564,6 +551,44 @@ export default function AppLayout({
             </ScrollView>
           </View>
         </TouchableOpacity>
+      </Modal>
+
+      {/* Consumer hamburger dropdown — the History items (or, on the product
+          detail page, the product actions + History items). Styled like the
+          avatar dropdown: flat list, tinted icons, no titles or section
+          headers. */}
+      <Modal
+        visible={menuPopoverVisible}
+        transparent
+        animationType="none"
+        onRequestClose={() => setMenuPopoverVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setMenuPopoverVisible(false)}>
+          <View style={styles.langOverlay}>
+            <View
+              style={[
+                styles.langPopover,
+                styles.avatarPopover,
+                styles.menuPopover,
+                { position: 'absolute', top: MENU_POPOVER_POS.top, right: MENU_POPOVER_POS.right },
+              ]}
+            >
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {settingsMenuItems.map((item) => (
+                  <TouchableOpacity
+                    key={item.label}
+                    style={styles.avatarMenuItem}
+                    onPress={() => runSettingsMenuItem(item)}
+                    activeOpacity={0.7}
+                  >
+                    <Image source={item.iconSource} style={styles.avatarMenuIcon} resizeMode="contain" />
+                    <Text style={styles.avatarMenuText}>{item.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
       </Modal>
 
       <Modal
@@ -934,6 +959,11 @@ const styles = StyleSheet.create({
   avatarPopover: {
     minWidth: 160,
     paddingHorizontal: 4,
+  },
+  menuPopover: {
+    minWidth: 210,
+    maxWidth: SCREEN_WIDTH - 24,
+    maxHeight: SCREEN_HEIGHT - TOP_BAR_HEIGHT - 24,
   },
   avatarMenuItem: {
     flexDirection: 'row',
