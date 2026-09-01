@@ -74,6 +74,16 @@ module.exports = (env, argv) => {
     module: {
       rules: [
         {
+          // Several RN packages (@react-native-google-signin,
+          // react-native-safe-area-context, @react-navigation…) ship an ESM
+          // `lib/module` build whose relative imports omit file extensions.
+          // Webpack 5 treats those as "fully specified" and errors; turning
+          // that off lets `resolve.extensions` (which puts `.web.js` first)
+          // pick the right file.
+          test: /\.m?js$/,
+          resolve: { fullySpecified: false },
+        },
+        {
           test: /\.(js|jsx|ts|tsx)$/,
           exclude: /node_modules\/(?!(react-native-vector-icons)\/).*/,
           use: {
