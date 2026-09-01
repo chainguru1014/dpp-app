@@ -61,6 +61,16 @@ type MediaSlide =
   | { kind: 'image'; uri: string }
   | { kind: 'video'; videoId: string; url: string; description?: string };
 
+// Structured product-detail facts — mirrors the frontend product card's
+// left-column rows (ProductDraftCard.js). Shown in the Product Details section.
+const DETAIL_FACT_ROWS: { key: string; icon: string; format: (v: string) => string }[] = [
+  { key: 'material', icon: 'spa', format: (v) => `Material: ${v}` },
+  { key: 'fit', icon: 'accessibility-new', format: (v) => `Fit: ${v}` },
+  { key: 'wash', icon: 'water-drop', format: (v) => `Wash: ${v}` },
+  { key: 'durability', icon: 'shield', format: (v) => `Durability: ${v}` },
+  { key: 'traceableIdentity', icon: 'qr-code-2', format: (v) => v || 'Traceable product identity' },
+];
+
 // Paged product-media slider with pagination dots — product images first, then
 // any YouTube videos at the end. Each slide carries a small badge bottom-right:
 // a camera glyph for photos, a YouTube/"smart-display" glyph for videos. Tapping
@@ -1070,9 +1080,12 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
   });
 
   const renderProductDetails = () => {
-    const videos = normalizeToArray(productData?.videos);
     const files = normalizeToStringArray(productData?.files);
     const detail = String(productData?.detail ?? '').trim();
+    const facts = productData?.detailFacts || {};
+    const filledFacts = DETAIL_FACT_ROWS.filter(
+      (r) => r.key === 'traceableIdentity' || facts[r.key],
+    );
     const brandInfo = getBrandInfo();
     const logoSource = !brandLogoLoadFailed && brandInfo.logoRaw
       ? {
@@ -1111,22 +1124,14 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
           </TouchableOpacity>
         </View>
 
-        {videos.length > 0 && (
-          <View style={styles.videosContainer}>
-            {videos.map((video: any, index: number) => {
-              const videoId = getYoutubeVideoID(video?.url);
-              if (!videoId) return null;
-              return (
-                <TouchableOpacity
-                  key={index}
-                  style={styles.videoButton}
-                  onPress={() => Linking.openURL(video.url)}
-                >
-                  <Icon name="play-circle-filled" size={24} color={BRAND_COLOR} />
-                  <Text style={styles.videoText}>{video.description || t('watchVideo')}</Text>
-                </TouchableOpacity>
-              );
-            })}
+        {filledFacts.length > 0 && (
+          <View style={styles.detailFactsContainer}>
+            {filledFacts.map(({ key, icon, format }) => (
+              <View key={key} style={styles.detailFactRow}>
+                <Icon name={icon} size={16} color={BRAND_COLOR} style={styles.detailFactIcon} />
+                <Text style={styles.detailFactText}>{format(String(facts[key] || ''))}</Text>
+              </View>
+            ))}
           </View>
         )}
 
@@ -2139,6 +2144,26 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     color: colors.primary,
     textAlign: 'center',
+  },
+  detailFactsContainer: {
+    marginTop: 6,
+    marginBottom: 12,
+    paddingHorizontal: 12,
+    gap: 8,
+  },
+  detailFactRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  detailFactIcon: {
+    marginTop: 2,
+    marginRight: 10,
+  },
+  detailFactText: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.text,
+    lineHeight: 20,
   },
   videosContainer: {
     marginVertical: 15,
