@@ -411,15 +411,15 @@ export default function AppLayout({
             </View>
           </TouchableOpacity>
 
-          {/* Consumer sessions: the hamburger opens the History / product-Menu
-              dropdown (there's no bottom bar). Employees keep the bottom bar. */}
+          {/* Consumer sessions: this opens the History / product-Menu dropdown
+              (there's no bottom bar). Employees keep the bottom bar. */}
           {isAuthenticated && !isEmployeeActor && (
             <TouchableOpacity
               onPress={openMenuPopover}
               style={styles.iconButton}
               activeOpacity={0.7}
             >
-              <Icon name="menu" size={26} color={colors.white} />
+              <Icon name="settings" size={26} color={colors.white} />
             </TouchableOpacity>
           )}
         </View>
