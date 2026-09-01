@@ -228,7 +228,7 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
       setProfile(refreshedProfile);
       setInitialProfile(refreshedProfile);
       Alert.alert(t('success'), t('profileUpdated'));
-      navigation.navigate('Home');
+      navigation.navigate(user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Scanner');
     } catch (error: any) {
       const message = error?.message || t('failedToUpdateProfile');
       setSaveError(message);
@@ -243,7 +243,7 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
       if (!validateGoogleRequiredFields()) {
         return;
       }
-      navigation.replace('Home');
+      navigation.replace(user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Scanner');
       return;
     }
     setProfile(initialProfile);

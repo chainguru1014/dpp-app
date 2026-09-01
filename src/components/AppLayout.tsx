@@ -147,12 +147,16 @@ export default function AppLayout({
     setNotifPanelVisible(true);
   };
 
+  // Consumer sessions no longer have a Home page — the Scanner is the base
+  // screen they return to. Employee sessions keep EmployeeHome.
+  const homeBaseRoute = isEmployeeActor ? 'EmployeeHome' : 'Scanner';
+
   const handleBack = () => {
     if (onBackPress) {
       onBackPress();
     } else {
       if (!isAuthenticated) return;
-      navigation.navigate(user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Home');
+      navigation.navigate(homeBaseRoute);
     }
   };
 
@@ -222,7 +226,7 @@ export default function AppLayout({
       onGuestAction?.();
       return;
     }
-    navigation.navigate(isEmployeeActor ? 'EmployeeHome' : 'Home');
+    navigation.navigate(homeBaseRoute);
   };
 
   const handleProducts = () => {
@@ -266,7 +270,9 @@ export default function AppLayout({
       onSettingsMenuPress(itemKey);
       return;
     }
-    if (itemKey === 'purchaseHistory') {
+    if (itemKey === 'myProducts') {
+      navigation.navigate(productsTarget);
+    } else if (itemKey === 'purchaseHistory') {
       navigation.navigate('PurchaseHistory');
     } else if (itemKey === 'viewHistory') {
       navigation.navigate('History');
@@ -289,7 +295,12 @@ export default function AppLayout({
   // History/data items — always shown in Settings. On the product detail page
   // the product action items above are shown too (formerly a separate 3-line
   // menu button; that button is gone, its content now lives here).
+  // Consumer sessions also get "My Products" here now that the bottom-bar
+  // Products tab is gone (employee sessions keep their own bottom bar).
   const extraMenuItems = [
+    ...(isEmployeeActor
+      ? []
+      : [{ key: 'myProducts', label: t('myProductsOwned'), iconSource: require('../assets/cart.png') }]),
     { key: 'purchaseHistory', label: t('purchaseHistory'), iconSource: require('../assets/purchase-history.png') },
     { key: 'viewHistory', label: t('productHistory'), iconSource: require('../assets/history.png') },
     { key: 'favoriteBrands', label: t('favoriteBrands'), iconSource: require('../assets/favorite.png') },
@@ -301,6 +312,21 @@ export default function AppLayout({
         ...extraMenuItems.map((item) => ({ ...item, kind: 'nav' as const })),
       ]
     : extraMenuItems.map((item) => ({ ...item, kind: 'nav' as const }));
+
+  // Bottom-bar "Settings" slot label + the sheet's own title/subtitle.
+  // Employee: unchanged "Settings". Consumer: "History" normally, "Menu" on
+  // the product detail page (where it's mostly product actions).
+  const settingsSlotLabel = isEmployeeActor
+    ? t('bottomSettings')
+    : isProductDetailPage
+    ? t('menu')
+    : t('titleHistory');
+  const settingsSheetTitle = settingsSlotLabel;
+  const settingsSheetSubtitle = isEmployeeActor
+    ? t('settingsSubtitle')
+    : isProductDetailPage
+    ? t('quickActionsSubtitle')
+    : t('historyBrandsData');
 
   return (
     <View style={styles.container}>
@@ -384,75 +410,98 @@ export default function AppLayout({
       </View>
 
       {!hideBottomBar && (() => {
-        const isHomeSelected = route.name === 'Home' || route.name === 'EmployeeHome';
         const isScanSelected = route.name === 'Scanner' || route.name === 'CorporateScanner';
-        const isProductsSelected = route.name === productsTarget;
         const isSettingsSelected = settingsVisible;
+
+        const scanTab = (
+          <TouchableOpacity
+            style={[styles.bottomTab, isScanSelected && styles.bottomTabSelected]}
+            onPress={handleScan}
+            activeOpacity={0.7}
+          >
+            {isScanSelected && <View style={styles.bottomTabIndicator} />}
+            <Icon
+              name="qr-code-scanner"
+              size={BOTTOM_TAB_ICON_SIZE}
+              color={isScanSelected ? colors.primary : '#333333'}
+            />
+            <Text style={[styles.bottomTabLabel, isScanSelected && styles.bottomTabLabelSelected]}>
+              {isEmployeeActor ? t('bottomCapture') : t('bottomScan')}
+            </Text>
+          </TouchableOpacity>
+        );
+
+        const settingsTab = (
+          <TouchableOpacity
+            style={[styles.bottomTab, isSettingsSelected && styles.bottomTabSelected]}
+            onPress={handleSettings}
+            activeOpacity={0.7}
+          >
+            {isSettingsSelected && <View style={styles.bottomTabIndicator} />}
+            <Image
+              source={require('../assets/setting.png')}
+              style={[styles.bottomTabIcon, isSettingsSelected && styles.bottomTabIconSelected]}
+              resizeMode="contain"
+            />
+            <Text style={[styles.bottomTabLabel, isSettingsSelected && styles.bottomTabLabelSelected]}>
+              {settingsSlotLabel}
+            </Text>
+          </TouchableOpacity>
+        );
+
+        // Employee sessions keep the original 4-tab bar (Home / Capture /
+        // Review / Settings) — their flow is unchanged.
+        if (isEmployeeActor) {
+          const isHomeSelected = route.name === 'EmployeeHome';
+          const isProductsSelected = route.name === productsTarget;
+          return (
+            <View style={styles.bottomBar}>
+              <TouchableOpacity
+                style={[styles.bottomTab, isHomeSelected && styles.bottomTabSelected]}
+                onPress={handleHome}
+                activeOpacity={0.7}
+              >
+                {isHomeSelected && <View style={styles.bottomTabIndicator} />}
+                <Image
+                  source={require('../assets/home.png')}
+                  style={[styles.bottomTabIcon, isHomeSelected && styles.bottomTabIconSelected]}
+                  resizeMode="contain"
+                />
+                <Text style={[styles.bottomTabLabel, isHomeSelected && styles.bottomTabLabelSelected]}>
+                  {t('bottomHome')}
+                </Text>
+              </TouchableOpacity>
+
+              {scanTab}
+
+              <TouchableOpacity
+                style={[styles.bottomTab, isProductsSelected && styles.bottomTabSelected]}
+                onPress={handleProducts}
+                activeOpacity={0.7}
+              >
+                {isProductsSelected && <View style={styles.bottomTabIndicator} />}
+                <FeatherIcon
+                  name="file-text"
+                  size={BOTTOM_TAB_ICON_SIZE}
+                  color={isProductsSelected ? colors.primary : '#333333'}
+                />
+                <Text style={[styles.bottomTabLabel, isProductsSelected && styles.bottomTabLabelSelected]}>
+                  {t('bottomReview')}
+                </Text>
+              </TouchableOpacity>
+
+              {settingsTab}
+            </View>
+          );
+        }
+
+        // Consumer sessions: just Scan + Settings (renamed). Home is gone
+        // (Scanner is the landing screen); "My Products" moved into the
+        // Settings sheet.
         return (
           <View style={styles.bottomBar}>
-            <TouchableOpacity
-              style={[styles.bottomTab, isHomeSelected && styles.bottomTabSelected]}
-              onPress={handleHome}
-              activeOpacity={0.7}
-            >
-              {isHomeSelected && <View style={styles.bottomTabIndicator} />}
-              <Image
-                source={require('../assets/home.png')}
-                style={[styles.bottomTabIcon, isHomeSelected && styles.bottomTabIconSelected]}
-                resizeMode="contain"
-              />
-              <Text style={[styles.bottomTabLabel, isHomeSelected && styles.bottomTabLabelSelected]}>
-                {t('bottomHome')}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.bottomTab, isScanSelected && styles.bottomTabSelected]}
-              onPress={handleScan}
-              activeOpacity={0.7}
-            >
-              {isScanSelected && <View style={styles.bottomTabIndicator} />}
-              <Icon
-                name="qr-code-scanner"
-                size={BOTTOM_TAB_ICON_SIZE}
-                color={isScanSelected ? colors.primary : '#333333'}
-              />
-              <Text style={[styles.bottomTabLabel, isScanSelected && styles.bottomTabLabelSelected]}>
-                {isEmployeeActor ? t('bottomCapture') : t('bottomScan')}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.bottomTab, isProductsSelected && styles.bottomTabSelected]}
-              onPress={handleProducts}
-              activeOpacity={0.7}
-            >
-              {isProductsSelected && <View style={styles.bottomTabIndicator} />}
-              <FeatherIcon
-                name="file-text"
-                size={BOTTOM_TAB_ICON_SIZE}
-                color={isProductsSelected ? colors.primary : '#333333'}
-              />
-              <Text style={[styles.bottomTabLabel, isProductsSelected && styles.bottomTabLabelSelected]}>
-                {isEmployeeActor ? t('bottomReview') : t('bottomProducts')}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.bottomTab, isSettingsSelected && styles.bottomTabSelected]}
-              onPress={handleSettings}
-              activeOpacity={0.7}
-            >
-              {isSettingsSelected && <View style={styles.bottomTabIndicator} />}
-              <Image
-                source={require('../assets/setting.png')}
-                style={[styles.bottomTabIcon, isSettingsSelected && styles.bottomTabIconSelected]}
-                resizeMode="contain"
-              />
-              <Text style={[styles.bottomTabLabel, isSettingsSelected && styles.bottomTabLabelSelected]}>
-                {t('bottomSettings')}
-              </Text>
-            </TouchableOpacity>
+            {scanTab}
+            {settingsTab}
           </View>
         );
       })()}
@@ -469,9 +518,9 @@ export default function AppLayout({
           onPress={() => setSettingsVisible(false)}
         >
           <View style={styles.settingsContainer}>
-            <Text style={styles.settingsTitle}>{t('settings')}</Text>
+            <Text style={styles.settingsTitle}>{settingsSheetTitle}</Text>
             <Text style={styles.settingsSubtitle}>
-              {t('settingsSubtitle')}
+              {settingsSheetSubtitle}
             </Text>
 
             {/* Profile and Logout live in the top-bar avatar dropdown only —

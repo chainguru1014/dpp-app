@@ -339,7 +339,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
     if (productData && Object.keys(productData).length > 0) {
       return { redirectTo: 'Result' as const, redirectParams: { productData } };
     }
-    return { redirectTo: 'Home' as const, redirectParams: undefined };
+    return { redirectTo: 'Scanner' as const, redirectParams: undefined };
   };
 
   const getSecurityStatusKey = () => {
@@ -1448,7 +1448,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
       showBackButton={isAuthenticatedUser}
       onBackPress={
         isAuthenticatedUser
-          ? () => navigation.navigate(route?.params?.returnTo || 'Home')
+          ? () => navigation.navigate(route?.params?.returnTo || (user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Scanner'))
           : undefined
       }
       hideBottomBar={false}

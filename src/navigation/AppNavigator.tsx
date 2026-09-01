@@ -157,7 +157,7 @@ export default function AppNavigator({ navigationRef }: { navigationRef: any }) 
           ? 'EmployeeHome'
           : !user.aiConciergeConsentAt
           ? 'AiConciergeConsent'
-          : 'Home'
+          : 'Scanner'
       }
     >
       <Stack.Screen name="Login">
