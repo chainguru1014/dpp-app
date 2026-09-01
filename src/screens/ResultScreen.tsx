@@ -22,6 +22,7 @@ import Clipboard from '@react-native-clipboard/clipboard';
 import { API_BASE_URL } from '../config/api';
 import { CareSymbol, getCareSymbolLabel } from '../components/CareSymbols';
 import AppLayout from '../components/AppLayout';
+import VideoPlayerModal from '../components/VideoPlayerModal';
 import GradientButton from '../components/GradientButton';
 import GradientView from '../components/GradientView';
 import { useI18n } from '../i18n/I18nContext';
@@ -63,7 +64,7 @@ type MediaSlide =
 // Paged product-media slider with pagination dots — product images first, then
 // any YouTube videos at the end. Each slide carries a small badge bottom-right:
 // a camera glyph for photos, a YouTube/"smart-display" glyph for videos. Tapping
-// a video slide opens it in the YouTube app / browser.
+// a video slide plays it full-screen in-app (see onPlayVideo).
 function ImageSlider({
   images,
   videos,
@@ -73,6 +74,7 @@ function ImageSlider({
   getFileUrl,
   getYoutubeVideoID,
   watchLabel,
+  onPlayVideo,
 }: {
   images: string[];
   videos?: any[];
@@ -82,6 +84,7 @@ function ImageSlider({
   getFileUrl: (filename: string) => string;
   getYoutubeVideoID: (url: string) => string | null;
   watchLabel?: string;
+  onPlayVideo?: (videoId: string) => void;
 }) {
   const [pageWidth, setPageWidth] = useState(width);
   const [active, setActive] = useState(0);
@@ -140,7 +143,7 @@ function ImageSlider({
                 <TouchableOpacity
                   style={styles.videoSlideTouch}
                   activeOpacity={0.85}
-                  onPress={() => Linking.openURL(slide.url)}
+                  onPress={() => onPlayVideo?.(slide.videoId)}
                 >
                   <Image
                     source={{ uri: `https://img.youtube.com/vi/${slide.videoId}/hqdefault.jpg` }}
@@ -207,6 +210,8 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   const [showJoinDialog, setShowJoinDialog] = useState(false);
+  // YouTube video currently playing full-screen in the in-app player (null = closed).
+  const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
   const [selectedFeedback, setSelectedFeedback] = useState<'like' | 'dislike' | 'buy' | null>(null);
   // Buyer's transfer status for the current item, driving the primary button:
   // 'pending' (+ sent) → Requested, 'confirmed' → Owned, otherwise → Buy.
@@ -1348,6 +1353,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
         getFileUrl={getFileUrl}
         getYoutubeVideoID={getYoutubeVideoID}
         watchLabel={t('watchVideo')}
+        onPlayVideo={(videoId) => setPlayingVideoId(videoId)}
       />
     );
   };
@@ -1977,6 +1983,12 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
           </View>
         </View>
       </Modal>
+
+      <VideoPlayerModal
+        visible={!!playingVideoId}
+        videoId={playingVideoId}
+        onClose={() => setPlayingVideoId(null)}
+      />
     </AppLayout>
   );
 }

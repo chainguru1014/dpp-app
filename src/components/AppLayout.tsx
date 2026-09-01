@@ -438,11 +438,21 @@ export default function AppLayout({
             activeOpacity={0.7}
           >
             {isSettingsSelected && <View style={styles.bottomTabIndicator} />}
-            <Image
-              source={require('../assets/setting.png')}
-              style={[styles.bottomTabIcon, isSettingsSelected && styles.bottomTabIconSelected]}
-              resizeMode="contain"
-            />
+            {isEmployeeActor ? (
+              <Image
+                source={require('../assets/setting.png')}
+                style={[styles.bottomTabIcon, isSettingsSelected && styles.bottomTabIconSelected]}
+                resizeMode="contain"
+              />
+            ) : (
+              // Consumer: a history clock for the "History" slot, a 3-line
+              // hamburger for the "Menu" slot on the product detail page.
+              <Icon
+                name={isProductDetailPage ? 'menu' : 'history'}
+                size={BOTTOM_TAB_ICON_SIZE}
+                color={isSettingsSelected ? colors.primary : '#333333'}
+              />
+            )}
             <Text style={[styles.bottomTabLabel, isSettingsSelected && styles.bottomTabLabelSelected]}>
               {settingsSlotLabel}
             </Text>

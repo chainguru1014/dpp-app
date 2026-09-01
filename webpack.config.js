@@ -69,6 +69,9 @@ module.exports = (env, argv) => {
         // deviceCapture.ts already branches to browser APIs on web.
         'react-native-geolocation-service': false,
         'react-native-device-info': false,
+        // Web uses VideoFrame.web.js (a plain <iframe>); the WebView-based
+        // VideoFrame.tsx is never in the web graph.
+        'react-native-webview': false,
       },
     },
     module: {
