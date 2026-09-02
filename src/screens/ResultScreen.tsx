@@ -26,6 +26,7 @@ import VideoPlayerModal from '../components/VideoPlayerModal';
 import GradientButton from '../components/GradientButton';
 import GradientView from '../components/GradientView';
 import { useI18n } from '../i18n/I18nContext';
+import MediaSlider from '../components/MediaSlider';
 import { colors, radius, spacing, shadow } from '../theme';
 
 // Web QR Scanner
@@ -71,140 +72,15 @@ const DETAIL_FACT_ROWS: { key: string; icon: string; format: (v: string) => stri
   { key: 'traceableIdentity', icon: 'qr-code-2', format: (v) => v || 'Traceable product identity' },
 ];
 
-// Paged product-media slider with pagination dots — product images first, then
-// any YouTube videos at the end. Each slide carries a small badge bottom-right:
-// a camera glyph for photos, a YouTube/"smart-display" glyph for videos. Tapping
-// a video slide plays it full-screen in-app (see onPlayVideo).
-function ImageSlider({
-  images,
-  videos,
-  name,
-  model,
-  pmcCode,
-  getFileUrl,
-  getYoutubeVideoID,
-  watchLabel,
-  onPlayVideo,
-}: {
-  images: string[];
-  videos?: any[];
-  name?: string;
-  model?: string;
-  pmcCode?: string;
-  getFileUrl: (filename: string) => string;
-  getYoutubeVideoID: (url: string) => string | null;
-  watchLabel?: string;
-  onPlayVideo?: (videoId: string) => void;
-}) {
-  const [pageWidth, setPageWidth] = useState(width);
-  const [active, setActive] = useState(0);
-  const scrollRef = useRef<ScrollView>(null);
-  const imageHeight = Math.min(Math.round((pageWidth - 32) * 1.1), 440);
-
-  const slides: MediaSlide[] = [
-    ...images.map((uri): MediaSlide => ({ kind: 'image', uri })),
-    ...(videos || [])
-      .map((v: any): MediaSlide | null => {
-        const url = typeof v === 'string' ? v : v?.url || '';
-        const videoId = getYoutubeVideoID(url);
-        return videoId
-          ? { kind: 'video', videoId, url, description: typeof v === 'object' ? v?.description : '' }
-          : null;
-      })
-      .filter((s): s is MediaSlide => s != null),
-  ];
-
-  const onScroll = (e: any) => {
-    if (!pageWidth) return;
-    const i = Math.round(e.nativeEvent.contentOffset.x / pageWidth);
-    if (i !== active && i >= 0 && i < slides.length) setActive(i);
-  };
-
-  const goTo = (i: number) => {
-    scrollRef.current?.scrollTo({ x: i * pageWidth, animated: true });
-    setActive(i);
-  };
-
-  return (
-    <View style={styles.topImageSliderContainer}>
-      <View style={styles.sliderTextHeader}>
-        <Text style={styles.productName}>{name || '—'}</Text>
-        <Text style={styles.productModel}>{model || '—'}</Text>
-        {!!pmcCode && <Text style={styles.pmcBadge}>ID: {pmcCode}</Text>}
-      </View>
-
-      <ScrollView
-        ref={scrollRef}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        scrollEventThrottle={16}
-        onScroll={onScroll}
-        onLayout={(e) => {
-          const w = e.nativeEvent.layout.width;
-          if (w && w !== pageWidth) setPageWidth(w);
-        }}
-        style={styles.imageCarousel}
-      >
-        {slides.map((slide, index) => (
-          <View key={index} style={[styles.slidePage, { width: pageWidth }]}>
-            <View style={[styles.imageCard, { height: imageHeight }]}>
-              {slide.kind === 'video' ? (
-                <TouchableOpacity
-                  style={styles.videoSlideTouch}
-                  activeOpacity={0.85}
-                  onPress={() => onPlayVideo?.(slide.videoId)}
-                >
-                  <Image
-                    source={{ uri: `https://img.youtube.com/vi/${slide.videoId}/hqdefault.jpg` }}
-                    style={styles.carouselImageFull}
-                    resizeMode="cover"
-                  />
-                  <View style={styles.videoPlayOverlay}>
-                    <Icon name="play-circle-filled" size={64} color="#fff" />
-                    {!!(slide.description || watchLabel) && (
-                      <Text style={styles.videoSlideCaption} numberOfLines={2}>
-                        {slide.description || watchLabel}
-                      </Text>
-                    )}
-                  </View>
-                </TouchableOpacity>
-              ) : (
-                <Image
-                  source={{ uri: getFileUrl(slide.uri) }}
-                  style={styles.carouselImageFull}
-                  resizeMode="contain"
-                />
-              )}
-              <View style={styles.mediaTypeBadge}>
-                <Icon
-                  name={slide.kind === 'video' ? 'smart-display' : 'photo-camera'}
-                  size={14}
-                  color="#fff"
-                />
-              </View>
-            </View>
-          </View>
-        ))}
-      </ScrollView>
-
-      {slides.length > 1 && (
-        <View style={styles.imageDots}>
-          {slides.map((_, i: number) => (
-            <TouchableOpacity
-              key={i}
-              onPress={() => goTo(i)}
-              activeOpacity={0.7}
-              hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
-            >
-              <View style={[styles.imageDot, active === i && styles.imageDotActive]} />
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-    </View>
-  );
-}
+// Lifecycle Preview strip on the Product Overview page (screenshot #16). The
+// full breakdown lives on ProductLifecycleScreen.
+const LIFECYCLE_STAGES: { key: string; icon: string; labelKey: string }[] = [
+  { key: 'materials', icon: 'spa', labelKey: 'lifecycleStageMaterials' },
+  { key: 'manufacturing', icon: 'precision-manufacturing', labelKey: 'lifecycleStageManufacturing' },
+  { key: 'transportation', icon: 'local-shipping', labelKey: 'lifecycleStageTransportation' },
+  { key: 'use', icon: 'checkroom', labelKey: 'lifecycleStageUse' },
+  { key: 'endOfLife', icon: 'recycling', labelKey: 'lifecycleStageEndOfLife' },
+];
 
 export default function ResultScreen({ route, navigation, user, onLogout }: ResultScreenProps) {
   const BRAND_COLOR = colors.primary;
@@ -239,6 +115,11 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
   const [showIntroduceDialog, setShowIntroduceDialog] = useState(false);
   const [showSendProductDialog, setShowSendProductDialog] = useState(false);
   const [showCopyInfoDialog, setShowCopyInfoDialog] = useState(false);
+  // Product Overview redesign: green confirmation banner after Like/Dislike,
+  // and the Share bottom sheet (screenshot #17).
+  const [feedbackToast, setFeedbackToast] = useState<'like' | 'dislike' | null>(null);
+  const [shareSheetVisible, setShareSheetVisible] = useState(false);
+  const [shareEmail, setShareEmail] = useState('');
   const [friendEmail, setFriendEmail] = useState('');
   const [friendContent, setFriendContent] = useState('');
   const [sendInfoEmail, setSendInfoEmail] = useState('');
@@ -588,6 +469,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
       const next = prev === 'like' ? null : 'like';
       updateProductFeedback(next);
       persistProductReactionToServer(next);
+      if (next) showFeedbackToast('like');
       return next;
     });
   };
@@ -601,8 +483,76 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
       const next = prev === 'dislike' ? null : 'dislike';
       updateProductFeedback(next);
       persistProductReactionToServer(next);
+      if (next) showFeedbackToast('dislike');
       return next;
     });
+  };
+
+  const feedbackToastTimer = useRef<any>(null);
+  const showFeedbackToast = (kind: 'like' | 'dislike') => {
+    setFeedbackToast(kind);
+    if (feedbackToastTimer.current) clearTimeout(feedbackToastTimer.current);
+    feedbackToastTimer.current = setTimeout(() => setFeedbackToast(null), 2600);
+  };
+
+  const openShareSheet = () => {
+    if (!isAuthenticatedUser) {
+      showLoginPrompt();
+      return;
+    }
+    setShareEmail('');
+    setShareSheetVisible(true);
+  };
+
+  const goToLifecycle = () =>
+    navigation.navigate('ProductLifecycle', {
+      productData,
+      productId: route?.params?.productId ?? productData?._id,
+      qrcodeId: route?.params?.qrcodeId ?? productData?.token_id,
+      securityPassed: isAuthenticated,
+    });
+
+  const productShareUrl = () => {
+    const pid = route?.params?.productId ?? productData?._id;
+    const qid = route?.params?.qrcodeId ?? productData?.token_id;
+    if (pid == null || qid == null) return '';
+    return `${API_BASE_URL.replace(/\/$/, '')}/product/${encodeURIComponent(String(pid))}/${encodeURIComponent(String(qid))}`;
+  };
+
+  const shareViaSystem = async () => {
+    const url = productShareUrl();
+    const message = `${productData?.name || 'Product'}${url ? `\n${url}` : ''}`;
+    try {
+      await Share.share({ message, url: url || undefined, title: productData?.name || 'Product' });
+    } catch (e) {
+      /* user cancelled */
+    }
+  };
+
+  const shareViaWhatsApp = () => {
+    const url = productShareUrl();
+    const text = encodeURIComponent(`${productData?.name || 'Product'}${url ? ` ${url}` : ''}`);
+    const waUrl = `https://wa.me/?text=${text}`;
+    if (Platform.OS === 'web') {
+      (globalThis as any)?.open?.(waUrl, '_blank', 'noopener,noreferrer');
+    } else {
+      Linking.openURL(waUrl).catch(() => {});
+    }
+  };
+
+  const shareViaEmailSend = async () => {
+    if (!isValidEmail(shareEmail)) {
+      Alert.alert(t('error'), 'Please enter a valid email address');
+      return;
+    }
+    try {
+      await sendEmailContent(shareEmail, buildProductInfoText(), 'Product information');
+      setShareSheetVisible(false);
+      setShareEmail('');
+      Alert.alert(t('success'), 'Email sent');
+    } catch (error: any) {
+      Alert.alert(t('error'), error?.message || 'Failed to send email');
+    }
   };
 
   const handleBuy = () => {
@@ -1349,14 +1299,13 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
     if (images.length === 0 && !hasVideo) return null;
 
     return (
-      <ImageSlider
+      <MediaSlider
         images={images}
         videos={videos}
         name={productData?.name}
         model={productData?.model}
         pmcCode={productData?.pmc_code}
         getFileUrl={getFileUrl}
-        getYoutubeVideoID={getYoutubeVideoID}
         watchLabel={t('watchVideo')}
         onPlayVideo={(videoId) => setPlayingVideoId(videoId)}
       />
@@ -1459,10 +1408,14 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
       showBackButton={isAuthenticatedUser}
       onBackPress={
         isAuthenticatedUser
-          ? () => navigation.navigate(route?.params?.returnTo || (user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Scanner'))
+          ? () => navigation.navigate(route?.params?.returnTo || (user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Home'))
           : undefined
       }
-      hideBottomBar={false}
+      bottomBar={isAuthenticatedUser && user?.actorKind !== 'Employee' ? 'product' : 'auto'}
+      rightIcon={isAuthenticatedUser ? 'heart' : 'notification'}
+      isFavorite={isInAlbum}
+      onToggleFavorite={() => handleActionMenuPress('toggleAlbum')}
+      product={productData}
       onGuestAction={showLoginPrompt}
       onActionMenuPress={handleActionMenuPress}
       isBrandFollowed={isBrandFollowed}
@@ -1508,10 +1461,50 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
           ) : null}
         </View>
 
-        {/* Primary row: Like / Dislike / Buy (or Transfer when the user owns
-            this product). The buy state follows the transfer: Buy →
-            Requested (pending) → Owned (approved); a declined/none request
-            stays Buy. */}
+        {/* Key Highlights — the product-detail facts from the register/edit form. */}
+        {(() => {
+          const facts = productData?.detailFacts || {};
+          const rows = DETAIL_FACT_ROWS.filter((r) => r.key !== 'traceableIdentity' && facts[r.key]);
+          const detailText = String(productData?.detail || '').trim();
+          if (!rows.length && !detailText) return null;
+          return (
+            <View style={styles.overviewCard}>
+              <Text style={styles.overviewCardTitle}>{t('overviewKeyHighlights')}</Text>
+              {rows.map(({ key, icon, format }) => (
+                <View key={key} style={styles.highlightRow}>
+                  <Icon name={icon} size={16} color={BRAND_COLOR} />
+                  <Text style={styles.highlightText}>{format(String(facts[key] || ''))}</Text>
+                </View>
+              ))}
+              {!!detailText && <Text style={styles.overviewDetailText}>{detailText}</Text>}
+            </View>
+          );
+        })()}
+
+        {/* Lifecycle Preview strip + "View Full Lifecycle" link. */}
+        <View style={styles.overviewCard}>
+          <Text style={styles.overviewCardTitle}>{t('overviewLifecyclePreview')}</Text>
+          <View style={styles.lifecycleStrip}>
+            {LIFECYCLE_STAGES.map((s, i) => (
+              <React.Fragment key={s.key}>
+                <View style={styles.lifecycleStage}>
+                  <View style={styles.lifecycleDot}>
+                    <Icon name={s.icon} size={15} color={BRAND_COLOR} />
+                  </View>
+                  <Text style={styles.lifecycleStageLabel} numberOfLines={1}>{t(s.labelKey as any)}</Text>
+                </View>
+                {i < LIFECYCLE_STAGES.length - 1 && <View style={styles.lifecycleConnector} />}
+              </React.Fragment>
+            ))}
+          </View>
+          <TouchableOpacity style={styles.viewLifecycleBtn} onPress={goToLifecycle} activeOpacity={0.7}>
+            <Text style={styles.viewLifecycleText}>{t('overviewViewFullLifecycle')}</Text>
+            <Icon name="chevron-right" size={18} color={colors.accent} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Buy (or Transfer when the user owns this product): Buy → Requested
+            (pending) → Owned (approved); a declined/none request stays Buy. */}
         {(() => {
           const isPending = !isOwnedMode && transferStatus === 'pending' && transferRequestSent;
           const isOwned = !isOwnedMode && transferStatus === 'confirmed';
@@ -1524,90 +1517,63 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
             ? t('owned')
             : t('buy');
           return (
-            <View style={styles.actionButtonsRow}>
-              <TouchableOpacity
-                style={[styles.actionPill, selectedFeedback === 'like' && styles.actionPillActive]}
-                onPress={handleLike}
-              >
-                {selectedFeedback === 'like' && (
-                  <GradientView style={StyleSheet.absoluteFill} />
-                )}
-                <Image
-                  source={require('../assets/like.png')}
-                  style={[styles.actionPillIcon, selectedFeedback === 'like' && styles.actionPillIconActive]}
-                />
-                <Text style={[styles.actionPillText, selectedFeedback === 'like' && styles.actionPillTextActive]}>
-                  {t('like')}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.actionPill, selectedFeedback === 'dislike' && styles.actionPillActive]}
-                onPress={handleDislike}
-              >
-                {selectedFeedback === 'dislike' && (
-                  <GradientView style={StyleSheet.absoluteFill} />
-                )}
-                <Image
-                  source={require('../assets/dislike.png')}
-                  style={[styles.actionPillIcon, selectedFeedback === 'dislike' && styles.actionPillIconActive]}
-                />
-                <Text style={[styles.actionPillText, selectedFeedback === 'dislike' && styles.actionPillTextActive]}>
-                  {t('dislike')}
-                </Text>
-              </TouchableOpacity>
-              <GradientButton
-                style={[styles.actionPill, styles.actionPillActive, buyLocked && styles.actionPillDisabled]}
-                onPress={isOwnedMode ? openOwnerTransfer : handleBuy}
-                activeOpacity={0.85}
-                disabled={buyLocked}
-              >
-                <Image
-                  source={isOwnedMode ? require('../assets/connection.png') : require('../assets/cart.png')}
-                  style={[styles.actionPillIcon, styles.actionPillIconActive]}
-                />
-                <Text style={[styles.actionPillText, styles.actionPillTextActive]}>
-                  {label}
-                  {isOwnedMode && ownedQuantity != null ? ` ×${ownedQuantity}` : ''}
-                </Text>
-              </GradientButton>
-            </View>
+            <GradientButton
+              style={[styles.overviewBuyButton, buyLocked && { opacity: 0.6 }]}
+              onPress={isOwnedMode ? openOwnerTransfer : handleBuy}
+              activeOpacity={0.85}
+              disabled={buyLocked}
+            >
+              <Text style={styles.overviewBuyText}>
+                {label}
+                {isOwnedMode && ownedQuantity != null ? ` ×${ownedQuantity}` : ''}
+              </Text>
+            </GradientButton>
           );
         })()}
 
-        {/* Product Information gate: hidden by default, shows the accordion
-            sections below once tapped (and disappears itself). */}
-        {!showProductInfo ? (
-          <GradientButton
-            style={styles.productInfoButton}
-            onPress={() => setShowProductInfo(true)}
-            activeOpacity={0.85}
+        <View style={styles.overviewActionRow}>
+          <TouchableOpacity
+            style={[styles.overviewActionBtn, selectedFeedback === 'like' && styles.overviewActionBtnActive]}
+            onPress={handleLike}
+            activeOpacity={0.8}
           >
-            <Text style={styles.productInfoButtonText}>{t('resultProductInformation')}</Text>
-          </GradientButton>
-        ) : (
-          sections.map((section) => (
-            <View key={section.id} style={styles.accordionSection}>
-              <GradientButton
-                style={styles.accordionHeader}
-                onPress={() => toggleSection(section.id)}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.accordionHeaderText}>{section.title}</Text>
-                <View style={styles.accordionToggleBadge}>
-                  <Icon
-                    name={expandedSections[section.id] ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
-                    size={22}
-                    color={'#fff'}
-                  />
-                </View>
-              </GradientButton>
-              {expandedSections[section.id] && (
-                <View style={styles.accordionContent}>
-                  {section.id === 0 ? renderProductDetails() : renderSectionContent(section.id)}
-                </View>
-              )}
-            </View>
-          ))
+            <Icon name="thumb-up" size={18} color={selectedFeedback === 'like' ? '#fff' : colors.primary} />
+            <Text style={[styles.overviewActionText, selectedFeedback === 'like' && styles.overviewActionTextActive]}>
+              {t('like')}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.overviewActionBtn, selectedFeedback === 'dislike' && styles.overviewActionBtnActive]}
+            onPress={handleDislike}
+            activeOpacity={0.8}
+          >
+            <Icon name="thumb-down" size={18} color={selectedFeedback === 'dislike' ? '#fff' : colors.primary} />
+            <Text style={[styles.overviewActionText, selectedFeedback === 'dislike' && styles.overviewActionTextActive]}>
+              {t('dislike')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.overviewActionRow}>
+          <TouchableOpacity style={styles.overviewActionBtn} onPress={openShareSheet} activeOpacity={0.8}>
+            <Icon name="share" size={18} color={colors.primary} />
+            <Text style={styles.overviewActionText}>{t('share')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.overviewActionBtn} onPress={() => navigation.navigate('Scanner')} activeOpacity={0.8}>
+            <Icon name="qr-code-scanner" size={18} color={colors.primary} />
+            <Text style={styles.overviewActionText}>{t('detectedScanAnother')}</Text>
+          </TouchableOpacity>
+        </View>
+
+        {!!feedbackToast && (
+          <View style={styles.overviewToast}>
+            <Icon name="check-circle" size={18} color={colors.success} />
+            <Text style={styles.overviewToastText}>
+              {feedbackToast === 'like' ? t('overviewAddedToLikes') : t('overviewAddedToDislikes')}
+            </Text>
+            <TouchableOpacity onPress={() => setFeedbackToast(null)}>
+              <Icon name="close" size={16} color={colors.muted} />
+            </TouchableOpacity>
+          </View>
         )}
       </ScrollView>
       {/* Keep modal outside ScrollView to avoid RN web content-layer paint issues */}
@@ -1989,6 +1955,68 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
         </View>
       </Modal>
 
+      {/* Share Product bottom sheet (screenshot #17). */}
+      <Modal
+        visible={shareSheetVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShareSheetVisible(false)}
+      >
+        <TouchableOpacity style={styles.shareOverlay} activeOpacity={1} onPress={() => setShareSheetVisible(false)}>
+          <TouchableWithoutFeedback onPress={() => {}}>
+            <View style={styles.shareSheet}>
+              <View style={styles.shareHandle} />
+              <View style={styles.shareHeaderRow}>
+                <Text style={styles.shareTitle}>{t('shareProductTitle')}</Text>
+                <TouchableOpacity onPress={() => setShareSheetVisible(false)}>
+                  <Icon name="close" size={22} color={colors.muted} />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.shareLabel}>{t('shareToLabel')}</Text>
+              <TextInput
+                style={styles.input}
+                value={shareEmail}
+                onChangeText={setShareEmail}
+                placeholder={t('shareRecipientPlaceholder')}
+                placeholderTextColor={colors.placeholder}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+
+              <Text style={styles.shareLabel}>{t('shareViaLabel')}</Text>
+              <View style={styles.shareOptionsRow}>
+                {[
+                  { key: 'link', icon: 'link', label: t('copyLink'), onPress: () => { const u = productShareUrl(); if (u) copyToClipboard(u); } },
+                  { key: 'email', icon: 'mail-outline', label: t('email'), onPress: shareViaEmailSend },
+                  { key: 'whatsapp', icon: 'chat', label: 'WhatsApp', onPress: shareViaWhatsApp },
+                  { key: 'more', icon: 'more-horiz', label: t('bottomMore'), onPress: shareViaSystem },
+                ].map((opt) => (
+                  <TouchableOpacity key={opt.key} style={styles.shareOption} onPress={opt.onPress} activeOpacity={0.75}>
+                    <View style={styles.shareOptionIcon}>
+                      <Icon name={opt.icon} size={20} color={colors.primary} />
+                    </View>
+                    <Text style={styles.shareOptionLabel} numberOfLines={1}>{opt.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <View style={styles.shareProductCard}>
+                <Text style={styles.shareProductName} numberOfLines={1}>{productData?.name || '—'}</Text>
+                {!!productData?.brandInfo?.name && (
+                  <Text style={styles.shareProductBrand} numberOfLines={1}>{productData.brandInfo.name}</Text>
+                )}
+                {(productData?.pmc_code || productData?.token_id != null) && (
+                  <Text style={styles.shareProductId} numberOfLines={1}>
+                    ID: {productData?.pmc_code || productData?.token_id}
+                  </Text>
+                )}
+              </View>
+            </View>
+          </TouchableWithoutFeedback>
+        </TouchableOpacity>
+      </Modal>
+
       <VideoPlayerModal
         visible={!!playingVideoId}
         videoId={playingVideoId}
@@ -1999,6 +2027,114 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
 }
 
 const styles = StyleSheet.create({
+  // --- Product Overview redesign (Phase 3) ---
+  overviewCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+    ...shadow(1),
+  },
+  overviewCardTitle: { fontSize: 15, fontWeight: '700', color: colors.primary, marginBottom: spacing.sm },
+  highlightRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, paddingVertical: 4 },
+  highlightText: { flex: 1, fontSize: 13, color: colors.text, lineHeight: 18 },
+  overviewDetailText: { fontSize: 13, color: colors.muted, lineHeight: 19, marginTop: spacing.sm },
+  lifecycleStrip: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: spacing.md },
+  lifecycleStage: { alignItems: 'center', width: 58 },
+  lifecycleDot: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: colors.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  lifecycleStageLabel: { fontSize: 9, color: colors.muted, textAlign: 'center' },
+  lifecycleConnector: { flex: 1, height: 1, backgroundColor: colors.border, marginTop: 17 },
+  viewLifecycleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  viewLifecycleText: { fontSize: 13, fontWeight: '600', color: colors.accent },
+  overviewBuyButton: {
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.lg,
+    borderRadius: radius.md,
+    paddingVertical: 15,
+    alignItems: 'center',
+    backgroundColor: colors.accent,
+    ...shadow(1),
+  },
+  overviewBuyText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  overviewActionRow: { flexDirection: 'row', gap: spacing.md, marginHorizontal: spacing.lg, marginTop: spacing.md },
+  overviewActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  overviewActionBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  overviewActionText: { fontSize: 13, fontWeight: '600', color: colors.primary },
+  overviewActionTextActive: { color: '#fff' },
+  overviewToast: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.successSoft,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+  },
+  overviewToastText: { flex: 1, fontSize: 13, color: colors.success, fontWeight: '600' },
+  shareOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
+  shareSheet: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.xxl,
+    borderTopRightRadius: radius.xxl,
+    padding: spacing.lg,
+    paddingBottom: spacing.xxl,
+  },
+  shareHandle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border, marginBottom: spacing.md },
+  shareHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md },
+  shareTitle: { fontSize: 17, fontWeight: '700', color: colors.heading },
+  shareLabel: { fontSize: 12, color: colors.muted, marginTop: spacing.sm, marginBottom: spacing.xs },
+  shareOptionsRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.xs, marginBottom: spacing.md },
+  shareOption: { alignItems: 'center', width: 68 },
+  shareOptionIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: colors.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  shareOptionLabel: { fontSize: 11, color: colors.text },
+  shareProductCard: {
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.md,
+    padding: spacing.md,
+  },
+  shareProductName: { fontSize: 14, fontWeight: '700', color: colors.heading },
+  shareProductBrand: { fontSize: 12, color: colors.muted, marginTop: 1 },
+  shareProductId: { fontSize: 11, color: colors.placeholder, marginTop: 2 },
   content: {
     flex: 1,
     backgroundColor: colors.bg,
