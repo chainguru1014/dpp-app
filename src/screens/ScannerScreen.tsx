@@ -165,6 +165,17 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFocused, user?._id]);
 
+  // Home's "Upload Image" quick action deep-links here with startUpload:true —
+  // open the picker straight away, then clear the flag so it doesn't refire.
+  React.useEffect(() => {
+    if (!isFocused || !route?.params?.startUpload) return;
+    navigation.setParams({ startUpload: undefined });
+    const fn = Platform.OS === 'web' ? openPhotoScan : pickNativePhotoAndScan;
+    const id = setTimeout(fn, 300);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFocused, route?.params?.startUpload]);
+
   React.useEffect(() => {
     if (Platform.OS === 'web') return;
     isNfcSupported().then((supported) => {
@@ -718,18 +729,16 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         ) : (
           <View style={styles.whiteBoardRow}>
             <TouchableOpacity style={styles.whiteBoardButton} onPress={onUploadPhoto} activeOpacity={0.8}>
-              <VectorIcon name="photo-library" size={18} color={colors.primary} />
-              <Text style={styles.whiteBoardButtonText}>{t('scanUploadPhoto')}</Text>
+              <VectorIcon name="image" size={18} color={colors.primary} />
+              <Text style={styles.whiteBoardButtonText}>{t('scanUploadImageCta')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.whiteBoardButton}
-              onPress={() => setManualOpen((v) => !v)}
+              onPress={() => navigation.navigate('EnterCode')}
               activeOpacity={0.8}
             >
-              <VectorIcon name="edit" size={18} color={colors.primary} />
-              <Text style={styles.whiteBoardButtonText}>
-                {manualOpen ? t('scanHideManual') : t('scanEnterManually')}
-              </Text>
+              <VectorIcon name="keyboard" size={18} color={colors.primary} />
+              <Text style={styles.whiteBoardButtonText}>{t('scanEnterCodeCta')}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -772,7 +781,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
           activeOpacity={0.75}
         >
           <VectorIcon name={torchOn ? 'flash-on' : 'flash-off'} size={20} color="#fff" />
-          <Text style={styles.overlayCornerText}>{torchOn ? t('scanTorchOn') : t('scanTorchOff')}</Text>
+          <Text style={styles.overlayCornerText}>{t('scanFlash')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.overlayCornerButton} onPress={handleHelpPress} activeOpacity={0.75}>
           <VectorIcon name="help-outline" size={20} color="#fff" />
@@ -1207,20 +1216,20 @@ const styles = StyleSheet.create({
   },
   whiteBoardButton: {
     flex: 1,
-    height: 35,
+    height: 42,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.xs,
     backgroundColor: colors.surface,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
   },
   whiteBoardButtonText: {
-    color: colors.muted,
+    color: colors.primary,
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   whiteBoardNfc: {
     marginTop: spacing.md,

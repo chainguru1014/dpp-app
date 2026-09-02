@@ -135,7 +135,7 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
           {[
             { key: 'camera', icon: 'photo-camera', label: t('homeActionCameraScan'), sub: t('homeActionCameraScanSub'), onPress: () => openScanner() },
             { key: 'upload', icon: 'image', label: t('homeActionUploadImage'), sub: t('homeActionUploadImageSub'), onPress: () => openScanner({ startUpload: true }) },
-            { key: 'enter', icon: 'keyboard', label: t('homeActionEnterCode'), sub: t('homeActionEnterCodeSub'), onPress: () => openScanner({ openManual: true }) },
+            { key: 'enter', icon: 'keyboard', label: t('homeActionEnterCode'), sub: t('homeActionEnterCodeSub'), onPress: () => navigation.navigate('EnterCode') },
           ].map((a) => (
             <TouchableOpacity key={a.key} style={styles.actionTile} activeOpacity={0.8} onPress={a.onPress}>
               <Icon name={a.icon} size={24} color={colors.primary} />

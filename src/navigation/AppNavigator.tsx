@@ -8,6 +8,7 @@ import RegisterScreen from '../screens/RegisterScreen';
 import AiConciergeConsentScreen from '../screens/AiConciergeConsentScreen';
 import HomeScreen from '../screens/HomeScreen';
 import ProductSummaryScreen from '../screens/ProductSummaryScreen';
+import EnterCodeScreen from '../screens/EnterCodeScreen';
 import ShopNowScreen from '../screens/ShopNowScreen';
 import ScannerScreen from '../screens/ScannerScreen';
 import ResultScreen from '../screens/ResultScreen';
@@ -210,6 +211,10 @@ export default function AppNavigator({ navigationRef }: { navigationRef: any }) 
 
       <Stack.Screen name="ProductSummary">
         {(props) => <ProductSummaryScreen {...props} user={user} onLogout={handleLogout} />}
+      </Stack.Screen>
+
+      <Stack.Screen name="EnterCode">
+        {(props) => <EnterCodeScreen {...props} user={user} onLogout={handleLogout} />}
       </Stack.Screen>
 
       <Stack.Screen name="Scanner">

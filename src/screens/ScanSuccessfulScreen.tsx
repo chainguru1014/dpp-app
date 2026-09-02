@@ -1,6 +1,9 @@
-import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Image, TouchableOpacity, Text, useWindowDimensions } from 'react-native';
+import React, { useState } from 'react';
+import { View, StyleSheet, Text, ScrollView, TouchableOpacity } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 import AppLayout from '../components/AppLayout';
+import MediaSlider from '../components/MediaSlider';
+import VideoPlayerModal from '../components/VideoPlayerModal';
 import GradientButton from '../components/GradientButton';
 import { useI18n } from '../i18n/I18nContext';
 import { colors, spacing, radius, shadow } from '../theme';
@@ -12,26 +15,19 @@ interface ScanSuccessfulScreenProps {
   onLogout?: () => void;
 }
 
-export default function ScanSuccessfulScreen({
-  navigation,
-  route,
-  user,
-  onLogout,
-}: ScanSuccessfulScreenProps) {
+export default function ScanSuccessfulScreen({ navigation, route, user, onLogout }: ScanSuccessfulScreenProps) {
   const { t } = useI18n();
-  const productData = route?.params?.productData;
+  const productData = route?.params?.productData || {};
   const securityPassed = !!route?.params?.securityPassed;
   const productId = route?.params?.productId ?? productData?._id;
   const qrcodeId = route?.params?.qrcodeId ?? productData?.token_id;
   const hasIds = productId != null && qrcodeId != null;
-  const { width, height } = useWindowDimensions();
+  const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
 
-  const timerRef = useRef<any>(null);
-  const navigatedRef = useRef(false);
+  const images = Array.isArray(productData?.images) ? productData.images : [];
+  const videos = Array.isArray(productData?.videos) ? productData.videos : [];
 
   const goToProductDetail = () => {
-    if (navigatedRef.current) return;
-    navigatedRef.current = true;
     navigation.replace('Result', {
       securityPassed,
       ...(hasIds ? {} : { productData }),
@@ -40,95 +36,124 @@ export default function ScanSuccessfulScreen({
     });
   };
 
-  // Auto-advance to the product detail page after 3 seconds, unless the user
-  // taps "Private Policy" first (which cancels the timer below).
-  useEffect(() => {
-    timerRef.current = setTimeout(goToProductDetail, 3000);
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const openPrivatePolicy = () => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    navigatedRef.current = true; // cancel the automatic redirect
-    navigation.navigate('PrivatePolicy', {
-      productData,
-      securityPassed,
-      productId,
-      qrcodeId,
-    });
-  };
-
-  const horizontalPadding = 16; // 8 left + 8 right
-  const topBottomPadding = 20; // top + bottom content paddings in this screen
-  const buttonArea = 52; // approximate button row height
-  const topBarHeight = 70;
-  const bottomBarHeight = 70;
-  const contentWidth = Math.max(120, width - horizontalPadding);
-  const availableImageHeight = Math.max(
-    160,
-    height - topBarHeight - bottomBarHeight - topBottomPadding - buttonArea
-  );
-  const naturalImageHeight = (contentWidth * 590) / 304;
-  const imageHeight = Math.min(naturalImageHeight, availableImageHeight);
+  const highlights = [
+    { icon: 'verified', title: t('detectedHlAuthenticated'), sub: t('detectedHlAuthenticatedSub'), color: colors.success },
+    { icon: 'eco', title: t('detectedHlSustainable'), sub: t('detectedHlSustainableSub'), color: colors.success },
+    { icon: 'public', title: t('detectedHlLowImpact'), sub: t('detectedHlLowImpactSub'), color: colors.primary },
+  ];
 
   return (
-    <AppLayout
-      navigation={navigation}
-      user={user}
-      onLogout={onLogout}
-      showBackButton={true}
-      onBackPress={() => navigation.goBack()}
-    >
-      <View style={styles.container}>
-        <Image
-          source={require('../assets/success.png')}
-          style={[styles.successImage, { width: contentWidth, height: imageHeight }]}
-          resizeMode="contain"
-        />
+    <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton onBackPress={() => navigation.goBack()}>
+      <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
+        <View style={styles.checkWrap}>
+          <View style={styles.checkCircle}>
+            <Icon name="check" size={30} color="#fff" />
+          </View>
+          <Text style={styles.title}>{t('detectedTitle')}</Text>
+          <Text style={styles.subtitle}>{t('detectedSubtitle')}</Text>
+        </View>
 
-        <GradientButton
-          style={styles.privacyButton}
-          onPress={openPrivatePolicy}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.privacyText}>{t('privatePolicy')}</Text>
+        <View style={styles.card}>
+          <MediaSlider
+            images={images}
+            videos={videos}
+            hideHeader
+            maxHeight={280}
+            watchLabel={t('watchVideo')}
+            onPlayVideo={setPlayingVideoId}
+          />
+          <Text style={styles.productName}>{productData?.name || '—'}</Text>
+          {!!productData?.model && <Text style={styles.productModel}>{productData.model}</Text>}
+          {(productData?.pmc_code || productData?.token_id != null) && (
+            <Text style={styles.productId}>
+              ID: {productData?.pmc_code || productData?.token_id}
+            </Text>
+          )}
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.hlHeader}>{t('detectedQuickHighlights')}</Text>
+          {highlights.map((h) => (
+            <View key={h.title} style={styles.hlRow}>
+              <Icon name={h.icon} size={20} color={h.color} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.hlTitle}>{h.title}</Text>
+                <Text style={styles.hlSub}>{h.sub}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+
+        <GradientButton style={styles.primaryButton} onPress={goToProductDetail} activeOpacity={0.85}>
+          <Text style={styles.primaryButtonText}>{t('detectedViewProduct')}</Text>
         </GradientButton>
-      </View>
+        <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.replace('Scanner')} activeOpacity={0.8}>
+          <Text style={styles.secondaryButtonText}>{t('detectedScanAnother')}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.privacyLink}
+          onPress={() => navigation.navigate('PrivatePolicy', { productData, securityPassed, productId, qrcodeId })}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.privacyLinkText}>{t('privatePolicy')}</Text>
+        </TouchableOpacity>
+      </ScrollView>
+
+      <VideoPlayerModal visible={!!playingVideoId} videoId={playingVideoId} onClose={() => setPlayingVideoId(null)} />
     </AppLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.bg,
-    paddingHorizontal: 8,
-    paddingTop: 8,
-    paddingBottom: 12,
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  successImage: {
-    maxWidth: '100%',
-  },
-  privacyButton: {
-    width: '100%',
-    flexDirection: 'row',
+  screen: { flex: 1, backgroundColor: colors.bg },
+  container: { padding: spacing.lg, paddingBottom: spacing.xxxl, alignItems: 'stretch' },
+  checkWrap: { alignItems: 'center', marginBottom: spacing.lg },
+  checkCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.success,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: spacing.xl,
-    borderRadius: radius.pill,
-    backgroundColor: colors.accent,
+    marginBottom: spacing.md,
+  },
+  title: { fontSize: 20, fontWeight: '700', color: colors.heading },
+  subtitle: { fontSize: 13, color: colors.muted, marginTop: 2 },
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    marginBottom: spacing.md,
     ...shadow(1),
   },
-  privacyText: {
-    fontSize: 16,
-    color: colors.white,
-    fontWeight: '400',
-    letterSpacing: 0.3,
+  productName: { fontSize: 17, fontWeight: '700', color: colors.heading, marginTop: spacing.md, textAlign: 'center' },
+  productModel: { fontSize: 13, color: colors.muted, textAlign: 'center', marginTop: 2 },
+  productId: { fontSize: 12, color: colors.placeholder, textAlign: 'center', marginTop: 4 },
+  hlHeader: { fontSize: 14, fontWeight: '700', color: colors.primary, marginBottom: spacing.sm },
+  hlRow: { flexDirection: 'row', gap: spacing.md, alignItems: 'center', paddingVertical: spacing.sm },
+  hlTitle: { fontSize: 13, fontWeight: '600', color: colors.text },
+  hlSub: { fontSize: 12, color: colors.muted, marginTop: 1 },
+  primaryButton: {
+    backgroundColor: colors.accent,
+    borderRadius: radius.md,
+    paddingVertical: 15,
+    alignItems: 'center',
+    marginTop: spacing.sm,
+    ...shadow(1),
   },
+  primaryButtonText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  secondaryButton: {
+    borderRadius: radius.md,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    backgroundColor: colors.surface,
+  },
+  secondaryButtonText: { color: colors.accent, fontSize: 15, fontWeight: '600' },
+  privacyLink: { alignItems: 'center', marginTop: spacing.lg },
+  privacyLinkText: { color: colors.accent, fontSize: 13, textDecorationLine: 'underline' },
 });
