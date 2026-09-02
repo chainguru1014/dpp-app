@@ -62,6 +62,7 @@ export async function resolveScannedCode(
         body: JSON.stringify({
           qrUrl: scanned,
           expectedQrUrl: opts.expectedSecurityQrUrl || undefined,
+          user_id: opts.userId,
         }),
       });
       data = await resp.json().catch(() => ({}));

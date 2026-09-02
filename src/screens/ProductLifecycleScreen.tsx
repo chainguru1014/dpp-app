@@ -221,7 +221,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
         <View style={styles.card}>
           <Text style={styles.cardTitle}>{t('lifecycleMaterialOrigins')}</Text>
           {materialOrigins.map((o: any, i: number) => (
-            <KV key={i} label={o.material || '—'} value={[o.origin, o.companyName].filter(Boolean).join(' · ')} />
+            <KV key={i} label={o.material || '—'} value={[o.country || o.origin, o.companyName].filter(Boolean).join(' · ')} />
           ))}
         </View>
       )}

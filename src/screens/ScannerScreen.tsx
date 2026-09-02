@@ -449,6 +449,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
             body: JSON.stringify({
               qrUrl: scannedValue,
               expectedQrUrl: expectedSecurityQrUrl || undefined,
+              user_id: user?._id,
             }),
           });
           data = await response.json();
