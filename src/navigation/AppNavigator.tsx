@@ -10,6 +10,9 @@ import HomeScreen from '../screens/HomeScreen';
 import ProductSummaryScreen from '../screens/ProductSummaryScreen';
 import EnterCodeScreen from '../screens/EnterCodeScreen';
 import ProductLifecycleScreen from '../screens/ProductLifecycleScreen';
+import BrandDetailScreen from '../screens/BrandDetailScreen';
+import ProductHistoryScreen from '../screens/ProductHistoryScreen';
+import SendProductInfoScreen from '../screens/SendProductInfoScreen';
 import ShopNowScreen from '../screens/ShopNowScreen';
 import ScannerScreen from '../screens/ScannerScreen';
 import ResultScreen from '../screens/ResultScreen';
@@ -220,6 +223,18 @@ export default function AppNavigator({ navigationRef }: { navigationRef: any }) 
 
       <Stack.Screen name="ProductLifecycle">
         {(props) => <ProductLifecycleScreen {...props} user={user} onLogout={handleLogout} />}
+      </Stack.Screen>
+
+      <Stack.Screen name="BrandDetail">
+        {(props) => <BrandDetailScreen {...props} user={user} onLogout={handleLogout} />}
+      </Stack.Screen>
+
+      <Stack.Screen name="ProductHistory">
+        {(props) => <ProductHistoryScreen {...props} user={user} onLogout={handleLogout} />}
+      </Stack.Screen>
+
+      <Stack.Screen name="SendProductInfo">
+        {(props) => <SendProductInfoScreen {...props} user={user} onLogout={handleLogout} />}
       </Stack.Screen>
 
       <Stack.Screen name="Scanner">

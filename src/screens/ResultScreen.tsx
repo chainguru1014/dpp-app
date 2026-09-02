@@ -870,9 +870,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
           await copyToClipboard(infoText);
           break;
         case 'sendProductInfo':
-          setSendInfoEmail('');
-          setSendInfoContent(infoText);
-          setShowSendProductDialog(true);
+          navigation.navigate('SendProductInfo', { product: productData, infoText });
           break;
         default:
           break;

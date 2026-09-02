@@ -1,29 +1,18 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Dimensions,
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 import AppLayout from '../components/AppLayout';
 import NotificationDetailModal from '../components/NotificationDetailModal';
 import { API_BASE_URL } from '../config/api';
 import { useI18n } from '../i18n/I18nContext';
-import { colors, spacing, radius, ui, shadow } from '../theme';
+import { colors, spacing, radius, shadow } from '../theme';
 
-// On web the flex chain can collapse to 0 height; pin a min height for the list.
-const { height: screenH } = Dimensions.get('window');
-const LIST_MIN_H = Math.max(320, screenH - 70 - 70 - 120);
-
-interface NotificationsScreenProps {
+interface Props {
   navigation: any;
   user?: any;
   onLogout?: () => void;
 }
 
-// Notification level -> accent color used for the left rail + icon dot.
 const LEVEL_COLOR: Record<string, string> = {
   info: colors.accent,
   success: colors.success,
@@ -32,66 +21,63 @@ const LEVEL_COLOR: Record<string, string> = {
 };
 
 const TYPE_ICON: Record<string, string> = {
-  transfer_request: '⇄',
-  transfer_confirmed: '✓',
-  transfer_received: '★',
-  transfer_rejected: '✕',
-  system: '📢',
+  transfer_request: 'swap-horiz',
+  transfer_confirmed: 'check-circle',
+  transfer_rejected: 'cancel',
+  transfer_received: 'redeem',
+  product_authenticated: 'verified-user',
+  lifecycle_updated: 'autorenew',
+  login_alert: 'lock',
+  system: 'campaign',
 };
 
-export default function NotificationsScreen({ navigation, user, onLogout }: NotificationsScreenProps) {
+const relativeTime = (iso: string) => {
+  const d = new Date(iso).getTime();
+  if (!d) return '';
+  const diff = Date.now() - d;
+  const m = Math.round(diff / 60000);
+  if (m < 1) return 'now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const days = Math.round(h / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString();
+};
+
+export default function NotificationsScreen({ navigation, user, onLogout }: Props) {
   const { t } = useI18n();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<any>(null);
-  const isMountedRef = useRef(true);
-
+  const mounted = useRef(true);
   const userId = user?._id ? String(user._id) : '';
 
   const load = useCallback(async () => {
     if (!userId) {
-      setItems([]);
       setLoading(false);
       return;
     }
     try {
-      const res = await fetch(
-        `${API_BASE_URL}notification?recipient_kind=User&recipient_id=${encodeURIComponent(userId)}&limit=50`
-      );
+      const res = await fetch(`${API_BASE_URL}notification?recipient_kind=User&recipient_id=${encodeURIComponent(userId)}&limit=50`);
       const data = await res.json();
-      if (isMountedRef.current && res.ok && data?.status === 'success' && Array.isArray(data.data)) {
-        setItems(data.data);
-      }
-    } catch (error) {
-      // Keep the last successful list on transient errors.
+      if (mounted.current && res.ok && data?.status === 'success' && Array.isArray(data.data)) setItems(data.data);
+    } catch (e) {
+      /* keep last */
     } finally {
-      if (isMountedRef.current) setLoading(false);
+      if (mounted.current) setLoading(false);
     }
   }, [userId]);
 
-  // Initial load + real-time refresh every 3 seconds.
   useEffect(() => {
-    isMountedRef.current = true;
+    mounted.current = true;
     load();
-    const id = setInterval(load, 3000);
+    const id = setInterval(load, 5000);
     return () => {
-      isMountedRef.current = false;
+      mounted.current = false;
       clearInterval(id);
     };
   }, [load]);
-
-  const markRead = async (notifId: string) => {
-    if (!userId || !notifId) return;
-    try {
-      await fetch(`${API_BASE_URL}notification/${encodeURIComponent(notifId)}/read`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ recipient_id: userId }),
-      });
-    } catch (error) {
-      /* best-effort */
-    }
-  };
 
   const markAllRead = async () => {
     if (!userId) return;
@@ -102,8 +88,8 @@ export default function NotificationsScreen({ navigation, user, onLogout }: Noti
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ recipient_kind: 'User', recipient_id: userId }),
       });
-    } catch (error) {
-      /* best-effort */
+    } catch (e) {
+      /* best effort */
     }
     load();
   };
@@ -111,70 +97,54 @@ export default function NotificationsScreen({ navigation, user, onLogout }: Noti
   const onPressItem = (item: any) => {
     if (!item.read) {
       setItems((prev) => prev.map((n) => (n._id === item._id ? { ...n, read: true } : n)));
-      markRead(item._id);
+      fetch(`${API_BASE_URL}notification/${encodeURIComponent(item._id)}/read`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipient_id: userId }),
+      }).catch(() => {});
     }
-    // Every notification opens a detail dialog: transfer requests show the
-    // approve/decline flow, system notifications show their content.
     setSelected(item);
-  };
-
-  const renderItem = ({ item }: { item: any }) => {
-    const color = LEVEL_COLOR[item.level] || colors.accent;
-    const when = item.createdAt ? new Date(item.createdAt).toLocaleString() : '';
-    return (
-      <TouchableOpacity
-        style={[styles.row, !item.read && styles.rowUnread]}
-        activeOpacity={0.8}
-        onPress={() => onPressItem(item)}
-      >
-        <View style={[styles.rail, { backgroundColor: color }]} />
-        <View style={[styles.iconBadge, { backgroundColor: `${color}22` }]}>
-          <Text style={[styles.iconText, { color }]}>{TYPE_ICON[item.type] || '•'}</Text>
-        </View>
-        <View style={styles.body}>
-          <View style={styles.titleRow}>
-            <Text style={[styles.title, !item.read && styles.titleUnread]} numberOfLines={1}>
-              {item.title}
-            </Text>
-            {!item.read && <View style={[styles.dot, { backgroundColor: color }]} />}
-          </View>
-          {!!item.message && (
-            <Text style={styles.message} numberOfLines={3}>
-              {item.message}
-            </Text>
-          )}
-          {!!when && <Text style={styles.time}>{when}</Text>}
-        </View>
-      </TouchableOpacity>
-    );
   };
 
   const hasUnread = items.some((n) => !n.read);
 
   return (
-    <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton={true}>
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={[ui.screenTitle, styles.headerTitle]}>{t('notifications')}</Text>
-          {hasUnread && (
-            <TouchableOpacity onPress={markAllRead} style={styles.markAllBtn} activeOpacity={0.7}>
-              <Text style={styles.markAllText}>{t('markAllRead')}</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+    <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton onBackPress={() => navigation.goBack()}>
+      <View style={styles.screen}>
+        {hasUnread && (
+          <TouchableOpacity style={styles.markAll} onPress={markAllRead} activeOpacity={0.7}>
+            <Text style={styles.markAllText}>{t('markAllRead')}</Text>
+          </TouchableOpacity>
+        )}
         {loading && items.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>{t('loading')}</Text>
-          </View>
+          <View style={styles.empty}><Text style={styles.emptyText}>{t('loading')}</Text></View>
         ) : items.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>{t('noNotifications')}</Text>
-          </View>
+          <View style={styles.empty}><Text style={styles.emptyText}>{t('noNotifications')}</Text></View>
         ) : (
-          <ScrollView style={styles.flatList} contentContainerStyle={styles.list}>
-            {items.map((item, idx) => (
-              <React.Fragment key={item._id || idx}>{renderItem({ item })}</React.Fragment>
-            ))}
+          <ScrollView contentContainerStyle={styles.list}>
+            {items.map((item, idx) => {
+              const color = LEVEL_COLOR[item.level] || colors.accent;
+              return (
+                <TouchableOpacity
+                  key={item._id || idx}
+                  style={[styles.row, !item.read && styles.rowUnread]}
+                  activeOpacity={0.8}
+                  onPress={() => onPressItem(item)}
+                >
+                  <View style={[styles.iconBubble, { backgroundColor: `${color}22` }]}>
+                    <Icon name={TYPE_ICON[item.type] || 'notifications'} size={18} color={color} />
+                  </View>
+                  <View style={styles.info}>
+                    <Text style={[styles.title, !item.read && styles.titleUnread]} numberOfLines={1}>{item.title}</Text>
+                    {!!item.message && <Text style={styles.message} numberOfLines={2}>{item.message}</Text>}
+                  </View>
+                  <View style={styles.metaCol}>
+                    <Text style={styles.time}>{relativeTime(item.createdAt)}</Text>
+                    <Icon name="chevron-right" size={18} color={colors.muted} />
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
         )}
       </View>
@@ -190,56 +160,30 @@ export default function NotificationsScreen({ navigation, user, onLogout }: Noti
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg, padding: spacing.lg },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.lg,
-  },
-  headerTitle: { marginBottom: 0, flexShrink: 1 },
-  markAllBtn: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surfaceAlt,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  markAllText: { color: colors.primary, fontSize: 12, fontWeight: '400' },
-  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xxxl },
-  emptyText: { color: colors.muted, fontSize: 15, textAlign: 'center' },
-  flatList: { flex: 1, minHeight: LIST_MIN_H },
-  list: { paddingBottom: spacing.xl },
+  screen: { flex: 1, backgroundColor: colors.bg, padding: spacing.lg },
+  markAll: { alignSelf: 'flex-end', marginBottom: spacing.sm },
+  markAllText: { fontSize: 12, color: colors.accent, fontWeight: '600' },
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xxxl },
+  emptyText: { fontSize: 15, color: colors.muted },
+  list: { paddingBottom: spacing.xxxl },
   row: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    gap: spacing.md,
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingVertical: spacing.md,
-    paddingRight: spacing.md,
+    padding: spacing.md,
     marginBottom: spacing.sm,
-    overflow: 'hidden',
     ...shadow(1),
   },
-  rowUnread: { borderColor: colors.accent, backgroundColor: '#f3f8ff' },
-  rail: { width: 4, alignSelf: 'stretch', borderTopLeftRadius: radius.lg, borderBottomLeftRadius: radius.lg },
-  iconBadge: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: spacing.md,
-  },
-  iconText: { fontSize: 18, fontWeight: '400' },
-  body: { flex: 1 },
-  titleRow: { flexDirection: 'row', alignItems: 'center' },
-  title: { flex: 1, fontSize: 14, color: colors.heading, fontWeight: '400' },
-  titleUnread: { fontWeight: '400' },
-  dot: { width: 8, height: 8, borderRadius: 4, marginLeft: spacing.sm },
-  message: { fontSize: 13, color: colors.muted, marginTop: 2, lineHeight: 18 },
-  time: { fontSize: 11, color: colors.muted, marginTop: 4 },
+  rowUnread: { borderColor: colors.accent, backgroundColor: '#f4f8ff' },
+  iconBubble: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  info: { flex: 1 },
+  title: { fontSize: 14, color: colors.heading },
+  titleUnread: { fontWeight: '700' },
+  message: { fontSize: 12, color: colors.muted, marginTop: 2, lineHeight: 16 },
+  metaCol: { alignItems: 'flex-end', gap: 4 },
+  time: { fontSize: 11, color: colors.placeholder },
 });

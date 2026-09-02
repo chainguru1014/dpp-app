@@ -1,126 +1,157 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import { useFocusEffect } from '@react-navigation/native';
 import AppLayout from '../components/AppLayout';
 import { API_BASE_URL } from '../config/api';
 import { useI18n } from '../i18n/I18nContext';
-import { colors, spacing, radius, ui, shadow } from '../theme';
+import { colors, spacing, radius, shadow } from '../theme';
 
-// On web the flex chain can collapse to 0 height; pin a min height for the list.
-const { height: screenH } = Dimensions.get('window');
-const LIST_MIN_H = Math.max(320, screenH - 70 - 70 - 100);
-
-interface HistoryScreenProps {
+interface Props {
   navigation: any;
   user?: any;
   onLogout?: () => void;
 }
 
-// Activity type -> { labelKey (resolved via t() at render), color }.
-const TYPE_META: Record<string, { labelKey: any; bg: string; fg: string }> = {
-  scan: { labelKey: 'scannedLabel', bg: '#e7edf6', fg: colors.primary },
-  visit: { labelKey: 'visited', bg: '#e7edf6', fg: colors.primary },
-  like: { labelKey: 'liked', bg: colors.successSoft, fg: colors.success },
-  dislike: { labelKey: 'disliked', bg: colors.dangerSoft, fg: colors.danger },
-  buy: { labelKey: 'buy', bg: '#e3f0ff', fg: colors.accent },
-  transfer: { labelKey: 'transferred', bg: '#e6e9f5', fg: colors.navy },
-  receive: { labelKey: 'received', bg: '#e3f0ff', fg: colors.accent },
+type TabKey = 'scanned' | 'purchased' | 'cancelled';
+
+const fileUrl = (f: string) => {
+  if (!f) return '';
+  if (/^https?:\/\//i.test(f)) return f;
+  return `${API_BASE_URL}files/${String(f).replace(/^\/+/, '')}`;
 };
 
-export default function HistoryScreen({ navigation, user, onLogout }: HistoryScreenProps) {
+interface Row {
+  key: string;
+  productId?: string;
+  tokenId?: any;
+  name: string;
+  sub: string;
+  image: string;
+  when?: number;
+  raw?: any;
+}
+
+export default function HistoryScreen({ navigation, user, onLogout }: Props) {
   const { t } = useI18n();
-  const [items, setItems] = useState<any[]>([]);
+  const [tab, setTab] = useState<TabKey>('scanned');
   const [loading, setLoading] = useState(true);
+  const [scanned, setScanned] = useState<Row[]>([]);
+  const [purchased, setPurchased] = useState<Row[]>([]);
+  const [cancelled, setCancelled] = useState<Row[]>([]);
 
-  useEffect(() => {
-    (async () => {
-      if (!user?._id) {
-        setLoading(false);
-        setItems([]);
-        return;
+  const load = useCallback(async () => {
+    if (!user?._id) {
+      setLoading(false);
+      return;
+    }
+    const uid = encodeURIComponent(String(user._id));
+    setLoading(true);
+    try {
+      const [scanRes, purRes] = await Promise.all([
+        fetch(`${API_BASE_URL}qrcode/scan/list?user_id=${uid}`).then((r) => r.json()).catch(() => null),
+        fetch(`${API_BASE_URL}transfer/purchases?user_id=${uid}`).then((r) => r.json()).catch(() => null),
+      ]);
+
+      if (scanRes?.status === 'success' && Array.isArray(scanRes.data)) {
+        setScanned(
+          scanRes.data
+            .filter((p: any) => p.visitSource !== 'visit')
+            .sort((a: any, b: any) => (b.scannedAt || 0) - (a.scannedAt || 0))
+            .map((p: any, i: number): Row => ({
+              key: `s-${p._id}-${i}`,
+              productId: p._id,
+              tokenId: p.token_id,
+              name: p.name || t('homeProduct'),
+              sub: p.brandInfo?.name || p.model || '',
+              image: fileUrl(Array.isArray(p.images) ? p.images[0] : ''),
+              when: p.scannedAt,
+              raw: p,
+            }))
+        );
       }
-      try {
-        const res = await fetch(`${API_BASE_URL}transfer/activity?user_id=${encodeURIComponent(String(user._id))}`);
-        const data = await res.json();
-        if (res.ok && data?.status === 'success' && Array.isArray(data?.data)) {
-          setItems(data.data);
-        } else {
-          setItems([]);
-        }
-      } catch (error) {
-        console.error('Failed to load history', error);
-        setItems([]);
-      } finally {
-        setLoading(false);
+
+      if (purRes?.status === 'success' && Array.isArray(purRes.data)) {
+        const mapRow = (o: any, i: number): Row => ({
+          key: `${o._id}-${i}`,
+          productId: o.product_id,
+          tokenId: o.token_id,
+          name: o.name || t('homeProduct'),
+          sub: [o.brandName || o.model, o.quantity ? `×${o.quantity}` : ''].filter(Boolean).join(' · '),
+          image: fileUrl(o.image || ''),
+          when: o.time ? new Date(o.time).getTime() : undefined,
+          raw: o,
+        });
+        setPurchased(purRes.data.filter((o: any) => o.status === 'confirmed').map(mapRow));
+        setCancelled(
+          purRes.data.filter((o: any) => o.status === 'rejected' || o.status === 'cancelled').map(mapRow)
+        );
       }
-    })();
-  }, [user?._id]);
+    } catch (e) {
+      console.error('History load failed', e);
+    } finally {
+      setLoading(false);
+    }
+  }, [user?._id, t]);
 
-  const getFileUrl = (filename: string) => {
-    if (!filename) return '';
-    if (filename.startsWith('http://') || filename.startsWith('https://')) return filename;
-    return `${API_BASE_URL}files/${filename.replace(/^\/+/, '')}`;
-  };
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
 
-  const renderItem = ({ item }: { item: any }) => {
-    const meta = TYPE_META[item.type];
-    const typeLabel = meta ? t(meta.labelKey) : item.type;
-    const typeBg = meta ? meta.bg : colors.surfaceAlt;
-    const typeFg = meta ? meta.fg : colors.muted;
-    const when = item.time ? new Date(item.time).toLocaleString() : '';
-    const isTransfer = item.type === 'transfer' || item.type === 'receive';
-    const sub = isTransfer
-      ? [item.quantity ? `Qty ${item.quantity}` : '', item.status].filter(Boolean).join(' · ')
-      : '';
-    return (
-      <TouchableOpacity
-        style={styles.row}
-        activeOpacity={0.8}
-        onPress={() =>
-          item.product_id &&
-          navigation.navigate('Result',
-            item.token != null
-              ? { productId: String(item.product_id), qrcodeId: String(item.token), returnTo: 'History' }
-              : {
-                  productData: { _id: item.product_id, name: item.productName, images: item.productImage ? [item.productImage] : [] },
-                  productId: item.product_id,
-                  returnTo: 'History',
-                }
-          )
-        }
-      >
-        {item.productImage ? (
-          <Image source={{ uri: getFileUrl(item.productImage) }} style={styles.thumb} resizeMode="contain" />
-        ) : (
-          <View style={[styles.thumb, styles.emptyImage]} />
-        )}
-        <View style={styles.info}>
-          <Text style={styles.name} numberOfLines={1}>{item.productName || t('homeProduct')}</Text>
-          {!!sub && <Text style={styles.sub} numberOfLines={1}>{sub}</Text>}
-          <Text style={styles.time}>{when}</Text>
-        </View>
-        <View style={[styles.typePill, { backgroundColor: typeBg }]}>
-          <Text style={[styles.typeText, { color: typeFg }]}>{typeLabel}</Text>
-        </View>
-      </TouchableOpacity>
-    );
+  const rows = tab === 'scanned' ? scanned : tab === 'purchased' ? purchased : cancelled;
+
+  const openRow = (row: Row) => {
+    if (!row.productId) return;
+    navigation.navigate('ProductHistory', {
+      productId: row.productId,
+      tokenId: row.tokenId,
+      product: row.raw,
+      name: row.name,
+    });
   };
 
   return (
-    <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton={true}>
-      <View style={styles.container}>
-        <Text style={[ui.screenTitle, styles.title]}>{t('productHistory')}</Text>
+    <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton onBackPress={() => navigation.navigate('Home')}>
+      <View style={styles.screen}>
+        <View style={styles.tabRow}>
+          {([
+            { key: 'scanned' as const, label: t('historyTabScanned') },
+            { key: 'purchased' as const, label: t('historyTabPurchased') },
+            { key: 'cancelled' as const, label: t('historyTabCancelled') },
+          ]).map((tb) => (
+            <TouchableOpacity
+              key={tb.key}
+              style={[styles.tab, tab === tb.key && styles.tabActive]}
+              onPress={() => setTab(tb.key)}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.tabText, tab === tb.key && styles.tabTextActive]}>{tb.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
         {loading ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>{t('loading')}</Text>
-          </View>
-        ) : items.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>{t('noHistoryYet')}</Text>
-          </View>
+          <ActivityIndicator size="large" color={colors.accent} style={{ marginTop: spacing.xxxl }} />
+        ) : rows.length === 0 ? (
+          <View style={styles.empty}><Text style={styles.emptyText}>{t('noHistoryYet')}</Text></View>
         ) : (
-          <ScrollView style={styles.flatList} contentContainerStyle={styles.list}>
-            {items.map((item, idx) => (
-              <React.Fragment key={`${item.type}-${item.product_id || ''}-${idx}`}>{renderItem({ item })}</React.Fragment>
+          <ScrollView contentContainerStyle={styles.list}>
+            {rows.map((row) => (
+              <TouchableOpacity key={row.key} style={styles.row} activeOpacity={0.7} onPress={() => openRow(row)}>
+                {row.image ? (
+                  <Image source={{ uri: row.image }} style={styles.thumb} resizeMode="cover" />
+                ) : (
+                  <View style={[styles.thumb, styles.thumbPlaceholder]}><Icon name="inventory-2" size={18} color={colors.placeholder} /></View>
+                )}
+                <View style={styles.info}>
+                  <Text style={styles.name} numberOfLines={1}>{row.name}</Text>
+                  {!!row.sub && <Text style={styles.sub} numberOfLines={1}>{row.sub}</Text>}
+                  {!!row.when && <Text style={styles.time}>{new Date(row.when).toLocaleDateString()}</Text>}
+                </View>
+                <Icon name="chevron-right" size={20} color={colors.muted} />
+              </TouchableOpacity>
             ))}
           </ScrollView>
         )}
@@ -130,29 +161,37 @@ export default function HistoryScreen({ navigation, user, onLogout }: HistoryScr
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg, padding: spacing.lg },
-  title: { marginBottom: spacing.lg },
-  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xxxl },
-  emptyText: { color: colors.muted, fontSize: 15, textAlign: 'center' },
-  flatList: { flex: 1, minHeight: LIST_MIN_H },
-  list: { paddingBottom: spacing.xl },
+  screen: { flex: 1, backgroundColor: colors.bg, padding: spacing.lg },
+  tabRow: {
+    flexDirection: 'row',
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.md,
+    padding: 4,
+    marginBottom: spacing.md,
+  },
+  tab: { flex: 1, paddingVertical: 9, borderRadius: radius.sm, alignItems: 'center' },
+  tabActive: { backgroundColor: colors.primary },
+  tabText: { fontSize: 13, fontWeight: '600', color: colors.muted },
+  tabTextActive: { color: '#fff' },
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xxxl },
+  emptyText: { fontSize: 15, color: colors.muted },
+  list: { paddingBottom: spacing.xxxl },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.md,
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
     padding: spacing.sm,
     marginBottom: spacing.sm,
     ...shadow(1),
   },
-  thumb: { width: 52, height: 64, borderRadius: radius.sm, backgroundColor: '#fff' },
-  emptyImage: { backgroundColor: colors.surfaceAlt },
-  info: { flex: 1, paddingHorizontal: spacing.md },
-  name: { fontSize: 14, color: colors.heading, fontWeight: '400' },
+  thumb: { width: 48, height: 56, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt },
+  thumbPlaceholder: { alignItems: 'center', justifyContent: 'center' },
+  info: { flex: 1 },
+  name: { fontSize: 14, fontWeight: '600', color: colors.heading },
   sub: { fontSize: 12, color: colors.muted, marginTop: 1 },
-  time: { fontSize: 11, color: colors.muted, marginTop: 4 },
-  typePill: { borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 4 },
-  typeText: { fontSize: 11, fontWeight: '400' },
+  time: { fontSize: 11, color: colors.placeholder, marginTop: 3 },
 });

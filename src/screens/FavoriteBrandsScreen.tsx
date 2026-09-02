@@ -1,41 +1,37 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Linking, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, TextInput } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 import AppLayout from '../components/AppLayout';
 import { API_BASE_URL } from '../config/api';
 import { useI18n } from '../i18n/I18nContext';
-import { colors, spacing, radius, ui, shadow } from '../theme';
+import { colors, spacing, radius, shadow } from '../theme';
 
-interface FavoriteBrandsScreenProps {
+interface Props {
   navigation: any;
   user?: any;
   onLogout?: () => void;
 }
 
-function normalizeFollowRows(data: any): any[] {
+const normalizeRows = (data: any): any[] => {
   if (!data) return [];
   if (Array.isArray(data)) return data;
   if (Array.isArray(data?.data)) return data.data;
   if (Array.isArray(data?.docs)) return data.docs;
   return [];
-}
+};
 
-export default function FavoriteBrandsScreen({ navigation, user, onLogout }: FavoriteBrandsScreenProps) {
+const logoUri = (raw: string) => {
+  if (!raw) return '';
+  if (/^https?:\/\//i.test(raw)) return raw;
+  return `${API_BASE_URL}files/${raw.replace(/^\/+/, '')}`;
+};
+
+export default function FavoriteBrandsScreen({ navigation, user, onLogout }: Props) {
   const { t } = useI18n();
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const list = useMemo(
-    () =>
-      rows.map((raw: any, idx: number) => {
-        const website = String(raw?.brandWebsiteUrl ?? raw?.websiteUrl ?? raw?.website ?? '').trim();
-        const name = String(raw?.brandName ?? raw?.name ?? 'Brand').trim() || 'Brand';
-        const detail = String(raw?.brandDetail ?? raw?.detail ?? '').trim();
-        const logoRaw = String(raw?.brandLogoUrl ?? raw?.logoUrl ?? '').trim();
-        const id = String(raw?._id ?? `${website}-${idx}`);
-        return { id, name, detail, website, logoRaw, raw };
-      }),
-    [rows]
-  );
+  const [search, setSearch] = useState('');
+  const [sortAsc, setSortAsc] = useState(true);
 
   useEffect(() => {
     (async () => {
@@ -46,17 +42,11 @@ export default function FavoriteBrandsScreen({ navigation, user, onLogout }: Fav
         return;
       }
       try {
-        const res = await fetch(
-          `${API_BASE_URL}engagement/follow/list?user_id=${encodeURIComponent(String(user._id))}`
-        );
+        const res = await fetch(`${API_BASE_URL}engagement/follow/list?user_id=${encodeURIComponent(String(user._id))}`);
         const data = await res.json();
-        if (res.ok && data?.status === 'success') {
-          setRows(normalizeFollowRows(data?.data));
-        } else {
-          setRows([]);
-        }
-      } catch (error) {
-        console.error('Failed to load favorite brands', error);
+        setRows(res.ok && data?.status === 'success' ? normalizeRows(data?.data) : []);
+      } catch (e) {
+        console.error('Failed to load favorite brands', e);
         setRows([]);
       } finally {
         setLoading(false);
@@ -64,72 +54,74 @@ export default function FavoriteBrandsScreen({ navigation, user, onLogout }: Fav
     })();
   }, [user?._id]);
 
-  const openWebsite = (website: string) => {
-    const w = String(website || '').trim();
-    if (!w) return;
-    const safe = /^https?:\/\//i.test(w) ? w : `https://${w}`;
-    if (Platform.OS === 'web') {
-      (globalThis as any)?.open?.(safe, '_blank', 'noopener,noreferrer');
-      return;
-    }
-    Linking.openURL(safe);
-  };
+  const list = useMemo(() => {
+    const mapped = rows.map((raw: any, idx: number) => ({
+      id: String(raw?._id ?? idx),
+      name: String(raw?.brandName ?? raw?.name ?? 'Brand').trim() || 'Brand',
+      detail: String(raw?.brandDetail ?? raw?.detail ?? '').trim(),
+      website: String(raw?.brandWebsiteUrl ?? raw?.websiteUrl ?? '').trim(),
+      logoRaw: String(raw?.brandLogoUrl ?? raw?.logoUrl ?? '').trim(),
+    }));
+    const q = search.trim().toLowerCase();
+    const filtered = q ? mapped.filter((b) => b.name.toLowerCase().includes(q)) : mapped;
+    return filtered.sort((a, b) => (sortAsc ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)));
+  }, [rows, search, sortAsc]);
 
-  const logoUri = (logoRaw: string) => {
-    if (!logoRaw) return '';
-    if (logoRaw.startsWith('http://') || logoRaw.startsWith('https://')) return logoRaw;
-    return `${API_BASE_URL}files/${logoRaw.replace(/^\/+/, '')}`;
-  };
+  const openBrand = (brand: any) =>
+    navigation.navigate('BrandDetail', {
+      brand: { name: brand.name, detail: brand.detail, website: brand.website, logoUrl: brand.logoRaw },
+    });
 
   return (
-    <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton={true}>
-      <View style={styles.container}>
-        <Text style={[ui.screenTitle, styles.title]}>{t('favoriteBrands')}</Text>
+    <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton onBackPress={() => navigation.goBack()}>
+      <View style={styles.screen}>
+        <View style={styles.searchRow}>
+          <View style={styles.searchWrap}>
+            <Icon name="search" size={18} color={colors.muted} />
+            <TextInput
+              style={styles.searchInput}
+              value={search}
+              onChangeText={setSearch}
+              placeholder={t('brandsSearchPlaceholder')}
+              placeholderTextColor={colors.placeholder}
+            />
+          </View>
+          <TouchableOpacity style={styles.sortBtn} onPress={() => setSortAsc((v) => !v)} activeOpacity={0.7}>
+            <Icon name="sort-by-alpha" size={20} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.metaRow}>
+          <Text style={styles.metaText}>{t('brandsCount').replace('{count}', String(list.length))}</Text>
+          <Text style={styles.metaText}>{sortAsc ? 'A–Z' : 'Z–A'}</Text>
+        </View>
+
         {loading ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>{t('loading')}</Text>
-          </View>
+          <View style={styles.empty}><Text style={styles.emptyText}>{t('loading')}</Text></View>
         ) : list.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>{t('noFollowedBrands')}</Text>
-          </View>
+          <View style={styles.empty}><Text style={styles.emptyText}>{t('noFollowedBrands')}</Text></View>
         ) : (
-          <View style={styles.tableWrap}>
-            <View style={styles.tableHeader}>
-              <Text style={[styles.headerCell, styles.nameCol]}>{t('brandNameColumn')}</Text>
-              <Text style={[styles.headerCell, styles.detailCol]}>{t('brandDetailColumn')}</Text>
-              <Text style={[styles.headerCell, styles.imageCol]}>{t('brandImageColumn')}</Text>
-            </View>
-            <ScrollView contentContainerStyle={styles.list}>
-              {list.map((item) => (
-                <TouchableOpacity
-                  key={item.id}
-                  style={styles.row}
-                  activeOpacity={0.8}
-                  onPress={() => openWebsite(item.website)}
-                  disabled={!item.website}
-                >
-                  <View style={styles.nameCol}>
-                    <Text style={styles.rowName} numberOfLines={2}>
-                      {item.name}
-                    </Text>
+          <ScrollView contentContainerStyle={styles.grid}>
+            {list.map((brand) => (
+              <View key={brand.id} style={styles.card}>
+                {brand.logoRaw ? (
+                  <Image source={{ uri: logoUri(brand.logoRaw) }} style={styles.cardLogo} resizeMode="contain" />
+                ) : (
+                  <View style={[styles.cardLogo, styles.cardLogoPlaceholder]}>
+                    <Icon name="storefront" size={22} color={colors.placeholder} />
                   </View>
-                  <View style={styles.detailCol}>
-                    <Text style={styles.rowDetail} numberOfLines={4}>
-                      {item.detail || '—'}
-                    </Text>
-                  </View>
-                  <View style={styles.imageCol}>
-                    {item.logoRaw ? (
-                      <Image source={{ uri: logoUri(item.logoRaw) }} style={styles.rowImage} />
-                    ) : (
-                      <Image source={require('../assets/logo.jpg')} style={styles.rowImage} />
-                    )}
-                  </View>
+                )}
+                <View style={styles.followingPill}>
+                  <Text style={styles.followingPillText}>{t('brandsFollowing')}</Text>
+                </View>
+                <Text style={styles.cardDetail} numberOfLines={2}>{brand.detail || '—'}</Text>
+                <TouchableOpacity style={styles.viewBtn} onPress={() => openBrand(brand)} activeOpacity={0.7}>
+                  <Text style={styles.viewBtnText}>{t('brandsView')}</Text>
+                  <Icon name="arrow-forward" size={14} color={colors.accent} />
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
+              </View>
+            ))}
+          </ScrollView>
         )}
       </View>
     </AppLayout>
@@ -137,50 +129,58 @@ export default function FavoriteBrandsScreen({ navigation, user, onLogout }: Fav
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg, padding: spacing.lg },
-  title: { marginBottom: spacing.lg },
-  emptyContainer: {
+  screen: { flex: 1, backgroundColor: colors.bg, padding: spacing.lg },
+  searchRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
+  searchWrap: {
     flex: 1,
-    justifyContent: 'center',
+    flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.xxxl,
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 12,
+    height: 44,
   },
-  emptyText: { color: colors.muted, fontSize: 15, textAlign: 'center' },
-  tableWrap: {
+  searchInput: { flex: 1, fontSize: 14, color: colors.text, paddingVertical: 0 },
+  sortBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  metaRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.sm },
+  metaText: { fontSize: 12, color: colors.muted, fontWeight: '600' },
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xxxl },
+  emptyText: { fontSize: 15, color: colors.muted, textAlign: 'center' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', paddingBottom: spacing.xxxl },
+  card: {
+    width: '48%',
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    overflow: 'hidden',
+    padding: spacing.md,
+    marginBottom: spacing.md,
     ...shadow(1),
   },
-  tableHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surfaceAlt,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+  cardLogo: { width: 60, height: 24, marginBottom: spacing.sm },
+  cardLogoPlaceholder: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  followingPill: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.primary,
+    borderRadius: radius.pill,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginBottom: spacing.sm,
   },
-  headerCell: {
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.sm,
-    fontSize: 12,
-    fontWeight: '400',
-    color: colors.primaryDark,
-  },
-  list: { paddingBottom: 0 },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    minHeight: 88,
-  },
-  nameCol: { flex: 1, paddingHorizontal: spacing.sm },
-  detailCol: { flex: 1.4, paddingHorizontal: spacing.xs + 2 },
-  imageCol: { flex: 0.85, alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.sm },
-  rowName: { fontSize: 13, color: colors.text, fontWeight: '400' },
-  rowDetail: { fontSize: 12, color: colors.muted, lineHeight: 18 },
-  rowImage: { width: 56, height: 56, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt },
+  followingPillText: { fontSize: 10, color: '#fff', fontWeight: '600' },
+  cardDetail: { fontSize: 12, color: colors.muted, lineHeight: 17, minHeight: 34, marginBottom: spacing.sm },
+  viewBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  viewBtnText: { fontSize: 13, color: colors.accent, fontWeight: '600' },
 });
