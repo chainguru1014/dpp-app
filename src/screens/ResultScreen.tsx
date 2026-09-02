@@ -153,6 +153,10 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
   ];
 
   const isAuthenticatedUser = !!user;
+  // Corporate/staff sessions keep the original product-detail page (accordion +
+  // notification icon + operations bottom bar) — the consumer redesign
+  // (Overview/Lifecycle, heart favorite, product bottom bar) is User-only.
+  const isEmployeeActor = user?.actorKind === 'Employee';
   // "Owner mode": opened from My Products for a product the user owns -> the Buy
   // action becomes a Transfer action.
   const isOwnedMode = !!route?.params?.owned;
@@ -870,7 +874,13 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
           await copyToClipboard(infoText);
           break;
         case 'sendProductInfo':
-          navigation.navigate('SendProductInfo', { product: productData, infoText });
+          if (isEmployeeActor) {
+            setSendInfoEmail('');
+            setSendInfoContent(infoText);
+            setShowSendProductDialog(true);
+          } else {
+            navigation.navigate('SendProductInfo', { product: productData, infoText });
+          }
           break;
         default:
           break;
@@ -1409,8 +1419,8 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
           ? () => navigation.navigate(route?.params?.returnTo || (user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Home'))
           : undefined
       }
-      bottomBar={isAuthenticatedUser && user?.actorKind !== 'Employee' ? 'product' : 'auto'}
-      rightIcon={isAuthenticatedUser ? 'heart' : 'notification'}
+      bottomBar={isAuthenticatedUser && !isEmployeeActor ? 'product' : 'auto'}
+      rightIcon={isAuthenticatedUser && !isEmployeeActor ? 'heart' : 'notification'}
       isFavorite={isInAlbum}
       onToggleFavorite={() => handleActionMenuPress('toggleAlbum')}
       product={productData}
@@ -1459,6 +1469,65 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
           ) : null}
         </View>
 
+        {isEmployeeActor ? (
+          <>
+            {(() => {
+              const isPending = !isOwnedMode && transferStatus === 'pending' && transferRequestSent;
+              const isOwned = !isOwnedMode && transferStatus === 'confirmed';
+              const buyLocked = isPending || isOwned;
+              const label = isOwnedMode
+                ? t('transferButton')
+                : isPending ? t('requested') : isOwned ? t('owned') : t('buy');
+              return (
+                <View style={styles.actionButtonsRow}>
+                  <TouchableOpacity style={[styles.actionPill, selectedFeedback === 'like' && styles.actionPillActive]} onPress={handleLike}>
+                    {selectedFeedback === 'like' && <GradientView style={StyleSheet.absoluteFill} />}
+                    <Image source={require('../assets/like.png')} style={[styles.actionPillIcon, selectedFeedback === 'like' && styles.actionPillIconActive]} />
+                    <Text style={[styles.actionPillText, selectedFeedback === 'like' && styles.actionPillTextActive]}>{t('like')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.actionPill, selectedFeedback === 'dislike' && styles.actionPillActive]} onPress={handleDislike}>
+                    {selectedFeedback === 'dislike' && <GradientView style={StyleSheet.absoluteFill} />}
+                    <Image source={require('../assets/dislike.png')} style={[styles.actionPillIcon, selectedFeedback === 'dislike' && styles.actionPillIconActive]} />
+                    <Text style={[styles.actionPillText, selectedFeedback === 'dislike' && styles.actionPillTextActive]}>{t('dislike')}</Text>
+                  </TouchableOpacity>
+                  <GradientButton
+                    style={[styles.actionPill, styles.actionPillActive, buyLocked && styles.actionPillDisabled]}
+                    onPress={isOwnedMode ? openOwnerTransfer : handleBuy}
+                    activeOpacity={0.85}
+                    disabled={buyLocked}
+                  >
+                    <Image source={isOwnedMode ? require('../assets/connection.png') : require('../assets/cart.png')} style={[styles.actionPillIcon, styles.actionPillIconActive]} />
+                    <Text style={[styles.actionPillText, styles.actionPillTextActive]}>
+                      {label}{isOwnedMode && ownedQuantity != null ? ` ×${ownedQuantity}` : ''}
+                    </Text>
+                  </GradientButton>
+                </View>
+              );
+            })()}
+            {!showProductInfo ? (
+              <GradientButton style={styles.productInfoButton} onPress={() => setShowProductInfo(true)} activeOpacity={0.85}>
+                <Text style={styles.productInfoButtonText}>{t('resultProductInformation')}</Text>
+              </GradientButton>
+            ) : (
+              sections.map((section) => (
+                <View key={section.id} style={styles.accordionSection}>
+                  <GradientButton style={styles.accordionHeader} onPress={() => toggleSection(section.id)} activeOpacity={0.85}>
+                    <Text style={styles.accordionHeaderText}>{section.title}</Text>
+                    <View style={styles.accordionToggleBadge}>
+                      <Icon name={expandedSections[section.id] ? 'keyboard-arrow-up' : 'keyboard-arrow-down'} size={22} color={'#fff'} />
+                    </View>
+                  </GradientButton>
+                  {expandedSections[section.id] && (
+                    <View style={styles.accordionContent}>
+                      {section.id === 0 ? renderProductDetails() : renderSectionContent(section.id)}
+                    </View>
+                  )}
+                </View>
+              ))
+            )}
+          </>
+        ) : (
+          <>
         {/* Key Highlights — the product-detail facts from the register/edit form. */}
         {(() => {
           const facts = productData?.detailFacts || {};
@@ -1572,6 +1641,8 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
               <Icon name="close" size={16} color={colors.muted} />
             </TouchableOpacity>
           </View>
+        )}
+          </>
         )}
       </ScrollView>
       {/* Keep modal outside ScrollView to avoid RN web content-layer paint issues */}

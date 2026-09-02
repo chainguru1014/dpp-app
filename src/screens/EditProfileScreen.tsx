@@ -53,12 +53,19 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
     country: u?.country || u?.addressCountry || '',
     birthYear: u?.birthYear ? String(u.birthYear) : '',
     avatar: u?.avatar || '',
-    // agent-only
+    // agent-only (staff / corporate) — full field set, matches the unchanged
+    // backend updateProfile agent branch.
     name: u?.name || '',
     email: u?.email || '',
     firstName: u?.firstName || '',
     lastName: u?.lastName || '',
     phoneNumber: u?.phoneNumber || '',
+    addressStreet: u?.addressStreet || '',
+    addressCity: u?.addressCity || '',
+    addressState: u?.addressState || '',
+    addressZipCode: u?.addressZipCode || '',
+    addressCountry: u?.addressCountry || '',
+    dateOfBirth: u?.dateOfBirth || '',
   });
   const [profile, setProfile] = useState<any>(build());
 
@@ -122,8 +129,20 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
   const validate = () => {
     const errs: Record<string, string> = {};
     if (isAgent) {
-      if (!profile.name.trim()) errs.name = `${t('username')} ${t('genderRequired').includes('required') ? 'is required' : ''}`.trim();
-      if (!profile.email.trim()) errs.email = 'Email is required';
+      const req = (k: string, label: string) => {
+        if (!String(profile[k] || '').trim()) errs[k] = `${label} ${t('pleaseFillAllRequired')}`;
+      };
+      req('name', t('username'));
+      req('email', t('email'));
+      req('firstName', t('firstName'));
+      req('lastName', t('lastName'));
+      req('addressStreet', t('street'));
+      req('addressCity', t('city'));
+      req('addressState', t('state'));
+      req('addressZipCode', t('zipCode'));
+      req('addressCountry', t('country'));
+      req('phoneNumber', t('phoneNumber'));
+      req('dateOfBirth', t('dateOfBirth'));
       if (!profile.gender) errs.gender = t('genderRequired');
     } else {
       if (!profile.nickname.trim()) errs.nickname = t('pleaseFillAllRequired');
@@ -151,9 +170,14 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
             email: profile.email.trim(),
             firstName: profile.firstName.trim(),
             lastName: profile.lastName.trim(),
+            addressStreet: profile.addressStreet.trim(),
+            addressCity: profile.addressCity.trim(),
+            addressState: profile.addressState.trim(),
+            addressZipCode: profile.addressZipCode.trim(),
+            addressCountry: profile.addressCountry.trim(),
             phoneNumber: profile.phoneNumber.trim(),
             gender: profile.gender,
-            addressCountry: profile.country,
+            dateOfBirth: profile.dateOfBirth.trim(),
           }
         : {
             userType: 'client',
@@ -193,22 +217,24 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
     <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton onBackPress={() => navigation.goBack()}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
         <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
-          <View style={styles.avatarWrap}>
-            <View style={styles.avatarCircle}>
-              {avatarUri ? (
-                <Image source={{ uri: avatarUri }} style={styles.avatarImg} />
-              ) : (
-                <Icon name="person" size={54} color={colors.placeholder} />
-              )}
+          {!isAgent && (
+            <View style={styles.avatarWrap}>
+              <View style={styles.avatarCircle}>
+                {avatarUri ? (
+                  <Image source={{ uri: avatarUri }} style={styles.avatarImg} />
+                ) : (
+                  <Icon name="person" size={54} color={colors.placeholder} />
+                )}
+              </View>
+              <TouchableOpacity style={styles.avatarBadge} onPress={pickAvatar} activeOpacity={0.8}>
+                {uploadingAvatar ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Icon name="photo-camera" size={16} color="#fff" />
+                )}
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity style={styles.avatarBadge} onPress={pickAvatar} activeOpacity={0.8}>
-              {uploadingAvatar ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Icon name="photo-camera" size={16} color="#fff" />
-              )}
-            </TouchableOpacity>
-          </View>
+          )}
 
           {!!saveError && (
             <View style={styles.errorBanner}>
@@ -220,9 +246,15 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
             <>
               <Field label={t('username')} value={profile.name} onChangeText={(v: string) => setField('name', v)} error={fieldErrors.name} />
               <Field label={t('email')} value={profile.email} onChangeText={(v: string) => setField('email', v)} error={fieldErrors.email} keyboardType="email-address" autoCapitalize="none" />
-              <Field label={t('firstName')} value={profile.firstName} onChangeText={(v: string) => setField('firstName', v)} />
-              <Field label={t('lastName')} value={profile.lastName} onChangeText={(v: string) => setField('lastName', v)} />
-              <Field label={t('phoneNumber')} value={profile.phoneNumber} onChangeText={(v: string) => setField('phoneNumber', v)} keyboardType="phone-pad" />
+              <Field label={t('firstName')} value={profile.firstName} onChangeText={(v: string) => setField('firstName', v)} error={fieldErrors.firstName} />
+              <Field label={t('lastName')} value={profile.lastName} onChangeText={(v: string) => setField('lastName', v)} error={fieldErrors.lastName} />
+              <Field label={t('street')} value={profile.addressStreet} onChangeText={(v: string) => setField('addressStreet', v)} error={fieldErrors.addressStreet} />
+              <Field label={t('city')} value={profile.addressCity} onChangeText={(v: string) => setField('addressCity', v)} error={fieldErrors.addressCity} />
+              <Field label={t('state')} value={profile.addressState} onChangeText={(v: string) => setField('addressState', v)} error={fieldErrors.addressState} />
+              <Field label={t('zipCode')} value={profile.addressZipCode} onChangeText={(v: string) => setField('addressZipCode', v)} error={fieldErrors.addressZipCode} />
+              <Field label={t('country')} value={profile.addressCountry} onChangeText={(v: string) => setField('addressCountry', v)} error={fieldErrors.addressCountry} />
+              <Field label={t('phoneNumber')} value={profile.phoneNumber} onChangeText={(v: string) => setField('phoneNumber', v)} error={fieldErrors.phoneNumber} keyboardType="phone-pad" />
+              <Field label={t('dateOfBirth')} value={profile.dateOfBirth} onChangeText={(v: string) => setField('dateOfBirth', v)} error={fieldErrors.dateOfBirth} placeholder="YYYY-MM-DD" />
             </>
           ) : (
             <Field label={t('editProfileNickname')} value={profile.nickname} onChangeText={(v: string) => setField('nickname', v)} error={fieldErrors.nickname} autoCapitalize="none" />
@@ -254,14 +286,18 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
             />
           )}
 
-          <Text style={styles.label}>{t('country')}</Text>
-          <TouchableOpacity style={styles.selectButton} onPress={() => setCountryModalVisible(true)} activeOpacity={0.8}>
-            <Text style={profile.country ? styles.selectValue : styles.selectPlaceholder}>
-              {profile.country || t('selectCountry')}
-            </Text>
-            <Icon name="expand-more" size={22} color={colors.muted} />
-          </TouchableOpacity>
-          {!!fieldErrors.country && <Text style={styles.errorText}>{fieldErrors.country}</Text>}
+          {!isAgent && (
+            <>
+              <Text style={styles.label}>{t('country')}</Text>
+              <TouchableOpacity style={styles.selectButton} onPress={() => setCountryModalVisible(true)} activeOpacity={0.8}>
+                <Text style={profile.country ? styles.selectValue : styles.selectPlaceholder}>
+                  {profile.country || t('selectCountry')}
+                </Text>
+                <Icon name="expand-more" size={22} color={colors.muted} />
+              </TouchableOpacity>
+              {!!fieldErrors.country && <Text style={styles.errorText}>{fieldErrors.country}</Text>}
+            </>
+          )}
 
           <GradientButton style={[styles.saveButton, loading && { opacity: 0.6 }]} onPress={save} disabled={loading}>
             <Text style={styles.saveText}>{loading ? t('saving') : t('editProfileSaveChanges')}</Text>

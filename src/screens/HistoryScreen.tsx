@@ -113,7 +113,7 @@ export default function HistoryScreen({ navigation, user, onLogout }: Props) {
   };
 
   return (
-    <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton onBackPress={() => navigation.navigate('Home')}>
+    <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton onBackPress={() => navigation.goBack()}>
       <View style={styles.screen}>
         <View style={styles.tabRow}>
           {([

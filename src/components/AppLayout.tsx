@@ -128,6 +128,9 @@ export default function AppLayout({
   const [langMenuVisible, setLangMenuVisible] = useState(false);
   const [profileSheetVisible, setProfileSheetVisible] = useState(false);
   const [actionSheetVisible, setActionSheetVisible] = useState(false);
+  // Employee sessions keep the original top-bar avatar dropdown
+  // (Profile / Language / Logout) — consumers use the Profile bottom-bar tab.
+  const [avatarMenuVisible, setAvatarMenuVisible] = useState(false);
 
   const isAuthenticated = !!user;
   const isEmployeeActor = user?.actorKind === 'Employee';
@@ -239,14 +242,23 @@ export default function AppLayout({
     else if (itemKey === 'favoriteBrands') navigation.navigate('FavoriteBrands');
   };
 
-  // Product "More" action sheet items (screenshot #24, minus Support).
+  // Full product-action list — unchanged from before, used by the employee
+  // "Settings" bottom sheet on a product page.
   const actionMenuItems = [
     { key: 'saveProductInfo', label: t('saveProductInfo'), iconSource: require('../assets/diskette.png') },
     { key: 'copyProductInfo', label: t('copyProductInfo'), iconSource: require('../assets/copy.png') },
     { key: 'sendProductInfo', label: t('sendProductInfo'), iconSource: require('../assets/send.png') },
     { key: 'toggleAlbum', label: isInAlbum ? t('removeFromAlbum') : t('addAlbum'), iconSource: require('../assets/add-image.png') },
     { key: 'connectBrand', label: t('connectBrand'), iconSource: require('../assets/brand.png') },
+    { key: 'connectSalesPerson', label: t('connectSalesPerson'), iconSource: require('../assets/end-call.png') },
+    { key: 'toggleFollowBrand', label: isBrandFollowed ? t('unfollowBrand') : t('followBrand'), iconSource: require('../assets/add-friend.png') },
+    { key: 'introduceBrandToFriend', label: t('introduceBrand'), iconSource: require('../assets/connection.png') },
   ];
+
+  // Trimmed list for the consumer "More" action sheet (screenshot #24, no Support).
+  const consumerActionItems = actionMenuItems.filter((i) =>
+    ['saveProductInfo', 'copyProductInfo', 'sendProductInfo', 'toggleAlbum', 'connectBrand'].includes(i.key)
+  );
 
   const extraMenuItems = [
     ...(isEmployeeActor ? [] : [{ key: 'myProducts', label: t('myProductsOwned'), iconSource: require('../assets/cart.png') }]),
@@ -327,7 +339,14 @@ export default function AppLayout({
             )}
           </View>
 
-          {rightIconEl}
+          <View style={styles.topBarRight}>
+            {rightIconEl}
+            {isEmployeeActor && (
+              <TouchableOpacity onPress={() => setAvatarMenuVisible(true)} style={styles.iconButton} activeOpacity={0.7}>
+                <Icon name="account-circle" size={28} color={colors.white} />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       </View>
 
@@ -463,7 +482,7 @@ export default function AppLayout({
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setActionSheetVisible(false)}>
           <View style={styles.sheet}>
             <Text style={styles.sheetTitle}>{t('menu')}</Text>
-            {actionMenuItems.map((item) => (
+            {consumerActionItems.map((item) => (
               <View key={item.key}>
                 <TouchableOpacity style={styles.menuItem} onPress={() => runActionSheetItem(item.key)} activeOpacity={0.7}>
                   <Image source={item.iconSource} style={styles.menuItemIcon} resizeMode="contain" />
@@ -474,6 +493,49 @@ export default function AppLayout({
             ))}
           </View>
         </TouchableOpacity>
+      </Modal>
+
+      {/* Employee top-bar avatar dropdown — Profile / Language / Logout. */}
+      <Modal visible={avatarMenuVisible} transparent animationType="none" onRequestClose={() => setAvatarMenuVisible(false)}>
+        <TouchableWithoutFeedback onPress={() => setAvatarMenuVisible(false)}>
+          <View style={styles.langOverlay}>
+            <View style={[styles.langPopover, styles.avatarPopover, { position: 'absolute', top: TOP_BAR_HEIGHT - 6, right: 12 }]}>
+              <TouchableOpacity
+                style={styles.avatarMenuItem}
+                onPress={() => {
+                  setAvatarMenuVisible(false);
+                  handleProfile();
+                }}
+                activeOpacity={0.7}
+              >
+                <Image source={require('../assets/account.png')} style={styles.avatarMenuIcon} resizeMode="contain" />
+                <Text style={styles.avatarMenuText}>{t('profile')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.avatarMenuItem}
+                onPress={() => {
+                  setAvatarMenuVisible(false);
+                  openLanguageMenu();
+                }}
+                activeOpacity={0.7}
+              >
+                <Image source={require('../assets/world.png')} style={styles.avatarMenuIcon} resizeMode="contain" />
+                <Text style={styles.avatarMenuText}>{t('language')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.avatarMenuItem}
+                onPress={() => {
+                  setAvatarMenuVisible(false);
+                  handleLogout();
+                }}
+                activeOpacity={0.7}
+              >
+                <Image source={require('../assets/logout (1).png')} style={styles.avatarMenuIcon} resizeMode="contain" />
+                <Text style={[styles.avatarMenuText, { color: colors.danger }]}>{t('logout')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
       </Modal>
 
       <Modal visible={langMenuVisible} transparent animationType="none" onRequestClose={() => setLangMenuVisible(false)}>
@@ -583,6 +645,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   iconButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
+  topBarRight: { flexDirection: 'row', alignItems: 'center' },
   titleBlock: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   titleText: { color: '#fff', fontSize: 17, fontWeight: '600', letterSpacing: 0.3, textAlign: 'center' },
   subtitleText: { color: 'rgba(255,255,255,0.85)', fontSize: 12, fontWeight: '400', marginTop: 1, textAlign: 'center' },
@@ -664,4 +727,8 @@ const styles = StyleSheet.create({
   langItemActive: { backgroundColor: colors.surfaceAlt },
   langText: { fontSize: 15, color: colors.text, fontWeight: '400' },
   langTextActive: { color: colors.accent, fontWeight: '400' },
+  avatarPopover: { minWidth: 160, paddingHorizontal: 4 },
+  avatarMenuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 10, borderRadius: radius.sm },
+  avatarMenuIcon: { width: 20, height: 20, tintColor: colors.primary },
+  avatarMenuText: { marginLeft: 12, fontSize: 15, color: colors.text, fontWeight: '400' },
 });
