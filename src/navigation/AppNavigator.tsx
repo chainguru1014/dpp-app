@@ -7,6 +7,7 @@ import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import AiConciergeConsentScreen from '../screens/AiConciergeConsentScreen';
 import HomeScreen from '../screens/HomeScreen';
+import ProductSummaryScreen from '../screens/ProductSummaryScreen';
 import ShopNowScreen from '../screens/ShopNowScreen';
 import ScannerScreen from '../screens/ScannerScreen';
 import ResultScreen from '../screens/ResultScreen';
@@ -157,7 +158,7 @@ export default function AppNavigator({ navigationRef }: { navigationRef: any }) 
           ? 'EmployeeHome'
           : !user.aiConciergeConsentAt
           ? 'AiConciergeConsent'
-          : 'Scanner'
+          : 'Home'
       }
     >
       <Stack.Screen name="Login">
@@ -205,6 +206,10 @@ export default function AppNavigator({ navigationRef }: { navigationRef: any }) 
 
       <Stack.Screen name="ShopNow">
         {(props) => <ShopNowScreen {...props} user={user} onLogout={handleLogout} />}
+      </Stack.Screen>
+
+      <Stack.Screen name="ProductSummary">
+        {(props) => <ProductSummaryScreen {...props} user={user} onLogout={handleLogout} />}
       </Stack.Screen>
 
       <Stack.Screen name="Scanner">

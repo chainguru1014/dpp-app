@@ -8,11 +8,13 @@ import {
   StyleSheet,
   Alert,
   Modal,
+  Image,
   KeyboardAvoidingView,
   Platform,
-  useWindowDimensions,
+  ActivityIndicator,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 import AppLayout from '../components/AppLayout';
 import GradientButton from '../components/GradientButton';
 import GradientView from '../components/GradientView';
@@ -21,45 +23,50 @@ import { COUNTRIES } from '../constants/countries';
 import { useI18n } from '../i18n/I18nContext';
 import { colors, spacing, radius, fontSize, shadow } from '../theme';
 
+let launchImageLibrary: any = null;
+try {
+  launchImageLibrary = require('react-native-image-picker').launchImageLibrary;
+} catch (e) {
+  console.warn('react-native-image-picker not available:', e);
+}
+
+const fileUrl = (filename: string) => {
+  if (!filename) return '';
+  if (/^https?:\/\//i.test(filename)) return filename;
+  return `${API_BASE_URL}files/${String(filename).replace(/^\/+/, '')}`;
+};
+
 export default function EditProfileScreen({ navigation, route, user, onLogout, onUserUpdate }: any) {
-  const TOP_BAR_HEIGHT = 70;
-  const BOTTOM_BAR_HEIGHT = 70;
   const { t, locale } = useI18n();
-  const { height: windowHeight } = useWindowDimensions();
+  const isEmployee = user?.actorKind === 'Employee';
+  const isAgent = isEmployee || user?.userType === 'agent';
+
   const [loading, setLoading] = useState(false);
-  const [actionsHeight, setActionsHeight] = useState(0);
-  const [countryModalVisible, setCountryModalVisible] = useState(false);
-  const [dobPickerVisible, setDobPickerVisible] = useState(false);
-  const [dobDraft, setDobDraft] = useState(new Date(2000, 0, 1));
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [saveError, setSaveError] = useState('');
-  const isGoogleProfileCompletion = !!route?.params?.fromGoogle;
-  // userType ('client'/'agent', this screen's own profile shape) now always
-  // follows the session's actorKind ('User'/'Employee') rather than being a
-  // manual toggle -- consumer accounts are always "client", employee/staff
-  // accounts are always "agent". The toggle previously let an Employee
-  // session fill out the wrong (client) field set, which then failed
-  // validation against fields their real record doesn't carry.
-  const createProfileFromUser = (sourceUser: any = user) => ({
-    userType: sourceUser?.actorKind === 'Employee' ? 'agent' : 'client',
-    name: sourceUser?.name || '',
-    password: sourceUser?.isGoogleUser ? 'google' : 'google',
-    gender: sourceUser?.gender || '',
-    age: sourceUser?.age ? String(sourceUser.age) : '',
-    country: sourceUser?.country || '',
-    email: sourceUser?.email || '',
-    firstName: sourceUser?.firstName || '',
-    lastName: sourceUser?.lastName || '',
-    addressStreet: sourceUser?.addressStreet || '',
-    addressCity: sourceUser?.addressCity || '',
-    addressState: sourceUser?.addressState || '',
-    addressZipCode: sourceUser?.addressZipCode || '',
-    addressCountry: sourceUser?.addressCountry || '',
-    phoneNumber: sourceUser?.phoneNumber || '',
-    dateOfBirth: sourceUser?.dateOfBirth || '',
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [countryModalVisible, setCountryModalVisible] = useState(false);
+
+  const build = (u: any = user) => ({
+    nickname: u?.nickname || '',
+    gender: u?.gender || '',
+    country: u?.country || u?.addressCountry || '',
+    birthYear: u?.birthYear ? String(u.birthYear) : '',
+    avatar: u?.avatar || '',
+    // agent-only
+    name: u?.name || '',
+    email: u?.email || '',
+    firstName: u?.firstName || '',
+    lastName: u?.lastName || '',
+    phoneNumber: u?.phoneNumber || '',
   });
-  const [profile, setProfile] = useState<any>(createProfileFromUser());
-  const [initialProfile, setInitialProfile] = useState<any>(createProfileFromUser());
+  const [profile, setProfile] = useState<any>(build());
+
+  useEffect(() => {
+    if (user) setProfile(build(user));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
   const genderOptions = useMemo(() => {
     const labels: Record<string, { male: string; female: string }> = {
       en: { male: 'Male', female: 'Female' },
@@ -68,327 +75,201 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
       fr: { male: 'Homme', female: 'Femme' },
       nl: { male: 'Man', female: 'Vrouw' },
     };
-    const selected = labels[locale] || labels.en;
+    const s = labels[locale] || labels.en;
     return [
-      { value: 'male', label: selected.male },
-      { value: 'female', label: selected.female },
+      { value: 'male', label: s.male },
+      { value: 'female', label: s.female },
     ];
   }, [locale]);
-  const formatDate = (date: Date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-  const parseDate = (value: string) => {
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? new Date(2000, 0, 1) : parsed;
-  };
-  const shiftDobDraft = (unit: 'year' | 'month' | 'day', delta: number) => {
-    const next = new Date(dobDraft);
-    if (unit === 'year') next.setFullYear(next.getFullYear() + delta);
-    if (unit === 'month') next.setMonth(next.getMonth() + delta);
-    if (unit === 'day') next.setDate(next.getDate() + delta);
-    setDobDraft(next);
-  };
-
-  useEffect(() => {
-    if (user) {
-      const hydrated = createProfileFromUser(user);
-      setProfile(hydrated);
-      setInitialProfile(hydrated);
-    }
-  }, [user]);
 
   const setField = (key: string, value: string) => {
-    setProfile((prev: any) => ({ ...prev, [key]: value }));
-    setFieldErrors((prev) => (prev[key] ? { ...prev, [key]: '' } : prev));
+    setProfile((p: any) => ({ ...p, [key]: value }));
+    setFieldErrors((e) => (e[key] ? { ...e, [key]: '' } : e));
   };
 
-  const validateGoogleRequiredFields = () => {
-    const nextErrors: Record<string, string> = {};
-    if (!profile.gender) nextErrors.gender = t('genderRequired');
-    if (!profile.age) nextErrors.age = t('ageRequired');
-    if (!profile.country) nextErrors.country = t('countryRequired');
-    setFieldErrors(nextErrors);
-    return Object.keys(nextErrors).length === 0;
-  };
-
-  // Field-by-field validation, replacing the old single "fill in all fields"
-  // alert (which also didn't say WHICH field was missing) and, critically,
-  // no longer uses Alert.alert for the result -- react-native-web's Alert is
-  // a no-op stub there, so a failed validation looked like the Save button
-  // silently did nothing (reported specifically for the agent/employee
-  // form, which has enough required fields that one is easy to miss).
-  // Errors are shown inline under each field instead, which works on every
-  // platform.
-  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const PHONE_RE = /^[+]?[\d\s\-().]{7,20}$/;
-  const ZIP_RE = /^[A-Za-z0-9][A-Za-z0-9\- ]{1,9}$/;
-
-  const validateProfile = () => {
-    if (isGoogleProfileCompletion && profile.userType === 'client') {
-      return validateGoogleRequiredFields();
+  const pickAvatar = () => {
+    if (!launchImageLibrary) {
+      Alert.alert(t('error'), t('editProfilePhotoUnavailable'));
+      return;
     }
-
-    const errors: Record<string, string> = {};
-    const required = (key: string, label: string) => {
-      if (!String(profile[key] || '').trim()) errors[key] = `${label} is required`;
-    };
-
-    required('name', t('username'));
-
-    if (profile.userType === 'client') {
-      required('password', t('password'));
-      if (!profile.gender) errors.gender = t('genderRequired');
-      if (!profile.age) errors.age = t('ageRequired');
-      else if (!/^\d+$/.test(profile.age.trim()) || Number(profile.age) <= 0 || Number(profile.age) > 120) {
-        errors.age = 'Enter a valid age';
+    launchImageLibrary({ mediaType: 'photo', selectionLimit: 1, includeBase64: false }, async (resp: any) => {
+      if (resp?.didCancel || resp?.errorCode) return;
+      const asset = resp?.assets && resp.assets[0];
+      if (!asset?.uri) return;
+      setUploadingAvatar(true);
+      try {
+        const form = new FormData();
+        form.append('file', {
+          uri: asset.uri,
+          name: asset.fileName || 'avatar.jpg',
+          type: asset.type || 'image/jpeg',
+        } as any);
+        const res = await fetch(`${API_BASE_URL}upload/single`, { method: 'POST', body: form });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && (data?.url || data?.path)) {
+          setField('avatar', data.url || data.path);
+        } else {
+          Alert.alert(t('error'), data?.message || t('editProfileUploadFailed'));
+        }
+      } catch (err: any) {
+        Alert.alert(t('error'), err?.message || t('editProfileUploadFailed'));
+      } finally {
+        setUploadingAvatar(false);
       }
-      if (!profile.country) errors.country = t('countryRequired');
+    });
+  };
+
+  const validate = () => {
+    const errs: Record<string, string> = {};
+    if (isAgent) {
+      if (!profile.name.trim()) errs.name = `${t('username')} ${t('genderRequired').includes('required') ? 'is required' : ''}`.trim();
+      if (!profile.email.trim()) errs.email = 'Email is required';
+      if (!profile.gender) errs.gender = t('genderRequired');
     } else {
-      required('email', t('email'));
-      if (!errors.email && !EMAIL_RE.test(profile.email.trim())) errors.email = 'Enter a valid email address';
-      required('firstName', t('firstName'));
-      required('lastName', t('lastName'));
-      required('addressStreet', t('street'));
-      required('addressCity', t('city'));
-      required('addressState', t('state'));
-      required('addressZipCode', t('zipCode'));
-      if (!errors.addressZipCode && !ZIP_RE.test(profile.addressZipCode.trim())) {
-        errors.addressZipCode = 'Enter a valid zip/postal code';
-      }
-      required('addressCountry', t('country'));
-      required('phoneNumber', t('phoneNumber'));
-      if (!errors.phoneNumber && !PHONE_RE.test(profile.phoneNumber.trim())) {
-        errors.phoneNumber = 'Enter a valid phone number';
-      }
-      if (!profile.gender) errors.gender = t('genderRequired');
-      if (!profile.dateOfBirth) errors.dateOfBirth = 'Date of birth is required';
+      if (!profile.nickname.trim()) errs.nickname = t('pleaseFillAllRequired');
+      if (!profile.gender) errs.gender = t('genderRequired');
+      if (!/^\d{4}$/.test(profile.birthYear)) errs.birthYear = t('ageRequired');
+      if (!profile.country) errs.country = t('countryRequired');
     }
-
-    setFieldErrors(errors);
-    return Object.keys(errors).length === 0;
+    setFieldErrors(errs);
+    return Object.keys(errs).length === 0;
   };
 
-  const saveProfile = async () => {
+  const save = async () => {
     if (!user?._id) {
       Alert.alert(t('error'), t('userNotFound'));
       return;
     }
-
-    if (!validateProfile()) return;
-
+    if (!validate()) return;
     setSaveError('');
     setLoading(true);
     try {
-      const payload: any = {
-        userType: profile.userType,
-        name: profile.name,
-        password: profile.password,
-      };
+      const payload: any = isAgent
+        ? {
+            userType: 'agent',
+            name: profile.name.trim(),
+            email: profile.email.trim(),
+            firstName: profile.firstName.trim(),
+            lastName: profile.lastName.trim(),
+            phoneNumber: profile.phoneNumber.trim(),
+            gender: profile.gender,
+            addressCountry: profile.country,
+          }
+        : {
+            userType: 'client',
+            nickname: profile.nickname.trim(),
+            gender: profile.gender,
+            birthYear: Number(profile.birthYear),
+            country: profile.country,
+            avatar: profile.avatar || '',
+          };
 
-      if (profile.userType === 'client') {
-        payload.gender = profile.gender;
-        payload.age = Number(profile.age);
-        payload.country = profile.country;
-      } else {
-        payload.email = profile.email;
-        payload.firstName = profile.firstName;
-        payload.lastName = profile.lastName;
-        payload.addressStreet = profile.addressStreet;
-        payload.addressCity = profile.addressCity;
-        payload.addressState = profile.addressState;
-        payload.addressZipCode = profile.addressZipCode;
-        payload.addressCountry = profile.addressCountry;
-        payload.phoneNumber = profile.phoneNumber;
-        payload.gender = profile.gender;
-        payload.dateOfBirth = profile.dateOfBirth;
-      }
-
-      const response = await fetch(`${API_BASE_URL}user/profile/${user._id}`, {
+      const res = await fetch(`${API_BASE_URL}user/profile/${user._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-
-      const data = await response.json();
-      if (!response.ok || data.status !== 'success') {
-        const message = data.message || t('failedToUpdateProfile');
-        setSaveError(message);
-        Alert.alert(t('error'), message);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.status !== 'success') {
+        const msg = data.message || t('failedToUpdateProfile');
+        setSaveError(msg);
         return;
       }
-
-      const updatedUser = data.user || data.data;
+      const updated = { ...(data.user || data.data || {}), actorKind: user.actorKind };
       await AsyncStorage.setItem('userToken', data.token || '');
-      await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
-      onUserUpdate?.(updatedUser);
-      const refreshedProfile = createProfileFromUser(updatedUser);
-      setProfile(refreshedProfile);
-      setInitialProfile(refreshedProfile);
-      Alert.alert(t('success'), t('profileUpdated'));
-      navigation.navigate(user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Scanner');
-    } catch (error: any) {
-      const message = error?.message || t('failedToUpdateProfile');
-      setSaveError(message);
-      Alert.alert(t('error'), message);
+      await AsyncStorage.setItem('user', JSON.stringify(updated));
+      onUserUpdate?.(updated);
+      navigation.navigate(isEmployee ? 'EmployeeHome' : 'Home');
+    } catch (err: any) {
+      setSaveError(err?.message || t('failedToUpdateProfile'));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCancel = () => {
-    if (isGoogleProfileCompletion && profile.userType === 'client') {
-      if (!validateGoogleRequiredFields()) {
-        return;
-      }
-      navigation.replace(user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Scanner');
-      return;
-    }
-    setProfile(initialProfile);
-    navigation.goBack();
-  };
-  const availableContentMinHeight = Math.max(0, windowHeight - TOP_BAR_HEIGHT - BOTTOM_BAR_HEIGHT - actionsHeight);
+  const avatarUri = profile.avatar ? fileUrl(profile.avatar) : '';
 
   return (
-    <AppLayout
-      navigation={navigation}
-      user={user}
-      onLogout={onLogout}
-      showBackButton
-      onBackPress={handleCancel}
-    >
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboardContainer}>
-        <ScrollView
-          style={[styles.scrollView, { minHeight: availableContentMinHeight }]}
-          contentContainerStyle={[styles.scrollContent, { minHeight: availableContentMinHeight }]}
-          showsVerticalScrollIndicator
-        >
-          <View style={styles.card}>
-            <Text style={styles.header}>{t('editProfile')}</Text>
-            {!!saveError && (
-              <View style={styles.saveErrorBanner}>
-                <Text style={styles.saveErrorText}>{saveError}</Text>
-              </View>
-            )}
-
-            <Text style={styles.label}>{t('username')}:</Text>
-            <TextInput style={styles.input} placeholder={t('username')} value={profile.name} onChangeText={(v) => setField('name', v)} />
-            {!!fieldErrors.name && <Text style={styles.errorText}>{fieldErrors.name}</Text>}
-
-            {profile.userType === 'client' ? (
-              <>
-                <Text style={styles.label}>{t('password')}:</Text>
-                <TextInput style={styles.input} placeholder={t('password')} value={profile.password} onChangeText={(v) => setField('password', v)} secureTextEntry />
-                {!!fieldErrors.password && <Text style={styles.errorText}>{fieldErrors.password}</Text>}
-                <Text style={styles.label}>{t('gender')}:</Text>
-                <View style={styles.genderContainer}>
-                  {genderOptions.map((option) => (
-                    <TouchableOpacity
-                      key={option.value}
-                      style={[styles.genderOption, profile.gender === option.value && styles.genderOptionSelected]}
-                      onPress={() => setField('gender', option.value)}
-                    >
-                      {profile.gender === option.value && (
-                        <GradientView style={[StyleSheet.absoluteFill, { borderRadius: radius.md }]} />
-                      )}
-                      <Text style={[styles.genderOptionText, profile.gender === option.value && styles.genderOptionTextSelected]}>
-                        {option.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                {!!fieldErrors.gender && <Text style={styles.errorText}>{fieldErrors.gender}</Text>}
-                <Text style={styles.label}>{t('age')}:</Text>
-                <TextInput style={styles.input} placeholder={t('age')} value={profile.age} onChangeText={(v) => setField('age', v)} keyboardType="numeric" />
-                {!!fieldErrors.age && <Text style={styles.errorText}>{fieldErrors.age}</Text>}
-                <Text style={styles.label}>{t('country')}:</Text>
-                <TouchableOpacity style={styles.countryButton} onPress={() => setCountryModalVisible(true)}>
-                  <Text style={profile.country ? styles.countryButtonText : styles.countryButtonPlaceholder}>{profile.country || t('selectCountry')}</Text>
-                </TouchableOpacity>
-                {!!fieldErrors.country && <Text style={styles.errorText}>{fieldErrors.country}</Text>}
-              </>
-            ) : (
-              <>
-                <Text style={styles.label}>{t('email')}:</Text>
-                <TextInput style={styles.input} placeholder={t('email')} value={profile.email} onChangeText={(v) => setField('email', v)} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} textContentType="emailAddress" />
-                {!!fieldErrors.email && <Text style={styles.errorText}>{fieldErrors.email}</Text>}
-                <Text style={styles.label}>{t('firstName')}:</Text>
-                <TextInput style={styles.input} placeholder={t('firstName')} value={profile.firstName} onChangeText={(v) => setField('firstName', v)} autoCapitalize="words" textContentType="givenName" />
-                {!!fieldErrors.firstName && <Text style={styles.errorText}>{fieldErrors.firstName}</Text>}
-                <Text style={styles.label}>{t('lastName')}:</Text>
-                <TextInput style={styles.input} placeholder={t('lastName')} value={profile.lastName} onChangeText={(v) => setField('lastName', v)} autoCapitalize="words" textContentType="familyName" />
-                {!!fieldErrors.lastName && <Text style={styles.errorText}>{fieldErrors.lastName}</Text>}
-                <Text style={styles.label}>{t('street')}:</Text>
-                <TextInput style={styles.input} placeholder={t('street')} value={profile.addressStreet} onChangeText={(v) => setField('addressStreet', v)} autoCapitalize="words" textContentType="streetAddressLine1" />
-                {!!fieldErrors.addressStreet && <Text style={styles.errorText}>{fieldErrors.addressStreet}</Text>}
-                <Text style={styles.label}>{t('city')}:</Text>
-                <TextInput style={styles.input} placeholder={t('city')} value={profile.addressCity} onChangeText={(v) => setField('addressCity', v)} autoCapitalize="words" textContentType="addressCity" />
-                {!!fieldErrors.addressCity && <Text style={styles.errorText}>{fieldErrors.addressCity}</Text>}
-                <Text style={styles.label}>{t('state')}:</Text>
-                <TextInput style={styles.input} placeholder={t('state')} value={profile.addressState} onChangeText={(v) => setField('addressState', v)} autoCapitalize="words" textContentType="addressState" />
-                {!!fieldErrors.addressState && <Text style={styles.errorText}>{fieldErrors.addressState}</Text>}
-                <Text style={styles.label}>{t('zipCode')}:</Text>
-                <TextInput style={styles.input} placeholder={t('zipCode')} value={profile.addressZipCode} onChangeText={(v) => setField('addressZipCode', v)} autoCapitalize="characters" textContentType="postalCode" />
-                {!!fieldErrors.addressZipCode && <Text style={styles.errorText}>{fieldErrors.addressZipCode}</Text>}
-                <Text style={styles.label}>{t('country')}:</Text>
-                <TextInput style={styles.input} placeholder={t('country')} value={profile.addressCountry} onChangeText={(v) => setField('addressCountry', v)} autoCapitalize="words" textContentType="countryName" />
-                {!!fieldErrors.addressCountry && <Text style={styles.errorText}>{fieldErrors.addressCountry}</Text>}
-                <Text style={styles.label}>{t('phoneNumber')}:</Text>
-                <TextInput style={styles.input} placeholder={t('phoneNumber')} value={profile.phoneNumber} onChangeText={(v) => setField('phoneNumber', v)} keyboardType="phone-pad" textContentType="telephoneNumber" />
-                {!!fieldErrors.phoneNumber && <Text style={styles.errorText}>{fieldErrors.phoneNumber}</Text>}
-                <Text style={styles.label}>{t('gender')}:</Text>
-                <View style={styles.genderContainer}>
-                  {genderOptions.map((option) => (
-                    <TouchableOpacity
-                      key={option.value}
-                      style={[styles.genderOption, profile.gender === option.value && styles.genderOptionSelected]}
-                      onPress={() => setField('gender', option.value)}
-                    >
-                      {profile.gender === option.value && (
-                        <GradientView style={[StyleSheet.absoluteFill, { borderRadius: radius.md }]} />
-                      )}
-                      <Text style={[styles.genderOptionText, profile.gender === option.value && styles.genderOptionTextSelected]}>
-                        {option.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                {!!fieldErrors.gender && <Text style={styles.errorText}>{fieldErrors.gender}</Text>}
-                <Text style={styles.label}>{t('dateOfBirth')}:</Text>
-                <TouchableOpacity
-                  style={styles.countryButton}
-                  onPress={() => {
-                    setDobDraft(parseDate(profile.dateOfBirth));
-                    setDobPickerVisible(true);
-                  }}
-                >
-                  <Text style={profile.dateOfBirth ? styles.countryButtonText : styles.countryButtonPlaceholder}>
-                    {profile.dateOfBirth || t('selectDateOfBirth')}
-                  </Text>
-                </TouchableOpacity>
-                {!!fieldErrors.dateOfBirth && <Text style={styles.errorText}>{fieldErrors.dateOfBirth}</Text>}
-              </>
-            )}
+    <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton onBackPress={() => navigation.goBack()}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
+        <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
+          <View style={styles.avatarWrap}>
+            <View style={styles.avatarCircle}>
+              {avatarUri ? (
+                <Image source={{ uri: avatarUri }} style={styles.avatarImg} />
+              ) : (
+                <Icon name="person" size={54} color={colors.placeholder} />
+              )}
+            </View>
+            <TouchableOpacity style={styles.avatarBadge} onPress={pickAvatar} activeOpacity={0.8}>
+              {uploadingAvatar ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Icon name="photo-camera" size={16} color="#fff" />
+              )}
+            </TouchableOpacity>
           </View>
-        </ScrollView>
-        <View
-          style={styles.actions}
-          onLayout={(event) => {
-            const nextHeight = event.nativeEvent.layout.height;
-            if (nextHeight !== actionsHeight) {
-              setActionsHeight(nextHeight);
-            }
-          }}
-        >
-          <TouchableOpacity style={styles.cancelButton} onPress={handleCancel} disabled={loading}>
+
+          {!!saveError && (
+            <View style={styles.errorBanner}>
+              <Text style={styles.errorBannerText}>{saveError}</Text>
+            </View>
+          )}
+
+          {isAgent ? (
+            <>
+              <Field label={t('username')} value={profile.name} onChangeText={(v: string) => setField('name', v)} error={fieldErrors.name} />
+              <Field label={t('email')} value={profile.email} onChangeText={(v: string) => setField('email', v)} error={fieldErrors.email} keyboardType="email-address" autoCapitalize="none" />
+              <Field label={t('firstName')} value={profile.firstName} onChangeText={(v: string) => setField('firstName', v)} />
+              <Field label={t('lastName')} value={profile.lastName} onChangeText={(v: string) => setField('lastName', v)} />
+              <Field label={t('phoneNumber')} value={profile.phoneNumber} onChangeText={(v: string) => setField('phoneNumber', v)} keyboardType="phone-pad" />
+            </>
+          ) : (
+            <Field label={t('editProfileNickname')} value={profile.nickname} onChangeText={(v: string) => setField('nickname', v)} error={fieldErrors.nickname} autoCapitalize="none" />
+          )}
+
+          <Text style={styles.label}>{t('gender')}</Text>
+          <View style={styles.genderRow}>
+            {genderOptions.map((o) => (
+              <TouchableOpacity
+                key={o.value}
+                style={[styles.genderOption, profile.gender === o.value && styles.genderOptionActive]}
+                onPress={() => setField('gender', o.value)}
+                activeOpacity={0.8}
+              >
+                {profile.gender === o.value && <GradientView style={[StyleSheet.absoluteFill, { borderRadius: radius.md }]} />}
+                <Text style={[styles.genderText, profile.gender === o.value && styles.genderTextActive]}>{o.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          {!!fieldErrors.gender && <Text style={styles.errorText}>{fieldErrors.gender}</Text>}
+
+          {!isAgent && (
+            <Field
+              label={t('birthYear')}
+              value={profile.birthYear}
+              onChangeText={(v: string) => setField('birthYear', v.replace(/[^0-9]/g, '').slice(0, 4))}
+              keyboardType="numeric"
+              error={fieldErrors.birthYear}
+            />
+          )}
+
+          <Text style={styles.label}>{t('country')}</Text>
+          <TouchableOpacity style={styles.selectButton} onPress={() => setCountryModalVisible(true)} activeOpacity={0.8}>
+            <Text style={profile.country ? styles.selectValue : styles.selectPlaceholder}>
+              {profile.country || t('selectCountry')}
+            </Text>
+            <Icon name="expand-more" size={22} color={colors.muted} />
+          </TouchableOpacity>
+          {!!fieldErrors.country && <Text style={styles.errorText}>{fieldErrors.country}</Text>}
+
+          <GradientButton style={[styles.saveButton, loading && { opacity: 0.6 }]} onPress={save} disabled={loading}>
+            <Text style={styles.saveText}>{loading ? t('saving') : t('editProfileSaveChanges')}</Text>
+          </GradientButton>
+          <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.goBack()} activeOpacity={0.8}>
             <Text style={styles.cancelText}>{t('cancel')}</Text>
           </TouchableOpacity>
-          <GradientButton style={[styles.saveButton, loading && { opacity: 0.6 }]} onPress={saveProfile} disabled={loading}>
-            <Text style={styles.saveText}>{loading ? t('saving') : t('save')}</Text>
-          </GradientButton>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
 
       <Modal visible={countryModalVisible} transparent animationType="slide" onRequestClose={() => setCountryModalVisible(false)}>
@@ -396,9 +277,16 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>{t('selectCountry')}</Text>
             <ScrollView>
-              {COUNTRIES.map((country) => (
-                <TouchableOpacity key={country} style={styles.countryItem} onPress={() => { setField('country', country); setCountryModalVisible(false); }}>
-                  <Text style={styles.countryItemText}>{country}</Text>
+              {COUNTRIES.map((c) => (
+                <TouchableOpacity
+                  key={c}
+                  style={styles.countryItem}
+                  onPress={() => {
+                    setField('country', c);
+                    setCountryModalVisible(false);
+                  }}
+                >
+                  <Text style={styles.countryItemText}>{c}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -408,83 +296,60 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
           </View>
         </View>
       </Modal>
-      <Modal visible={dobPickerVisible} transparent animationType="slide" onRequestClose={() => setDobPickerVisible(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>{t('selectDateOfBirth')}</Text>
-            <View style={styles.dobPreviewBox}>
-              <Text style={styles.dobPreviewText}>{formatDate(dobDraft)}</Text>
-            </View>
-            <View style={styles.dateRow}>
-              <TouchableOpacity style={styles.dateAdjustButton} onPress={() => shiftDobDraft('year', -1)}>
-                <Text style={styles.dateAdjustButtonText}>{t('decreaseYear')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.dateAdjustButton} onPress={() => shiftDobDraft('year', 1)}>
-                <Text style={styles.dateAdjustButtonText}>{t('increaseYear')}</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.dateRow}>
-              <TouchableOpacity style={styles.dateAdjustButton} onPress={() => shiftDobDraft('month', -1)}>
-                <Text style={styles.dateAdjustButtonText}>{t('decreaseMonth')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.dateAdjustButton} onPress={() => shiftDobDraft('month', 1)}>
-                <Text style={styles.dateAdjustButtonText}>{t('increaseMonth')}</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.dateRow}>
-              <TouchableOpacity style={styles.dateAdjustButton} onPress={() => shiftDobDraft('day', -1)}>
-                <Text style={styles.dateAdjustButtonText}>{t('decreaseDay')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.dateAdjustButton} onPress={() => shiftDobDraft('day', 1)}>
-                <Text style={styles.dateAdjustButtonText}>{t('increaseDay')}</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.actions}>
-              <TouchableOpacity style={styles.cancelButton} onPress={() => setDobPickerVisible(false)}>
-                <Text style={styles.cancelText}>{t('cancel')}</Text>
-              </TouchableOpacity>
-              <GradientButton
-                style={styles.saveButton}
-                onPress={() => {
-                  setField('dateOfBirth', formatDate(dobDraft));
-                  setDobPickerVisible(false);
-                }}
-              >
-                <Text style={styles.saveText}>{t('save')}</Text>
-              </GradientButton>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </AppLayout>
   );
 }
 
+function Field({ label, error, ...rest }: any) {
+  return (
+    <>
+      <Text style={styles.label}>{label}</Text>
+      <TextInput style={styles.input} placeholderTextColor={colors.placeholder} {...rest} />
+      {!!error && <Text style={styles.errorText}>{error}</Text>}
+    </>
+  );
+}
+
 const styles = StyleSheet.create({
-  keyboardContainer: { flex: 1, backgroundColor: colors.bg },
-  scrollView: { flex: 1, backgroundColor: colors.bg },
-  scrollContent: { padding: spacing.xl, paddingBottom: spacing.xxl },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
+  flex: { flex: 1, backgroundColor: colors.bg },
+  screen: { flex: 1, backgroundColor: colors.bg },
+  container: { padding: spacing.xl, paddingBottom: spacing.xxxl },
+  avatarWrap: { alignSelf: 'center', marginBottom: spacing.xl },
+  avatarCircle: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: colors.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
     borderWidth: 1,
     borderColor: colors.border,
-    padding: spacing.xl,
-    ...shadow(2),
   },
-  header: { fontSize: fontSize.xxl, fontWeight: '400', marginBottom: spacing.xl, color: colors.heading },
-  label: { fontSize: fontSize.md, fontWeight: '400', color: colors.primaryDark, marginBottom: spacing.sm },
-  saveErrorBanner: {
+  avatarImg: { width: '100%', height: '100%' },
+  avatarBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.bg,
+  },
+  errorBanner: {
     backgroundColor: colors.dangerSoft,
     borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.danger,
     padding: spacing.md,
     marginBottom: spacing.lg,
   },
-  saveErrorText: { color: colors.danger, fontSize: fontSize.md },
+  errorBannerText: { color: colors.danger, fontSize: fontSize.md },
+  label: { fontSize: fontSize.md, color: colors.primaryDark, marginBottom: spacing.sm },
   input: {
-    backgroundColor: colors.fieldBg,
+    backgroundColor: colors.surface,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
@@ -494,22 +359,25 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: spacing.md,
   },
-  textArea: { minHeight: 80, textAlignVertical: 'top' },
-  genderContainer: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.md },
+  genderRow: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.md },
   genderOption: {
     flex: 1,
     paddingVertical: spacing.md,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: colors.surface,
     alignItems: 'center',
+    overflow: 'hidden',
   },
-  genderOptionSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
-  genderOptionText: { color: colors.muted, fontSize: fontSize.md, fontWeight: '400' },
-  genderOptionTextSelected: { color: colors.white, fontWeight: '400' },
-  countryButton: {
-    backgroundColor: colors.fieldBg,
+  genderOptionActive: { borderColor: colors.primary },
+  genderText: { color: colors.muted, fontSize: fontSize.md },
+  genderTextActive: { color: colors.white, fontWeight: '600' },
+  selectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surface,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
@@ -517,37 +385,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     marginBottom: spacing.md,
   },
-  countryButtonText: { color: colors.text, fontSize: fontSize.lg },
-  countryButtonPlaceholder: { color: colors.placeholder, fontSize: fontSize.lg },
+  selectValue: { color: colors.text, fontSize: fontSize.lg },
+  selectPlaceholder: { color: colors.placeholder, fontSize: fontSize.lg },
   errorText: { color: colors.danger, fontSize: fontSize.sm, marginTop: -spacing.sm, marginBottom: spacing.md },
-  actions: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    padding: spacing.lg,
-    paddingTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  cancelButton: {
-    flex: 1,
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: radius.md,
-    paddingVertical: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   saveButton: {
-    flex: 1,
     backgroundColor: colors.accent,
     borderRadius: radius.md,
     paddingVertical: 15,
     alignItems: 'center',
-    justifyContent: 'center',
+    marginTop: spacing.lg,
     ...shadow(1),
   },
-  cancelText: { color: colors.primary, fontSize: fontSize.lg, fontWeight: '400' },
-  saveText: { color: colors.white, fontSize: fontSize.lg, fontWeight: '400' },
+  saveText: { color: colors.white, fontSize: fontSize.lg, fontWeight: '600' },
+  cancelButton: {
+    borderRadius: radius.md,
+    paddingVertical: 15,
+    alignItems: 'center',
+    marginTop: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  cancelText: { color: colors.primary, fontSize: fontSize.lg, fontWeight: '600' },
   modalOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
   modalCard: {
     backgroundColor: colors.surface,
@@ -557,36 +416,9 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: radius.xxl,
     borderTopRightRadius: radius.xxl,
   },
-  modalTitle: { fontSize: fontSize.xl, fontWeight: '400', color: colors.heading, marginBottom: spacing.md },
-  dobPreviewBox: {
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  dobPreviewText: { fontSize: fontSize.xl, fontWeight: '400', color: colors.primary },
-  dateRow: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.md },
-  dateAdjustButton: {
-    flex: 1,
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-  },
-  dateAdjustButtonText: { color: colors.primary, fontWeight: '400' },
+  modalTitle: { fontSize: fontSize.xl, fontWeight: '600', color: colors.heading, marginBottom: spacing.md },
   countryItem: { paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
   countryItemText: { color: colors.text, fontSize: fontSize.lg },
-  modalCancel: {
-    marginTop: spacing.md,
-    alignItems: 'center',
-    backgroundColor: colors.surfaceAlt,
-    paddingVertical: spacing.md,
-    borderRadius: radius.md,
-  },
-  modalCancelText: { color: colors.primary, fontSize: fontSize.lg, fontWeight: '400' },
+  modalCancel: { marginTop: spacing.md, alignItems: 'center', backgroundColor: colors.surfaceAlt, paddingVertical: spacing.md, borderRadius: radius.md },
+  modalCancelText: { color: colors.primary, fontSize: fontSize.lg, fontWeight: '600' },
 });

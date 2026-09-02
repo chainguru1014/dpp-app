@@ -101,7 +101,7 @@ export default function TransferConfirmScreen({ route, navigation, user, onLogou
       Alert.alert(
         t('success'),
         action === 'confirm' ? t('transferConfirmed') : t('transferRejected'),
-        [{ text: t('ok'), onPress: () => navigation.navigate(isAuthenticated ? (user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Scanner') : 'Login') }]
+        [{ text: t('ok'), onPress: () => navigation.navigate(isAuthenticated ? (user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Home') : 'Login') }]
       );
       await loadTransfer();
     } catch (e: any) {
@@ -129,7 +129,7 @@ export default function TransferConfirmScreen({ route, navigation, user, onLogou
       user={user}
       onLogout={onLogout}
       showBackButton
-      onBackPress={() => navigation.navigate(isAuthenticated ? (user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Scanner') : 'Login')}
+      onBackPress={() => navigation.navigate(isAuthenticated ? (user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Home') : 'Login')}
       hideBottomBar
       onGuestAction={goLogin}
     >

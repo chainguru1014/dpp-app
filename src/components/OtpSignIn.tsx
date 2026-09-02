@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 import { API_BASE_URL } from '../config/api';
 import GradientButton from './GradientButton';
 import { colors, spacing, radius, fontSize, shadow } from '../theme';
@@ -148,16 +149,19 @@ export default function OtpSignIn({ onSuccess, onError, mode }: OtpSignInProps) 
     <View style={styles.container}>
       {stage === 'email' ? (
         <>
-          <TextInput
-            style={styles.input}
-            placeholder="Email address"
-            placeholderTextColor={colors.placeholder}
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            editable={!requesting}
-          />
+          <View style={styles.inputWrap}>
+            <Icon name="mail-outline" size={18} color={colors.muted} style={styles.inputIcon} />
+            <TextInput
+              style={styles.inputField}
+              placeholder="Enter your email"
+              placeholderTextColor={colors.placeholder}
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              editable={!requesting}
+            />
+          </View>
           {!!error && (
             <View style={styles.errorBox}>
               <Text style={styles.errorText}>{error}</Text>
@@ -171,7 +175,7 @@ export default function OtpSignIn({ onSuccess, onError, mode }: OtpSignInProps) 
             {requesting ? (
               <ActivityIndicator color={colors.white} />
             ) : (
-              <Text style={styles.buttonText}>{mode === 'signup' ? 'Create account' : 'Send code'}</Text>
+              <Text style={styles.buttonText}>{mode === 'signup' ? 'Create Account' : 'Send Code'}</Text>
             )}
           </GradientButton>
         </>
@@ -241,20 +245,33 @@ const styles = StyleSheet.create({
   // AuthPage.js) so the two projects' controls line up.
   input: {
     backgroundColor: colors.white,
-    borderRadius: radius.pill,
-    height: 27,
+    borderRadius: radius.md,
+    height: 44,
     paddingVertical: 0,
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     marginBottom: spacing.md,
-    fontSize: 13,
+    fontSize: 14,
     color: colors.text,
     borderWidth: 1,
     borderColor: colors.borderStrong,
   },
+  inputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderRadius: radius.md,
+    height: 44,
+    paddingHorizontal: 14,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+  },
+  inputIcon: { marginRight: 8 },
+  inputField: { flex: 1, fontSize: 14, color: colors.text, paddingVertical: 0 },
   button: {
     backgroundColor: colors.primary,
-    borderRadius: radius.pill,
-    height: 27,
+    borderRadius: radius.md,
+    height: 44,
     paddingVertical: 0,
     alignItems: 'center',
     justifyContent: 'center',

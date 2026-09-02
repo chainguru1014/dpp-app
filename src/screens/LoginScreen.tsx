@@ -41,7 +41,7 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
     // the user there next instead of back to Login.
     if (userData && !userData.aiConciergeConsentAt) {
       navigation.replace('AiConciergeConsent', {
-        redirectTo: redirectTo || 'Scanner',
+        redirectTo: redirectTo || 'Home',
         redirectParams: redirectParams || {},
       });
       return;
@@ -50,7 +50,7 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
       navigation.replace(redirectTo, redirectParams || {});
       return;
     }
-    navigation.replace('Scanner');
+    navigation.replace('Home');
   };
 
   // Tag the session with which kind of account this is so ownership-transfer
@@ -141,6 +141,12 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
             )}
 
             <OtpSignIn onSuccess={handleAuthSuccess} onError={handleAuthError} mode={authMode} />
+
+            <View style={styles.dividerRow}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or continue with</Text>
+              <View style={styles.dividerLine} />
+            </View>
 
             <View style={styles.socialRow}>
               <GoogleAuthButton onSuccess={handleAuthSuccess} onError={handleAuthError} navigation={navigation} />
@@ -254,6 +260,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: 'left',
   },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginVertical: spacing.md,
+  },
+  dividerLine: { flex: 1, height: 1, backgroundColor: colors.borderStrong },
+  dividerText: { fontSize: 12, color: colors.muted },
   socialRow: {
     flexDirection: 'row',
     gap: spacing.sm,
