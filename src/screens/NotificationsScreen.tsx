@@ -109,7 +109,7 @@ export default function NotificationsScreen({ navigation, user, onLogout }: Prop
   const hasUnread = items.some((n) => !n.read);
 
   return (
-    <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton onBackPress={() => navigation.goBack()}>
+    <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton onBackPress={() => navigation.navigate('Scanner')} flatContent>
       <View style={styles.screen}>
         {hasUnread && (
           <TouchableOpacity style={styles.markAll} onPress={markAllRead} activeOpacity={0.7}>
@@ -132,7 +132,7 @@ export default function NotificationsScreen({ navigation, user, onLogout }: Prop
                   onPress={() => onPressItem(item)}
                 >
                   <View style={[styles.iconBubble, { backgroundColor: `${color}22` }]}>
-                    <Icon name={TYPE_ICON[item.type] || 'notifications'} size={18} color={color} />
+                    <Icon name={TYPE_ICON[item.type] || 'notifications'} size={24} color={color} />
                   </View>
                   <View style={styles.info}>
                     <Text style={[styles.title, !item.read && styles.titleUnread]} numberOfLines={1}>{item.title}</Text>
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
     ...shadow(1),
   },
   rowUnread: { borderColor: colors.accent, backgroundColor: '#f4f8ff' },
-  iconBubble: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  iconBubble: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   info: { flex: 1 },
   title: { fontSize: 14, color: colors.heading },
   titleUnread: { fontWeight: '700' },

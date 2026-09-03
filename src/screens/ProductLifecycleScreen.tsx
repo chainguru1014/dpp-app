@@ -4,6 +4,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import Clipboard from '@react-native-clipboard/clipboard';
 import AppLayout from '../components/AppLayout';
 import MediaSlider from '../components/MediaSlider';
+import VideoPlayerModal from '../components/VideoPlayerModal';
 import { CareSymbol, getCareSymbolLabel } from '../components/CareSymbols';
 import { useI18n } from '../i18n/I18nContext';
 import { API_BASE_URL } from '../config/api';
@@ -96,6 +97,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
   const [tab, setTab] = useState<TabKey>('journey');
   // Journey stages are all collapsed by default — a down-chevron invites the tap.
   const [openStage, setOpenStage] = useState<string | null>(null);
+  const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
   const [openRow, setOpenRow] = useState<string | null>(null);
   const [isInAlbum, setIsInAlbum] = useState(false);
   const [isBrandFollowed, setIsBrandFollowed] = useState(false);
@@ -521,7 +523,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
                 {c.icon ? (
                   <Image source={{ uri: fileUrl(c.icon) }} style={styles.certImg} resizeMode="contain" />
                 ) : (
-                  <Icon name="verified" size={16} color={colors.primary} />
+                  <Icon name="verified" size={30} color={colors.primary} />
                 )}
                 <Text style={styles.certBadgeText} numberOfLines={2}>{c.title}</Text>
               </View>
@@ -562,11 +564,11 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
             {impactItems.map((it, i) => (
               <View key={i} style={styles.tile}>
                 {it.icon && /^[a-z-]+$/.test(it.icon) ? (
-                  <Icon name={it.icon} size={16} color={colors.success} />
+                  <Icon name={it.icon} size={28} color={colors.success} />
                 ) : it.icon ? (
                   <Image source={{ uri: fileUrl(it.icon) }} style={styles.tileImg} resizeMode="contain" />
                 ) : (
-                  <Icon name="eco" size={16} color={colors.success} />
+                  <Icon name="eco" size={28} color={colors.success} />
                 )}
                 <Text style={styles.tileValue}>{it.value}</Text>
                 <Text style={styles.tileLabel}>{it.label}</Text>
@@ -634,7 +636,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
       user={user}
       onLogout={onLogout}
       showBackButton
-      onBackPress={() => navigation.goBack()}
+      onBackPress={() => navigation.navigate(user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Scanner')}
       title={t('titleProductLifecycle')}
       flatContent
       bottomBar={user && user.actorKind !== 'Employee' ? 'product' : 'auto'}
@@ -659,6 +661,8 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
                 flush
                 maxHeight={112}
                 getFileUrl={fileUrl}
+                watchLabel={t('watchVideo')}
+                onPlayVideo={setPlayingVideoId}
               />
             ) : (
               <View style={[styles.headerThumb, styles.headerThumbPlaceholder]}>
@@ -697,6 +701,12 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
           </ScrollView>
         </View>
       </View>
+
+      <VideoPlayerModal
+        visible={!!playingVideoId}
+        videoId={playingVideoId}
+        onClose={() => setPlayingVideoId(null)}
+      />
     </AppLayout>
   );
 }
@@ -820,14 +830,23 @@ const styles = StyleSheet.create({
   originName: { fontSize: 13, fontWeight: '600', color: colors.text },
   originSub: { fontSize: 11, color: colors.muted, marginTop: 1 },
   certRow: { flexDirection: 'row', gap: spacing.sm },
-  certBadge: { flex: 1, backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: spacing.sm, alignItems: 'center', gap: 4 },
+  certBadge: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    padding: spacing.sm,
+    alignItems: 'center',
+    gap: 6,
+  },
   certBadgeText: { fontSize: 10, color: colors.text, fontWeight: '500', textAlign: 'center' },
-  certImg: { width: 22, height: 22 },
+  certImg: { width: 34, height: 34 },
   certLine: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
   certLineIcon: { width: 30, height: 30, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
   certLineTitle: { fontSize: 13, fontWeight: '600', color: colors.text },
   certLineBody: { fontSize: 11, color: colors.muted, marginTop: 1 },
-  tileImg: { width: 18, height: 18 },
+  tileImg: { width: 32, height: 32 },
   tileDesc: { fontSize: 8, color: colors.placeholder, textAlign: 'center', marginTop: 2 },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: colors.border, borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: 4 },
@@ -838,7 +857,16 @@ const styles = StyleSheet.create({
   disposeTitle: { fontSize: 13, fontWeight: '600', color: colors.heading },
   disposeSub: { fontSize: 11, color: colors.muted, marginTop: 1 },
   tileRow: { flexDirection: 'row', gap: spacing.sm },
-  tile: { flex: 1, backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: spacing.md, alignItems: 'center', gap: 3 },
+  tile: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    padding: spacing.md,
+    alignItems: 'center',
+    gap: 4,
+  },
   tileValue: { fontSize: 14, fontWeight: '700', color: colors.primary },
   tileLabel: { fontSize: 9, color: colors.muted, textAlign: 'center' },
   // info / leaf cards

@@ -214,7 +214,7 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
   const avatarUri = profile.avatar ? fileUrl(profile.avatar) : '';
 
   return (
-    <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton onBackPress={() => navigation.goBack()} flatContent>
+    <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton onBackPress={() => navigation.navigate('Scanner')} flatContent>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
         <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
           {!isAgent && (

@@ -80,7 +80,7 @@ export default function FavoriteBrandsScreen({ navigation, user, onLogout }: Pro
     });
 
   return (
-    <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton onBackPress={() => navigation.goBack()} flatContent>
+    <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton onBackPress={() => navigation.navigate('Scanner')} flatContent>
       <View style={styles.screen}>
         <View style={styles.searchWrap}>
           <Icon name="search" size={18} color={colors.muted} />

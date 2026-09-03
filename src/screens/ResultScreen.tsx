@@ -1436,7 +1436,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
       showBackButton={isAuthenticatedUser}
       onBackPress={
         isAuthenticatedUser
-          ? () => navigation.navigate(route?.params?.returnTo || (user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Scanner'))
+          ? () => navigation.navigate(user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Scanner')
           : undefined
       }
       bottomBar={isAuthenticatedUser && !isEmployeeActor ? 'product' : 'auto'}
@@ -1600,7 +1600,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
                 {LIFECYCLE_STAGES.map((s, i) => (
                   <React.Fragment key={s.key}>
                     <View style={styles.ovLcStage}>
-                      <View style={styles.ovLcDot}><Icon name={s.icon} size={18} color={BRAND_COLOR} /></View>
+                      <View style={styles.ovLcDot}><Icon name={s.icon} size={24} color={BRAND_COLOR} /></View>
                       <Text style={styles.ovLcLabel} numberOfLines={1}>{t(s.labelKey as any)}</Text>
                     </View>
                     {i < LIFECYCLE_STAGES.length - 1 && <View style={styles.ovLcConn} />}
@@ -2186,16 +2186,16 @@ const styles = StyleSheet.create({
   ovLcStrip: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6 },
   ovLcStage: { alignItems: 'center', width: 58 },
   ovLcDot: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: colors.surfaceAlt,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 5,
   },
   ovLcLabel: { fontSize: 9, color: colors.muted, textAlign: 'center' },
-  ovLcConn: { flex: 1, height: 2, backgroundColor: colors.primary, marginTop: 17, borderRadius: 1 },
+  ovLcConn: { flex: 1, height: 2, backgroundColor: colors.primary, marginTop: 21, borderRadius: 1 },
   ovViewLc: {
     flexDirection: 'row',
     alignItems: 'center',
