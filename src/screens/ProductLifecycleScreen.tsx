@@ -640,7 +640,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
       title={t('titleProductLifecycle')}
       flatContent
       bottomBar={user && user.actorKind !== 'Employee' ? 'product' : 'auto'}
-      rightIcon={user ? 'heart' : 'notification'}
+      rightIcon="notification"
       isFavorite={isInAlbum}
       onToggleFavorite={toggleFavorite}
       product={productData}

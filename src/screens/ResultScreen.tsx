@@ -1440,7 +1440,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
           : undefined
       }
       bottomBar={isAuthenticatedUser && !isEmployeeActor ? 'product' : 'auto'}
-      rightIcon={isAuthenticatedUser && !isEmployeeActor ? 'heart' : 'notification'}
+      rightIcon="notification"
       isFavorite={isInAlbum}
       onToggleFavorite={() => handleActionMenuPress('toggleAlbum')}
       product={productData}
