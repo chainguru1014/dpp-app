@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import AppLayout from '../components/AppLayout';
 import MediaSlider from '../components/MediaSlider';
@@ -44,10 +44,10 @@ export default function ScanSuccessfulScreen({ navigation, route, user, onLogout
 
   return (
     <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton onBackPress={() => navigation.goBack()}>
-      <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
+      <View style={styles.screen}>
         <View style={styles.checkWrap}>
           <View style={styles.checkCircle}>
-            <Icon name="check" size={30} color="#fff" />
+            <Icon name="check" size={22} color="#fff" />
           </View>
           <Text style={styles.title}>{t('detectedTitle')}</Text>
           <Text style={styles.subtitle}>{t('detectedSubtitle')}</Text>
@@ -58,16 +58,14 @@ export default function ScanSuccessfulScreen({ navigation, route, user, onLogout
             images={images}
             videos={videos}
             hideHeader
-            maxHeight={280}
+            maxHeight={170}
             watchLabel={t('watchVideo')}
             onPlayVideo={setPlayingVideoId}
           />
-          <Text style={styles.productName}>{productData?.name || '—'}</Text>
-          {!!productData?.model && <Text style={styles.productModel}>{productData.model}</Text>}
+          <Text style={styles.productName} numberOfLines={1}>{productData?.name || '—'}</Text>
+          {!!productData?.model && <Text style={styles.productModel} numberOfLines={1}>{productData.model}</Text>}
           {(productData?.pmc_code || productData?.token_id != null) && (
-            <Text style={styles.productId}>
-              ID: {productData?.pmc_code || productData?.token_id}
-            </Text>
+            <Text style={styles.productId} numberOfLines={1}>ID: {productData?.pmc_code || productData?.token_id}</Text>
           )}
         </View>
 
@@ -75,29 +73,33 @@ export default function ScanSuccessfulScreen({ navigation, route, user, onLogout
           <Text style={styles.hlHeader}>{t('detectedQuickHighlights')}</Text>
           {highlights.map((h) => (
             <View key={h.title} style={styles.hlRow}>
-              <Icon name={h.icon} size={20} color={h.color} />
+              <Icon name={h.icon} size={18} color={h.color} />
               <View style={{ flex: 1 }}>
-                <Text style={styles.hlTitle}>{h.title}</Text>
-                <Text style={styles.hlSub}>{h.sub}</Text>
+                <Text style={styles.hlTitle} numberOfLines={1}>{h.title}</Text>
+                <Text style={styles.hlSub} numberOfLines={1}>{h.sub}</Text>
               </View>
             </View>
           ))}
         </View>
 
-        <GradientButton style={styles.primaryButton} onPress={goToProductDetail} activeOpacity={0.85}>
-          <Text style={styles.primaryButtonText}>{t('detectedViewProduct')}</Text>
-        </GradientButton>
-        <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.replace('Scanner')} activeOpacity={0.8}>
-          <Text style={styles.secondaryButtonText}>{t('detectedScanAnother')}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.privacyLink}
-          onPress={() => navigation.navigate('PrivatePolicy', { productData, securityPassed, productId, qrcodeId })}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.privacyLinkText}>{t('privatePolicy')}</Text>
-        </TouchableOpacity>
-      </ScrollView>
+        <View style={styles.footer}>
+          <GradientButton style={styles.primaryButton} onPress={goToProductDetail} activeOpacity={0.85}>
+            <Text style={styles.primaryButtonText}>{t('detectedViewProduct')}</Text>
+          </GradientButton>
+          <View style={styles.footerRow}>
+            <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.replace('Scanner')} activeOpacity={0.8}>
+              <Text style={styles.secondaryButtonText}>{t('detectedScanAnother')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.linkButton}
+              onPress={() => navigation.navigate('PrivatePolicy', { productData, securityPassed, productId, qrcodeId })}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.linkText}>{t('privatePolicy')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
 
       <VideoPlayerModal visible={!!playingVideoId} videoId={playingVideoId} onClose={() => setPlayingVideoId(null)} />
     </AppLayout>
@@ -105,55 +107,56 @@ export default function ScanSuccessfulScreen({ navigation, route, user, onLogout
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg },
-  container: { padding: spacing.lg, paddingBottom: spacing.xxxl, alignItems: 'stretch' },
-  checkWrap: { alignItems: 'center', marginBottom: spacing.lg },
+  screen: { flex: 1, backgroundColor: colors.bg, padding: spacing.md },
+  checkWrap: { alignItems: 'center', marginBottom: spacing.sm },
   checkCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: colors.success,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.xs,
   },
-  title: { fontSize: 20, fontWeight: '700', color: colors.heading },
-  subtitle: { fontSize: 13, color: colors.muted, marginTop: 2 },
+  title: { fontSize: 17, fontWeight: '700', color: colors.heading },
+  subtitle: { fontSize: 12, color: colors.muted, marginTop: 1 },
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: spacing.md,
-    marginBottom: spacing.md,
+    padding: spacing.sm,
+    marginBottom: spacing.sm,
     ...shadow(1),
   },
-  productName: { fontSize: 17, fontWeight: '700', color: colors.heading, marginTop: spacing.md, textAlign: 'center' },
-  productModel: { fontSize: 13, color: colors.muted, textAlign: 'center', marginTop: 2 },
-  productId: { fontSize: 12, color: colors.placeholder, textAlign: 'center', marginTop: 4 },
-  hlHeader: { fontSize: 14, fontWeight: '700', color: colors.primary, marginBottom: spacing.sm },
-  hlRow: { flexDirection: 'row', gap: spacing.md, alignItems: 'center', paddingVertical: spacing.sm },
-  hlTitle: { fontSize: 13, fontWeight: '600', color: colors.text },
-  hlSub: { fontSize: 12, color: colors.muted, marginTop: 1 },
+  productName: { fontSize: 15, fontWeight: '700', color: colors.heading, marginTop: spacing.sm, textAlign: 'center' },
+  productModel: { fontSize: 12, color: colors.muted, textAlign: 'center', marginTop: 1 },
+  productId: { fontSize: 11, color: colors.placeholder, textAlign: 'center', marginTop: 2 },
+  hlHeader: { fontSize: 13, fontWeight: '700', color: colors.primary, marginBottom: spacing.xs },
+  hlRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center', paddingVertical: 4 },
+  hlTitle: { fontSize: 12, fontWeight: '600', color: colors.text },
+  hlSub: { fontSize: 11, color: colors.muted },
+  footer: { marginTop: 'auto' },
   primaryButton: {
     backgroundColor: colors.accent,
     borderRadius: radius.md,
-    paddingVertical: 15,
+    paddingVertical: 13,
     alignItems: 'center',
-    marginTop: spacing.sm,
     ...shadow(1),
   },
   primaryButtonText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.sm },
   secondaryButton: {
+    flex: 1,
     borderRadius: radius.md,
-    paddingVertical: 14,
+    paddingVertical: 12,
     alignItems: 'center',
-    marginTop: spacing.md,
     borderWidth: 1,
     borderColor: colors.accent,
     backgroundColor: colors.surface,
+    marginRight: spacing.sm,
   },
-  secondaryButtonText: { color: colors.accent, fontSize: 15, fontWeight: '600' },
-  privacyLink: { alignItems: 'center', marginTop: spacing.lg },
-  privacyLinkText: { color: colors.accent, fontSize: 13, textDecorationLine: 'underline' },
+  secondaryButtonText: { color: colors.accent, fontSize: 14, fontWeight: '600' },
+  linkButton: { paddingVertical: 12, paddingHorizontal: spacing.sm },
+  linkText: { color: colors.accent, fontSize: 12, textDecorationLine: 'underline' },
 });

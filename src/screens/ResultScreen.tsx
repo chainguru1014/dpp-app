@@ -118,6 +118,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
   // Product Overview redesign: green confirmation banner after Like/Dislike,
   // and the Share bottom sheet (screenshot #17).
   const [feedbackToast, setFeedbackToast] = useState<'like' | 'dislike' | null>(null);
+  const [myProductsToast, setMyProductsToast] = useState<'added' | 'removed' | null>(null);
   const [shareSheetVisible, setShareSheetVisible] = useState(false);
   const [shareEmail, setShareEmail] = useState('');
   const [friendEmail, setFriendEmail] = useState('');
@@ -506,6 +507,22 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
     }
     setShareEmail('');
     setShareSheetVisible(true);
+  };
+
+  const handleAddToMyProducts = () => {
+    if (!isAuthenticatedUser) {
+      showLoginPrompt();
+      return;
+    }
+    const wasIn = isInAlbum;
+    handleActionMenuPress('toggleAlbum');
+    showFeedbackToast(wasIn ? 'dislike' : 'like');
+    setMyProductsToast(wasIn ? 'removed' : 'added');
+    if (feedbackToastTimer.current) clearTimeout(feedbackToastTimer.current);
+    feedbackToastTimer.current = setTimeout(() => {
+      setFeedbackToast(null);
+      setMyProductsToast(null);
+    }, 2600);
   };
 
   const goToLifecycle = () =>
@@ -1300,7 +1317,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
     }
   };
 
-  const renderImageSlider = () => {
+  const renderImageSlider = (maxHeight?: number, hideHeader?: boolean) => {
     const images = normalizeToStringArray(productData?.images);
     const videos = normalizeToArray(productData?.videos);
     const hasVideo = videos.some((v: any) => getYoutubeVideoID(typeof v === 'string' ? v : v?.url));
@@ -1310,9 +1327,11 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
       <MediaSlider
         images={images}
         videos={videos}
-        name={productData?.name}
-        model={productData?.model}
-        pmcCode={productData?.pmc_code}
+        name={hideHeader ? undefined : productData?.name}
+        model={hideHeader ? undefined : productData?.model}
+        pmcCode={hideHeader ? undefined : productData?.pmc_code}
+        hideHeader={!!hideHeader}
+        maxHeight={maxHeight}
         getFileUrl={getFileUrl}
         watchLabel={t('watchVideo')}
         onPlayVideo={(videoId) => setPlayingVideoId(videoId)}
@@ -1441,33 +1460,28 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
           </View>
         ) : null}
 
-        {renderImageSlider()}
+        {isEmployeeActor && renderImageSlider()}
 
-        {/* Security Check Button or Authenticated Message */}
-        <View style={styles.securityCheckContainer}>
-          {showSecurityCheck && !isAuthenticated ? (
-            <GradientButton
-              style={styles.securityCheckButton}
-              onPress={handleSecurityCheck}
-            >
-              <Image source={require('../assets/shield.png')} style={[styles.actionIcon, { tintColor: '#fff' }]} />
-              <Text style={styles.securityCheckText}>{t('securityCheck')}</Text>
-            </GradientButton>
-          ) : isAuthenticated ? (
-            <View style={styles.authenticatedContainer}>
-              <View style={styles.authenticatedIcon}>
-                <Image source={require('../assets/insurance.png')} style={styles.authenticatedStatusIcon} />
+        {/* Security Check Button or Authenticated Message (staff / full view) */}
+        {isEmployeeActor && (
+          <View style={styles.securityCheckContainer}>
+            {showSecurityCheck && !isAuthenticated ? (
+              <GradientButton style={styles.securityCheckButton} onPress={handleSecurityCheck}>
+                <Image source={require('../assets/shield.png')} style={[styles.actionIcon, { tintColor: '#fff' }]} />
+                <Text style={styles.securityCheckText}>{t('securityCheck')}</Text>
+              </GradientButton>
+            ) : isAuthenticated ? (
+              <View style={styles.authenticatedContainer}>
+                <View style={styles.authenticatedIcon}>
+                  <Image source={require('../assets/insurance.png')} style={styles.authenticatedStatusIcon} />
+                </View>
+                <Text style={styles.authenticatedTitle}>{t('productIdAuthenticatedTitle')}</Text>
+                <Text style={styles.authenticatedText}>{t('authRecordedLine1')}</Text>
+                <Text style={styles.authenticatedText}>{t('authRecordedLine2')}</Text>
               </View>
-              <Text style={styles.authenticatedTitle}>{t('productIdAuthenticatedTitle')}</Text>
-              <Text style={styles.authenticatedText}>
-                {t('authRecordedLine1')}
-              </Text>
-              <Text style={styles.authenticatedText}>
-                {t('authRecordedLine2')}
-              </Text>
-            </View>
-          ) : null}
-        </View>
+            ) : null}
+          </View>
+        )}
 
         {isEmployeeActor ? (
           <>
@@ -1528,120 +1542,123 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
           </>
         ) : (
           <>
-        {/* Key Highlights — the product-detail facts from the register/edit form. */}
-        {(() => {
-          const facts = productData?.detailFacts || {};
-          const rows = DETAIL_FACT_ROWS.filter((r) => r.key !== 'traceableIdentity' && facts[r.key]);
-          const detailText = String(productData?.detail || '').trim();
-          if (!rows.length && !detailText) return null;
-          return (
-            <View style={styles.overviewCard}>
-              <Text style={styles.overviewCardTitle}>{t('overviewKeyHighlights')}</Text>
-              {rows.map(({ key, icon, format }) => (
-                <View key={key} style={styles.highlightRow}>
-                  <Icon name={icon} size={16} color={BRAND_COLOR} />
-                  <Text style={styles.highlightText}>{format(String(facts[key] || ''))}</Text>
-                </View>
-              ))}
-              {!!detailText && <Text style={styles.overviewDetailText}>{detailText}</Text>}
+            {/* Product card — image slider + name / model / ID + Authenticated. */}
+            <View style={styles.ovProductCard}>
+              {renderImageSlider(160, true)}
+              <Text style={styles.ovName} numberOfLines={1}>{productData?.name || '—'}</Text>
+              {!!productData?.model && <Text style={styles.ovModel} numberOfLines={1}>{productData.model}</Text>}
+              {(productData?.pmc_code || productData?.token_id != null) && (
+                <Text style={styles.ovId} numberOfLines={1}>ID: {productData?.pmc_code || productData?.token_id}</Text>
+              )}
+              <View style={styles.ovAuthRow}>
+                <Icon name="verified" size={15} color={colors.primary} />
+                <Text style={styles.ovAuthText}>{t('overviewAuthenticated')}</Text>
+              </View>
             </View>
-          );
-        })()}
 
-        {/* Lifecycle Preview strip + "View Full Lifecycle" link. */}
-        <View style={styles.overviewCard}>
-          <Text style={styles.overviewCardTitle}>{t('overviewLifecyclePreview')}</Text>
-          <View style={styles.lifecycleStrip}>
-            {LIFECYCLE_STAGES.map((s, i) => (
-              <React.Fragment key={s.key}>
-                <View style={styles.lifecycleStage}>
-                  <View style={styles.lifecycleDot}>
-                    <Icon name={s.icon} size={15} color={BRAND_COLOR} />
-                  </View>
-                  <Text style={styles.lifecycleStageLabel} numberOfLines={1}>{t(s.labelKey as any)}</Text>
+            {/* Key Highlights — product-detail facts only (no free-text description). */}
+            {(() => {
+              const facts = productData?.detailFacts || {};
+              const extra = [
+                productData?.productType && { icon: 'category', text: `${t('factProductType')}: ${productData.productType}` },
+                productData?.color && { icon: 'palette', text: `${t('factColor')}: ${productData.color}` },
+                productData?.size && { icon: 'straighten', text: `${t('factSize')}: ${productData.size}` },
+              ].filter(Boolean) as { icon: string; text: string }[];
+              const rows = DETAIL_FACT_ROWS.filter((r) => r.key !== 'traceableIdentity' && facts[r.key]);
+              if (!rows.length && !extra.length) return null;
+              return (
+                <View style={styles.ovCard}>
+                  <Text style={styles.ovCardTitle}>{t('overviewKeyHighlights')}</Text>
+                  {extra.map((e) => (
+                    <View key={e.text} style={styles.ovHlRow}>
+                      <Icon name={e.icon} size={14} color={BRAND_COLOR} />
+                      <Text style={styles.ovHlText} numberOfLines={1}>{e.text}</Text>
+                    </View>
+                  ))}
+                  {rows.map(({ key, icon, format }) => (
+                    <View key={key} style={styles.ovHlRow}>
+                      <Icon name={icon} size={14} color={BRAND_COLOR} />
+                      <Text style={styles.ovHlText} numberOfLines={1}>{format(String(facts[key] || ''))}</Text>
+                    </View>
+                  ))}
                 </View>
-                {i < LIFECYCLE_STAGES.length - 1 && <View style={styles.lifecycleConnector} />}
-              </React.Fragment>
-            ))}
-          </View>
-          <TouchableOpacity style={styles.viewLifecycleBtn} onPress={goToLifecycle} activeOpacity={0.7}>
-            <Text style={styles.viewLifecycleText}>{t('overviewViewFullLifecycle')}</Text>
-            <Icon name="chevron-right" size={18} color={colors.accent} />
-          </TouchableOpacity>
-        </View>
+              );
+            })()}
 
-        {/* Buy (or Transfer when the user owns this product): Buy → Requested
-            (pending) → Owned (approved); a declined/none request stays Buy. */}
-        {(() => {
-          const isPending = !isOwnedMode && transferStatus === 'pending' && transferRequestSent;
-          const isOwned = !isOwnedMode && transferStatus === 'confirmed';
-          const buyLocked = isPending || isOwned;
-          const label = isOwnedMode
-            ? t('transferButton')
-            : isPending
-            ? t('requested')
-            : isOwned
-            ? t('owned')
-            : t('buy');
-          return (
-            <GradientButton
-              style={[styles.overviewBuyButton, buyLocked && { opacity: 0.6 }]}
-              onPress={isOwnedMode ? openOwnerTransfer : handleBuy}
-              activeOpacity={0.85}
-              disabled={buyLocked}
-            >
-              <Text style={styles.overviewBuyText}>
-                {label}
-                {isOwnedMode && ownedQuantity != null ? ` ×${ownedQuantity}` : ''}
-              </Text>
-            </GradientButton>
-          );
-        })()}
+            {/* Lifecycle Preview strip. */}
+            <View style={styles.ovCard}>
+              <Text style={styles.ovCardTitle}>{t('overviewLifecyclePreview')}</Text>
+              <View style={styles.ovLcStrip}>
+                {LIFECYCLE_STAGES.map((s, i) => (
+                  <React.Fragment key={s.key}>
+                    <View style={styles.ovLcStage}>
+                      <View style={styles.ovLcDot}><Icon name={s.icon} size={13} color={BRAND_COLOR} /></View>
+                      <Text style={styles.ovLcLabel} numberOfLines={1}>{t(s.labelKey as any)}</Text>
+                    </View>
+                    {i < LIFECYCLE_STAGES.length - 1 && <View style={styles.ovLcConn} />}
+                  </React.Fragment>
+                ))}
+              </View>
+              <TouchableOpacity style={styles.ovViewLc} onPress={goToLifecycle} activeOpacity={0.7}>
+                <Text style={styles.ovViewLcText}>{t('overviewViewFullLifecycle')}</Text>
+                <Icon name="chevron-right" size={16} color={colors.accent} />
+              </TouchableOpacity>
+            </View>
 
-        <View style={styles.overviewActionRow}>
-          <TouchableOpacity
-            style={[styles.overviewActionBtn, selectedFeedback === 'like' && styles.overviewActionBtnActive]}
-            onPress={handleLike}
-            activeOpacity={0.8}
-          >
-            <Icon name="thumb-up" size={18} color={selectedFeedback === 'like' ? '#fff' : colors.primary} />
-            <Text style={[styles.overviewActionText, selectedFeedback === 'like' && styles.overviewActionTextActive]}>
-              {t('like')}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.overviewActionBtn, selectedFeedback === 'dislike' && styles.overviewActionBtnActive]}
-            onPress={handleDislike}
-            activeOpacity={0.8}
-          >
-            <Icon name="thumb-down" size={18} color={selectedFeedback === 'dislike' ? '#fff' : colors.primary} />
-            <Text style={[styles.overviewActionText, selectedFeedback === 'dislike' && styles.overviewActionTextActive]}>
-              {t('dislike')}
-            </Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.overviewActionRow}>
-          <TouchableOpacity style={styles.overviewActionBtn} onPress={openShareSheet} activeOpacity={0.8}>
-            <Icon name="share" size={18} color={colors.primary} />
-            <Text style={styles.overviewActionText}>{t('share')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.overviewActionBtn} onPress={() => navigation.navigate('Scanner')} activeOpacity={0.8}>
-            <Icon name="qr-code-scanner" size={18} color={colors.primary} />
-            <Text style={styles.overviewActionText}>{t('detectedScanAnother')}</Text>
-          </TouchableOpacity>
-        </View>
+            {/* Like / Dislike / Share — icon only, one row. */}
+            <View style={styles.ovIconRow}>
+              <TouchableOpacity
+                style={[styles.ovIconBtn, selectedFeedback === 'like' && styles.ovIconBtnActive]}
+                onPress={handleLike}
+                activeOpacity={0.8}
+              >
+                <Icon name="thumb-up" size={20} color={selectedFeedback === 'like' ? '#fff' : colors.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.ovIconBtn, selectedFeedback === 'dislike' && styles.ovIconBtnActive]}
+                onPress={handleDislike}
+                activeOpacity={0.8}
+              >
+                <Icon name="thumb-down" size={20} color={selectedFeedback === 'dislike' ? '#fff' : colors.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.ovIconBtn} onPress={openShareSheet} activeOpacity={0.8}>
+                <Icon name="share" size={20} color={colors.primary} />
+              </TouchableOpacity>
+            </View>
 
-        {!!feedbackToast && (
-          <View style={styles.overviewToast}>
-            <Icon name="check-circle" size={18} color={colors.success} />
-            <Text style={styles.overviewToastText}>
-              {feedbackToast === 'like' ? t('overviewAddedToLikes') : t('overviewAddedToDislikes')}
-            </Text>
-            <TouchableOpacity onPress={() => setFeedbackToast(null)}>
-              <Icon name="close" size={16} color={colors.muted} />
-            </TouchableOpacity>
-          </View>
-        )}
+            {/* Add to My Products | Scan Another Product — one row. */}
+            <View style={styles.ovCtaRow}>
+              <GradientButton
+                style={styles.ovPrimaryCta}
+                onPress={isOwnedMode ? openOwnerTransfer : handleAddToMyProducts}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.ovPrimaryCtaText}>
+                  {isOwnedMode ? t('transferButton') : isInAlbum ? t('overviewInMyProducts') : t('overviewAddToMyProducts')}
+                </Text>
+              </GradientButton>
+              <TouchableOpacity style={styles.ovSecondaryCta} onPress={() => navigation.navigate('Scanner')} activeOpacity={0.8}>
+                <Text style={styles.ovSecondaryCtaText}>{t('detectedScanAnother')}</Text>
+              </TouchableOpacity>
+            </View>
+
+            {(!!feedbackToast || !!myProductsToast) && (
+              <View style={styles.overviewToast}>
+                <Icon name="check-circle" size={16} color={colors.success} />
+                <Text style={styles.overviewToastText}>
+                  {myProductsToast === 'added'
+                    ? t('overviewAddedToMyProducts')
+                    : myProductsToast === 'removed'
+                    ? t('overviewRemovedFromMyProducts')
+                    : feedbackToast === 'like'
+                    ? t('overviewAddedToLikes')
+                    : t('overviewAddedToDislikes')}
+                </Text>
+                <TouchableOpacity onPress={() => { setFeedbackToast(null); setMyProductsToast(null); }}>
+                  <Icon name="close" size={15} color={colors.muted} />
+                </TouchableOpacity>
+              </View>
+            )}
           </>
         )}
       </ScrollView>
@@ -2096,6 +2113,91 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
 }
 
 const styles = StyleSheet.create({
+  // --- Product Overview — compact no-scroll layout (round 2) ---
+  ovProductCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.sm,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+    alignItems: 'center',
+    ...shadow(1),
+  },
+  ovName: { fontSize: 16, fontWeight: '700', color: colors.heading, marginTop: spacing.sm },
+  ovModel: { fontSize: 12, color: colors.muted, marginTop: 1 },
+  ovId: { fontSize: 11, color: colors.placeholder, marginTop: 2 },
+  ovAuthRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: spacing.xs },
+  ovAuthText: { fontSize: 12, fontWeight: '600', color: colors.primary },
+  ovCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.sm,
+    ...shadow(1),
+  },
+  ovCardTitle: { fontSize: 13, fontWeight: '700', color: colors.primary, marginBottom: 6 },
+  ovHlRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 3 },
+  ovHlText: { flex: 1, fontSize: 12, color: colors.text },
+  ovLcStrip: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6 },
+  ovLcStage: { alignItems: 'center', width: 52 },
+  ovLcDot: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: colors.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 3,
+  },
+  ovLcLabel: { fontSize: 8, color: colors.muted, textAlign: 'center' },
+  ovLcConn: { flex: 1, height: 1, backgroundColor: colors.border, marginTop: 13 },
+  ovViewLc: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  ovViewLcText: { fontSize: 12, fontWeight: '600', color: colors.accent },
+  ovIconRow: { flexDirection: 'row', gap: spacing.sm, marginHorizontal: spacing.lg, marginTop: spacing.sm },
+  ovIconBtn: {
+    flex: 1,
+    height: 40,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ovIconBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  ovCtaRow: { flexDirection: 'row', gap: spacing.sm, marginHorizontal: spacing.lg, marginTop: spacing.sm },
+  ovPrimaryCta: {
+    flex: 1.4,
+    borderRadius: radius.md,
+    paddingVertical: 13,
+    alignItems: 'center',
+    backgroundColor: colors.accent,
+    ...shadow(1),
+  },
+  ovPrimaryCtaText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  ovSecondaryCta: {
+    flex: 1,
+    borderRadius: radius.md,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.accent,
+    backgroundColor: colors.surface,
+  },
+  ovSecondaryCtaText: { color: colors.accent, fontSize: 13, fontWeight: '600' },
   // --- Product Overview redesign (Phase 3) ---
   overviewCard: {
     backgroundColor: colors.surface,

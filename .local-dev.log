@@ -202,3 +202,81 @@ cached modules 3.77 MiB (javascript) 1.01 MiB (asset) [1m[32m[cached][39m[22
 runtime modules 1.07 KiB 7 modules
 [1m./src/screens/HistoryScreen.tsx[39m[22m 9.4 KiB [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
 webpack 5.105.4 compiled [1m[32msuccessfully[39m[22m in 754 ms
+assets by status 1.01 MiB [1m[32m[cached][39m[22m 35 assets
+asset [1m[33mbundle.js[39m[22m [1m[33m11.1 MiB[39m[22m [1m[32m[emitted][39m[22m [1m[33m[big][39m[22m (name: main)
+cached modules 3.76 MiB (javascript) 1.01 MiB (asset) [1m[32m[cached][39m[22m 849 modules
+runtime modules 1.07 KiB 7 modules
+[1m./src/screens/ScanSuccessfulScreen.tsx[39m[22m 10.6 KiB [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+webpack 5.105.4 compiled [1m[32msuccessfully[39m[22m in 320 ms
+assets by status 1.01 MiB [1m[32m[cached][39m[22m 35 assets
+asset [1m[33mbundle.js[39m[22m [1m[33m11.1 MiB[39m[22m [1m[32m[emitted][39m[22m [1m[33m[big][39m[22m (name: main)
+cached modules 3.65 MiB (javascript) 1.01 MiB (asset) [1m[32m[cached][39m[22m 849 modules
+runtime modules 1.07 KiB 7 modules
+[1m./src/screens/ResultScreen.tsx[39m[22m 124 KiB [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+webpack 5.105.4 compiled [1m[32msuccessfully[39m[22m in 2822 ms
+assets by status 1.01 MiB [1m[32m[cached][39m[22m 35 assets
+asset [1m[33mbundle.js[39m[22m [1m[33m11.1 MiB[39m[22m [1m[32m[emitted][39m[22m [1m[33m[big][39m[22m (name: main)
+cached modules 3.65 MiB (javascript) 1.01 MiB (asset) [1m[32m[cached][39m[22m 849 modules
+runtime modules 1.07 KiB 7 modules
+[1m./src/screens/ResultScreen.tsx[39m[22m 125 KiB [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+webpack 5.105.4 compiled [1m[32msuccessfully[39m[22m in 2928 ms
+assets by status 1.01 MiB [1m[32m[cached][39m[22m 35 assets
+asset [1m[33mbundle.js[39m[22m [1m[33m11.1 MiB[39m[22m [1m[32m[emitted][39m[22m [1m[33m[big][39m[22m (name: main)
+cached modules 3.65 MiB (javascript) 1.01 MiB (asset) [1m[32m[cached][39m[22m 849 modules
+runtime modules 1.07 KiB 7 modules
+[1m./src/screens/ResultScreen.tsx[39m[22m 125 KiB [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+webpack 5.105.4 compiled [1m[32msuccessfully[39m[22m in 3660 ms
+assets by status 1.01 MiB [1m[32m[cached][39m[22m 35 assets
+asset [1m[33mbundle.js[39m[22m [1m[33m11.1 MiB[39m[22m [1m[32m[emitted][39m[22m [1m[33m[big][39m[22m (name: main)
+cached modules 3.65 MiB (javascript) 1.01 MiB (asset) [1m[32m[cached][39m[22m 849 modules
+runtime modules 1.07 KiB 7 modules
+[1m./src/screens/ResultScreen.tsx[39m[22m 117 KiB [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+webpack 5.105.4 compiled [1m[32msuccessfully[39m[22m in 3170 ms
+assets by status 1.01 MiB [1m[32m[cached][39m[22m 35 assets
+asset [1m[33mbundle.js[39m[22m [1m[33m11.1 MiB[39m[22m [1m[32m[emitted][39m[22m [1m[33m[big][39m[22m (name: main)
+cached modules 3.65 MiB (javascript) 1.01 MiB (asset) [1m[32m[cached][39m[22m 849 modules
+runtime modules 1.07 KiB 7 modules
+[1m./src/screens/ResultScreen.tsx[39m[22m 126 KiB [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+webpack 5.105.4 compiled [1m[32msuccessfully[39m[22m in 3339 ms
+assets by status 1.01 MiB [1m[32m[cached][39m[22m 35 assets
+asset [1m[33mbundle.js[39m[22m [1m[33m11.1 MiB[39m[22m [1m[32m[emitted][39m[22m [1m[33m[big][39m[22m (name: main)
+cached modules 3.65 MiB (javascript) 1.01 MiB (asset) [1m[32m[cached][39m[22m 849 modules
+runtime modules 1.07 KiB 7 modules
+[1m./src/screens/ResultScreen.tsx[39m[22m 126 KiB [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+webpack 5.105.4 compiled [1m[32msuccessfully[39m[22m in 3187 ms
+assets by status 1.01 MiB [1m[32m[cached][39m[22m 35 assets
+asset [1m[33mbundle.js[39m[22m [1m[33m11.1 MiB[39m[22m [1m[32m[emitted][39m[22m [1m[33m[big][39m[22m (name: main)
+cached modules 3.65 MiB (javascript) 1.01 MiB (asset) [1m[32m[cached][39m[22m 849 modules
+runtime modules 1.07 KiB 7 modules
+[1m./src/screens/ResultScreen.tsx[39m[22m 129 KiB [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+webpack 5.105.4 compiled [1m[32msuccessfully[39m[22m in 4486 ms
+assets by status 1.01 MiB [1m[32m[cached][39m[22m 35 assets
+asset [1m[33mbundle.js[39m[22m [1m[33m11.1 MiB[39m[22m [1m[32m[emitted][39m[22m [1m[33m[big][39m[22m (name: main)
+cached modules 3.66 MiB (javascript) 1.01 MiB (asset) [1m[32m[cached][39m[22m 849 modules
+runtime modules 1.07 KiB 7 modules
+[1m./src/i18n/translations.ts[39m[22m 120 KiB [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+webpack 5.105.4 compiled [1m[32msuccessfully[39m[22m in 259 ms
+assets by status 1.01 MiB [1m[32m[cached][39m[22m 35 assets
+asset [1m[33mbundle.js[39m[22m [1m[33m11.1 MiB[39m[22m [1m[32m[emitted][39m[22m [1m[33m[big][39m[22m (name: main)
+cached modules 3.66 MiB (javascript) 1.01 MiB (asset) [1m[32m[cached][39m[22m 849 modules
+runtime modules 1.07 KiB 7 modules
+[1m./src/i18n/translations.ts[39m[22m 120 KiB [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+webpack 5.105.4 compiled [1m[32msuccessfully[39m[22m in 897 ms
+assets by status 1.01 MiB [1m[32m[cached][39m[22m 35 assets
+asset [1m[33mbundle.js[39m[22m [1m[33m11.1 MiB[39m[22m [1m[32m[emitted][39m[22m [1m[33m[big][39m[22m (name: main)
+cached modules 3.66 MiB (javascript) 1.01 MiB (asset) [1m[32m[cached][39m[22m 849 modules
+runtime modules 1.07 KiB 7 modules
+[1m./src/i18n/translations.ts[39m[22m 121 KiB [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+webpack 5.105.4 compiled [1m[32msuccessfully[39m[22m in 645 ms
+assets by status 1.01 MiB [1m[32m[cached][39m[22m 35 assets
+asset [1m[33mbundle.js[39m[22m [1m[33m11.1 MiB[39m[22m [1m[32m[emitted][39m[22m [1m[33m[big][39m[22m (name: main)
+cached modules 3.66 MiB (javascript) 1.01 MiB (asset) [1m[32m[cached][39m[22m 849 modules
+runtime modules 1.07 KiB 7 modules
+[1m./src/i18n/translations.ts[39m[22m 121 KiB [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+webpack 5.105.4 compiled [1m[32msuccessfully[39m[22m in 534 ms
+assets by status 1.01 MiB [1m[32m[cached][39m[22m 35 assets
+asset [1m[33mbundle.js[39m[22m [1m[33m11.1 MiB[39m[22m [1m[32m[emitted][39m[22m [1m[33m[big][39m[22m (name: main)
+cached modules 3.66 MiB (javascript) 1.01 MiB (asset) [1m[32m[cached][39m[22m 849 modules
+runtime modules 1.07 KiB 7 modules
+[1m./src/i18n/translations.ts[39m[22m 122 KiB [1m[33m[built][39m[22m [1m[33m[code generated][39m[22m
+webpack 5.105.4 compiled [1m[32msuccessfully[39m[22m in 500 ms
