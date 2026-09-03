@@ -80,7 +80,7 @@ export default function EmployeeHomeScreen({ navigation, user, onLogout }: any) 
   };
 
   return (
-    <AppLayout navigation={navigation} user={user} onLogout={onLogout}>
+    <AppLayout navigation={navigation} user={user} onLogout={onLogout} flatContent>
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>{t('workerOperationsTitle')}</Text>
         <Text style={styles.subtitle}>{t('workerOperationsSubtitle')}</Text>

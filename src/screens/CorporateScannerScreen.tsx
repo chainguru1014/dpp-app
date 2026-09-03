@@ -588,6 +588,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
       showBackButton
       title={t('scanOperationTitle')}
       subtitle={subtitle}
+      flatContent
     >
       <View style={styles.container}>
         <View style={styles.infoStrip}>

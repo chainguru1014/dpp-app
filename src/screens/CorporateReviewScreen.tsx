@@ -198,6 +198,7 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
       showBackButton
       title={t('reviewHistoryTitle')}
       subtitle={subtitle}
+      flatContent
     >
       <View style={styles.container}>
         <View style={styles.statsRow}>
