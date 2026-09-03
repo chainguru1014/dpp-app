@@ -292,7 +292,7 @@ export default function BrandDetailScreen({ navigation, route, user, onLogout }:
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   container: { paddingBottom: spacing.xxxl },
-  cover: { width: '100%', height: 140, backgroundColor: colors.surfaceAlt },
+  cover: { width: '100%', height: 210, backgroundColor: colors.surfaceAlt },
   coverPlaceholder: { backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   headerCard: {
     backgroundColor: colors.surface,
@@ -300,9 +300,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     padding: spacing.lg,
-    margin: spacing.lg,
+    marginHorizontal: spacing.lg,
+    // Pull the card up so it sits partially over the cover image (screenshot #6).
+    marginTop: -48,
     marginBottom: spacing.md,
-    ...shadow(1),
+    ...shadow(2),
   },
   headerTop: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' },
   logo: { width: 48, height: 48, borderRadius: radius.md },

@@ -48,7 +48,6 @@ interface ScannerScreenProps {
 
 export default function ScannerScreen({ navigation, route, user, onLogout }: ScannerScreenProps) {
   const { t } = useI18n();
-  const goHome = () => navigation.navigate('Scanner');
   const isFocused = useIsFocused();
   const [loading, setLoading] = useState(false);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
@@ -879,7 +878,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         navigation={navigation}
         user={user}
         onLogout={onLogout}
-        showBackButton onBackPress={goHome} title={t('scanTitle')} flatContent
+        title={t('scanTitle')} flatContent flushBottom
       >
         <View style={styles.stateContainer}>
           <View style={styles.stateCard}>
@@ -899,7 +898,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         navigation={navigation}
         user={user}
         onLogout={onLogout}
-        showBackButton onBackPress={goHome} title={t('scanTitle')} flatContent
+        title={t('scanTitle')} flatContent flushBottom
       >
         <View style={styles.stateContainer}>
           <View style={styles.stateCard}>
@@ -916,7 +915,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
   // Web photo-scan mode (http / no live camera) — clean light layout.
   if (Platform.OS === 'web' && webPhotoMode) {
     return (
-      <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton onBackPress={goHome} title={t('scanTitle')} flatContent>
+      <AppLayout navigation={navigation} user={user} onLogout={onLogout} title={t('scanTitle')} flatContent flushBottom>
         <View style={styles.photoContainer}>
           <View style={styles.photoScanCard}>
             <Image source={require('../assets/qr-code.png')} style={styles.photoScanIcon} resizeMode="contain" />
@@ -942,7 +941,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         navigation={navigation}
         user={user}
         onLogout={onLogout}
-        showBackButton onBackPress={goHome} title={t('scanTitle')} flatContent
+        title={t('scanTitle')} flatContent flushBottom
       >
         <View style={styles.container}>
           <View style={styles.scanViewport}>
@@ -972,7 +971,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         navigation={navigation}
         user={user}
         onLogout={onLogout}
-        showBackButton onBackPress={goHome} title={t('scanTitle')} flatContent
+        title={t('scanTitle')} flatContent flushBottom
       >
         <View style={styles.stateContainer}>
           <View style={styles.stateCard}>
@@ -993,7 +992,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         navigation={navigation}
         user={user}
         onLogout={onLogout}
-        showBackButton onBackPress={goHome} title={t('scanTitle')} flatContent
+        title={t('scanTitle')} flatContent flushBottom
       >
         <View style={styles.container}>
           <View style={styles.scanViewport}>
@@ -1023,7 +1022,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
       navigation={navigation}
       user={user}
       onLogout={onLogout}
-      showBackButton onBackPress={goHome} title={t('scanTitle')} flatContent
+      title={t('scanTitle')} flatContent flushBottom
     >
       <View style={styles.stateContainer}>
         <View style={styles.stateCard}>
@@ -1096,16 +1095,18 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: spacing.lg,
     right: spacing.lg,
-    bottom: 74,
+    bottom: 134,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
   },
+  // Sits clear of the (absolutely-positioned, 60px) consumer bottom bar — the
+  // camera viewport itself now runs full-bleed behind the bar (flushBottom).
   overlayActionRow: {
     position: 'absolute',
     left: spacing.lg,
     right: spacing.lg,
-    bottom: spacing.lg,
+    bottom: 76,
     flexDirection: 'row',
     gap: spacing.sm,
   },

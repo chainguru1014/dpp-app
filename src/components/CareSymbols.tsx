@@ -26,10 +26,11 @@ function dotPositions(count: number): number[] {
 interface WashIconProps {
   temp: number;
   selected: boolean;
+  colorOverride?: string;
 }
 
-function WashIcon({ temp, selected }: WashIconProps) {
-  const color = selected ? ACTIVE : IDLE;
+function WashIcon({ temp, selected, colorOverride }: WashIconProps) {
+  const color = colorOverride ?? (selected ? ACTIVE : IDLE);
   return (
     <Svg width={size} height={size} viewBox="0 0 32 32">
       {/* Wavy water surface (top rim of the tub) */}
@@ -57,10 +58,11 @@ function WashIcon({ temp, selected }: WashIconProps) {
 interface DryCleanIconProps {
   letter: string;
   selected: boolean;
+  colorOverride?: string;
 }
 
-function DryCleanIcon({ letter, selected }: DryCleanIconProps) {
-  const color = selected ? ACTIVE : IDLE;
+function DryCleanIcon({ letter, selected, colorOverride }: DryCleanIconProps) {
+  const color = colorOverride ?? (selected ? ACTIVE : IDLE);
   return (
     <Svg width={size} height={size} viewBox="0 0 32 32">
       <Circle cx="16" cy="16" r="11.5" {...common} stroke={color} />
@@ -81,10 +83,11 @@ function DryCleanIcon({ letter, selected }: DryCleanIconProps) {
 interface IronIconProps {
   dots: number;
   selected: boolean;
+  colorOverride?: string;
 }
 
-function IronIcon({ dots, selected }: IronIconProps) {
-  const color = selected ? ACTIVE : IDLE;
+function IronIcon({ dots, selected, colorOverride }: IronIconProps) {
+  const color = colorOverride ?? (selected ? ACTIVE : IDLE);
   return (
     <Svg width={size} height={size} viewBox="0 0 32 32">
       {/* Iron body with a pointed nose and a curved handle */}
@@ -104,10 +107,11 @@ function IronIcon({ dots, selected }: IronIconProps) {
 interface BleachIconProps {
   allowed: boolean;
   selected: boolean;
+  colorOverride?: string;
 }
 
-function BleachIcon({ allowed, selected }: BleachIconProps) {
-  const color = selected ? ACTIVE : IDLE;
+function BleachIcon({ allowed, selected, colorOverride }: BleachIconProps) {
+  const color = colorOverride ?? (selected ? ACTIVE : IDLE);
   return (
     <Svg width={size} height={size} viewBox="0 0 32 32">
       <Path {...common} stroke={color} d="M16 5 L27 25 L5 25 Z" />
@@ -126,10 +130,11 @@ function BleachIcon({ allowed, selected }: BleachIconProps) {
 interface TumbleDryIconProps {
   dots: number;
   selected: boolean;
+  colorOverride?: string;
 }
 
-function TumbleDryIcon({ dots, selected }: TumbleDryIconProps) {
-  const color = selected ? ACTIVE : IDLE;
+function TumbleDryIcon({ dots, selected, colorOverride }: TumbleDryIconProps) {
+  const color = colorOverride ?? (selected ? ACTIVE : IDLE);
   return (
     <Svg width={size} height={size} viewBox="0 0 32 32">
       <Rect x="4" y="4" width="24" height="24" rx="3.5" {...common} stroke={color} />
@@ -142,25 +147,40 @@ function TumbleDryIcon({ dots, selected }: TumbleDryIconProps) {
 }
 
 const MAINTENANCE_ICON_CONFIG = [
-  { id: 'wash_30', label: 'Wash 30', render: (selected: boolean) => <WashIcon temp={30} selected={selected} /> },
-  { id: 'wash_40', label: 'Wash 40', render: (selected: boolean) => <WashIcon temp={40} selected={selected} /> },
-  { id: 'wash_50', label: 'Wash 50', render: (selected: boolean) => <WashIcon temp={50} selected={selected} /> },
-  { id: 'wash_60', label: 'Wash 60', render: (selected: boolean) => <WashIcon temp={60} selected={selected} /> },
-  { id: 'wash_70', label: 'Wash 70', render: (selected: boolean) => <WashIcon temp={70} selected={selected} /> },
-  { id: 'dry_clean_P', label: 'Dry clean P', render: (selected: boolean) => <DryCleanIcon letter="P" selected={selected} /> },
-  { id: 'dry_clean_F', label: 'Dry clean F', render: (selected: boolean) => <DryCleanIcon letter="F" selected={selected} /> },
-  { id: 'iron_low', label: 'Iron low', render: (selected: boolean) => <IronIcon dots={1} selected={selected} /> },
-  { id: 'iron_med', label: 'Iron med', render: (selected: boolean) => <IronIcon dots={2} selected={selected} /> },
-  { id: 'iron_high', label: 'Iron high', render: (selected: boolean) => <IronIcon dots={3} selected={selected} /> },
-  { id: 'bleach_no', label: 'Bleach no', render: (selected: boolean) => <BleachIcon allowed={false} selected={selected} /> },
-  { id: 'bleach_any', label: 'Bleach any', render: (selected: boolean) => <BleachIcon allowed={true} selected={selected} /> },
-  { id: 'tumble_dry_low', label: 'Tumble dry low', render: (selected: boolean) => <TumbleDryIcon dots={1} selected={selected} /> },
-  { id: 'tumble_dry_high', label: 'Tumble dry high', render: (selected: boolean) => <TumbleDryIcon dots={2} selected={selected} /> },
+  { id: 'wash_30', label: 'Wash 30', render: (s: boolean, c?: string) => <WashIcon temp={30} selected={s} colorOverride={c} /> },
+  { id: 'wash_40', label: 'Wash 40', render: (s: boolean, c?: string) => <WashIcon temp={40} selected={s} colorOverride={c} /> },
+  { id: 'wash_50', label: 'Wash 50', render: (s: boolean, c?: string) => <WashIcon temp={50} selected={s} colorOverride={c} /> },
+  { id: 'wash_60', label: 'Wash 60', render: (s: boolean, c?: string) => <WashIcon temp={60} selected={s} colorOverride={c} /> },
+  { id: 'wash_70', label: 'Wash 70', render: (s: boolean, c?: string) => <WashIcon temp={70} selected={s} colorOverride={c} /> },
+  { id: 'dry_clean_P', label: 'Dry clean P', render: (s: boolean, c?: string) => <DryCleanIcon letter="P" selected={s} colorOverride={c} /> },
+  { id: 'dry_clean_F', label: 'Dry clean F', render: (s: boolean, c?: string) => <DryCleanIcon letter="F" selected={s} colorOverride={c} /> },
+  { id: 'iron_low', label: 'Iron low', render: (s: boolean, c?: string) => <IronIcon dots={1} selected={s} colorOverride={c} /> },
+  { id: 'iron_med', label: 'Iron med', render: (s: boolean, c?: string) => <IronIcon dots={2} selected={s} colorOverride={c} /> },
+  { id: 'iron_high', label: 'Iron high', render: (s: boolean, c?: string) => <IronIcon dots={3} selected={s} colorOverride={c} /> },
+  { id: 'bleach_no', label: 'Bleach no', render: (s: boolean, c?: string) => <BleachIcon allowed={false} selected={s} colorOverride={c} /> },
+  { id: 'bleach_any', label: 'Bleach any', render: (s: boolean, c?: string) => <BleachIcon allowed={true} selected={s} colorOverride={c} /> },
+  { id: 'tumble_dry_low', label: 'Tumble dry low', render: (s: boolean, c?: string) => <TumbleDryIcon dots={1} selected={s} colorOverride={c} /> },
+  { id: 'tumble_dry_high', label: 'Tumble dry high', render: (s: boolean, c?: string) => <TumbleDryIcon dots={2} selected={s} colorOverride={c} /> },
 ];
 
-export function CareSymbol({ iconId, selected = false }: { iconId: string; selected?: boolean }) {
+export function CareSymbol({
+  iconId,
+  selected = false,
+  bare = false,
+  color,
+}: {
+  iconId: string;
+  selected?: boolean;
+  /** Render just the glyph — no bordered/tinted container box. */
+  bare?: boolean;
+  /** Force a specific stroke colour (e.g. black for the Care tab list). */
+  color?: string;
+}) {
   const config = MAINTENANCE_ICON_CONFIG.find((c) => c.id === iconId);
   if (!config || typeof config.render !== 'function') return null;
+  if (bare) {
+    return <View style={styles.iconWrapper}>{config.render(selected, color)}</View>;
+  }
   return (
     <View
       style={[
@@ -168,7 +188,7 @@ export function CareSymbol({ iconId, selected = false }: { iconId: string; selec
         selected && styles.symbolContainerSelected,
       ]}
     >
-      <View style={styles.iconWrapper}>{config.render(selected)}</View>
+      <View style={styles.iconWrapper}>{config.render(selected, color)}</View>
     </View>
   );
 }

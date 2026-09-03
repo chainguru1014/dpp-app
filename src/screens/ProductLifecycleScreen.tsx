@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Image, P
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import Clipboard from '@react-native-clipboard/clipboard';
 import AppLayout from '../components/AppLayout';
+import MediaSlider from '../components/MediaSlider';
 import { CareSymbol, getCareSymbolLabel } from '../components/CareSymbols';
 import { useI18n } from '../i18n/I18nContext';
 import { API_BASE_URL } from '../config/api';
@@ -33,6 +34,25 @@ const JOURNEY_STAGES: { key: string; icon: string; labelKey: string; descKey: st
   { key: 'use', icon: 'checkroom', labelKey: 'lifecycleStageUse', descKey: 'lifecycleJourneyUseDesc' },
   { key: 'endOfLife', icon: 'recycling', labelKey: 'lifecycleStageEndOfLife', descKey: 'lifecycleJourneyEndOfLifeDesc' },
 ];
+
+// Care tips are derived from the product's selected wash/care symbols when the
+// brand hasn't supplied its own maintenance.tips list.
+const CARE_TIP_BY_ICON: Record<string, string> = {
+  wash_30: 'Machine wash cold — maximum 30°C.',
+  wash_40: 'Machine wash warm — maximum 40°C.',
+  wash_50: 'Machine wash — maximum 50°C.',
+  wash_60: 'Machine wash hot — maximum 60°C.',
+  wash_70: 'Machine wash — maximum 70°C.',
+  dry_clean_P: 'Professional dry clean only (perchloroethylene).',
+  dry_clean_F: 'Professional dry clean only (hydrocarbon solvent).',
+  iron_low: 'Iron on low heat (max 110°C), avoid steam.',
+  iron_med: 'Iron on medium heat (max 150°C).',
+  iron_high: 'Iron on high heat (max 200°C).',
+  bleach_no: 'Do not bleach.',
+  bleach_any: 'Any bleach may be used when needed.',
+  tumble_dry_low: 'Tumble dry on low heat.',
+  tumble_dry_high: 'Tumble dry on a normal / high setting.',
+};
 
 const toArray = (v: any): any[] => (v == null ? [] : Array.isArray(v) ? v : typeof v === 'object' ? Object.values(v) : [v]);
 const toStrArray = (v: any): string[] =>
@@ -74,7 +94,8 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
   const { t } = useI18n();
   const [productData, setProductData] = useState<any>(route?.params?.productData || {});
   const [tab, setTab] = useState<TabKey>('journey');
-  const [openStage, setOpenStage] = useState<string | null>('transportation');
+  // Journey stages are all collapsed by default — a down-chevron invites the tap.
+  const [openStage, setOpenStage] = useState<string | null>(null);
   const [openRow, setOpenRow] = useState<string | null>(null);
   const [isInAlbum, setIsInAlbum] = useState(false);
   const [isBrandFollowed, setIsBrandFollowed] = useState(false);
@@ -211,7 +232,11 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
   const facts = productData?.detailFacts || {};
   const maintenance = productData?.maintenance || {};
   const careIcons = toStrArray(maintenance.iconIds);
-  const careTips = toStrArray(maintenance.tips);
+  const manualCareTips = toStrArray(maintenance.tips);
+  // Prefer the brand's own tips; otherwise generate them from the care symbols.
+  const careTips = manualCareTips.length
+    ? manualCareTips
+    : careIcons.map((id) => CARE_TIP_BY_ICON[id] || `${getCareSymbolLabel(id)}.`);
   const materialSize = productData?.materialSize || {};
   const materials = toArray(materialSize.materials);
   // certifications: legacy string[] OR {icon,title,content}[].
@@ -248,41 +273,103 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
 
   // ---- tab bodies ----
 
+  // Per-stage expandable detail, assembled from the product's own data. Returns
+  // null when this product carries nothing for the stage (row stays collapsed
+  // with just its summary line).
+  const renderStageDetail = (key: string): React.ReactNode => {
+    if (key === 'materials') {
+      if (!materials.length && !materialOrigins.length) return null;
+      return (
+        <View style={styles.jDetail}>
+          {materials.map((m: any, i: number) => (
+            <Row key={i} label={m.material || '—'} value={m.percent != null ? `${m.percent}%` : ''} />
+          ))}
+          {materialOrigins.length > 0 && (
+            <Row label={t('lifecycleMaterialOrigins')} value={originCountries.join(', ') || String(materialOrigins.length)} />
+          )}
+        </View>
+      );
+    }
+    if (key === 'manufacturing') {
+      const rows: [string, string][] = [
+        [t('lifecycleCountryOfManufacture'), originCountry],
+        [t('factManufactureDate'), productData?.manufactureDate || ''],
+        [t('summaryBrand'), productData?.brandInfo?.name || ''],
+        [t('co2Production'), esg.co2Production || ''],
+      ].filter(([, v]) => !!v) as [string, string][];
+      if (!rows.length) return null;
+      return (
+        <View style={styles.jDetail}>
+          {rows.map(([l, v]) => <Row key={l} label={l} value={v} />)}
+        </View>
+      );
+    }
+    if (key === 'transportation') {
+      const route = [routeInfo.origin, routeInfo.destination].filter(Boolean).join(' → ');
+      if (!esg.distance && !route && !routeInfo.mode && !routeInfo.emissions && !esg.co2Transportation) return null;
+      return (
+        <View style={styles.jDetail}>
+          <Row label={t('lifecycleShippingDistance')} value={esg.distance || ''} />
+          <Row label={t('lifecycleRoute')} value={route} />
+          <Row label={t('lifecycleTransportMode')} value={routeInfo.mode || ''} />
+          <Row label={t('lifecycleEstEmissions')} value={routeInfo.emissions || esg.co2Transportation || ''} />
+        </View>
+      );
+    }
+    if (key === 'use') {
+      const rows: [string, string][] = [
+        [t('summaryWarrantyStatus'), [productData?.warrantyStatus, productData?.warrantyValidYears ? `· ${productData.warrantyValidYears}y` : '']
+          .filter(Boolean).join(' ')],
+        [t('lifecycleDurability'), facts.durability || ''],
+        [t('lifecycleWash'), facts.wash || ''],
+        [t('lifecycleCareSymbols'), careIcons.length ? String(careIcons.length) : ''],
+      ].filter(([, v]) => !!v) as [string, string][];
+      if (!rows.length) return null;
+      return (
+        <View style={styles.jDetail}>
+          {rows.map(([l, v]) => <Row key={l} label={l} value={v} />)}
+        </View>
+      );
+    }
+    if (key === 'endOfLife') {
+      const links = disposeLinks.filter((l) => l.url);
+      if (!links.length && !impactItems.length) return null;
+      return (
+        <View style={styles.jDetail}>
+          {links.map((l) => (
+            <TouchableOpacity key={l.key} onPress={() => openUrl(l.url)}>
+              <Text style={styles.jLink}>{t(l.labelKey as any)}</Text>
+            </TouchableOpacity>
+          ))}
+          {impactItems.map((it, i) => (
+            <Row key={`imp-${i}`} label={it.label} value={it.value} />
+          ))}
+        </View>
+      );
+    }
+    return null;
+  };
+
   const renderJourney = () => (
-    <View style={{ paddingTop: spacing.lg }}>
+    <View style={{ paddingTop: spacing.xxl }}>
       {JOURNEY_STAGES.map((s, i) => {
         const open = openStage === s.key;
+        const detail = renderStageDetail(s.key);
         return (
           <View key={s.key} style={styles.jItem}>
             <View style={styles.jRail}>
-              <View style={styles.jDot}><Icon name={s.icon} size={20} color="#fff" /></View>
+              <View style={styles.jDot}><Icon name={s.icon} size={24} color="#fff" /></View>
               {i < JOURNEY_STAGES.length - 1 && <View style={styles.jLine} />}
             </View>
             <TouchableOpacity style={styles.jBody} activeOpacity={0.7} onPress={() => setOpenStage(open ? null : s.key)}>
-              <Text style={styles.jTitle}>{t(s.labelKey as any)}</Text>
+              <View style={styles.jTitleRow}>
+                <Text style={styles.jTitle}>{t(s.labelKey as any)}</Text>
+                <Icon name={open ? 'expand-less' : 'expand-more'} size={22} color={colors.muted} />
+              </View>
               <Text style={styles.jDesc}>{t(s.descKey as any)}</Text>
-              {open && s.key === 'transportation' && (
-                <View style={styles.jDetail}>
-                  <Row label={t('lifecycleShippingDistance')} value={esg.distance || ''} />
-                  <Row label={t('lifecycleRoute')} value={[routeInfo.origin, routeInfo.destination].filter(Boolean).join(' → ')} />
-                  <Row label={t('lifecycleTransportMode')} value={routeInfo.mode || ''} />
-                  <Row label={t('lifecycleEstEmissions')} value={routeInfo.emissions || esg.co2Transportation || ''} />
-                </View>
-              )}
-              {open && s.key === 'materials' && !!originCountries.length && (
-                <View style={styles.jDetail}>
-                  <Row label={t('lifecycleMaterialOrigins')} value={originCountries.join(', ')} />
-                </View>
-              )}
-              {open && s.key === 'endOfLife' && disposeLinks.some((l) => l.url) && (
-                <View style={styles.jDetail}>
-                  {disposeLinks.filter((l) => l.url).map((l) => (
-                    <TouchableOpacity key={l.key} onPress={() => openUrl(l.url)}>
-                      <Text style={styles.jLink}>{t(l.labelKey as any)}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
+              {open && (detail || (
+                <View style={styles.jDetail}><Text style={styles.jDetailEmpty}>{t('lifecycleNoData')}</Text></View>
+              ))}
             </TouchableOpacity>
           </View>
         );
@@ -367,8 +454,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
           <View style={styles.careRow}>
             {careIcons.map((id, i) => (
               <View key={`${id}-${i}`} style={styles.careItem}>
-                <CareSymbol iconId={id} selected />
-                <Text style={styles.careLabel} numberOfLines={2}>{getCareSymbolLabel(id)}</Text>
+                <CareSymbol iconId={id} bare color="#000" />
               </View>
             ))}
           </View>
@@ -537,7 +623,9 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
     }
   };
 
-  const thumb = fileUrl(Array.isArray(productData?.images) && productData.images.length ? productData.images[0] : '');
+  const sliderImages = toStrArray(productData?.images);
+  const sliderVideos = toArray(productData?.videos);
+  const hasMedia = sliderImages.length > 0 || sliderVideos.length > 0;
 
   return (
     <AppLayout
@@ -559,23 +647,32 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
       onActionMenuPress={onActionMenuPress}
     >
       <View style={styles.screen}>
-        {/* Blue header — bigger product image + name / model / id + Authenticated card. */}
+        {/* Blue header — product image slider + name / model / id + Authenticated card. */}
         <View style={styles.header}>
-          {thumb ? (
-            <Image source={{ uri: thumb }} style={styles.headerThumb} resizeMode="cover" />
-          ) : (
-            <View style={[styles.headerThumb, styles.headerThumbPlaceholder]}>
-              <Icon name="inventory-2" size={26} color="rgba(255,255,255,0.6)" />
-            </View>
-          )}
+          <View style={styles.headerMedia}>
+            {hasMedia ? (
+              <MediaSlider
+                images={sliderImages}
+                videos={sliderVideos}
+                hideHeader
+                flush
+                maxHeight={112}
+                getFileUrl={fileUrl}
+              />
+            ) : (
+              <View style={[styles.headerThumb, styles.headerThumbPlaceholder]}>
+                <Icon name="inventory-2" size={26} color="rgba(255,255,255,0.6)" />
+              </View>
+            )}
+          </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.headerName} numberOfLines={1}>{productData?.name || '—'}</Text>
+            <Text style={styles.headerName} numberOfLines={2}>{productData?.name || '—'}</Text>
             {!!productData?.model && <Text style={styles.headerMeta} numberOfLines={1}>Model: {productData.model}</Text>}
             {(productData?.pmc_code || productData?.token_id != null) && (
               <Text style={styles.headerMeta} numberOfLines={1}>ID: {productData?.pmc_code || productData?.token_id}</Text>
             )}
             <View style={styles.authCard}>
-              <View style={styles.authCheck}><Icon name="check" size={11} color={colors.primary} /></View>
+              <View style={styles.authCheck}><Icon name="check" size={11} color="#fff" /></View>
               <View>
                 <Text style={styles.authTitle}>{t('overviewAuthenticated')}</Text>
                 <Text style={styles.authSub}>{t('lifecycleVerifiedByBrand')}</Text>
@@ -607,38 +704,38 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.primary },
   header: {
     flexDirection: 'row',
-    gap: spacing.md,
-    alignItems: 'center',
+    gap: spacing.lg,
+    alignItems: 'flex-start',
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
     paddingBottom: spacing.lg,
   },
-  headerThumb: { width: 76, height: 76, borderRadius: radius.md, backgroundColor: 'rgba(255,255,255,0.15)' },
+  headerMedia: { width: 120 },
+  headerThumb: { width: 120, height: 112, borderRadius: radius.md, backgroundColor: 'rgba(255,255,255,0.15)' },
   headerThumbPlaceholder: { alignItems: 'center', justifyContent: 'center' },
-  headerName: { fontSize: 17, fontWeight: '700', color: '#fff' },
-  headerMeta: { fontSize: 12, color: 'rgba(255,255,255,0.9)', marginTop: 1 },
+  headerName: { fontSize: 17, fontWeight: '700', color: '#fff', marginBottom: 4 },
+  headerMeta: { fontSize: 12, color: 'rgba(255,255,255,0.9)', marginTop: 3, lineHeight: 16 },
   authCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 7,
     alignSelf: 'flex-start',
     backgroundColor: '#fff',
     borderRadius: radius.md,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    marginTop: 6,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    marginTop: 10,
   },
   authCheck: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: colors.primary,
+    width: 17,
+    height: 17,
+    borderRadius: 9,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  authTitle: { fontSize: 11, fontWeight: '700', color: colors.primary },
-  authSub: { fontSize: 9, color: colors.muted },
+  authTitle: { fontSize: 12, fontWeight: '700', color: colors.heading },
+  authSub: { fontSize: 10, color: colors.muted, marginTop: 1 },
   sheet: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -680,20 +777,22 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 13, color: colors.muted, paddingVertical: spacing.sm },
   // journey
   jItem: { flexDirection: 'row', gap: spacing.lg },
-  jRail: { alignItems: 'center', width: 40 },
+  jRail: { alignItems: 'center', width: 48 },
   jDot: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  jLine: { flex: 1, width: 2, backgroundColor: colors.border, marginVertical: 4, minHeight: 20 },
-  jBody: { flex: 1, paddingBottom: spacing.xl },
-  jTitle: { fontSize: 15, fontWeight: '700', color: '#000' },
+  jLine: { flex: 1, width: 2, backgroundColor: colors.border, marginVertical: 6, minHeight: 24 },
+  jBody: { flex: 1, paddingBottom: spacing.xxl },
+  jTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  jTitle: { fontSize: 16, fontWeight: '700', color: '#000' },
   jDesc: { fontSize: 13, color: colors.muted, marginTop: 3, lineHeight: 18 },
   jDetail: { marginTop: spacing.md, backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: spacing.md },
+  jDetailEmpty: { fontSize: 12, color: colors.muted },
   jLink: { fontSize: 13, color: colors.accent, fontWeight: '600', paddingVertical: 3 },
   // rows
   itemRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.border },
@@ -707,8 +806,8 @@ const styles = StyleSheet.create({
   expandSub: { fontSize: 11, color: colors.muted, marginTop: 1 },
   expandBody: { marginTop: spacing.sm, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border },
   // care
-  careRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, justifyContent: 'space-between' },
-  careItem: { width: 58, alignItems: 'center' },
+  careRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.lg, justifyContent: 'flex-start', alignItems: 'center' },
+  careItem: { alignItems: 'flex-start', justifyContent: 'center' },
   careLabel: { fontSize: 9, color: colors.muted, textAlign: 'center', marginTop: 4 },
   tipRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, paddingVertical: 5 },
   tipText: { flex: 1, fontSize: 13, color: colors.text, lineHeight: 18 },

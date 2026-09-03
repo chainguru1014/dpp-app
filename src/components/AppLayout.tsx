@@ -55,6 +55,10 @@ interface AppLayoutProps {
   product?: any;
   // Opt out of the rounded-top content sheet (e.g. full-bleed camera screens).
   flatContent?: boolean;
+  // Let content run full-bleed behind the (absolutely-positioned) bottom bar
+  // instead of reserving BOTTOM_BAR_HEIGHT of padding for it — used by the
+  // Scanner so the camera viewport extends all the way down.
+  flushBottom?: boolean;
   title?: string;
   subtitle?: string;
 }
@@ -103,6 +107,7 @@ export default function AppLayout({
   useCenterTop = false,
   hideBottomBar = false,
   flatContent = false,
+  flushBottom = false,
   onGuestAction,
   onActionMenuPress,
   onSettingsMenuPress,
@@ -315,7 +320,7 @@ export default function AppLayout({
     );
   })();
 
-  const contentBottomPad = effectiveBar === 'none' ? 0 : BOTTOM_BAR_HEIGHT;
+  const contentBottomPad = effectiveBar === 'none' || flushBottom ? 0 : BOTTOM_BAR_HEIGHT;
 
   return (
     <View style={styles.container}>

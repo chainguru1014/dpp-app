@@ -1543,17 +1543,24 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
           </>
         ) : (
           <>
-            {/* Product card — image slider + name / model / ID + Authenticated. */}
+            {/* Header — image slider on the left, name / model / ID / Authenticated on the right. */}
             <View style={styles.ovProductCard}>
-              {renderImageSlider(210, true)}
-              <Text style={styles.ovName} numberOfLines={1}>{productData?.name || '—'}</Text>
-              {!!productData?.model && <Text style={styles.ovModel} numberOfLines={1}>{productData.model}</Text>}
-              {(productData?.pmc_code || productData?.token_id != null) && (
-                <Text style={styles.ovId} numberOfLines={1}>ID: {productData?.pmc_code || productData?.token_id}</Text>
-              )}
-              <View style={styles.ovAuthRow}>
-                <Icon name="verified" size={15} color={colors.primary} />
-                <Text style={styles.ovAuthText}>{t('overviewAuthenticated')}</Text>
+              <View style={styles.ovHeaderRow}>
+                <View style={styles.ovHeaderMedia}>{renderImageSlider(132, true)}</View>
+                <View style={styles.ovHeaderInfo}>
+                  <Text style={styles.ovName} numberOfLines={2}>{productData?.name || '—'}</Text>
+                  {!!productData?.model && <Text style={styles.ovModel} numberOfLines={1}>{productData.model}</Text>}
+                  {(productData?.pmc_code || productData?.token_id != null) && (
+                    <Text style={styles.ovId} numberOfLines={1}>ID: {productData?.pmc_code || productData?.token_id}</Text>
+                  )}
+                  <View style={styles.ovAuthBadge}>
+                    <View style={styles.ovAuthBadgeCheck}><Icon name="check" size={11} color="#fff" /></View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.ovAuthBadgeTitle}>{t('overviewAuthenticated')}</Text>
+                      <Text style={styles.ovAuthBadgeSub}>{t('lifecycleVerifiedByBrand')}</Text>
+                    </View>
+                  </View>
+                </View>
               </View>
             </View>
 
@@ -2129,17 +2136,37 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: spacing.sm,
+    padding: spacing.md,
     marginHorizontal: spacing.lg,
     marginTop: spacing.md,
-    alignItems: 'center',
     ...shadow(1),
   },
-  ovName: { fontSize: 16, fontWeight: '700', color: colors.heading, marginTop: spacing.sm },
-  ovModel: { fontSize: 12, color: colors.muted, marginTop: 1 },
+  ovHeaderRow: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' },
+  ovHeaderMedia: { width: 132 },
+  ovHeaderInfo: { flex: 1, paddingTop: 2 },
+  ovName: { fontSize: 16, fontWeight: '700', color: colors.heading },
+  ovModel: { fontSize: 12, color: colors.muted, marginTop: 2 },
   ovId: { fontSize: 11, color: colors.placeholder, marginTop: 2 },
-  ovAuthRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: spacing.xs },
-  ovAuthText: { fontSize: 12, fontWeight: '600', color: colors.primary },
+  ovAuthBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: spacing.sm,
+    backgroundColor: '#eef5fc',
+    borderRadius: radius.md,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  ovAuthBadgeCheck: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ovAuthBadgeTitle: { fontSize: 12, fontWeight: '700', color: colors.heading },
+  ovAuthBadgeSub: { fontSize: 10, color: colors.muted, marginTop: 1 },
   ovCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
@@ -2171,9 +2198,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 3,
-    paddingTop: 6,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+    marginTop: spacing.md,
+    paddingTop: 4,
   },
   ovViewLcText: { fontSize: 12, fontWeight: '600', color: colors.accent },
   ovIconRow: { flexDirection: 'row', gap: spacing.sm, marginHorizontal: spacing.lg, marginTop: spacing.sm },
