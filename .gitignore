@@ -74,3 +74,7 @@ yarn-error.log
 web-build/
 app-web.out
 app-web.err.local-dev.log
+
+.local-dev.log
+app-web.err
+app-web.out
