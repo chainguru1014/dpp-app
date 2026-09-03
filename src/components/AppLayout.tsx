@@ -1,4 +1,4 @@
-import React, { useState, useId } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -16,7 +16,6 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import FeatherIcon from 'react-native-vector-icons/Feather';
-import Svg, { Defs, LinearGradient as SvgLinearGradient, Stop, Rect } from 'react-native-svg';
 import { useRoute } from '@react-navigation/native';
 import { useI18n } from '../i18n/I18nContext';
 import NotificationBadge from './NotificationBadge';
@@ -53,6 +52,8 @@ interface AppLayoutProps {
   // The product this screen is showing — lets the 'product' bottom bar move
   // between Overview and Lifecycle carrying the same product data.
   product?: any;
+  // Opt out of the rounded-top content sheet (e.g. full-bleed camera screens).
+  flatContent?: boolean;
   title?: string;
   subtitle?: string;
 }
@@ -77,9 +78,10 @@ const ROUTE_TITLE_KEYS: Record<string, string> = {
 const BRAND_TITLE = 'Yometel DPP';
 const EMPLOYEE_BRAND_TITLE = 'Yometel Traceability';
 
-// Big-height top bar (screenshot #9). Includes room for the status bar.
-const STATUS_BAR_PAD = Platform.OS === 'ios' ? 44 : (StatusBar.currentHeight || 24);
-const TOP_BAR_CONTENT = 52;
+// Big-height top bar. Room for the status bar on native; web has none, so keep
+// the pad small (avoids a large empty band above the notification icon).
+const STATUS_BAR_PAD = Platform.OS === 'ios' ? 44 : Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 8;
+const TOP_BAR_CONTENT = 50;
 const TOP_BAR_HEIGHT = STATUS_BAR_PAD + TOP_BAR_CONTENT;
 const BOTTOM_BAR_HEIGHT = 60;
 const BOTTOM_TAB_ICON_SIZE = 22;
@@ -99,6 +101,7 @@ export default function AppLayout({
   onBackPress,
   useCenterTop = false,
   hideBottomBar = false,
+  flatContent = false,
   onGuestAction,
   onActionMenuPress,
   onSettingsMenuPress,
@@ -115,7 +118,6 @@ export default function AppLayout({
 }: AppLayoutProps) {
   const { t, locale, setLocale, languages } = useI18n();
   const route = useRoute();
-  const gradientId = `topBarGradient-${useId()}`;
   const isHomeRoute = route.name === 'Home' || route.name === 'EmployeeHome';
   const routeTitleKey = ROUTE_TITLE_KEYS[route.name];
   const computedTitle = title ?? (
@@ -309,16 +311,6 @@ export default function AppLayout({
   return (
     <View style={styles.container}>
       <View style={styles.topBar}>
-        <Svg style={StyleSheet.absoluteFill} width={SCREEN_WIDTH} height={TOP_BAR_HEIGHT}>
-          <Defs>
-            <SvgLinearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-              <Stop offset="0%" stopColor={colors.headerLight} stopOpacity={1} />
-              <Stop offset="100%" stopColor={colors.header} stopOpacity={1} />
-            </SvgLinearGradient>
-          </Defs>
-          <Rect x={0} y={0} width={SCREEN_WIDTH} height={TOP_BAR_HEIGHT} fill={`url(#${gradientId})`} />
-        </Svg>
-
         <View style={styles.topBarRow}>
           {showBackButton ? (
             <TouchableOpacity onPress={handleBack} style={styles.iconButton} activeOpacity={0.7}>
@@ -355,6 +347,7 @@ export default function AppLayout({
           styles.content,
           useCenterTop && styles.contentCentered,
           { paddingBottom: contentBottomPad },
+          flatContent && styles.contentFlat,
         ]}
       >
         {children}
@@ -566,19 +559,22 @@ export default function AppLayout({
 
 function BottomTab({
   icon,
+  mi,
   label,
   selected,
   onPress,
 }: {
   icon: string;
+  mi?: boolean; // use MaterialIcons instead of Feather (outline default)
   label: string;
   selected: boolean;
   onPress: () => void;
 }) {
+  const Glyph: any = mi ? Icon : FeatherIcon;
   return (
     <TouchableOpacity style={styles.bottomTab} onPress={onPress} activeOpacity={0.7}>
       {selected && <View style={styles.bottomTabIndicator} />}
-      <Icon name={icon} size={BOTTOM_TAB_ICON_SIZE} color={selected ? colors.primary : '#333333'} />
+      <Glyph name={icon} size={BOTTOM_TAB_ICON_SIZE} color={selected ? colors.primary : '#7a8aa3'} />
       <Text style={[styles.bottomTabLabel, selected && styles.bottomTabLabelSelected]} numberOfLines={1}>
         {label}
       </Text>
@@ -598,11 +594,11 @@ function ConsumerBottomBar({
 }: any) {
   return (
     <View style={styles.bottomBar}>
-      <BottomTab icon="qr-code-scanner" label={t('bottomScan')} selected={routeName === 'Scanner' || routeName === 'EnterCode'} onPress={onScan} />
+      <BottomTab mi icon="qr-code-scanner" label={t('bottomScan')} selected={routeName === 'Scanner' || routeName === 'EnterCode'} onPress={onScan} />
       <BottomTab icon="shopping-bag" label={t('bottomMyProducts')} selected={routeName === 'ScannedProducts' || routeName === 'ProductSummary'} onPress={onProducts} />
-      <BottomTab icon="history" label={t('bottomHistory')} selected={routeName === 'History' || routeName === 'ProductHistory' || routeName === 'PurchaseHistory'} onPress={onHistory} />
-      <BottomTab icon="sell" label={t('bottomBrands')} selected={routeName === 'FavoriteBrands' || routeName === 'BrandDetail'} onPress={onBrands} />
-      <BottomTab icon="person" label={t('bottomProfile')} selected={profileActive || routeName === 'EditProfile'} onPress={onProfile} />
+      <BottomTab icon="clock" label={t('bottomHistory')} selected={routeName === 'History' || routeName === 'ProductHistory' || routeName === 'PurchaseHistory'} onPress={onHistory} />
+      <BottomTab icon="tag" label={t('bottomBrands')} selected={routeName === 'FavoriteBrands' || routeName === 'BrandDetail'} onPress={onBrands} />
+      <BottomTab icon="user" label={t('bottomProfile')} selected={profileActive || routeName === 'EditProfile'} onPress={onProfile} />
     </View>
   );
 }
@@ -610,9 +606,9 @@ function ConsumerBottomBar({
 function ProductBottomBar({ routeName, moreActive, t, onOverview, onLifecycle, onMore }: any) {
   return (
     <View style={styles.bottomBar}>
-      <BottomTab icon="dashboard" label={t('bottomOverview')} selected={routeName === 'Result' || routeName === 'ProductSummary'} onPress={onOverview} />
-      <BottomTab icon="autorenew" label={t('bottomLifecycle')} selected={routeName === 'ProductLifecycle'} onPress={onLifecycle} />
-      <BottomTab icon="more-horiz" label={t('bottomMore')} selected={moreActive} onPress={onMore} />
+      <BottomTab icon="grid" label={t('bottomOverview')} selected={routeName === 'Result' || routeName === 'ProductSummary'} onPress={onOverview} />
+      <BottomTab icon="refresh-cw" label={t('bottomLifecycle')} selected={routeName === 'ProductLifecycle'} onPress={onLifecycle} />
+      <BottomTab icon="more-horizontal" label={t('bottomMore')} selected={moreActive} onPress={onMore} />
     </View>
   );
 }
@@ -626,12 +622,9 @@ const styles = StyleSheet.create({
     right: 0,
     height: TOP_BAR_HEIGHT,
     overflow: 'hidden',
+    backgroundColor: colors.primary,
     zIndex: 1000,
     elevation: 10,
-    shadowColor: colors.navy,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
-    shadowRadius: 8,
   },
   topBarRow: {
     position: 'absolute',
@@ -649,7 +642,19 @@ const styles = StyleSheet.create({
   titleBlock: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   titleText: { color: '#fff', fontSize: 17, fontWeight: '600', letterSpacing: 0.3, textAlign: 'center' },
   subtitleText: { color: 'rgba(255,255,255,0.85)', fontSize: 12, fontWeight: '400', marginTop: 1, textAlign: 'center' },
-  content: { flex: 1, backgroundColor: '#fff', paddingTop: TOP_BAR_HEIGHT },
+  content: {
+    flex: 1,
+    backgroundColor: colors.bg,
+    marginTop: TOP_BAR_HEIGHT - 18,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    overflow: 'hidden',
+  },
+  contentFlat: {
+    marginTop: TOP_BAR_HEIGHT,
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+  },
   contentCentered: { paddingTop: CONTENT_TOP },
   bottomBar: {
     position: 'absolute',

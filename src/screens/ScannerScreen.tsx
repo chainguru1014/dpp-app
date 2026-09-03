@@ -48,6 +48,7 @@ interface ScannerScreenProps {
 
 export default function ScannerScreen({ navigation, route, user, onLogout }: ScannerScreenProps) {
   const { t } = useI18n();
+  const goHome = () => navigation.navigate('Home');
   const isFocused = useIsFocused();
   const [loading, setLoading] = useState(false);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
@@ -789,6 +790,36 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
           <Text style={styles.overlayCornerText}>{t('scanHelpLabel')}</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Upload Image / Enter Code — pill buttons overlaid on the camera field. */}
+      <View style={styles.overlayActionRow}>
+        {loading ? (
+          <View style={styles.overlayLoadingPill}>
+            <ActivityIndicator size="small" color="#fff" />
+            <Text style={styles.overlayLoadingText}>{t('loadingProductInfo')}</Text>
+          </View>
+        ) : (
+          <>
+            <TouchableOpacity
+              style={styles.overlayActionBtn}
+              onPress={Platform.OS === 'web' ? openPhotoScan : pickNativePhotoAndScan}
+              activeOpacity={0.85}
+            >
+              <VectorIcon name="image" size={18} color={colors.primary} />
+              <Text style={styles.overlayActionText}>{t('scanUploadImageCta')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.overlayActionBtn}
+              onPress={() => navigation.navigate('EnterCode')}
+              activeOpacity={0.85}
+            >
+              <VectorIcon name="keyboard" size={18} color={colors.primary} />
+              <Text style={styles.overlayActionText}>{t('scanEnterCodeCta')}</Text>
+            </TouchableOpacity>
+          </>
+        )}
+      </View>
+
       <Modal visible={helpVisible} transparent animationType="fade" onRequestClose={() => setHelpVisible(false)}>
         <TouchableOpacity style={styles.helpOverlay} activeOpacity={1} onPress={() => setHelpVisible(false)}>
           <View style={styles.helpCard}>
@@ -848,7 +879,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         navigation={navigation}
         user={user}
         onLogout={onLogout}
-        showBackButton={false} title="Yometel DPP Scan" subtitle=""
+        showBackButton onBackPress={goHome} title={t('scanTitle')} flatContent
       >
         <View style={styles.stateContainer}>
           <View style={styles.stateCard}>
@@ -868,7 +899,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         navigation={navigation}
         user={user}
         onLogout={onLogout}
-        showBackButton={false} title="Yometel DPP Scan" subtitle=""
+        showBackButton onBackPress={goHome} title={t('scanTitle')} flatContent
       >
         <View style={styles.stateContainer}>
           <View style={styles.stateCard}>
@@ -885,7 +916,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
   // Web photo-scan mode (http / no live camera) — clean light layout.
   if (Platform.OS === 'web' && webPhotoMode) {
     return (
-      <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton={false} title="Yometel DPP Scan" subtitle="">
+      <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton onBackPress={goHome} title={t('scanTitle')} flatContent>
         <View style={styles.photoContainer}>
           <View style={styles.photoScanCard}>
             <Image source={require('../assets/qr-code.png')} style={styles.photoScanIcon} resizeMode="contain" />
@@ -911,9 +942,9 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         navigation={navigation}
         user={user}
         onLogout={onLogout}
-        showBackButton={false} title="Yometel DPP Scan" subtitle=""
+        showBackButton onBackPress={goHome} title={t('scanTitle')} flatContent
       >
-        <ScrollView style={styles.container} contentContainerStyle={styles.containerContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.container}>
           <View style={styles.scanViewport}>
             <View style={styles.webScannerContainer}>
               <WebCodeScanner
@@ -930,8 +961,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
             {renderCameraOverlay()}
             {renderCameraResilienceOverlay()}
           </View>
-          {renderWhiteBoard()}
-        </ScrollView>
+        </View>
       </AppLayout>
     );
   }
@@ -942,7 +972,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         navigation={navigation}
         user={user}
         onLogout={onLogout}
-        showBackButton={false} title="Yometel DPP Scan" subtitle=""
+        showBackButton onBackPress={goHome} title={t('scanTitle')} flatContent
       >
         <View style={styles.stateContainer}>
           <View style={styles.stateCard}>
@@ -963,9 +993,9 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         navigation={navigation}
         user={user}
         onLogout={onLogout}
-        showBackButton={false} title="Yometel DPP Scan" subtitle=""
+        showBackButton onBackPress={goHome} title={t('scanTitle')} flatContent
       >
-        <ScrollView style={styles.container} contentContainerStyle={styles.containerContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.container}>
           <View style={styles.scanViewport}>
             <NativeCodeScanner
               key={cameraKey}
@@ -982,8 +1012,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
             {renderCameraOverlay()}
             {renderCameraResilienceOverlay()}
           </View>
-          {renderWhiteBoard()}
-        </ScrollView>
+        </View>
       </AppLayout>
     );
   }
@@ -994,7 +1023,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
       navigation={navigation}
       user={user}
       onLogout={onLogout}
-      showBackButton={false} title="Yometel DPP Scan" subtitle=""
+      showBackButton onBackPress={goHome} title={t('scanTitle')} flatContent
     >
       <View style={styles.stateContainer}>
         <View style={styles.stateCard}>
@@ -1061,16 +1090,47 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
-  // Torch (bottom-left) / help (bottom-right) overlaid on the camera feed.
+  // Torch (bottom-left) / help (bottom-right) overlaid on the camera feed —
+  // sits just above the Upload / Enter Code pill row.
   overlayCornerRow: {
+    position: 'absolute',
+    left: spacing.lg,
+    right: spacing.lg,
+    bottom: 74,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+  },
+  overlayActionRow: {
     position: 'absolute',
     left: spacing.lg,
     right: spacing.lg,
     bottom: spacing.lg,
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
+    gap: spacing.sm,
   },
+  overlayActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    height: 44,
+    borderRadius: radius.md,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+  },
+  overlayActionText: { color: colors.primary, fontSize: 13, fontWeight: '700' },
+  overlayLoadingPill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    height: 44,
+    borderRadius: radius.md,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  overlayLoadingText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   overlayCornerButton: {
     alignItems: 'center',
   },
@@ -1096,11 +1156,6 @@ const styles = StyleSheet.create({
     position: 'relative',
     backgroundColor: DARK,
     overflow: 'hidden',
-    // Only the bottom corners — rounds to meet whiteBoard's rounded top
-    // corners right below it instead of showing square dark corners poking
-    // out above the board's rounded edge.
-    borderBottomLeftRadius: radius.xl,
-    borderBottomRightRadius: radius.xl,
   },
   webScannerContainer: {
     // Fill the whole viewport so the camera covers it and the frame centres on it.

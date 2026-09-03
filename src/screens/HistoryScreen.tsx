@@ -56,8 +56,11 @@ export default function HistoryScreen({ navigation, user, onLogout }: Props) {
       if (scanRes?.status === 'success' && Array.isArray(scanRes.data)) {
         setScanned(
           scanRes.data
-            .filter((p: any) => p.visitSource !== 'visit')
-            .sort((a: any, b: any) => (b.scannedAt || 0) - (a.scannedAt || 0))
+            // "Scanned" = the user has a real scan (not just a page visit) for
+            // this product. `everScanned` comes from the backend aggregate;
+            // fall back to the old field for older responses.
+            .filter((p: any) => (p.everScanned ?? p.visitSource !== 'visit'))
+            .sort((a: any, b: any) => (b.firstScannedAt || b.scannedAt || 0) - (a.firstScannedAt || a.scannedAt || 0))
             .map((p: any, i: number): Row => ({
               key: `s-${p._id}-${i}`,
               productId: p._id,
@@ -65,7 +68,7 @@ export default function HistoryScreen({ navigation, user, onLogout }: Props) {
               name: p.name || t('homeProduct'),
               sub: p.brandInfo?.name || p.model || '',
               image: fileUrl(Array.isArray(p.images) ? p.images[0] : ''),
-              when: p.scannedAt,
+              when: p.firstScannedAt || p.scannedAt,
               raw: p,
             }))
         );

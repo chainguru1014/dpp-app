@@ -1,47 +1,17 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Text } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useFocusEffect } from '@react-navigation/native';
 import AppLayout from '../components/AppLayout';
+import { ProductRow, SectionCard } from './HomeScreen';
 import { API_BASE_URL } from '../config/api';
 import { useI18n } from '../i18n/I18nContext';
-import { colors, spacing, radius, shadow } from '../theme';
+import { colors, radius, spacing, shadow } from '../theme';
 
 interface Props {
   navigation: any;
   user?: any;
   onLogout?: () => void;
-}
-
-const fileUrl = (filename: string) => {
-  if (!filename) return '';
-  if (/^https?:\/\//i.test(filename)) return filename;
-  return `${API_BASE_URL}files/${String(filename).replace(/^\/+/, '')}`;
-};
-const firstImage = (p: any) => {
-  const imgs = Array.isArray(p?.images) ? p.images : [];
-  return imgs.length ? fileUrl(imgs[0]) : '';
-};
-
-function Row({ product, caption, onPress }: { product: any; caption: string; onPress: () => void }) {
-  const img = firstImage(product);
-  return (
-    <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={onPress}>
-      {img ? (
-        <Image source={{ uri: img }} style={styles.rowImage} resizeMode="cover" />
-      ) : (
-        <View style={[styles.rowImage, styles.rowImagePlaceholder]}>
-          <Icon name="inventory-2" size={20} color={colors.placeholder} />
-        </View>
-      )}
-      <View style={styles.rowBody}>
-        <Text style={styles.rowName} numberOfLines={1}>{product?.name || '—'}</Text>
-        <Text style={styles.rowSub} numberOfLines={1}>{product?.brandInfo?.name || product?.model || ''}</Text>
-        <Text style={styles.rowCaption} numberOfLines={1}>{caption}</Text>
-      </View>
-      <Icon name="chevron-right" size={22} color={colors.muted} />
-    </TouchableOpacity>
-  );
 }
 
 export default function ScannedProductListScreen({ navigation, user, onLogout }: Props) {
@@ -84,41 +54,40 @@ export default function ScannedProductListScreen({ navigation, user, onLogout }:
   const scanCaption = (p: any) => {
     const d = p?.scannedAt ? new Date(p.scannedAt) : null;
     if (!d) return t('scannedLabel');
-    const today = new Date();
-    const sameDay = d.toDateString() === today.toDateString();
+    const sameDay = d.toDateString() === new Date().toDateString();
     return sameDay
       ? `${t('scannedLabel')} • ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
       : `${t('scannedLabel')} • ${d.toLocaleDateString()}`;
   };
 
   return (
-    <AppLayout navigation={navigation} user={user} onLogout={onLogout}>
-      <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
+    <AppLayout navigation={navigation} user={user} onLogout={onLogout} title={t('titleMyProducts')}>
+      <ScrollView style={styles.screen} contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+        <TouchableOpacity style={styles.scanCard} activeOpacity={0.85} onPress={() => navigation.navigate('Scanner')}>
+          <View style={styles.scanIconWrap}>
+            <Icon name="qr-code-scanner" size={22} color={colors.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.scanTitle}>{t('homeScanProduct')}</Text>
+            <Text style={styles.scanSubtitle}>{t('homeScanProductHint')}</Text>
+          </View>
+        </TouchableOpacity>
+
         {loading ? (
           <ActivityIndicator size="large" color={colors.accent} style={{ marginTop: spacing.xxxl }} />
         ) : (
           <>
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>{t('homeMyProducts')}</Text>
-              {owned.length === 0 ? (
-                <Text style={styles.emptyText}>{t('noOwnedProducts')}</Text>
-              ) : (
-                owned.map((p, i) => (
-                  <Row key={`o-${p._id}-${i}`} product={p} caption={t('owned')} onPress={() => openSummary(p, true)} />
-                ))
-              )}
-            </View>
+            <SectionCard title={t('homeMyProducts')} emptyText={t('noOwnedProducts')} hasItems={owned.length > 0}>
+              {owned.map((p, i) => (
+                <ProductRow key={`o-${p._id}-${i}`} product={p} caption={t('owned')} onPress={() => openSummary(p, true)} />
+              ))}
+            </SectionCard>
 
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>{t('homeRecentScans')}</Text>
-              {scans.length === 0 ? (
-                <Text style={styles.emptyText}>{t('noHistoryYet')}</Text>
-              ) : (
-                scans.map((p, i) => (
-                  <Row key={`s-${p._id}-${i}`} product={p} caption={scanCaption(p)} onPress={() => openSummary(p, false)} />
-                ))
-              )}
-            </View>
+            <SectionCard title={t('homeRecentScans')} emptyText={t('noHistoryYet')} hasItems={scans.length > 0}>
+              {scans.map((p, i) => (
+                <ProductRow key={`s-${p._id}-${i}`} product={p} caption={scanCaption(p)} onPress={() => openSummary(p, false)} />
+              ))}
+            </SectionCard>
           </>
         )}
       </ScrollView>
@@ -128,23 +97,27 @@ export default function ScannedProductListScreen({ navigation, user, onLogout }:
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  container: { padding: spacing.lg, paddingBottom: spacing.xxxl },
-  section: {
+  container: { paddingTop: spacing.lg, paddingBottom: spacing.xxxl },
+  scanCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
+    marginHorizontal: spacing.lg,
     padding: spacing.md,
-    marginBottom: spacing.md,
     ...shadow(1),
   },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.primary, marginBottom: spacing.sm },
-  emptyText: { fontSize: 13, color: colors.muted, paddingVertical: spacing.sm },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, gap: spacing.md },
-  rowImage: { width: 48, height: 48, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt },
-  rowImagePlaceholder: { alignItems: 'center', justifyContent: 'center' },
-  rowBody: { flex: 1 },
-  rowName: { fontSize: 14, fontWeight: '600', color: colors.heading },
-  rowSub: { fontSize: 12, color: colors.muted, marginTop: 1 },
-  rowCaption: { fontSize: 11, color: colors.placeholder, marginTop: 2 },
+  scanIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scanTitle: { fontSize: 15, fontWeight: '700', color: colors.primary },
+  scanSubtitle: { fontSize: 12, color: colors.muted, marginTop: 2 },
 });

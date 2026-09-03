@@ -15,13 +15,13 @@ import { Platform, StyleSheet } from 'react-native';
 
 export const colors = {
   // Main brand blue — dark navy, used across all UI (icons, headings, fills).
-  navy: '#1b4f72',
-  primary: '#1b4f72',
-  primaryDark: '#123a56',
-  accent: '#1b4f72',
+  navy: '#2f80c8',
+  primary: '#2f80c8',
+  primaryDark: '#2568a8',
+  accent: '#2f80c8',
 
   // Top bar / header surface (dark navy, gradients to headerLight)
-  header: '#1b4f72',
+  header: '#2f80c8',
   headerLight: '#4a96dd',
 
   // Surfaces
@@ -33,7 +33,7 @@ export const colors = {
   borderStrong: '#d3dbe8',
 
   // Text
-  heading: '#1b4f72',
+  heading: '#2f80c8',
   text: '#33415c',
   textBody: '#33415c',
   muted: '#7a8aa3',

@@ -11,7 +11,6 @@ import {
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useFocusEffect } from '@react-navigation/native';
 import AppLayout from '../components/AppLayout';
-import GradientView from '../components/GradientView';
 import { useI18n } from '../i18n/I18nContext';
 import { API_BASE_URL } from '../config/api';
 import { colors, radius, spacing, shadow } from '../theme';
@@ -40,7 +39,7 @@ const firstImage = (p: any) => {
   return imgs.length ? fileUrl(imgs[0]) : '';
 };
 
-function ProductRow({ product, caption, onPress }: { product: any; caption: string; onPress: () => void }) {
+export function ProductRow({ product, caption, onPress }: { product: any; caption: string; onPress: () => void }) {
   const img = firstImage(product);
   return (
     <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={onPress}>
@@ -58,6 +57,35 @@ function ProductRow({ product, caption, onPress }: { product: any; caption: stri
       </View>
       <Icon name="chevron-right" size={22} color={colors.muted} />
     </TouchableOpacity>
+  );
+}
+
+export function SectionCard({
+  title,
+  onViewAll,
+  emptyText,
+  children,
+  hasItems,
+}: {
+  title: string;
+  onViewAll?: () => void;
+  emptyText: string;
+  children: React.ReactNode;
+  hasItems: boolean;
+}) {
+  const { t } = useI18n();
+  return (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>{title}</Text>
+        {onViewAll && (
+          <TouchableOpacity onPress={onViewAll}>
+            <Text style={styles.viewAll}>{t('viewAll')}</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+      {hasItems ? children : <Text style={styles.emptyText}>{emptyText}</Text>}
+    </View>
   );
 }
 
@@ -105,94 +133,73 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
 
   const scanCaption = (p: any) => {
     const when = p?.scannedAt ? new Date(p.scannedAt) : null;
-    const time = when
-      ? when.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      : '';
+    const time = when ? when.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
     return `${t('scannedLabel')}${time ? ` • ${time}` : ''}`;
   };
 
+  const actions = [
+    { key: 'camera', icon: 'photo-camera', label: t('homeActionCameraScan'), sub: t('homeActionCameraScanSub'), onPress: () => openScanner() },
+    { key: 'upload', icon: 'image', label: t('homeActionUploadImage'), sub: t('homeActionUploadImageSub'), onPress: () => openScanner({ startUpload: true }) },
+    { key: 'enter', icon: 'keyboard', label: t('homeActionEnterCode'), sub: t('homeActionEnterCodeSub'), onPress: () => navigation.navigate('EnterCode') },
+  ];
+
   return (
-    <AppLayout navigation={navigation} user={user} onLogout={onLogout} title=" ">
-      <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
-        <GradientView style={styles.hero}>
-          <View style={styles.greetingBlock}>
-            <Text style={styles.greetingSmall}>{t('homeWelcomeBack')}</Text>
-            <Text style={styles.greetingName}>{displayName(user)}</Text>
-          </View>
-          <TouchableOpacity style={styles.heroCard} activeOpacity={0.85} onPress={() => openScanner()}>
-            <View style={styles.heroIconWrap}>
-              <Icon name="qr-code-scanner" size={26} color={colors.primary} />
+    <AppLayout navigation={navigation} user={user} onLogout={onLogout} title=" " flatContent>
+      <ScrollView style={styles.screen} contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+        <View style={styles.greetingBand}>
+          <Text style={styles.greetingSmall}>{t('homeWelcomeBack')}</Text>
+          <Text style={styles.greetingName}>{displayName(user)}</Text>
+        </View>
+
+        <View style={styles.scanCard}>
+          <TouchableOpacity style={styles.scanHeaderRow} activeOpacity={0.85} onPress={() => openScanner()}>
+            <View style={styles.scanIconWrap}>
+              <Icon name="qr-code-scanner" size={24} color={colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.heroTitle}>{t('homeScanProduct')}</Text>
-              <Text style={styles.heroSubtitle}>{t('homeScanProductHint')}</Text>
+              <Text style={styles.scanTitle}>{t('homeScanProduct')}</Text>
+              <Text style={styles.scanSubtitle}>{t('homeScanProductHint')}</Text>
             </View>
           </TouchableOpacity>
-        </GradientView>
-
-        <View style={styles.body}>
-        <View style={styles.actionRow}>
-          {[
-            { key: 'camera', icon: 'photo-camera', label: t('homeActionCameraScan'), sub: t('homeActionCameraScanSub'), onPress: () => openScanner() },
-            { key: 'upload', icon: 'image', label: t('homeActionUploadImage'), sub: t('homeActionUploadImageSub'), onPress: () => openScanner({ startUpload: true }) },
-            { key: 'enter', icon: 'keyboard', label: t('homeActionEnterCode'), sub: t('homeActionEnterCodeSub'), onPress: () => navigation.navigate('EnterCode') },
-          ].map((a) => (
-            <TouchableOpacity key={a.key} style={styles.actionTile} activeOpacity={0.8} onPress={a.onPress}>
-              <Icon name={a.icon} size={24} color={colors.primary} />
-              <Text style={styles.actionLabel}>{a.label}</Text>
-              <Text style={styles.actionSub} numberOfLines={2}>{a.sub}</Text>
-            </TouchableOpacity>
-          ))}
+          <View style={styles.scanDivider} />
+          <View style={styles.actionRow}>
+            {actions.map((a) => (
+              <TouchableOpacity key={a.key} style={styles.actionTile} activeOpacity={0.8} onPress={a.onPress}>
+                <Icon name={a.icon} size={22} color={colors.primary} />
+                <Text style={styles.actionLabel}>{a.label}</Text>
+                <Text style={styles.actionSub} numberOfLines={2}>{a.sub}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         {loading ? (
           <ActivityIndicator size="large" color={colors.accent} style={{ marginTop: spacing.xl }} />
         ) : (
           <>
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>{t('homeRecentScans')}</Text>
-                <TouchableOpacity onPress={() => navigation.navigate('History')}>
-                  <Text style={styles.viewAll}>{t('viewAll')}</Text>
-                </TouchableOpacity>
-              </View>
-              {recentScans.length === 0 ? (
-                <Text style={styles.emptyText}>{t('noHistoryYet')}</Text>
-              ) : (
-                recentScans.map((p, i) => (
-                  <ProductRow
-                    key={`${p._id}-${i}`}
-                    product={p}
-                    caption={scanCaption(p)}
-                    onPress={() => openProductSummary(p, false)}
-                  />
-                ))
-              )}
-            </View>
+            <SectionCard
+              title={t('homeRecentScans')}
+              onViewAll={() => navigation.navigate('History')}
+              emptyText={t('noHistoryYet')}
+              hasItems={recentScans.length > 0}
+            >
+              {recentScans.map((p, i) => (
+                <ProductRow key={`${p._id}-${i}`} product={p} caption={scanCaption(p)} onPress={() => openProductSummary(p, false)} />
+              ))}
+            </SectionCard>
 
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>{t('homeMyProducts')}</Text>
-                <TouchableOpacity onPress={() => navigation.navigate('ScannedProducts')}>
-                  <Text style={styles.viewAll}>{t('viewAll')}</Text>
-                </TouchableOpacity>
-              </View>
-              {myProducts.length === 0 ? (
-                <Text style={styles.emptyText}>{t('noOwnedProducts')}</Text>
-              ) : (
-                myProducts.map((p, i) => (
-                  <ProductRow
-                    key={`${p._id}-${i}`}
-                    product={p}
-                    caption={t('owned')}
-                    onPress={() => openProductSummary(p, true)}
-                  />
-                ))
-              )}
-            </View>
+            <SectionCard
+              title={t('homeMyProducts')}
+              onViewAll={() => navigation.navigate('ScannedProducts')}
+              emptyText={t('noOwnedProducts')}
+              hasItems={myProducts.length > 0}
+            >
+              {myProducts.map((p, i) => (
+                <ProductRow key={`${p._id}-${i}`} product={p} caption={t('owned')} onPress={() => openProductSummary(p, true)} />
+              ))}
+            </SectionCard>
           </>
         )}
-        </View>
       </ScrollView>
     </AppLayout>
   );
@@ -201,47 +208,44 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   container: { paddingBottom: spacing.xxxl },
-  hero: {
+  greetingBand: {
+    backgroundColor: colors.primary,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.xl,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xxl,
   },
-  body: { padding: spacing.lg },
-  greetingBlock: { marginBottom: spacing.lg },
   greetingSmall: { fontSize: 14, color: 'rgba(255,255,255,0.85)' },
-  greetingName: { fontSize: 26, fontWeight: '700', color: '#fff', marginTop: 2 },
-  heroCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
+  greetingName: { fontSize: 24, fontWeight: '700', color: '#fff', marginTop: 2 },
+  scanCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: spacing.lg,
-    ...shadow(1),
+    marginHorizontal: spacing.lg,
+    marginTop: -spacing.lg,
+    padding: spacing.md,
+    ...shadow(2),
   },
-  heroIconWrap: {
-    width: 46,
-    height: 46,
+  scanHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.xs },
+  scanIconWrap: {
+    width: 42,
+    height: 42,
     borderRadius: radius.md,
     backgroundColor: colors.surfaceAlt,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  heroTitle: { fontSize: 16, fontWeight: '700', color: colors.primary },
-  heroSubtitle: { fontSize: 12, color: colors.muted, marginTop: 2 },
-  actionRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
+  scanTitle: { fontSize: 16, fontWeight: '700', color: colors.primary },
+  scanSubtitle: { fontSize: 12, color: colors.muted, marginTop: 2 },
+  scanDivider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.md },
+  actionRow: { flexDirection: 'row', gap: spacing.sm },
   actionTile: {
     flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.md,
     paddingVertical: spacing.md,
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.xs,
     alignItems: 'center',
-    ...shadow(1),
   },
   actionLabel: { fontSize: 12, fontWeight: '700', color: colors.heading, marginTop: spacing.sm, textAlign: 'center' },
   actionSub: { fontSize: 10, color: colors.muted, marginTop: 2, textAlign: 'center' },
@@ -251,7 +255,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     padding: spacing.md,
-    marginBottom: spacing.md,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
     ...shadow(1),
   },
   sectionHeader: {
@@ -263,12 +268,7 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.primary },
   viewAll: { fontSize: 13, color: colors.accent, fontWeight: '600' },
   emptyText: { fontSize: 13, color: colors.muted, paddingVertical: spacing.sm },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-    gap: spacing.md,
-  },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, gap: spacing.md },
   rowImage: { width: 48, height: 48, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt },
   rowImagePlaceholder: { alignItems: 'center', justifyContent: 'center' },
   rowBody: { flex: 1 },
