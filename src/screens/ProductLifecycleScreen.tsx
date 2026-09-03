@@ -673,7 +673,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
               <Text style={styles.headerMeta} numberOfLines={1}>ID: {productData?.pmc_code || productData?.token_id}</Text>
             )}
             <View style={styles.authCard}>
-              <View style={styles.authCheck}><Icon name="check" size={11} color="#fff" /></View>
+              <View style={styles.authCheck}><Icon name="check" size={12} color={colors.primary} /></View>
               <View>
                 <Text style={styles.authTitle}>{t('overviewAuthenticated')}</Text>
                 <Text style={styles.authSub}>{t('lifecycleVerifiedByBrand')}</Text>
@@ -721,22 +721,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 7,
     alignSelf: 'flex-start',
-    backgroundColor: '#fff',
-    borderRadius: radius.md,
-    paddingHorizontal: 9,
-    paddingVertical: 6,
-    marginTop: 10,
+    marginTop: 12,
   },
   authCheck: {
-    width: 17,
-    height: 17,
+    width: 18,
+    height: 18,
     borderRadius: 9,
-    backgroundColor: colors.primary,
+    backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  authTitle: { fontSize: 12, fontWeight: '700', color: colors.heading },
-  authSub: { fontSize: 10, color: colors.muted, marginTop: 1 },
+  authTitle: { fontSize: 13, fontWeight: '700', color: '#fff' },
+  authSub: { fontSize: 10, color: 'rgba(255,255,255,0.85)', marginTop: 1 },
   sheet: {
     flex: 1,
     backgroundColor: colors.bg,
