@@ -1613,6 +1613,8 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
               </TouchableOpacity>
             </View>
 
+            {/* Bottom-anchored action group — pushed to the foot of the content layer. */}
+            <View style={styles.ovBottomGroup}>
             {/* Like / Dislike / Share — icon only, one row. */}
             <View style={styles.ovIconRow}>
               <TouchableOpacity
@@ -1676,6 +1678,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
                 </TouchableOpacity>
               </View>
             )}
+            </View>
           </>
         )}
       </ScrollView>
@@ -2141,9 +2144,9 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     ...shadow(1),
   },
-  ovHeaderRow: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' },
+  ovHeaderRow: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' },
   ovHeaderMedia: { width: 132 },
-  ovHeaderInfo: { flex: 1, paddingTop: 2 },
+  ovHeaderInfo: { flex: 1 },
   ovName: { fontSize: 16, fontWeight: '700', color: colors.heading },
   ovModel: { fontSize: 12, color: colors.muted, marginTop: 2 },
   ovId: { fontSize: 11, color: colors.placeholder, marginTop: 2 },
@@ -2202,6 +2205,9 @@ const styles = StyleSheet.create({
     paddingTop: 4,
   },
   ovViewLcText: { fontSize: 12, fontWeight: '600', color: colors.accent },
+  // Anchored to the foot of the scroll content (contentContainer has flexGrow:1),
+  // so the Like/Share + CTA rows sit at the bottom of the content layer.
+  ovBottomGroup: { marginTop: 'auto', paddingTop: spacing.lg, paddingBottom: spacing.sm },
   ovIconRow: { flexDirection: 'row', gap: spacing.sm, marginHorizontal: spacing.lg, marginTop: spacing.sm },
   ovIconBtn: {
     flex: 1,
