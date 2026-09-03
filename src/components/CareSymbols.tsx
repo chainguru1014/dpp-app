@@ -3,7 +3,7 @@ import { View, StyleSheet } from 'react-native';
 import Svg, { Path, Circle, Rect, Text as SvgText } from 'react-native-svg';
 
 const size = 48;
-const stroke = 1.7;
+const stroke = 1.3;
 
 // Brand-aligned colours: blue accent when picked, soft slate otherwise.
 const ACTIVE = '#2f80c8';
@@ -47,7 +47,7 @@ function WashIcon({ temp, selected, colorOverride }: WashIconProps) {
         textAnchor="middle"
         fontSize="9"
         fill={color}
-        fontWeight="bold"
+        fontWeight="normal"
       >
         {temp}
       </SvgText>
@@ -72,7 +72,7 @@ function DryCleanIcon({ letter, selected, colorOverride }: DryCleanIconProps) {
         textAnchor="middle"
         fontSize="13"
         fill={color}
-        fontWeight="bold"
+        fontWeight="normal"
       >
         {letter}
       </SvgText>

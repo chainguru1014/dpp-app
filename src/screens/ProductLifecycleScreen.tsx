@@ -455,6 +455,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
             {careIcons.map((id, i) => (
               <View key={`${id}-${i}`} style={styles.careItem}>
                 <CareSymbol iconId={id} bare color="#000" />
+                <Text style={styles.careLabel} numberOfLines={2}>{getCareSymbolLabel(id)}</Text>
               </View>
             ))}
           </View>
@@ -786,7 +787,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  jLine: { flex: 1, width: 2, backgroundColor: colors.border, marginVertical: 6, minHeight: 24 },
+  jLine: { flex: 1, width: 3, backgroundColor: colors.primary, marginVertical: 6, minHeight: 24, borderRadius: 2 },
   jBody: { flex: 1, paddingBottom: spacing.xxl },
   jTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   jTitle: { fontSize: 16, fontWeight: '700', color: '#000' },
@@ -806,9 +807,9 @@ const styles = StyleSheet.create({
   expandSub: { fontSize: 11, color: colors.muted, marginTop: 1 },
   expandBody: { marginTop: spacing.sm, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border },
   // care
-  careRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.lg, justifyContent: 'flex-start', alignItems: 'center' },
-  careItem: { alignItems: 'flex-start', justifyContent: 'center' },
-  careLabel: { fontSize: 9, color: colors.muted, textAlign: 'center', marginTop: 4 },
+  careRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, justifyContent: 'flex-start', alignItems: 'flex-start' },
+  careItem: { width: 62, alignItems: 'center', justifyContent: 'flex-start' },
+  careLabel: { fontSize: 10, color: colors.text, textAlign: 'center', marginTop: 4 },
   tipRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, paddingVertical: 5 },
   tipText: { flex: 1, fontSize: 13, color: colors.text, lineHeight: 18 },
   // materials
