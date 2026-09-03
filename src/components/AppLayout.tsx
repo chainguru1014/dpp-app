@@ -261,7 +261,7 @@ export default function AppLayout({
 
   // Trimmed list for the consumer "More" action sheet (screenshot #24, no Support).
   const consumerActionItems = actionMenuItems.filter((i) =>
-    ['saveProductInfo', 'copyProductInfo', 'sendProductInfo', 'toggleAlbum', 'connectBrand'].includes(i.key)
+    ['saveProductInfo', 'copyProductInfo', 'sendProductInfo', 'toggleAlbum', 'connectBrand', 'toggleFollowBrand'].includes(i.key)
   );
 
   const extraMenuItems = [

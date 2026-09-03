@@ -185,12 +185,13 @@ export default function BrandDetailScreen({ navigation, route, user, onLogout }:
 
         <View style={styles.statRow}>
           {[
-            { value: String(products.length), label: t('brandStatProducts') },
-            { value: '—', label: t('brandStatRating') },
-            { value: String(stats.followerCount), label: t('brandStatCustomers') },
-            { value: String(stats.countryCount), label: t('brandStatCountries') },
+            { icon: 'inventory-2', value: String(products.length), label: t('brandStatProducts') },
+            { icon: 'star-border', value: '—', label: t('brandStatRating') },
+            { icon: 'group', value: String(stats.followerCount), label: t('brandStatCustomers') },
+            { icon: 'public', value: String(stats.countryCount), label: t('brandStatCountries') },
           ].map((s) => (
             <View key={s.label} style={styles.statTile}>
+              <Icon name={s.icon} size={16} color={colors.primary} />
               <Text style={styles.statValue}>{s.value}</Text>
               <Text style={styles.statLabel}>{s.label}</Text>
             </View>
@@ -325,7 +326,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     alignItems: 'center',
   },
-  statValue: { fontSize: 16, fontWeight: '700', color: colors.primary },
+  statValue: { fontSize: 16, fontWeight: '700', color: colors.primary, marginTop: 3 },
   statLabel: { fontSize: 9, color: colors.muted, marginTop: 2, textAlign: 'center' },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginHorizontal: spacing.lg, marginBottom: spacing.sm },
   sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.primary },
@@ -386,7 +387,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginTop: spacing.md,
   },
-  brandMiniLogo: { width: 40, height: 24 },
+  brandMiniLogo: { width: 56, height: 40 },
   brandMiniName: { fontSize: 13, fontWeight: '700', color: colors.heading },
   brandMiniDetail: { fontSize: 11, color: colors.muted },
   sheetSend: { marginTop: spacing.lg, backgroundColor: colors.accent, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center' },

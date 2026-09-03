@@ -165,8 +165,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     ...shadow(1),
   },
-  cardLogo: { width: 60, height: 24, marginBottom: spacing.sm },
-  cardLogoPlaceholder: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  cardLogo: { width: 96, height: 40, marginBottom: spacing.sm, alignSelf: 'flex-start' },
+  cardLogoPlaceholder: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
   followingPill: {
     alignSelf: 'flex-start',
     backgroundColor: colors.primary,

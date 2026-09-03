@@ -115,14 +115,14 @@ export default function ProductHistoryScreen({ navigation, route, user, onLogout
                   return (
                     <View key={e._id} style={styles.row}>
                       <View style={styles.railCol}>
+                        {!last && <View style={styles.rail} />}
                         <View style={[styles.iconBubble, { backgroundColor: isScan ? '#e7f0fb' : '#e6f4ea' }]}>
                           <Icon
                             name={isScan ? 'qr-code-scanner' : 'place'}
-                            size={15}
+                            size={22}
                             color={isScan ? colors.primary : colors.success}
                           />
                         </View>
-                        {!last && <View style={styles.rail} />}
                       </View>
                       <View style={styles.info}>
                         <Text style={styles.eventTitle}>
@@ -160,9 +160,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.md,
   },
-  railCol: { alignItems: 'center', width: 32 },
-  rail: { flex: 1, width: 2, backgroundColor: colors.border, marginVertical: 2, minHeight: 14 },
-  iconBubble: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  railCol: { alignItems: 'center', justifyContent: 'center', width: 44, position: 'relative' },
+  rail: { position: 'absolute', top: 0, bottom: -8, width: 2, backgroundColor: colors.border },
+  iconBubble: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   info: {
     flex: 1,
     backgroundColor: colors.surface,

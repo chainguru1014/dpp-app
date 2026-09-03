@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Image, Platform, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import Clipboard from '@react-native-clipboard/clipboard';
 import AppLayout from '../components/AppLayout';
 import { CareSymbol, getCareSymbolLabel } from '../components/CareSymbols';
 import { useI18n } from '../i18n/I18nContext';
@@ -55,24 +56,16 @@ function Bar({ label, percent }: { label: string; percent: number }) {
   );
 }
 
-function KV({ label, value, icon }: { label: string; value: string; icon?: string }) {
+function Row({ label, value, icon, chevron }: { label: string; value: string; icon?: string; chevron?: boolean }) {
   if (!value) return null;
   return (
-    <View style={styles.kvRow}>
-      <View style={styles.kvLabelWrap}>
-        {!!icon && <Icon name={icon} size={14} color={colors.muted} style={{ marginRight: 6 }} />}
-        <Text style={styles.kvLabel}>{label}</Text>
-      </View>
-      <Text style={styles.kvValue}>{value}</Text>
-    </View>
-  );
-}
-
-function InfoBox({ children }: { children: React.ReactNode }) {
-  return (
-    <View style={styles.infoBox}>
-      <Icon name="info-outline" size={16} color={colors.primary} style={{ marginTop: 1 }} />
-      <Text style={styles.infoText}>{children}</Text>
+    <View style={styles.itemRow}>
+      {!!icon && (
+        <View style={styles.itemIcon}><Icon name={icon} size={16} color={colors.primary} /></View>
+      )}
+      <Text style={styles.itemLabel}>{label}</Text>
+      <Text style={styles.itemValue} numberOfLines={1}>{value}</Text>
+      {chevron && <Icon name="chevron-right" size={16} color={colors.muted} />}
     </View>
   );
 }
@@ -81,12 +74,14 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
   const { t } = useI18n();
   const [productData, setProductData] = useState<any>(route?.params?.productData || {});
   const [tab, setTab] = useState<TabKey>('journey');
-  const [openStage, setOpenStage] = useState<string | null>(null);
+  const [openStage, setOpenStage] = useState<string | null>('transportation');
   const [openRow, setOpenRow] = useState<string | null>(null);
   const [isInAlbum, setIsInAlbum] = useState(false);
+  const [isBrandFollowed, setIsBrandFollowed] = useState(false);
 
   const productId = route?.params?.productId ?? productData?._id;
   const qrcodeId = route?.params?.qrcodeId ?? productData?.token_id;
+  const brandWebsite = String(productData?.brandInfo?.websiteUrl || '').trim();
 
   useEffect(() => {
     if (productData?._id || productId == null || qrcodeId == null) return;
@@ -111,7 +106,13 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
       .then((r) => r.json())
       .then((j) => setIsInAlbum(!!j?.added))
       .catch(() => {});
-  }, [user?._id, productData?._id, productData?.token_id]);
+    if (brandWebsite) {
+      fetch(`${API_BASE_URL}engagement/follow/status?user_id=${encodeURIComponent(String(user._id))}&brandWebsiteUrl=${encodeURIComponent(brandWebsite)}`)
+        .then((r) => r.json())
+        .then((j) => setIsBrandFollowed(!!j?.following))
+        .catch(() => {});
+    }
+  }, [user?._id, productData?._id, productData?.token_id, brandWebsite]);
 
   const toggleFavorite = async () => {
     if (!user?._id || !productData?._id) return;
@@ -138,6 +139,75 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
     }
   };
 
+  const brandInfoText = () => {
+    const b = productData?.brandInfo || {};
+    return [
+      `Product: ${productData?.name || '-'}`,
+      productData?.model ? `Model: ${productData.model}` : '',
+      productData?.pmc_code ? `ID: ${productData.pmc_code}` : '',
+      b.name ? `Brand: ${b.name}` : '',
+      b.websiteUrl ? `Website: ${b.websiteUrl}` : '',
+    ].filter(Boolean).join('\n');
+  };
+
+  const openUrl = (url?: string) => {
+    if (!url) return;
+    const safe = /^https?:\/\//i.test(url) ? url : `https://${url}`;
+    if (Platform.OS === 'web') (globalThis as any)?.open?.(safe, '_blank', 'noopener,noreferrer');
+    else Linking.openURL(safe).catch(() => {});
+  };
+
+  // "More" bottom-sheet actions — mirrors ResultScreen so the sheet works here too.
+  const onActionMenuPress = async (key: string) => {
+    switch (key) {
+      case 'saveProductInfo':
+      case 'copyProductInfo':
+        try {
+          const text = brandInfoText();
+          if (Platform.OS === 'web' && (globalThis as any)?.navigator?.clipboard) {
+            await (globalThis as any).navigator.clipboard.writeText(text);
+          } else {
+            Clipboard.setString(text);
+          }
+          Alert.alert(t('success'), t('copyProductInfo'));
+        } catch (e) { /* ignore */ }
+        break;
+      case 'sendProductInfo':
+        navigation.navigate('SendProductInfo', { product: productData, infoText: brandInfoText() });
+        break;
+      case 'toggleAlbum':
+        toggleFavorite();
+        break;
+      case 'connectBrand':
+        openUrl(brandWebsite);
+        break;
+      case 'toggleFollowBrand': {
+        if (!user?._id || !brandWebsite) return;
+        const b = productData?.brandInfo || {};
+        const next = !isBrandFollowed;
+        setIsBrandFollowed(next);
+        try {
+          await fetch(`${API_BASE_URL}engagement/follow`, {
+            method: next ? 'POST' : 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_id: user._id,
+              brandWebsiteUrl: brandWebsite,
+              brandName: b.name || '',
+              brandDetail: b.detail || '',
+              brandLogoUrl: b.logoUrl || '',
+            }),
+          });
+        } catch (e) {
+          setIsBrandFollowed(!next);
+        }
+        break;
+      }
+      default:
+        break;
+    }
+  };
+
   const facts = productData?.detailFacts || {};
   const maintenance = productData?.maintenance || {};
   const careIcons = toStrArray(maintenance.iconIds);
@@ -157,7 +227,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
 
   const disposeLinks = useMemo(
     () => [
-      { key: 'reuse', icon: 'autorenew', labelKey: 'lifecycleReuse', subKey: 'lifecycleReuseSub', url: disposal.reuseUrl },
+      { key: 'reuse', icon: 'volunteer-activism', labelKey: 'lifecycleReuse', subKey: 'lifecycleReuseSub', url: disposal.reuseUrl },
       { key: 'repair', icon: 'build', labelKey: 'lifecycleRepair', subKey: 'lifecycleRepairSub', url: disposal.repairUrl },
       { key: 'rental', icon: 'storefront', labelKey: 'lifecycleRentResell', subKey: 'lifecycleRentResellSub', url: disposal.rentalUrl },
       { key: 'dispose', icon: 'delete-outline', labelKey: 'lifecycleDisposeResponsibly', subKey: 'lifecycleDisposeResponsiblySub', url: disposal.disposeUrl },
@@ -165,54 +235,39 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
     [disposal.reuseUrl, disposal.repairUrl, disposal.rentalUrl, disposal.disposeUrl]
   );
 
-  const openUrl = (url?: string) => {
-    if (!url) return;
-    const safe = /^https?:\/\//i.test(url) ? url : `https://${url}`;
-    Linking.openURL(safe).catch(() => {});
-  };
-
   // ---- tab bodies ----
 
   const renderJourney = () => (
-    <View>
+    <View style={{ paddingTop: spacing.lg }}>
       {JOURNEY_STAGES.map((s, i) => {
         const open = openStage === s.key;
         return (
-          <View key={s.key} style={styles.journeyItem}>
-            <View style={styles.journeyLineCol}>
-              <View style={styles.journeyDot}>
-                <Icon name={s.icon} size={15} color="#fff" />
-              </View>
-              {i < JOURNEY_STAGES.length - 1 && <View style={styles.journeyLine} />}
+          <View key={s.key} style={styles.jItem}>
+            <View style={styles.jRail}>
+              <View style={styles.jDot}><Icon name={s.icon} size={20} color="#fff" /></View>
+              {i < JOURNEY_STAGES.length - 1 && <View style={styles.jLine} />}
             </View>
-            <TouchableOpacity
-              style={styles.journeyBody}
-              activeOpacity={0.7}
-              onPress={() => setOpenStage(open ? null : s.key)}
-            >
-              <View style={styles.journeyHeadRow}>
-                <Text style={styles.journeyTitle}>{t(s.labelKey as any)}</Text>
-                <Icon name={open ? 'expand-less' : 'expand-more'} size={20} color={colors.muted} />
-              </View>
-              <Text style={styles.journeyDesc}>{t(s.descKey as any)}</Text>
+            <TouchableOpacity style={styles.jBody} activeOpacity={0.7} onPress={() => setOpenStage(open ? null : s.key)}>
+              <Text style={styles.jTitle}>{t(s.labelKey as any)}</Text>
+              <Text style={styles.jDesc}>{t(s.descKey as any)}</Text>
               {open && s.key === 'transportation' && (
-                <View style={styles.journeyDetail}>
-                  <KV label={t('lifecycleShippingDistance')} value={esg.distance || ''} />
-                  <KV label={t('lifecycleRoute')} value={[routeInfo.origin, routeInfo.destination].filter(Boolean).join(' → ')} />
-                  <KV label={t('lifecycleTransportMode')} value={routeInfo.mode || ''} />
-                  <KV label={t('lifecycleEstEmissions')} value={routeInfo.emissions || esg.co2Transportation || ''} />
+                <View style={styles.jDetail}>
+                  <Row label={t('lifecycleShippingDistance')} value={esg.distance || ''} />
+                  <Row label={t('lifecycleRoute')} value={[routeInfo.origin, routeInfo.destination].filter(Boolean).join(' → ')} />
+                  <Row label={t('lifecycleTransportMode')} value={routeInfo.mode || ''} />
+                  <Row label={t('lifecycleEstEmissions')} value={routeInfo.emissions || esg.co2Transportation || ''} />
                 </View>
               )}
               {open && s.key === 'materials' && !!originCountries.length && (
-                <View style={styles.journeyDetail}>
-                  <KV label={t('lifecycleMaterialOrigins')} value={originCountries.join(', ')} />
+                <View style={styles.jDetail}>
+                  <Row label={t('lifecycleMaterialOrigins')} value={originCountries.join(', ')} />
                 </View>
               )}
               {open && s.key === 'endOfLife' && disposeLinks.some((l) => l.url) && (
-                <View style={styles.journeyDetail}>
+                <View style={styles.jDetail}>
                   {disposeLinks.filter((l) => l.url).map((l) => (
                     <TouchableOpacity key={l.key} onPress={() => openUrl(l.url)}>
-                      <Text style={styles.journeyLink}>{t(l.labelKey as any)}</Text>
+                      <Text style={styles.jLink}>{t(l.labelKey as any)}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -221,15 +276,22 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
           </View>
         );
       })}
-      <InfoBox>{t('lifecycleJourneyHint')}</InfoBox>
+      <View style={styles.hintCard}>
+        <Icon name="info-outline" size={18} color={colors.primary} />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.hintTitle}>{t('lifecycleJourneyHintTitle')}</Text>
+          <Text style={styles.hintBody}>{t('lifecycleJourneyHint')}</Text>
+        </View>
+      </View>
     </View>
   );
 
-  const expandRow = (key: string, title: string, sub: string, body: React.ReactNode) => {
+  const expandRow = (key: string, title: string, sub: string, icon: string, body: React.ReactNode) => {
     const open = openRow === key;
     return (
       <View style={styles.card}>
         <TouchableOpacity style={styles.expandHead} activeOpacity={0.7} onPress={() => setOpenRow(open ? null : key)}>
+          <View style={styles.expandIcon}><Icon name={icon} size={16} color={colors.primary} /></View>
           <View style={{ flex: 1 }}>
             <Text style={styles.expandTitle}>{title}</Text>
             {!!sub && <Text style={styles.expandSub}>{sub}</Text>}
@@ -243,42 +305,42 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
 
   const renderDetails = () => (
     <View>
-      <InfoBox>{t('lifecycleDetailsHint')}</InfoBox>
+      <View style={styles.hintCard}>
+        <Icon name="info-outline" size={18} color={colors.primary} />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.hintTitle}>{t('lifecycleDetailsHintTitle')}</Text>
+          <Text style={styles.hintBody}>{t('lifecycleDetailsHint')}</Text>
+        </View>
+      </View>
       <View style={styles.card}>
         <Text style={styles.cardTitle}>{t('lifecycleProductFacts')}</Text>
-        <KV icon="category" label={t('factProductType')} value={productData?.productType || ''} />
-        <KV icon="business" label={t('summaryBrand')} value={productData?.brandInfo?.name || ''} />
-        <KV icon="tag" label={t('model')} value={productData?.model || ''} />
-        <KV icon="palette" label={t('factColor')} value={productData?.color || ''} />
-        <KV icon="straighten" label={t('factSize')} value={productData?.size || ''} />
-        <KV icon="public" label={t('lifecycleCountryOfManufacture')} value={originCountry} />
-        <KV icon="event" label={t('factManufactureDate')} value={productData?.manufactureDate || ''} />
-        <KV icon="spa" label={t('summaryMaterial')} value={facts.material || ''} />
-        <KV icon="checkroom" label={t('lifecycleFit')} value={facts.fit || ''} />
-        <KV icon="water-drop" label={t('lifecycleWash')} value={facts.wash || ''} />
-        <KV icon="shield" label={t('lifecycleDurability')} value={facts.durability || ''} />
+        <Row icon="category" label={t('factProductType')} value={productData?.productType || ''} />
+        <Row icon="business" label={t('summaryBrand')} value={productData?.brandInfo?.name || ''} />
+        <Row icon="sell" label={t('model')} value={productData?.model || ''} />
+        <Row icon="palette" label={t('factColor')} value={productData?.color || ''} />
+        <Row icon="straighten" label={t('factSize')} value={productData?.size || ''} />
+        <Row icon="public" label={t('lifecycleCountryOfManufacture')} value={originCountry} />
+        <Row icon="event" label={t('factManufactureDate')} value={productData?.manufactureDate || ''} />
+        <Row icon="spa" label={t('summaryMaterial')} value={facts.material || ''} />
       </View>
-      {!!String(facts.traceableIdentity || productData?._id || '').trim() &&
-        expandRow('about', t('lifecycleAboutProduct'), t('lifecycleAboutProductSub'),
-          <Text style={styles.paragraph}>{facts.traceableIdentity || t('lifecycleAboutProductFallback')}</Text>)}
-      {certifications.length > 0 &&
-        expandRow('certs', t('lifecycleCertifications'), t('lifecycleCertificationsSub'),
+      {expandRow('about', t('lifecycleAboutProduct'), t('lifecycleAboutProductSub'), 'verified-user',
+        <Text style={styles.paragraph}>{facts.traceableIdentity || t('lifecycleAboutProductFallback')}</Text>)}
+      {expandRow('certs', t('lifecycleCertifications'), t('lifecycleCertificationsSub'), 'workspace-premium',
+        certifications.length ? (
           <View style={styles.chipWrap}>
             {certifications.map((c, i) => (
-              <View key={i} style={styles.chip}>
-                <Icon name="verified" size={13} color={colors.primary} />
-                <Text style={styles.chipText}>{c}</Text>
-              </View>
+              <View key={i} style={styles.chip}><Icon name="verified" size={13} color={colors.primary} /><Text style={styles.chipText}>{c}</Text></View>
             ))}
-          </View>)}
+          </View>
+        ) : <Text style={styles.paragraph}>{t('lifecycleNoData')}</Text>)}
     </View>
   );
 
   const renderCare = () => (
     <View>
-      {careIcons.length > 0 && (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>{t('lifecycleCareSymbols')}</Text>
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>{t('lifecycleCareSymbols')}</Text>
+        {careIcons.length > 0 ? (
           <View style={styles.careRow}>
             {careIcons.map((id, i) => (
               <View key={`${id}-${i}`} style={styles.careItem}>
@@ -287,47 +349,55 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
               </View>
             ))}
           </View>
+        ) : <Text style={styles.emptyText}>{t('lifecycleNoData')}</Text>}
+      </View>
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>{t('lifecycleCareTips')}</Text>
+        {careTips.length > 0 ? careTips.map((tip, i) => (
+          <View key={i} style={styles.tipRow}>
+            <Icon name="check-circle" size={16} color={colors.primary} />
+            <Text style={styles.tipText}>{tip}</Text>
+          </View>
+        )) : <Text style={styles.emptyText}>{maintenance.description || t('lifecycleNoData')}</Text>}
+        {!!maintenance.description && careTips.length > 0 && <Text style={styles.paragraph}>{maintenance.description}</Text>}
+      </View>
+      <View style={styles.leafCard}>
+        <View style={styles.leafIcon}><Icon name="eco" size={18} color={colors.success} /></View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.leafTitle}>{t('lifecycleCareHelpTitle')}</Text>
+          <Text style={styles.leafBody}>{t('lifecycleCareHint')}</Text>
+          <Text style={styles.leafLink}>{t('lifecycleLearnCare')}</Text>
         </View>
-      )}
-      {(careTips.length > 0 || !!maintenance.description) && (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>{t('lifecycleCareTips')}</Text>
-          {careTips.map((tip, i) => (
-            <View key={i} style={styles.tipRow}>
-              <Icon name="check-circle" size={16} color={colors.primary} />
-              <Text style={styles.tipText}>{tip}</Text>
-            </View>
-          ))}
-          {!!maintenance.description && <Text style={styles.paragraph}>{maintenance.description}</Text>}
-        </View>
-      )}
-      <InfoBox>{t('lifecycleCareHint')}</InfoBox>
-      {careIcons.length === 0 && careTips.length === 0 && !maintenance.description && (
-        <Text style={styles.emptyText}>{t('lifecycleNoData')}</Text>
-      )}
+        <Icon name="chevron-right" size={16} color={colors.muted} />
+      </View>
     </View>
   );
 
   const renderMaterials = () => (
     <View>
-      {materials.length > 0 && (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>{t('lifecycleComposition')}</Text>
-          {materials.map((m: any, i: number) => (
-            <Bar key={i} label={m.material || '—'} percent={Number(m.percent) || 0} />
-          ))}
-        </View>
-      )}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>{t('lifecycleComposition')}</Text>
+        {materials.length > 0 ? materials.map((m: any, i: number) => (
+          <Bar key={i} label={m.material || '—'} percent={Number(m.percent) || 0} />
+        )) : <Text style={styles.emptyText}>{t('lifecycleNoData')}</Text>}
+      </View>
       {materialOrigins.length > 0 && (
         <View style={styles.card}>
           <Text style={styles.cardTitle}>{t('lifecycleMaterialOrigins')}</Text>
           {materialOrigins.map((o: any, i: number) => (
             <View key={i} style={styles.originRow}>
-              <Icon name="place" size={16} color={colors.primary} />
+              <View style={styles.originIcon}>
+                {o.icon ? (
+                  <Image source={{ uri: fileUrl(o.icon) }} style={styles.originImg} resizeMode="contain" />
+                ) : (
+                  <Icon name="recycling" size={16} color={colors.primary} />
+                )}
+              </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.originName}>{o.material || '—'}</Text>
                 <Text style={styles.originSub}>{[o.country || o.origin, o.companyName].filter(Boolean).join(' · ') || '—'}</Text>
               </View>
+              <Icon name="chevron-right" size={16} color={colors.muted} />
             </View>
           ))}
         </View>
@@ -335,20 +405,24 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
       {certifications.length > 0 && (
         <View style={styles.card}>
           <Text style={styles.cardTitle}>{t('lifecycleCertifications')}</Text>
-          <View style={styles.chipWrap}>
+          <View style={styles.certRow}>
             {certifications.map((c, i) => (
               <View key={i} style={styles.certBadge}>
-                <Icon name="verified" size={14} color={colors.primary} />
-                <Text style={styles.certBadgeText}>{c}</Text>
+                <Icon name="verified" size={16} color={colors.primary} />
+                <Text style={styles.certBadgeText} numberOfLines={2}>{c}</Text>
               </View>
             ))}
           </View>
         </View>
       )}
-      <InfoBox>{t('lifecycleResponsibleSourcing')}</InfoBox>
-      {materials.length === 0 && materialOrigins.length === 0 && certifications.length === 0 && (
-        <Text style={styles.emptyText}>{t('lifecycleNoData')}</Text>
-      )}
+      <View style={styles.leafCard}>
+        <View style={styles.leafIcon}><Icon name="eco" size={18} color={colors.success} /></View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.leafTitle}>{t('lifecycleResponsibleSourcingTitle')}</Text>
+          <Text style={styles.leafBody}>{t('lifecycleResponsibleSourcing')}</Text>
+        </View>
+        <Icon name="chevron-right" size={16} color={colors.muted} />
+      </View>
     </View>
   );
 
@@ -357,13 +431,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
       <View style={styles.card}>
         <Text style={styles.cardTitle}>{t('lifecycleExtendLife')}</Text>
         {disposeLinks.map((l) => (
-          <TouchableOpacity
-            key={l.key}
-            style={styles.disposeRow}
-            onPress={() => openUrl(l.url)}
-            activeOpacity={l.url ? 0.7 : 1}
-            disabled={!l.url}
-          >
+          <TouchableOpacity key={l.key} style={styles.disposeRow} onPress={() => openUrl(l.url)} activeOpacity={l.url ? 0.7 : 1} disabled={!l.url}>
             <View style={styles.disposeIcon}><Icon name={l.icon} size={18} color={colors.primary} /></View>
             <View style={{ flex: 1 }}>
               <Text style={styles.disposeTitle}>{t(l.labelKey as any)}</Text>
@@ -393,7 +461,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
             ) : null}
             {impact.energySaved ? (
               <View style={styles.tile}>
-                <Icon name="bolt" size={16} color={colors.warning} />
+                <Icon name="bolt" size={16} color={colors.success} />
                 <Text style={styles.tileValue}>{impact.energySaved}</Text>
                 <Text style={styles.tileLabel}>{t('lifecycleEnergySaved')}</Text>
               </View>
@@ -401,24 +469,39 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
           </View>
         </View>
       )}
-      <InfoBox>{t('lifecycleDisposeHelp')}</InfoBox>
+      <View style={styles.leafCard}>
+        <View style={styles.leafIcon}><Icon name="help-outline" size={18} color={colors.primary} /></View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.leafTitle}>{t('lifecycleNeedHelpTitle')}</Text>
+          <Text style={styles.leafBody}>{t('lifecycleDisposeHelp')}</Text>
+        </View>
+        <Icon name="chevron-right" size={16} color={colors.muted} />
+      </View>
     </View>
   );
 
   const renderTraceability = () => (
     <View>
       <View style={styles.card}>
-        <KV icon="place" label={t('lifecycleCountryOfOrigin')} value={originCountry} />
-        <KV icon="hub" label={t('lifecycleMaterialOrigins')} value={originCountries.length ? `${originCountries.length} ${t('lifecycleCountries')}` : ''} />
-        <KV icon="local-shipping" label={t('lifecycleShippingRoute')} value={[routeInfo.origin, routeInfo.destination].filter(Boolean).join(' → ') || routeInfo.mode || ''} />
-        <KV icon="route" label={t('lifecycleDistanceTraveled')} value={esg.distance || ''} />
+        <Row icon="place" label={t('lifecycleCountryOfOrigin')} value={originCountry} chevron />
+        <Row icon="hub" label={t('lifecycleMaterialOrigins')} value={originCountries.length ? `${originCountries.length} ${t('lifecycleCountries')}` : ''} chevron />
+        <Row icon="local-shipping" label={t('lifecycleShippingRoute')} value={[routeInfo.origin, routeInfo.destination].filter(Boolean).join(' → ') || routeInfo.mode || t('lifecycleViewJourney')} chevron />
+        <Row icon="route" label={t('lifecycleDistanceTraveled')} value={esg.distance || ''} />
       </View>
       <View style={styles.card}>
         <Text style={styles.cardTitle}>{t('lifecycleEnvImpact')}</Text>
-        <KV icon="cloud" label={t('co2Production')} value={esg.co2Production || ''} />
-        <KV icon="local-shipping" label={t('co2Transportation')} value={routeInfo.emissions || esg.co2Transportation || ''} />
+        <Row icon="cloud" label={t('co2Production')} value={esg.co2Production || ''} />
+        <Row icon="local-shipping" label={t('co2Transportation')} value={routeInfo.emissions || esg.co2Transportation || ''} />
       </View>
-      <InfoBox>{t('lifecycleVerifiedData')}</InfoBox>
+      <View style={styles.leafCard}>
+        <View style={styles.leafIcon}><Icon name="verified-user" size={18} color={colors.primary} /></View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.leafTitle}>{t('lifecycleVerifiedDataTitle')}</Text>
+          <Text style={styles.leafBody}>{t('lifecycleVerifiedData')}</Text>
+          <Text style={styles.leafLink}>{t('lifecycleLearnMore')}</Text>
+        </View>
+        <Icon name="chevron-right" size={16} color={colors.muted} />
+      </View>
     </View>
   );
 
@@ -450,15 +533,19 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
       isFavorite={isInAlbum}
       onToggleFavorite={toggleFavorite}
       product={productData}
+      isProductDetailPage
+      isInAlbum={isInAlbum}
+      isBrandFollowed={isBrandFollowed}
+      onActionMenuPress={onActionMenuPress}
     >
       <View style={styles.screen}>
-        {/* Blue header — product thumbnail + name / model / id / authenticated. */}
+        {/* Blue header — bigger product image + name / model / id + Authenticated card. */}
         <View style={styles.header}>
           {thumb ? (
             <Image source={{ uri: thumb }} style={styles.headerThumb} resizeMode="cover" />
           ) : (
             <View style={[styles.headerThumb, styles.headerThumbPlaceholder]}>
-              <Icon name="inventory-2" size={22} color="rgba(255,255,255,0.6)" />
+              <Icon name="inventory-2" size={26} color="rgba(255,255,255,0.6)" />
             </View>
           )}
           <View style={{ flex: 1 }}>
@@ -467,27 +554,26 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
             {(productData?.pmc_code || productData?.token_id != null) && (
               <Text style={styles.headerMeta} numberOfLines={1}>ID: {productData?.pmc_code || productData?.token_id}</Text>
             )}
-            <View style={styles.headerBadge}>
-              <Icon name="verified" size={13} color="#fff" />
-              <Text style={styles.headerBadgeText}>{t('overviewAuthenticated')}</Text>
+            <View style={styles.authCard}>
+              <View style={styles.authCheck}><Icon name="check" size={11} color={colors.primary} /></View>
+              <View>
+                <Text style={styles.authTitle}>{t('overviewAuthenticated')}</Text>
+                <Text style={styles.authSub}>{t('lifecycleVerifiedByBrand')}</Text>
+              </View>
             </View>
           </View>
         </View>
 
-        {/* Rounded content sheet with the tab row + tab content. */}
+        {/* Rounded sheet: underline tab row + tab content. */}
         <View style={styles.sheet}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabRow} contentContainerStyle={styles.tabRowContent}>
+          <View style={styles.tabRow}>
             {TABS.map((tb) => (
-              <TouchableOpacity
-                key={tb.key}
-                style={[styles.tabBtn, tab === tb.key && styles.tabBtnActive]}
-                onPress={() => setTab(tb.key)}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.tabText, tab === tb.key && styles.tabTextActive]}>{t(tb.labelKey as any)}</Text>
+              <TouchableOpacity key={tb.key} style={styles.tabBtn} onPress={() => setTab(tb.key)} activeOpacity={0.7}>
+                <Text style={[styles.tabText, tab === tb.key && styles.tabTextActive]} numberOfLines={1}>{t(tb.labelKey as any)}</Text>
+                {tab === tb.key && <View style={styles.tabUnderline} />}
               </TouchableOpacity>
             ))}
-          </ScrollView>
+          </View>
           <ScrollView style={styles.tabScroll} contentContainerStyle={styles.tabScrollContent} showsVerticalScrollIndicator={false}>
             {renderTab()}
           </ScrollView>
@@ -506,46 +592,60 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
     paddingBottom: spacing.lg,
-    backgroundColor: colors.primary,
   },
-  headerThumb: { width: 64, height: 64, borderRadius: radius.md, backgroundColor: 'rgba(255,255,255,0.15)' },
+  headerThumb: { width: 76, height: 76, borderRadius: radius.md, backgroundColor: 'rgba(255,255,255,0.15)' },
   headerThumbPlaceholder: { alignItems: 'center', justifyContent: 'center' },
-  headerName: { fontSize: 16, fontWeight: '700', color: '#fff' },
-  headerMeta: { fontSize: 11, color: 'rgba(255,255,255,0.85)', marginTop: 1 },
-  headerBadge: {
+  headerName: { fontSize: 17, fontWeight: '700', color: '#fff' },
+  headerMeta: { fontSize: 12, color: 'rgba(255,255,255,0.9)', marginTop: 1 },
+  authCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: radius.pill,
+    backgroundColor: '#fff',
+    borderRadius: radius.md,
     paddingHorizontal: 8,
-    paddingVertical: 2,
-    marginTop: 4,
+    paddingVertical: 5,
+    marginTop: 6,
   },
-  headerBadgeText: { fontSize: 10, fontWeight: '700', color: '#fff' },
+  authCheck: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  authTitle: { fontSize: 11, fontWeight: '700', color: colors.primary },
+  authSub: { fontSize: 9, color: colors.muted },
   sheet: {
     flex: 1,
     backgroundColor: colors.bg,
     borderTopLeftRadius: 22,
     borderTopRightRadius: 22,
-    paddingTop: spacing.md,
+    overflow: 'hidden',
   },
-  tabRow: { flexGrow: 0, marginBottom: spacing.sm },
-  tabRowContent: { gap: spacing.xs, paddingHorizontal: spacing.lg },
-  tabBtn: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: 7,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.border,
+  tabRow: {
+    flexDirection: 'row',
     backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    paddingHorizontal: spacing.xs,
   },
-  tabBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  tabText: { fontSize: 12, fontWeight: '600', color: colors.muted },
-  tabTextActive: { color: '#fff' },
+  tabBtn: { flex: 1, alignItems: 'center', paddingVertical: 12, paddingHorizontal: 2 },
+  tabText: { fontSize: 11, fontWeight: '600', color: colors.muted, textAlign: 'center' },
+  tabTextActive: { color: colors.primary, fontWeight: '700' },
+  tabUnderline: {
+    position: 'absolute',
+    bottom: 0,
+    height: 2,
+    width: '70%',
+    backgroundColor: colors.primary,
+    borderRadius: 1,
+  },
   tabScroll: { flex: 1 },
-  tabScrollContent: { padding: spacing.lg, paddingTop: 0, paddingBottom: spacing.xxxl },
+  tabScrollContent: { padding: spacing.lg, paddingBottom: spacing.xxxl },
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
@@ -555,95 +655,95 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     ...shadow(1),
   },
-  cardTitle: { fontSize: 13, fontWeight: '700', color: colors.primary, marginBottom: 6 },
+  cardTitle: { fontSize: 13, fontWeight: '700', color: colors.primary, marginBottom: 8 },
   paragraph: { fontSize: 13, color: colors.text, lineHeight: 19 },
-  emptyText: { fontSize: 13, color: colors.muted, textAlign: 'center', paddingVertical: spacing.xl },
-  infoBox: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    backgroundColor: '#eaf3fb',
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginTop: spacing.xs,
-  },
-  infoText: { flex: 1, fontSize: 12, color: colors.primaryDark, lineHeight: 17 },
+  emptyText: { fontSize: 13, color: colors.muted, paddingVertical: spacing.sm },
   // journey
-  journeyItem: { flexDirection: 'row', gap: spacing.md },
-  journeyLineCol: { alignItems: 'center', width: 30 },
-  journeyDot: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+  jItem: { flexDirection: 'row', gap: spacing.lg },
+  jRail: { alignItems: 'center', width: 40 },
+  jDot: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  journeyLine: { flex: 1, width: 2, backgroundColor: colors.border, marginVertical: 2 },
-  journeyBody: { flex: 1, paddingBottom: spacing.md },
-  journeyHeadRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  journeyTitle: { fontSize: 14, fontWeight: '700', color: colors.heading },
-  journeyDesc: { fontSize: 12, color: colors.muted, marginTop: 2 },
-  journeyDetail: {
-    marginTop: spacing.sm,
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: radius.md,
-    padding: spacing.md,
-  },
-  journeyLink: { fontSize: 13, color: colors.accent, fontWeight: '600', paddingVertical: 3 },
-  // key/value
-  kvRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.md, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.border },
-  kvLabelWrap: { flexDirection: 'row', alignItems: 'center' },
-  kvLabel: { fontSize: 12, color: colors.muted },
-  kvValue: { flex: 1, fontSize: 12, color: colors.text, fontWeight: '600', textAlign: 'right' },
-  // expand rows
-  expandHead: { flexDirection: 'row', alignItems: 'center' },
+  jLine: { flex: 1, width: 2, backgroundColor: colors.border, marginVertical: 4, minHeight: 20 },
+  jBody: { flex: 1, paddingBottom: spacing.xl },
+  jTitle: { fontSize: 15, fontWeight: '700', color: '#000' },
+  jDesc: { fontSize: 13, color: colors.muted, marginTop: 3, lineHeight: 18 },
+  jDetail: { marginTop: spacing.md, backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: spacing.md },
+  jLink: { fontSize: 13, color: colors.accent, fontWeight: '600', paddingVertical: 3 },
+  // rows
+  itemRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.border },
+  itemIcon: { width: 26, height: 26, borderRadius: 13, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
+  itemLabel: { flex: 1, fontSize: 12, color: colors.muted },
+  itemValue: { fontSize: 12, color: colors.text, fontWeight: '600', textAlign: 'right' },
+  // expand
+  expandHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  expandIcon: { width: 30, height: 30, borderRadius: 15, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
   expandTitle: { fontSize: 13, fontWeight: '700', color: colors.heading },
   expandSub: { fontSize: 11, color: colors.muted, marginTop: 1 },
   expandBody: { marginTop: spacing.sm, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border },
   // care
-  careRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
-  careItem: { width: 60, alignItems: 'center' },
-  careLabel: { fontSize: 9, color: colors.muted, textAlign: 'center', marginTop: 2 },
-  tipRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, paddingVertical: 4 },
+  careRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, justifyContent: 'space-between' },
+  careItem: { width: 58, alignItems: 'center' },
+  careLabel: { fontSize: 9, color: colors.muted, textAlign: 'center', marginTop: 4 },
+  tipRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, paddingVertical: 5 },
   tipText: { flex: 1, fontSize: 13, color: colors.text, lineHeight: 18 },
   // materials
   barRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 5 },
-  barLabel: { width: 90, fontSize: 12, color: colors.text },
+  barLabel: { width: 96, fontSize: 12, color: colors.text },
   barTrack: { flex: 1, height: 8, borderRadius: 4, backgroundColor: colors.surfaceAlt, overflow: 'hidden' },
   barFill: { height: '100%', borderRadius: 4, backgroundColor: colors.primary },
   barValue: { width: 40, fontSize: 12, color: colors.muted, textAlign: 'right' },
-  originRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.border },
+  originRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.border },
+  originIcon: { width: 30, height: 30, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
+  originImg: { width: 20, height: 20 },
   originName: { fontSize: 13, fontWeight: '600', color: colors.text },
   originSub: { fontSize: 11, color: colors.muted, marginTop: 1 },
+  certRow: { flexDirection: 'row', gap: spacing.sm },
+  certBadge: { flex: 1, backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: spacing.sm, alignItems: 'center', gap: 4 },
+  certBadgeText: { fontSize: 10, color: colors.text, fontWeight: '500', textAlign: 'center' },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-  },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: colors.border, borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: 4 },
   chipText: { fontSize: 11, color: colors.text },
-  certBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 6,
-  },
-  certBadgeText: { fontSize: 11, color: colors.text, fontWeight: '500' },
   // dispose
   disposeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border },
-  disposeIcon: { width: 34, height: 34, borderRadius: radius.md, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
+  disposeIcon: { width: 36, height: 36, borderRadius: radius.md, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
   disposeTitle: { fontSize: 13, fontWeight: '600', color: colors.heading },
   disposeSub: { fontSize: 11, color: colors.muted, marginTop: 1 },
   tileRow: { flexDirection: 'row', gap: spacing.sm },
   tile: { flex: 1, backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: spacing.md, alignItems: 'center', gap: 3 },
   tileValue: { fontSize: 14, fontWeight: '700', color: colors.primary },
   tileLabel: { fontSize: 9, color: colors.muted, textAlign: 'center' },
+  // info / leaf cards
+  hintCard: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    backgroundColor: '#eaf3fb',
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  hintTitle: { fontSize: 13, fontWeight: '700', color: colors.primary },
+  hintBody: { fontSize: 12, color: colors.primaryDark, lineHeight: 17, marginTop: 2 },
+  infoCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md, marginBottom: spacing.sm },
+  infoCardIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
+  infoCardTitle: { fontSize: 13, fontWeight: '700', color: colors.heading },
+  infoCardBody: { fontSize: 11, color: colors.muted, marginTop: 1 },
+  leafCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: '#eaf3fb',
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginTop: spacing.xs,
+  },
+  leafIcon: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  leafTitle: { fontSize: 13, fontWeight: '700', color: colors.primary },
+  leafBody: { fontSize: 12, color: colors.primaryDark, lineHeight: 17, marginTop: 2 },
+  leafLink: { fontSize: 12, color: colors.accent, fontWeight: '600', marginTop: 4 },
 });

@@ -80,24 +80,22 @@ export default function ScanSuccessfulScreen({ navigation, route, user, onLogout
               </View>
             </View>
           ))}
+          <TouchableOpacity
+            style={styles.privacyLink}
+            onPress={() => navigation.navigate('PrivatePolicy', { productData, securityPassed, productId, qrcodeId })}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.linkText}>{t('privatePolicy')}</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.footer}>
           <GradientButton style={styles.primaryButton} onPress={goToProductDetail} activeOpacity={0.85}>
             <Text style={styles.primaryButtonText}>{t('detectedViewProduct')}</Text>
           </GradientButton>
-          <View style={styles.footerRow}>
-            <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.replace('Scanner')} activeOpacity={0.8}>
-              <Text style={styles.secondaryButtonText}>{t('detectedScanAnother')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.linkButton}
-              onPress={() => navigation.navigate('PrivatePolicy', { productData, securityPassed, productId, qrcodeId })}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.linkText}>{t('privatePolicy')}</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.replace('Scanner')} activeOpacity={0.8}>
+            <Text style={styles.secondaryButtonText}>{t('detectedScanAnother')}</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -145,18 +143,16 @@ const styles = StyleSheet.create({
     ...shadow(1),
   },
   primaryButtonText: { color: '#fff', fontSize: 15, fontWeight: '600' },
-  footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.sm },
+  privacyLink: { alignSelf: 'center', paddingTop: spacing.sm, marginTop: spacing.xs },
   secondaryButton: {
-    flex: 1,
+    marginTop: spacing.sm,
     borderRadius: radius.md,
     paddingVertical: 12,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.accent,
     backgroundColor: colors.surface,
-    marginRight: spacing.sm,
   },
   secondaryButtonText: { color: colors.accent, fontSize: 14, fontWeight: '600' },
-  linkButton: { paddingVertical: 12, paddingHorizontal: spacing.sm },
   linkText: { color: colors.accent, fontSize: 12, textDecorationLine: 'underline' },
 });
