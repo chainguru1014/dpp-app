@@ -37,7 +37,7 @@ export default function GradientButton({ style, children, from = colors.headerLi
         <View style={[StyleSheet.absoluteFill, { borderRadius: flat.borderRadius, overflow: 'hidden' }]} pointerEvents="none">
           <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
             <Defs>
-              <LinearGradient id={id} x1="0%" y1="0%" x2="100%" y2="100%">
+              <LinearGradient id={id} x1="0%" y1="0%" x2="0%" y2="100%">
                 <Stop offset="0%" stopColor={from} stopOpacity={1} />
                 <Stop offset="100%" stopColor={to} stopOpacity={1} />
               </LinearGradient>

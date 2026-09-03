@@ -20,7 +20,7 @@ type Props = ViewProps & {
  * `rx`, so the shape stays pixel-identical to the original flat-color
  * version — the outer view keeps the caller's full original style untouched.
  */
-export default function GradientView({ style, children, from = colors.headerLight, to = colors.primary, angle = 'diagonal', ...rest }: Props) {
+export default function GradientView({ style, children, from = colors.headerLight, to = colors.primary, angle = 'vertical', ...rest }: Props) {
   const id = useRef(`grad-${Math.random().toString(36).slice(2)}`).current;
   const flat = (StyleSheet.flatten(style) || {}) as { borderRadius?: number };
   const [x2, y2] = angle === 'horizontal' ? ['100%', '0%'] : angle === 'vertical' ? ['0%', '100%'] : ['100%', '100%'];

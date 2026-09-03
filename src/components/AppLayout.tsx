@@ -19,6 +19,7 @@ import FeatherIcon from 'react-native-vector-icons/Feather';
 import { useRoute } from '@react-navigation/native';
 import { useI18n } from '../i18n/I18nContext';
 import NotificationBadge from './NotificationBadge';
+import GradientView from './GradientView';
 import { colors, radius, shadow } from '../theme';
 
 type BottomBarKind = 'auto' | 'consumer' | 'product' | 'none';
@@ -84,8 +85,8 @@ const BRAND_TITLE = 'Yometel DPP';
 const EMPLOYEE_BRAND_TITLE = 'Yometel Traceability';
 
 // Big-height top bar. Room for the status bar on native; web has none, so keep
-// the pad small (avoids a large empty band above the notification icon).
-const STATUS_BAR_PAD = Platform.OS === 'ios' ? 44 : Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 8;
+// the pad at 0 (no empty band above the title / notification icon).
+const STATUS_BAR_PAD = Platform.OS === 'ios' ? 44 : Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
 const TOP_BAR_CONTENT = 50;
 const TOP_BAR_HEIGHT = STATUS_BAR_PAD + TOP_BAR_CONTENT;
 const BOTTOM_BAR_HEIGHT = 60;
@@ -324,7 +325,7 @@ export default function AppLayout({
 
   return (
     <View style={styles.container}>
-      <View style={styles.topBar}>
+      <GradientView style={styles.topBar} angle="vertical">
         <View style={styles.topBarRow}>
           {showBackButton ? (
             <TouchableOpacity onPress={handleBack} style={styles.iconButton} activeOpacity={0.7}>
@@ -354,7 +355,7 @@ export default function AppLayout({
             )}
           </View>
         </View>
-      </View>
+      </GradientView>
 
       <View
         style={[

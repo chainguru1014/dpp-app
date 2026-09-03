@@ -60,7 +60,7 @@ export default function ScannedProductListScreen({ navigation, user, onLogout }:
   };
 
   return (
-    <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton title={t('titleMyProducts')}>
+    <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton title={t('titleMyProducts')} flatContent>
       <ScrollView style={styles.screen} contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         {loading ? (
           <ActivityIndicator size="large" color={colors.accent} style={{ marginTop: spacing.xxxl }} />
