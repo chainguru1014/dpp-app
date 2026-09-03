@@ -107,18 +107,22 @@ export default function ProductHistoryScreen({ navigation, route, user, onLogout
             {grouped.map((group) => (
               <View key={group.label}>
                 <Text style={styles.groupLabel}>{group.label}</Text>
-                {group.items.map((e) => {
+                {group.items.map((e, idx) => {
                   const isScan = e.source === 'scan';
                   const d = new Date(e.scanned_at);
                   const loc = locationLine(e.location);
+                  const last = idx === group.items.length - 1;
                   return (
                     <View key={e._id} style={styles.row}>
-                      <View style={[styles.iconBubble, { backgroundColor: isScan ? colors.surfaceAlt : '#e6f4ea' }]}>
-                        <Icon
-                          name={isScan ? 'qr-code-scanner' : 'place'}
-                          size={16}
-                          color={isScan ? colors.primary : colors.success}
-                        />
+                      <View style={styles.railCol}>
+                        <View style={[styles.iconBubble, { backgroundColor: isScan ? '#e7f0fb' : '#e6f4ea' }]}>
+                          <Icon
+                            name={isScan ? 'qr-code-scanner' : 'place'}
+                            size={15}
+                            color={isScan ? colors.primary : colors.success}
+                          />
+                        </View>
+                        {!last && <View style={styles.rail} />}
                       </View>
                       <View style={styles.info}>
                         <Text style={styles.eventTitle}>
@@ -155,6 +159,12 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     gap: spacing.md,
+  },
+  railCol: { alignItems: 'center', width: 32 },
+  rail: { flex: 1, width: 2, backgroundColor: colors.border, marginVertical: 2, minHeight: 14 },
+  iconBubble: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  info: {
+    flex: 1,
     backgroundColor: colors.surface,
     borderRadius: radius.md,
     borderWidth: 1,
@@ -163,8 +173,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     ...shadow(1),
   },
-  iconBubble: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  info: { flex: 1 },
   eventTitle: { fontSize: 14, fontWeight: '600', color: colors.heading },
   eventMeta: { fontSize: 12, color: colors.muted, marginTop: 2 },
   eventLoc: { fontSize: 12, color: colors.placeholder, marginTop: 1 },

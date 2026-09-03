@@ -61,6 +61,7 @@ export default function FavoriteBrandsScreen({ navigation, user, onLogout }: Pro
       detail: String(raw?.brandDetail ?? raw?.detail ?? '').trim(),
       website: String(raw?.brandWebsiteUrl ?? raw?.websiteUrl ?? '').trim(),
       logoRaw: String(raw?.brandLogoUrl ?? raw?.logoUrl ?? '').trim(),
+      coverRaw: String(raw?.brandCoverUrl ?? '').trim(),
     }));
     const q = search.trim().toLowerCase();
     const filtered = q ? mapped.filter((b) => b.name.toLowerCase().includes(q)) : mapped;
@@ -69,31 +70,35 @@ export default function FavoriteBrandsScreen({ navigation, user, onLogout }: Pro
 
   const openBrand = (brand: any) =>
     navigation.navigate('BrandDetail', {
-      brand: { name: brand.name, detail: brand.detail, website: brand.website, logoUrl: brand.logoRaw },
+      brand: {
+        name: brand.name,
+        detail: brand.detail,
+        website: brand.website,
+        logoUrl: brand.logoRaw,
+        coverUrl: brand.coverRaw,
+      },
     });
 
   return (
     <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton onBackPress={() => navigation.goBack()}>
       <View style={styles.screen}>
-        <View style={styles.searchRow}>
-          <View style={styles.searchWrap}>
-            <Icon name="search" size={18} color={colors.muted} />
-            <TextInput
-              style={styles.searchInput}
-              value={search}
-              onChangeText={setSearch}
-              placeholder={t('brandsSearchPlaceholder')}
-              placeholderTextColor={colors.placeholder}
-            />
-          </View>
-          <TouchableOpacity style={styles.sortBtn} onPress={() => setSortAsc((v) => !v)} activeOpacity={0.7}>
-            <Icon name="sort-by-alpha" size={20} color={colors.primary} />
-          </TouchableOpacity>
+        <View style={styles.searchWrap}>
+          <Icon name="search" size={18} color={colors.muted} />
+          <TextInput
+            style={styles.searchInput}
+            value={search}
+            onChangeText={setSearch}
+            placeholder={t('brandsSearchPlaceholder')}
+            placeholderTextColor={colors.placeholder}
+          />
         </View>
 
         <View style={styles.metaRow}>
           <Text style={styles.metaText}>{t('brandsCount').replace('{count}', String(list.length))}</Text>
-          <Text style={styles.metaText}>{sortAsc ? 'A–Z' : 'Z–A'}</Text>
+          <TouchableOpacity style={styles.sortToggle} onPress={() => setSortAsc((v) => !v)} activeOpacity={0.7}>
+            <Text style={styles.sortToggleText}>{t('brandsSort')}: {sortAsc ? 'A–Z' : 'Z–A'}</Text>
+            <Icon name="expand-more" size={16} color={colors.primary} />
+          </TouchableOpacity>
         </View>
 
         {loading ? (
@@ -130,9 +135,7 @@ export default function FavoriteBrandsScreen({ navigation, user, onLogout }: Pro
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg, padding: spacing.lg },
-  searchRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
   searchWrap: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
@@ -142,20 +145,13 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     paddingHorizontal: 12,
     height: 44,
+    marginBottom: spacing.md,
   },
   searchInput: { flex: 1, fontSize: 14, color: colors.text, paddingVertical: 0 },
-  sortBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  metaRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.sm },
+  metaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
   metaText: { fontSize: 12, color: colors.muted, fontWeight: '600' },
+  sortToggle: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  sortToggleText: { fontSize: 12, color: colors.primary, fontWeight: '700' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xxxl },
   emptyText: { fontSize: 15, color: colors.muted, textAlign: 'center' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', paddingBottom: spacing.xxxl },

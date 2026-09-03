@@ -37,6 +37,10 @@ export default function BrandDetailScreen({ navigation, route, user, onLogout }:
   const [introVisible, setIntroVisible] = useState(false);
   const [introEmail, setIntroEmail] = useState('');
   const [introMessage, setIntroMessage] = useState('');
+  // Cover / logo can arrive from the follow row or be backfilled from a product.
+  const [coverUrl, setCoverUrl] = useState<string>(brand.coverUrl || '');
+  const [logoUrl, setLogoUrl] = useState<string>(brand.logoUrl || '');
+  const [brandDetail, setBrandDetail] = useState<string>(brand.detail || '');
 
   useEffect(() => {
     if (!website) return;
@@ -50,7 +54,15 @@ export default function BrandDetailScreen({ navigation, route, user, onLogout }:
     fetch(`${API_BASE_URL}product/by-brand?website=${w}`)
       .then((r) => r.json())
       .then((j) => {
-        if (j?.status === 'success' && Array.isArray(j.data)) setProducts(j.data);
+        if (j?.status === 'success' && Array.isArray(j.data)) {
+          setProducts(j.data);
+          const bi = j.data[0]?.brandInfo;
+          if (bi) {
+            setCoverUrl((c) => c || bi.coverUrl || '');
+            setLogoUrl((l) => l || bi.logoUrl || '');
+            setBrandDetail((d) => d || bi.detail || '');
+          }
+        }
       })
       .catch(() => {});
     if (user?._id) {
@@ -97,7 +109,7 @@ export default function BrandDetailScreen({ navigation, route, user, onLogout }:
     }
     const content = [
       `Brand: ${brand.name}`,
-      brand.detail ? `About: ${brand.detail}` : '',
+      brandDetail ? `About: ${brandDetail}` : '',
       website ? `Website: ${website}` : '',
       introMessage ? `\n${introMessage}` : '',
     ].filter(Boolean).join('\n');
@@ -121,22 +133,35 @@ export default function BrandDetailScreen({ navigation, route, user, onLogout }:
   const featured = showAll ? products : products.slice(0, 3);
 
   return (
-    <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton onBackPress={() => navigation.goBack()} title={brand.name || t('titleBrandDetail')}>
+    <AppLayout
+      navigation={navigation}
+      user={user}
+      onLogout={onLogout}
+      showBackButton
+      onBackPress={() => navigation.goBack()}
+      title={brand.name || t('titleBrandDetail')}
+      rightIcon="share"
+      onShare={() => setIntroVisible(true)}
+    >
       <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
-        {!!brand.coverUrl && (
-          <Image source={{ uri: fileUrl(brand.coverUrl) }} style={styles.cover} resizeMode="cover" />
+        {coverUrl ? (
+          <Image source={{ uri: fileUrl(coverUrl) }} style={styles.cover} resizeMode="cover" />
+        ) : (
+          <View style={[styles.cover, styles.coverPlaceholder]}>
+            <Icon name="image" size={26} color="rgba(255,255,255,0.7)" />
+          </View>
         )}
 
         <View style={styles.headerCard}>
           <View style={styles.headerTop}>
-            {brand.logoUrl ? (
-              <Image source={{ uri: fileUrl(brand.logoUrl) }} style={styles.logo} resizeMode="contain" />
+            {logoUrl ? (
+              <Image source={{ uri: fileUrl(logoUrl) }} style={styles.logo} resizeMode="contain" />
             ) : (
               <View style={[styles.logo, styles.logoPlaceholder]}><Icon name="storefront" size={22} color={colors.placeholder} /></View>
             )}
             <View style={{ flex: 1 }}>
               <Text style={styles.brandName}>{brand.name || '—'}</Text>
-              {!!brand.detail && <Text style={styles.brandDetail} numberOfLines={2}>{brand.detail}</Text>}
+              {!!brandDetail && <Text style={styles.brandDetail} numberOfLines={2}>{brandDetail}</Text>}
             </View>
           </View>
           <View style={styles.headerActions}>
@@ -236,12 +261,12 @@ export default function BrandDetailScreen({ navigation, route, user, onLogout }:
               autoCapitalize="none"
             />
             <View style={styles.brandMini}>
-              {brand.logoUrl ? (
-                <Image source={{ uri: fileUrl(brand.logoUrl) }} style={styles.brandMiniLogo} resizeMode="contain" />
+              {logoUrl ? (
+                <Image source={{ uri: fileUrl(logoUrl) }} style={styles.brandMiniLogo} resizeMode="contain" />
               ) : null}
               <View style={{ flex: 1 }}>
                 <Text style={styles.brandMiniName}>{brand.name}</Text>
-                {!!brand.detail && <Text style={styles.brandMiniDetail} numberOfLines={1}>{brand.detail}</Text>}
+                {!!brandDetail && <Text style={styles.brandMiniDetail} numberOfLines={1}>{brandDetail}</Text>}
               </View>
             </View>
             <Text style={styles.sheetLabel}>{t('brandIntroMessage')}</Text>
@@ -267,6 +292,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   container: { paddingBottom: spacing.xxxl },
   cover: { width: '100%', height: 140, backgroundColor: colors.surfaceAlt },
+  coverPlaceholder: { backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   headerCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,

@@ -22,7 +22,7 @@ import NotificationBadge from './NotificationBadge';
 import { colors, radius, shadow } from '../theme';
 
 type BottomBarKind = 'auto' | 'consumer' | 'product' | 'none';
-type RightIconKind = 'notification' | 'heart' | 'none';
+type RightIconKind = 'notification' | 'heart' | 'share' | 'none';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -49,6 +49,7 @@ interface AppLayoutProps {
   rightIcon?: RightIconKind;
   isFavorite?: boolean;
   onToggleFavorite?: () => void;
+  onShare?: () => void;
   // The product this screen is showing — lets the 'product' bottom bar move
   // between Overview and Lifecycle carrying the same product data.
   product?: any;
@@ -112,6 +113,7 @@ export default function AppLayout({
   rightIcon = 'notification',
   isFavorite = false,
   onToggleFavorite,
+  onShare,
   product,
   title,
   subtitle,
@@ -293,6 +295,13 @@ export default function AppLayout({
       return (
         <TouchableOpacity onPress={onToggleFavorite} style={styles.iconButton} activeOpacity={0.7}>
           <Icon name={isFavorite ? 'favorite' : 'favorite-border'} size={26} color={colors.white} />
+        </TouchableOpacity>
+      );
+    }
+    if (rightIcon === 'share') {
+      return (
+        <TouchableOpacity onPress={onShare} style={styles.iconButton} activeOpacity={0.7}>
+          <Icon name="share" size={24} color={colors.white} />
         </TouchableOpacity>
       );
     }
