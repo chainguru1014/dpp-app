@@ -623,7 +623,9 @@ function ProductBottomBar({ routeName, moreActive, t, onOverview, onLifecycle, o
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff', position: 'relative' },
+  // Blue behind everything — the rounded top corners of the content sheet
+  // reveal this strip, merging visually with the top bar into one shape.
+  container: { flex: 1, backgroundColor: colors.primary, position: 'relative' },
   topBar: {
     position: 'absolute',
     top: 0,
@@ -654,13 +656,12 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     backgroundColor: colors.bg,
-    marginTop: TOP_BAR_HEIGHT - 18,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
+    marginTop: TOP_BAR_HEIGHT,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     overflow: 'hidden',
   },
   contentFlat: {
-    marginTop: TOP_BAR_HEIGHT,
     borderTopLeftRadius: 0,
     borderTopRightRadius: 0,
   },

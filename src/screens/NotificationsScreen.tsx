@@ -22,13 +22,13 @@ const LEVEL_COLOR: Record<string, string> = {
 
 const TYPE_ICON: Record<string, string> = {
   transfer_request: 'swap-horiz',
-  transfer_confirmed: 'check-circle',
+  transfer_confirmed: 'local-shipping',
   transfer_rejected: 'cancel',
   transfer_received: 'redeem',
-  product_authenticated: 'verified-user',
-  lifecycle_updated: 'autorenew',
+  product_authenticated: 'shield',
+  lifecycle_updated: 'sync',
   login_alert: 'lock',
-  system: 'campaign',
+  system: 'star',
 };
 
 const relativeTime = (iso: string) => {
