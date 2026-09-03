@@ -214,11 +214,22 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
   const careTips = toStrArray(maintenance.tips);
   const materialSize = productData?.materialSize || {};
   const materials = toArray(materialSize.materials);
-  const certifications = toStrArray(productData?.certifications);
+  // certifications: legacy string[] OR {icon,title,content}[].
+  const certifications: { icon?: string; title: string; content?: string }[] = toArray(productData?.certifications)
+    .map((c: any) => (typeof c === 'string' ? { title: c } : c))
+    .filter((c: any) => c && (c.title || c.content));
   const esg = productData?.traceabilityEsg || {};
   const materialOrigins = toArray(esg.materialOrigins);
   const disposal = productData?.disposal || {};
-  const impact = productData?.sustainabilityImpact || {};
+  const impactRaw = productData?.sustainabilityImpact || {};
+  const impactItems: { icon?: string; value: string; label: string; description?: string }[] =
+    Array.isArray(impactRaw.items) && impactRaw.items.length
+      ? impactRaw.items
+      : [
+          impactRaw.co2Avoided && { value: impactRaw.co2Avoided, label: t('lifecycleCo2Avoided'), icon: 'eco' },
+          impactRaw.waterSaved && { value: impactRaw.waterSaved, label: t('lifecycleWaterSaved'), icon: 'water-drop' },
+          impactRaw.energySaved && { value: impactRaw.energySaved, label: t('lifecycleEnergySaved'), icon: 'bolt' },
+        ].filter(Boolean) as any;
   const routeInfo = esg.route || {};
   const originCountry = esg.originCountry || esg.madeIn || '';
   const originCountries = Array.from(
@@ -327,9 +338,21 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
         <Text style={styles.paragraph}>{facts.traceableIdentity || t('lifecycleAboutProductFallback')}</Text>)}
       {expandRow('certs', t('lifecycleCertifications'), t('lifecycleCertificationsSub'), 'workspace-premium',
         certifications.length ? (
-          <View style={styles.chipWrap}>
+          <View style={{ gap: spacing.sm }}>
             {certifications.map((c, i) => (
-              <View key={i} style={styles.chip}><Icon name="verified" size={13} color={colors.primary} /><Text style={styles.chipText}>{c}</Text></View>
+              <View key={i} style={styles.certLine}>
+                <View style={styles.certLineIcon}>
+                  {c.icon ? (
+                    <Image source={{ uri: fileUrl(c.icon) }} style={styles.certImg} resizeMode="contain" />
+                  ) : (
+                    <Icon name="verified" size={16} color={colors.primary} />
+                  )}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.certLineTitle}>{c.title}</Text>
+                  {!!c.content && <Text style={styles.certLineBody}>{c.content}</Text>}
+                </View>
+              </View>
             ))}
           </View>
         ) : <Text style={styles.paragraph}>{t('lifecycleNoData')}</Text>)}
@@ -408,8 +431,12 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
           <View style={styles.certRow}>
             {certifications.map((c, i) => (
               <View key={i} style={styles.certBadge}>
-                <Icon name="verified" size={16} color={colors.primary} />
-                <Text style={styles.certBadgeText} numberOfLines={2}>{c}</Text>
+                {c.icon ? (
+                  <Image source={{ uri: fileUrl(c.icon) }} style={styles.certImg} resizeMode="contain" />
+                ) : (
+                  <Icon name="verified" size={16} color={colors.primary} />
+                )}
+                <Text style={styles.certBadgeText} numberOfLines={2}>{c.title}</Text>
               </View>
             ))}
           </View>
@@ -441,31 +468,24 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
           </TouchableOpacity>
         ))}
       </View>
-      {(impact.co2Avoided || impact.waterSaved || impact.energySaved) && (
+      {impactItems.length > 0 && (
         <View style={styles.card}>
           <Text style={styles.cardTitle}>{t('lifecycleSustainabilityImpact')}</Text>
           <View style={styles.tileRow}>
-            {impact.co2Avoided ? (
-              <View style={styles.tile}>
-                <Icon name="eco" size={16} color={colors.success} />
-                <Text style={styles.tileValue}>{impact.co2Avoided}</Text>
-                <Text style={styles.tileLabel}>{t('lifecycleCo2Avoided')}</Text>
+            {impactItems.map((it, i) => (
+              <View key={i} style={styles.tile}>
+                {it.icon && /^[a-z-]+$/.test(it.icon) ? (
+                  <Icon name={it.icon} size={16} color={colors.success} />
+                ) : it.icon ? (
+                  <Image source={{ uri: fileUrl(it.icon) }} style={styles.tileImg} resizeMode="contain" />
+                ) : (
+                  <Icon name="eco" size={16} color={colors.success} />
+                )}
+                <Text style={styles.tileValue}>{it.value}</Text>
+                <Text style={styles.tileLabel}>{it.label}</Text>
+                {!!it.description && <Text style={styles.tileDesc} numberOfLines={2}>{it.description}</Text>}
               </View>
-            ) : null}
-            {impact.waterSaved ? (
-              <View style={styles.tile}>
-                <Icon name="water-drop" size={16} color={colors.primary} />
-                <Text style={styles.tileValue}>{impact.waterSaved}</Text>
-                <Text style={styles.tileLabel}>{t('lifecycleWaterSaved')}</Text>
-              </View>
-            ) : null}
-            {impact.energySaved ? (
-              <View style={styles.tile}>
-                <Icon name="bolt" size={16} color={colors.success} />
-                <Text style={styles.tileValue}>{impact.energySaved}</Text>
-                <Text style={styles.tileLabel}>{t('lifecycleEnergySaved')}</Text>
-              </View>
-            ) : null}
+            ))}
           </View>
         </View>
       )}
@@ -706,6 +726,13 @@ const styles = StyleSheet.create({
   certRow: { flexDirection: 'row', gap: spacing.sm },
   certBadge: { flex: 1, backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: spacing.sm, alignItems: 'center', gap: 4 },
   certBadgeText: { fontSize: 10, color: colors.text, fontWeight: '500', textAlign: 'center' },
+  certImg: { width: 22, height: 22 },
+  certLine: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
+  certLineIcon: { width: 30, height: 30, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
+  certLineTitle: { fontSize: 13, fontWeight: '600', color: colors.text },
+  certLineBody: { fontSize: 11, color: colors.muted, marginTop: 1 },
+  tileImg: { width: 18, height: 18 },
+  tileDesc: { fontSize: 8, color: colors.placeholder, textAlign: 'center', marginTop: 2 },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: colors.border, borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: 4 },
   chipText: { fontSize: 11, color: colors.text },
