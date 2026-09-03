@@ -10,7 +10,6 @@ import {
   Alert,
   Dimensions,
   Platform,
-  ScrollView,
   StatusBar,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -36,7 +35,6 @@ interface AppLayoutProps {
   hideBottomBar?: boolean;
   onGuestAction?: () => void;
   onActionMenuPress?: (actionKey: string) => void;
-  onSettingsMenuPress?: (settingKey: string) => void;
   isBrandFollowed?: boolean;
   isInAlbum?: boolean;
   isProductDetailPage?: boolean;
@@ -111,7 +109,6 @@ export default function AppLayout({
   flushBottom = false,
   onGuestAction,
   onActionMenuPress,
-  onSettingsMenuPress,
   isBrandFollowed = false,
   isInAlbum = false,
   isProductDetailPage = false,
@@ -138,9 +135,6 @@ export default function AppLayout({
   const [langMenuVisible, setLangMenuVisible] = useState(false);
   const [profileSheetVisible, setProfileSheetVisible] = useState(false);
   const [actionSheetVisible, setActionSheetVisible] = useState(false);
-  // Employee sessions keep the original top-bar avatar dropdown
-  // (Profile / Language / Logout) — consumers use the Profile bottom-bar tab.
-  const [avatarMenuVisible, setAvatarMenuVisible] = useState(false);
 
   const isAuthenticated = !!user;
   const isEmployeeActor = user?.actorKind === 'Employee';
@@ -235,25 +229,7 @@ export default function AppLayout({
     navigation.navigate('ProductLifecycle', product ? { productData: product } : {});
   };
 
-  // Employee "Settings" bottom sheet (History & Data + product actions) — kept
-  // as-is for employee sessions. Consumers use the Profile / More sheets below.
-  const [settingsVisible, setSettingsVisible] = useState(false);
-  const handleSettings = guardAuthed(() => setSettingsVisible(true));
-
-  const handleExtraMenuItemPress = (itemKey: string) => {
-    setSettingsVisible(false);
-    if (onSettingsMenuPress) {
-      onSettingsMenuPress(itemKey);
-      return;
-    }
-    if (itemKey === 'myProducts') navigation.navigate(productsTarget);
-    else if (itemKey === 'purchaseHistory') navigation.navigate('PurchaseHistory');
-    else if (itemKey === 'viewHistory') navigation.navigate('History');
-    else if (itemKey === 'favoriteBrands') navigation.navigate('FavoriteBrands');
-  };
-
-  // Full product-action list — unchanged from before, used by the employee
-  // "Settings" bottom sheet on a product page.
+  // Full product-action list — the consumer "More" sheet filters this down.
   const actionMenuItems = [
     { key: 'saveProductInfo', label: t('saveProductInfo'), iconSource: require('../assets/diskette.png') },
     { key: 'copyProductInfo', label: t('copyProductInfo'), iconSource: require('../assets/copy.png') },
@@ -269,26 +245,6 @@ export default function AppLayout({
   const consumerActionItems = actionMenuItems.filter((i) =>
     ['saveProductInfo', 'copyProductInfo', 'sendProductInfo', 'toggleAlbum', 'connectBrand', 'toggleFollowBrand'].includes(i.key)
   );
-
-  const extraMenuItems = [
-    ...(isEmployeeActor ? [] : [{ key: 'myProducts', label: t('myProductsOwned'), iconSource: require('../assets/cart.png') }]),
-    { key: 'purchaseHistory', label: t('purchaseHistory'), iconSource: require('../assets/purchase-history.png') },
-    { key: 'viewHistory', label: t('productHistory'), iconSource: require('../assets/history.png') },
-    { key: 'favoriteBrands', label: t('favoriteBrands'), iconSource: require('../assets/favorite.png') },
-  ];
-
-  const settingsMenuItems = isProductDetailPage
-    ? [
-        ...actionMenuItems.map((item) => ({ ...item, kind: 'action' as const })),
-        ...extraMenuItems.map((item) => ({ ...item, kind: 'nav' as const })),
-      ]
-    : extraMenuItems.map((item) => ({ ...item, kind: 'nav' as const }));
-
-  const runSettingsMenuItem = (item: { key: string; kind: 'action' | 'nav' }) => {
-    setSettingsVisible(false);
-    if (item.kind === 'nav') handleExtraMenuItemPress(item.key);
-    else onActionMenuPress?.(item.key);
-  };
 
   const runActionSheetItem = (key: string) => {
     setActionSheetVisible(false);
@@ -348,11 +304,6 @@ export default function AppLayout({
 
           <View style={styles.topBarRight}>
             {rightIconEl}
-            {isEmployeeActor && (
-              <TouchableOpacity onPress={() => setAvatarMenuVisible(true)} style={styles.iconButton} activeOpacity={0.7}>
-                <Icon name="account-circle" size={28} color={colors.white} />
-              </TouchableOpacity>
-            )}
           </View>
         </View>
       </GradientView>
@@ -394,7 +345,7 @@ export default function AppLayout({
 
       {effectiveBar === 'employee' && (() => {
         const isScanSelected = route.name === 'Scanner' || route.name === 'CorporateScanner';
-        const isSettingsSelected = settingsVisible;
+        const isProfileSelected = profileSheetVisible || route.name === 'EditProfile';
         const isHomeSelected = route.name === 'EmployeeHome';
         const isProductsSelected = route.name === productsTarget;
         return (
@@ -418,44 +369,17 @@ export default function AppLayout({
               <FeatherIcon name="file-text" size={BOTTOM_TAB_ICON_SIZE} color={isProductsSelected ? colors.primary : '#333333'} />
               <Text style={[styles.bottomTabLabel, isProductsSelected && styles.bottomTabLabelSelected]}>{t('bottomReview')}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.bottomTab} onPress={handleSettings} activeOpacity={0.7}>
-              {isSettingsSelected && <View style={styles.bottomTabIndicator} />}
-              <Image
-                source={require('../assets/setting.png')}
-                style={[styles.bottomTabImg, isSettingsSelected && styles.bottomTabImgSelected]}
-                resizeMode="contain"
-              />
-              <Text style={[styles.bottomTabLabel, isSettingsSelected && styles.bottomTabLabelSelected]}>{t('bottomSettings')}</Text>
+            <TouchableOpacity style={styles.bottomTab} onPress={openProfileSheet} activeOpacity={0.7}>
+              {isProfileSelected && <View style={styles.bottomTabIndicator} />}
+              <Icon name="person" size={BOTTOM_TAB_ICON_SIZE} color={isProfileSelected ? colors.primary : '#333333'} />
+              <Text style={[styles.bottomTabLabel, isProfileSelected && styles.bottomTabLabelSelected]}>{t('bottomProfile')}</Text>
             </TouchableOpacity>
           </View>
         );
       })()}
 
-      {/* Employee Settings sheet (History & Data + product actions). */}
-      <Modal visible={settingsVisible} transparent animationType="fade" onRequestClose={() => setSettingsVisible(false)}>
-        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setSettingsVisible(false)}>
-          <View style={styles.sheet}>
-            <Text style={styles.sheetTitle}>{t('settings')}</Text>
-            <Text style={styles.sheetSubtitle}>{t('settingsSubtitle')}</Text>
-            <ScrollView style={styles.menuScroll}>
-              {settingsMenuItems.map((item, index, list) => (
-                <View key={item.label}>
-                  {item.kind === 'nav' && (index === 0 || list[index - 1].kind !== 'nav') ? (
-                    <Text style={styles.menuSectionLabel}>{t('historyAndData')}</Text>
-                  ) : null}
-                  <TouchableOpacity style={styles.menuItem} onPress={() => runSettingsMenuItem(item)} activeOpacity={0.7}>
-                    <Image source={item.iconSource} style={styles.menuItemIcon} resizeMode="contain" />
-                    <Text style={styles.menuItemText}>{item.label}</Text>
-                  </TouchableOpacity>
-                  <View style={styles.menuDivider} />
-                </View>
-              ))}
-            </ScrollView>
-          </View>
-        </TouchableOpacity>
-      </Modal>
-
-      {/* Consumer Profile sheet — Language / Edit Profile / Log out (screenshot #24 style). */}
+      {/* Profile sheet — Edit Profile / Language / Log out. Used by the consumer
+          Profile tab and the employee Profile tab (replaces the old avatar menu). */}
       <Modal visible={profileSheetVisible} transparent animationType="fade" onRequestClose={() => setProfileSheetVisible(false)}>
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setProfileSheetVisible(false)}>
           <View style={styles.sheet}>
@@ -501,49 +425,6 @@ export default function AppLayout({
             ))}
           </View>
         </TouchableOpacity>
-      </Modal>
-
-      {/* Employee top-bar avatar dropdown — Profile / Language / Logout. */}
-      <Modal visible={avatarMenuVisible} transparent animationType="none" onRequestClose={() => setAvatarMenuVisible(false)}>
-        <TouchableWithoutFeedback onPress={() => setAvatarMenuVisible(false)}>
-          <View style={styles.langOverlay}>
-            <View style={[styles.langPopover, styles.avatarPopover, { position: 'absolute', top: TOP_BAR_HEIGHT - 6, right: 12 }]}>
-              <TouchableOpacity
-                style={styles.avatarMenuItem}
-                onPress={() => {
-                  setAvatarMenuVisible(false);
-                  handleProfile();
-                }}
-                activeOpacity={0.7}
-              >
-                <Image source={require('../assets/account.png')} style={styles.avatarMenuIcon} resizeMode="contain" />
-                <Text style={styles.avatarMenuText}>{t('profile')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.avatarMenuItem}
-                onPress={() => {
-                  setAvatarMenuVisible(false);
-                  openLanguageMenu();
-                }}
-                activeOpacity={0.7}
-              >
-                <Image source={require('../assets/world.png')} style={styles.avatarMenuIcon} resizeMode="contain" />
-                <Text style={styles.avatarMenuText}>{t('language')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.avatarMenuItem}
-                onPress={() => {
-                  setAvatarMenuVisible(false);
-                  handleLogout();
-                }}
-                activeOpacity={0.7}
-              >
-                <Image source={require('../assets/logout (1).png')} style={styles.avatarMenuIcon} resizeMode="contain" />
-                <Text style={[styles.avatarMenuText, { color: colors.danger }]}>{t('logout')}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </TouchableWithoutFeedback>
       </Modal>
 
       <Modal visible={langMenuVisible} transparent animationType="none" onRequestClose={() => setLangMenuVisible(false)}>
