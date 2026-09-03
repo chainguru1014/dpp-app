@@ -181,13 +181,13 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
       // landed so the gate's Continue button sends the user there next.
       if (!tagged.aiConciergeConsentAt) {
         navigation.replace('AiConciergeConsent', {
-          redirectTo: redirectTo || 'Home',
+          redirectTo: redirectTo || 'Scanner',
           redirectParams: redirectParams || {},
         });
       } else if (redirectTo) {
         navigation.replace(redirectTo, redirectParams || {});
       } else {
-        navigation.replace('Home');
+        navigation.replace('Scanner');
       }
     } catch (error: any) {
       setApiError(error?.message || t('networkErrorRetry'));

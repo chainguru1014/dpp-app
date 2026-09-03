@@ -1,12 +1,11 @@
 import React, { useCallback, useState } from 'react';
-import { View, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Text } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import { StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import AppLayout from '../components/AppLayout';
-import { ProductRow, SectionCard } from './HomeScreen';
+import { ProductRow, SectionCard } from '../components/ProductListParts';
 import { API_BASE_URL } from '../config/api';
 import { useI18n } from '../i18n/I18nContext';
-import { colors, radius, spacing, shadow } from '../theme';
+import { colors, spacing } from '../theme';
 
 interface Props {
   navigation: any;
@@ -61,18 +60,8 @@ export default function ScannedProductListScreen({ navigation, user, onLogout }:
   };
 
   return (
-    <AppLayout navigation={navigation} user={user} onLogout={onLogout} title={t('titleMyProducts')}>
+    <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton title={t('titleMyProducts')}>
       <ScrollView style={styles.screen} contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        <TouchableOpacity style={styles.scanCard} activeOpacity={0.85} onPress={() => navigation.navigate('Scanner')}>
-          <View style={styles.scanIconWrap}>
-            <Icon name="qr-code-scanner" size={22} color={colors.primary} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.scanTitle}>{t('homeScanProduct')}</Text>
-            <Text style={styles.scanSubtitle}>{t('homeScanProductHint')}</Text>
-          </View>
-        </TouchableOpacity>
-
         {loading ? (
           <ActivityIndicator size="large" color={colors.accent} style={{ marginTop: spacing.xxxl }} />
         ) : (
@@ -97,27 +86,5 @@ export default function ScannedProductListScreen({ navigation, user, onLogout }:
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  container: { paddingTop: spacing.lg, paddingBottom: spacing.xxxl },
-  scanCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginHorizontal: spacing.lg,
-    padding: spacing.md,
-    ...shadow(1),
-  },
-  scanIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    backgroundColor: colors.surfaceAlt,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scanTitle: { fontSize: 15, fontWeight: '700', color: colors.primary },
-  scanSubtitle: { fontSize: 12, color: colors.muted, marginTop: 2 },
+  container: { paddingTop: spacing.sm, paddingBottom: spacing.xxxl },
 });

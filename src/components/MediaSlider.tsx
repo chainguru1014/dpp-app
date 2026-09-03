@@ -34,6 +34,9 @@ interface MediaSliderProps {
   pmcCode?: string;
   /** Hide the name/model/ID header block (callers that render their own). */
   hideHeader?: boolean;
+  /** Flush layout: no outer padding, no inner card border/shadow (for nesting
+   *  inside another card). */
+  flush?: boolean;
   maxHeight?: number;
   getFileUrl?: (filename: string) => string;
   watchLabel?: string;
@@ -52,6 +55,7 @@ export default function MediaSlider({
   model,
   pmcCode,
   hideHeader = false,
+  flush = false,
   maxHeight = 440,
   getFileUrl = defaultGetFileUrl,
   watchLabel,
@@ -60,7 +64,8 @@ export default function MediaSlider({
   const [pageWidth, setPageWidth] = useState(SCREEN_WIDTH);
   const [active, setActive] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
-  const imageHeight = Math.min(Math.round((pageWidth - 32) * 1.1), maxHeight);
+  const pad = flush ? 0 : 16;
+  const imageHeight = Math.min(Math.max(120, Math.round((pageWidth - pad * 2) * 1.05)), maxHeight);
 
   const slides: MediaSlide[] = [
     ...images.map((uri): MediaSlide => ({ kind: 'image', uri })),
@@ -89,7 +94,13 @@ export default function MediaSlider({
   if (slides.length === 0) return null;
 
   return (
-    <View style={styles.container}>
+    <View
+      style={[styles.container, flush && styles.containerFlush]}
+      onLayout={(e) => {
+        const w = e.nativeEvent.layout.width;
+        if (w && Math.abs(w - pageWidth) > 1) setPageWidth(w);
+      }}
+    >
       {!hideHeader && (name || model || pmcCode) ? (
         <View style={styles.textHeader}>
           {!!name && <Text style={styles.productName}>{name}</Text>}
@@ -112,8 +123,8 @@ export default function MediaSlider({
         style={styles.carousel}
       >
         {slides.map((slide, index) => (
-          <View key={index} style={[styles.slidePage, { width: pageWidth }]}>
-            <View style={[styles.imageCard, { height: imageHeight }]}>
+          <View key={index} style={[styles.slidePage, { width: pageWidth, paddingHorizontal: pad }]}>
+            <View style={[styles.imageCard, flush && styles.imageCardFlush, { height: imageHeight }]}>
               {slide.kind === 'video' ? (
                 <TouchableOpacity
                   style={styles.videoSlideTouch}
@@ -169,6 +180,8 @@ export default function MediaSlider({
 
 const styles = StyleSheet.create({
   container: { paddingTop: 12 },
+  containerFlush: { paddingTop: 0 },
+  imageCardFlush: { borderWidth: 0, shadowOpacity: 0, elevation: 0 },
   textHeader: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12, alignItems: 'center' },
   productName: { fontSize: 20, fontWeight: '400', color: colors.primary, marginBottom: 5, textAlign: 'center' },
   productModel: { fontSize: 16, color: colors.muted, textAlign: 'center' },

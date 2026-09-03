@@ -151,7 +151,7 @@ export default function AppLayout({
   })();
 
   const productsTarget = isEmployeeActor ? 'CorporateReview' : 'ScannedProducts';
-  const homeBaseRoute = isEmployeeActor ? 'EmployeeHome' : 'Home';
+  const homeBaseRoute = isEmployeeActor ? 'EmployeeHome' : 'Scanner';
 
   const handleNotifications = () => {
     if (!isAuthenticated) {

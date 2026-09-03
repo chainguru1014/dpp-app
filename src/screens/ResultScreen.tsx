@@ -1331,6 +1331,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
         model={hideHeader ? undefined : productData?.model}
         pmcCode={hideHeader ? undefined : productData?.pmc_code}
         hideHeader={!!hideHeader}
+        flush={!!hideHeader}
         maxHeight={maxHeight}
         getFileUrl={getFileUrl}
         watchLabel={t('watchVideo')}
@@ -1435,7 +1436,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
       showBackButton={isAuthenticatedUser}
       onBackPress={
         isAuthenticatedUser
-          ? () => navigation.navigate(route?.params?.returnTo || (user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Home'))
+          ? () => navigation.navigate(route?.params?.returnTo || (user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Scanner'))
           : undefined
       }
       bottomBar={isAuthenticatedUser && !isEmployeeActor ? 'product' : 'auto'}
@@ -1544,7 +1545,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
           <>
             {/* Product card — image slider + name / model / ID + Authenticated. */}
             <View style={styles.ovProductCard}>
-              {renderImageSlider(160, true)}
+              {renderImageSlider(210, true)}
               <Text style={styles.ovName} numberOfLines={1}>{productData?.name || '—'}</Text>
               {!!productData?.model && <Text style={styles.ovModel} numberOfLines={1}>{productData.model}</Text>}
               {(productData?.pmc_code || productData?.token_id != null) && (
@@ -1587,12 +1588,12 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
 
             {/* Lifecycle Preview strip. */}
             <View style={styles.ovCard}>
-              <Text style={styles.ovCardTitle}>{t('overviewLifecyclePreview')}</Text>
+              <Text style={[styles.ovCardTitle, { marginBottom: 14 }]}>{t('overviewLifecyclePreview')}</Text>
               <View style={styles.ovLcStrip}>
                 {LIFECYCLE_STAGES.map((s, i) => (
                   <React.Fragment key={s.key}>
                     <View style={styles.ovLcStage}>
-                      <View style={styles.ovLcDot}><Icon name={s.icon} size={13} color={BRAND_COLOR} /></View>
+                      <View style={styles.ovLcDot}><Icon name={s.icon} size={18} color={BRAND_COLOR} /></View>
                       <Text style={styles.ovLcLabel} numberOfLines={1}>{t(s.labelKey as any)}</Text>
                     </View>
                     {i < LIFECYCLE_STAGES.length - 1 && <View style={styles.ovLcConn} />}
@@ -1626,21 +1627,30 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
               </TouchableOpacity>
             </View>
 
-            {/* Add to My Products | Scan Another Product — one row. */}
-            <View style={styles.ovCtaRow}>
-              <GradientButton
-                style={styles.ovPrimaryCta}
-                onPress={isOwnedMode ? openOwnerTransfer : handleAddToMyProducts}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.ovPrimaryCtaText}>
-                  {isOwnedMode ? t('transferButton') : isInAlbum ? t('overviewInMyProducts') : t('overviewAddToMyProducts')}
-                </Text>
-              </GradientButton>
-              <TouchableOpacity style={styles.ovSecondaryCta} onPress={() => navigation.navigate('Scanner')} activeOpacity={0.8}>
-                <Text style={styles.ovSecondaryCtaText}>{t('detectedScanAnother')}</Text>
-              </TouchableOpacity>
-            </View>
+            {/* Contact Owner | Scan Another Product — one row, equal width. */}
+            {(() => {
+              const isPending = !isOwnedMode && transferStatus === 'pending' && transferRequestSent;
+              const isOwned = !isOwnedMode && transferStatus === 'confirmed';
+              const locked = isPending || isOwned;
+              const label = isOwnedMode
+                ? t('transferButton')
+                : isPending ? t('requested') : isOwned ? t('owned') : t('overviewContactOwner');
+              return (
+                <View style={styles.ovCtaRow}>
+                  <GradientButton
+                    style={[styles.ovPrimaryCta, locked && { opacity: 0.6 }]}
+                    onPress={isOwnedMode ? openOwnerTransfer : handleBuy}
+                    activeOpacity={0.85}
+                    disabled={locked}
+                  >
+                    <Text style={styles.ovPrimaryCtaText}>{label}</Text>
+                  </GradientButton>
+                  <TouchableOpacity style={styles.ovSecondaryCta} onPress={() => navigation.navigate('Scanner')} activeOpacity={0.8}>
+                    <Text style={styles.ovSecondaryCtaText}>{t('detectedScanAnother')}</Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            })()}
 
             {(!!feedbackToast || !!myProductsToast) && (
               <View style={styles.overviewToast}>
@@ -2144,18 +2154,18 @@ const styles = StyleSheet.create({
   ovHlRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 3 },
   ovHlText: { flex: 1, fontSize: 12, color: colors.text },
   ovLcStrip: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6 },
-  ovLcStage: { alignItems: 'center', width: 52 },
+  ovLcStage: { alignItems: 'center', width: 58 },
   ovLcDot: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: colors.surfaceAlt,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 3,
+    marginBottom: 5,
   },
-  ovLcLabel: { fontSize: 8, color: colors.muted, textAlign: 'center' },
-  ovLcConn: { flex: 1, height: 1, backgroundColor: colors.border, marginTop: 13 },
+  ovLcLabel: { fontSize: 9, color: colors.muted, textAlign: 'center' },
+  ovLcConn: { flex: 1, height: 1, backgroundColor: colors.border, marginTop: 18 },
   ovViewLc: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2169,7 +2179,7 @@ const styles = StyleSheet.create({
   ovIconRow: { flexDirection: 'row', gap: spacing.sm, marginHorizontal: spacing.lg, marginTop: spacing.sm },
   ovIconBtn: {
     flex: 1,
-    height: 40,
+    height: 36,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
@@ -2180,19 +2190,21 @@ const styles = StyleSheet.create({
   ovIconBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   ovCtaRow: { flexDirection: 'row', gap: spacing.sm, marginHorizontal: spacing.lg, marginTop: spacing.sm },
   ovPrimaryCta: {
-    flex: 1.4,
+    flex: 1,
     borderRadius: radius.md,
-    paddingVertical: 13,
+    paddingVertical: 11,
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: colors.accent,
     ...shadow(1),
   },
-  ovPrimaryCtaText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  ovPrimaryCtaText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   ovSecondaryCta: {
     flex: 1,
     borderRadius: radius.md,
-    paddingVertical: 12,
+    paddingVertical: 11,
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: colors.accent,
     backgroundColor: colors.surface,

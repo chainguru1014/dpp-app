@@ -6,7 +6,6 @@ import { Platform } from 'react-native';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import AiConciergeConsentScreen from '../screens/AiConciergeConsentScreen';
-import HomeScreen from '../screens/HomeScreen';
 import ProductSummaryScreen from '../screens/ProductSummaryScreen';
 import EnterCodeScreen from '../screens/EnterCodeScreen';
 import ProductLifecycleScreen from '../screens/ProductLifecycleScreen';
@@ -163,7 +162,7 @@ export default function AppNavigator({ navigationRef }: { navigationRef: any }) 
           ? 'EmployeeHome'
           : !user.aiConciergeConsentAt
           ? 'AiConciergeConsent'
-          : 'Home'
+          : 'Scanner'
       }
     >
       <Stack.Screen name="Login">
@@ -203,10 +202,6 @@ export default function AppNavigator({ navigationRef }: { navigationRef: any }) 
             onUserUpdate={handleUserUpdate}
           />
         )}
-      </Stack.Screen>
-
-      <Stack.Screen name="Home">
-        {(props) => <HomeScreen {...props} user={user} onLogout={handleLogout} />}
       </Stack.Screen>
 
       <Stack.Screen name="ShopNow">

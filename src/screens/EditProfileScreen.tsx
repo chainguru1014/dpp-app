@@ -203,7 +203,7 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
       await AsyncStorage.setItem('userToken', data.token || '');
       await AsyncStorage.setItem('user', JSON.stringify(updated));
       onUserUpdate?.(updated);
-      navigation.navigate(isEmployee ? 'EmployeeHome' : 'Home');
+      navigation.navigate(isEmployee ? 'EmployeeHome' : 'Scanner');
     } catch (err: any) {
       setSaveError(err?.message || t('failedToUpdateProfile'));
     } finally {

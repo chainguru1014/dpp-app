@@ -55,6 +55,7 @@ export default function ProductSummaryScreen({ navigation, route, user, onLogout
     : null;
   const serial = product?.skuStyleNumber || (product?.token_id != null ? String(product.token_id) : '');
 
+  const facts = product?.detailFacts || {};
   const rows: { label: string; value: string }[] = [
     { label: t('summaryBrand'), value: product?.brandInfo?.name || '' },
     { label: t('summaryCategory'), value: CATEGORY_LABEL[product?.itemCategory] || '' },
@@ -62,6 +63,10 @@ export default function ProductSummaryScreen({ navigation, route, user, onLogout
     { label: t('summarySerialNumber'), value: serial },
     { label: t('factColor'), value: product?.color || '' },
     { label: t('factSize'), value: product?.size || '' },
+    { label: t('summaryMaterial'), value: facts.material || '' },
+    { label: t('lifecycleFit'), value: facts.fit || '' },
+    { label: t('lifecycleWash'), value: facts.wash || '' },
+    { label: t('lifecycleDurability'), value: facts.durability || '' },
     { label: t('factManufactureDate'), value: product?.manufactureDate || '' },
     { label: t('summaryDateAdded'), value: fmt(addedDate) },
     { label: t('summaryWarrantyStatus'), value: product?.warrantyStatus || '' },

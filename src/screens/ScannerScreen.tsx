@@ -48,7 +48,7 @@ interface ScannerScreenProps {
 
 export default function ScannerScreen({ navigation, route, user, onLogout }: ScannerScreenProps) {
   const { t } = useI18n();
-  const goHome = () => navigation.navigate('Home');
+  const goHome = () => navigation.navigate('Scanner');
   const isFocused = useIsFocused();
   const [loading, setLoading] = useState(false);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
