@@ -2195,7 +2195,7 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   ovLcLabel: { fontSize: 9, color: colors.muted, textAlign: 'center' },
-  ovLcConn: { flex: 1, height: 1, backgroundColor: colors.border, marginTop: 18 },
+  ovLcConn: { flex: 1, height: 2, backgroundColor: colors.primary, marginTop: 17, borderRadius: 1 },
   ovViewLc: {
     flexDirection: 'row',
     alignItems: 'center',
