@@ -697,7 +697,8 @@ const styles = StyleSheet.create({
   bottomTab: { flex: 1, height: '100%', alignItems: 'center', justifyContent: 'center' },
   bottomTabIndicator: {
     position: 'absolute',
-    top: 0,
+    bottom: 0,
+    alignSelf: 'center',
     width: 34,
     height: 3,
     borderRadius: 2,
