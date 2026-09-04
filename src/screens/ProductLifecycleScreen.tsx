@@ -5,6 +5,7 @@ import Clipboard from '@react-native-clipboard/clipboard';
 import AppLayout from '../components/AppLayout';
 import MediaSlider from '../components/MediaSlider';
 import VideoPlayerModal from '../components/VideoPlayerModal';
+import { saveTextFile, safeFileBaseName } from '../utils/saveTextFile';
 import { CareSymbol, getCareSymbolLabel } from '../components/CareSymbols';
 import { useI18n } from '../i18n/I18nContext';
 import { API_BASE_URL } from '../config/api';
@@ -184,6 +185,10 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
   const onActionMenuPress = async (key: string) => {
     switch (key) {
       case 'saveProductInfo':
+        try {
+          await saveTextFile(`${safeFileBaseName(productData?.name)}.txt`, brandInfoText());
+        } catch (e) { /* ignore */ }
+        break;
       case 'copyProductInfo':
         try {
           const text = brandInfoText();
@@ -494,28 +499,28 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
         {materials.length > 0 ? materials.map((m: any, i: number) => (
           <Bar key={i} label={m.material || '—'} percent={Number(m.percent) || 0} />
         )) : <Text style={styles.emptyText}>{t('lifecycleNoData')}</Text>}
+        {materialOrigins.length > 0 && (
+          <>
+            <Text style={[styles.cardTitle, { marginTop: spacing.md }]}>{t('lifecycleMaterialOrigins')}</Text>
+            {materialOrigins.map((o: any, i: number) => (
+              <View key={i} style={styles.originRow}>
+                <View style={styles.originIcon}>
+                  {o.icon ? (
+                    <Image source={{ uri: fileUrl(o.icon) }} style={styles.originImg} resizeMode="contain" />
+                  ) : (
+                    <Icon name="recycling" size={20} color={colors.primary} />
+                  )}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.originName}>{o.material || '—'}</Text>
+                  <Text style={styles.originSub}>{[o.country || o.origin, o.companyName].filter(Boolean).join(' · ') || '—'}</Text>
+                </View>
+                <Icon name="chevron-right" size={19} color={colors.muted} />
+              </View>
+            ))}
+          </>
+        )}
       </View>
-      {materialOrigins.length > 0 && (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>{t('lifecycleMaterialOrigins')}</Text>
-          {materialOrigins.map((o: any, i: number) => (
-            <View key={i} style={styles.originRow}>
-              <View style={styles.originIcon}>
-                {o.icon ? (
-                  <Image source={{ uri: fileUrl(o.icon) }} style={styles.originImg} resizeMode="contain" />
-                ) : (
-                  <Icon name="recycling" size={20} color={colors.primary} />
-                )}
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.originName}>{o.material || '—'}</Text>
-                <Text style={styles.originSub}>{[o.country || o.origin, o.companyName].filter(Boolean).join(' · ') || '—'}</Text>
-              </View>
-              <Icon name="chevron-right" size={19} color={colors.muted} />
-            </View>
-          ))}
-        </View>
-      )}
       {certifications.length > 0 && (
         <View style={styles.card}>
           <Text style={styles.cardTitle}>{t('lifecycleCertifications')}</Text>
@@ -549,13 +554,19 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
       <View style={styles.card}>
         <Text style={styles.cardTitle}>{t('lifecycleExtendLife')}</Text>
         {disposeLinks.map((l) => (
-          <TouchableOpacity key={l.key} style={styles.disposeRow} onPress={() => openUrl(l.url)} activeOpacity={l.url ? 0.7 : 1} disabled={!l.url}>
+          <TouchableOpacity
+            key={l.key}
+            style={[styles.disposeRow, !l.url && styles.disposeRowDisabled]}
+            onPress={() => openUrl(l.url)}
+            activeOpacity={l.url ? 0.7 : 1}
+            disabled={!l.url}
+          >
             <View style={styles.disposeIcon}><Icon name={l.icon} size={22} color={colors.primary} /></View>
             <View style={{ flex: 1 }}>
               <Text style={styles.disposeTitle}>{t(l.labelKey as any)}</Text>
               <Text style={styles.disposeSub}>{t(l.subKey as any)}</Text>
             </View>
-            <Icon name="chevron-right" size={18} color={colors.muted} />
+            {!!l.url && <Icon name="chevron-right" size={18} color={colors.muted} />}
           </TouchableOpacity>
         ))}
       </View>
@@ -856,6 +867,7 @@ const styles = StyleSheet.create({
   chipText: { fontSize: 11, color: colors.text },
   // dispose
   disposeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border },
+  disposeRowDisabled: { opacity: 0.45 },
   disposeIcon: { width: 36, height: 36, borderRadius: radius.md, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
   disposeTitle: { fontSize: 13, fontWeight: '600', color: colors.heading },
   disposeSub: { fontSize: 11, color: colors.muted, marginTop: 1 },

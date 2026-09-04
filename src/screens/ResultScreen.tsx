@@ -27,6 +27,7 @@ import GradientButton from '../components/GradientButton';
 import GradientView from '../components/GradientView';
 import { useI18n } from '../i18n/I18nContext';
 import MediaSlider from '../components/MediaSlider';
+import { saveTextFile, safeFileBaseName } from '../utils/saveTextFile';
 import { colors, radius, spacing, shadow } from '../theme';
 
 // Web QR Scanner
@@ -809,20 +810,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
   };
 
   const saveProductInfoToDoc = async (content: string) => {
-    const webGlobal = globalThis as any;
-    if (Platform.OS === 'web' && webGlobal?.document && webGlobal?.Blob && webGlobal?.URL) {
-      const blob = new webGlobal.Blob([content], { type: 'application/msword' });
-      const url = webGlobal.URL.createObjectURL(blob);
-      const a = webGlobal.document.createElement('a');
-      a.href = url;
-      a.download = `${(productData?.name || 'product-info').replace(/[^a-z0-9-_]+/gi, '_')}.doc`;
-      webGlobal.document.body.appendChild(a);
-      a.click();
-      webGlobal.document.body.removeChild(a);
-      webGlobal.URL.revokeObjectURL(url);
-      return;
-    }
-    await Share.share({ message: content, title: 'Product info' });
+    await saveTextFile(`${safeFileBaseName(productData?.name)}.txt`, content);
   };
 
   const handleActionMenuPress = async (actionKey: string) => {

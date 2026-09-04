@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import AppLayout from '../components/AppLayout';
 import MediaSlider from '../components/MediaSlider';
@@ -74,7 +74,7 @@ export default function ProductSummaryScreen({ navigation, route, user, onLogout
     { label: t('summaryDateAdded'), value: fmt(addedDate) },
     { label: t('summaryWarrantyStatus'), value: product?.warrantyStatus || '' },
     { label: t('summaryValidUntil'), value: fmt(validUntil) },
-  ].filter((r) => !!r.value);
+  ].filter((r) => !!r.value).slice(0, 10);
 
   const goToDetails = () =>
     navigation.navigate('Result', {
@@ -86,7 +86,7 @@ export default function ProductSummaryScreen({ navigation, route, user, onLogout
 
   return (
     <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton title={t('titleProductSummary')}>
-      <View style={styles.screen}>
+      <ScrollView style={styles.screen} contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         <View style={styles.headerCard}>
           <View style={styles.headerMedia}>
             {hasMedia ? (
@@ -134,13 +134,14 @@ export default function ProductSummaryScreen({ navigation, route, user, onLogout
             <Text style={styles.secondaryButtonText}>{t('summaryScanAgain')}</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </ScrollView>
     </AppLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg, padding: spacing.lg },
+  screen: { flex: 1, backgroundColor: colors.bg },
+  container: { flexGrow: 1, padding: spacing.lg },
   headerCard: {
     flexDirection: 'row',
     alignItems: 'center',

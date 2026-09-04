@@ -131,7 +131,7 @@ export default function AppNavigator({ navigationRef }: { navigationRef: any }) 
   const handleLogout = async () => {
     try {
       // Clear all user-related persisted data before redirecting to Login.
-      await AsyncStorage.multiRemove(['userToken', 'user', 'scannedProducts']);
+      await AsyncStorage.multiRemove(['userToken', 'user', 'scannedProducts', 'navState']);
     } catch (error) {
       console.error('Logout storage cleanup error:', error);
     } finally {

@@ -530,9 +530,15 @@ function ConsumerBottomBar({
 function ProductBottomBar({ routeName, t, onOverview, onLifecycle, onScan }: any) {
   return (
     <View style={styles.bottomBar}>
-      <BottomTab icon="grid" label={t('bottomOverview')} selected={routeName === 'Result' || routeName === 'ProductSummary'} onPress={onOverview} />
+      {/* Nudged toward the centre Scan circle so the row doesn't read as
+          edge-hugging with only 3 items. */}
+      <View style={styles.productTabShiftRight}>
+        <BottomTab icon="grid" label={t('bottomOverview')} selected={routeName === 'Result' || routeName === 'ProductSummary'} onPress={onOverview} />
+      </View>
       <ScanCenterTab label={t('bottomScan')} selected={routeName === 'Scanner'} onPress={onScan} />
-      <BottomTab icon="refresh-cw" label={t('bottomLifecycle')} selected={routeName === 'ProductLifecycle'} onPress={onLifecycle} />
+      <View style={styles.productTabShiftLeft}>
+        <BottomTab icon="refresh-cw" label={t('bottomLifecycle')} selected={routeName === 'ProductLifecycle'} onPress={onLifecycle} />
+      </View>
     </View>
   );
 }
@@ -625,6 +631,8 @@ const styles = StyleSheet.create({
   },
   scanCircleActive: { backgroundColor: colors.primaryDark },
   scanTabLabel: { fontSize: 10, color: colors.primary, marginTop: 2, fontWeight: '600' },
+  productTabShiftRight: { flex: 1, transform: [{ translateX: 16 }] },
+  productTabShiftLeft: { flex: 1, transform: [{ translateX: -16 }] },
   modalOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
   sheet: {
     backgroundColor: colors.surface,
