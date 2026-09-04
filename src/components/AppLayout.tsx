@@ -422,22 +422,23 @@ export default function AppLayout({
         </TouchableOpacity>
       </Modal>
 
-      {/* Product "More" action sheet (screenshot #24, no Support). */}
+      {/* Product "More" menu — dropdown popover anchored under the top-bar ☰ icon. */}
       <Modal visible={actionSheetVisible} transparent animationType="fade" onRequestClose={() => setActionSheetVisible(false)}>
-        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setActionSheetVisible(false)}>
-          <View style={styles.sheet}>
-            <Text style={styles.sheetTitle}>{t('menu')}</Text>
-            {consumerActionItems.map((item) => (
-              <View key={item.key}>
-                <TouchableOpacity style={styles.menuItem} onPress={() => runActionSheetItem(item.key)} activeOpacity={0.7}>
-                  <Image source={item.iconSource} style={styles.menuItemIcon} resizeMode="contain" />
-                  <Text style={styles.menuItemText}>{item.label}</Text>
-                </TouchableOpacity>
-                <View style={styles.menuDivider} />
-              </View>
-            ))}
+        <TouchableWithoutFeedback onPress={() => setActionSheetVisible(false)}>
+          <View style={styles.langOverlay}>
+            <View style={[styles.morePopover, { position: 'absolute', top: TOP_BAR_HEIGHT - 4, right: 8 }]}>
+              {consumerActionItems.map((item, i) => (
+                <View key={item.key}>
+                  {i > 0 && <View style={styles.menuDivider} />}
+                  <TouchableOpacity style={styles.morePopoverItem} onPress={() => runActionSheetItem(item.key)} activeOpacity={0.7}>
+                    <Image source={item.iconSource} style={styles.menuItemIcon} resizeMode="contain" />
+                    <Text style={styles.menuItemText}>{item.label}</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
           </View>
-        </TouchableOpacity>
+        </TouchableWithoutFeedback>
       </Modal>
 
       <Modal visible={langMenuVisible} transparent animationType="none" onRequestClose={() => setLangMenuVisible(false)}>
@@ -661,6 +662,17 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     ...shadow(3),
   },
+  morePopover: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    paddingHorizontal: 10,
+    minWidth: 232,
+    maxWidth: 300,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadow(3),
+  },
+  morePopoverItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13, paddingHorizontal: 4, minHeight: 44 },
   langItem: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: radius.sm },
   langItemActive: { backgroundColor: colors.surfaceAlt },
   langText: { fontSize: 15, color: colors.text, fontWeight: '400' },
