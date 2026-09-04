@@ -111,7 +111,7 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
       <ScrollView style={styles.screen} contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         {/* Hero — "Scan a Product" over the brand artwork background */}
         <ImageBackground
-          source={require('../assets/scan-hero-bg.png')}
+          source={require('../assets/scan-product.png')}
           style={styles.hero}
           imageStyle={styles.heroImage}
           resizeMode="cover"
