@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Image, Platform, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Image, Platform, Alert, Modal } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import Clipboard from '@react-native-clipboard/clipboard';
 import AppLayout from '../components/AppLayout';
@@ -78,18 +78,26 @@ function Bar({ label, percent }: { label: string; percent: number }) {
   );
 }
 
-function Row({ label, value, icon, chevron }: { label: string; value: string; icon?: string; chevron?: boolean }) {
+function Row({ label, value, icon, chevron, onPress }: { label: string; value: string; icon?: string; chevron?: boolean; onPress?: () => void }) {
   if (!value) return null;
-  return (
-    <View style={styles.itemRow}>
+  const content = (
+    <>
       {!!icon && (
         <View style={styles.itemIcon}><Icon name={icon} size={19} color={colors.primary} /></View>
       )}
       <Text style={styles.itemLabel}>{label}</Text>
       <Text style={styles.itemValue} numberOfLines={1}>{value}</Text>
       {chevron && <Icon name="chevron-right" size={19} color={colors.muted} />}
-    </View>
+    </>
   );
+  if (onPress) {
+    return (
+      <TouchableOpacity style={styles.itemRow} activeOpacity={0.7} onPress={onPress}>
+        {content}
+      </TouchableOpacity>
+    );
+  }
+  return <View style={styles.itemRow}>{content}</View>;
 }
 
 export default function ProductLifecycleScreen({ navigation, route, user, onLogout }: Props) {
@@ -100,6 +108,10 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
   const [openStage, setOpenStage] = useState<string | null>(null);
   const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
   const [openRow, setOpenRow] = useState<string | null>(null);
+  // Which Material Origins row (by index) is expanded — Materials tab and
+  // Traceability tab each track their own via a prefixed key.
+  const [openOrigin, setOpenOrigin] = useState<string | null>(null);
+  const [infoDialog, setInfoDialog] = useState<{ title: string; body: string } | null>(null);
   const [isInAlbum, setIsInAlbum] = useState(false);
   const [isBrandFollowed, setIsBrandFollowed] = useState(false);
 
@@ -313,9 +325,10 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
     }
     if (key === 'transportation') {
       const route = [routeInfo.origin, routeInfo.destination].filter(Boolean).join(' → ');
-      if (!esg.distance && !route && !routeInfo.mode && !routeInfo.emissions && !esg.co2Transportation) return null;
+      if (!esg.distance && !route && !routeInfo.mode && !routeInfo.emissions && !esg.co2Transportation && !esg.shippingLog) return null;
       return (
         <View style={styles.jDetail}>
+          <Row label={t('lifecycleShippingLogLabel')} value={esg.shippingLog || ''} />
           <Row label={t('lifecycleShippingDistance')} value={esg.distance || ''} />
           <Row label={t('lifecycleRoute')} value={route} />
           <Row label={t('lifecycleTransportMode')} value={routeInfo.mode || ''} />
@@ -391,6 +404,23 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
     </View>
   );
 
+  const openInfoDialog = (title: string, body: string) => setInfoDialog({ title, body });
+
+  // Expand/collapse detail for one Material Origins row — company, material,
+  // country, icon. Shared by the Materials tab and the Traceability tab.
+  const renderOriginDetail = (o: any) => (
+    <View style={styles.jDetail}>
+      {!!o.icon && (
+        <View style={{ alignItems: 'flex-start', marginBottom: spacing.sm }}>
+          <Image source={{ uri: fileUrl(o.icon) }} style={styles.originDetailImg} resizeMode="contain" />
+        </View>
+      )}
+      <Row label={t('summaryMaterial')} value={o.material || '—'} />
+      <Row label={t('lifecycleOriginCompany')} value={o.companyName || '—'} />
+      <Row label={t('country')} value={o.country || o.origin || '—'} />
+    </View>
+  );
+
   const expandRow = (key: string, title: string, sub: string, icon: string, body: React.ReactNode) => {
     const open = openRow === key;
     return (
@@ -429,7 +459,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
         <Row icon="spa" label={t('summaryMaterial')} value={facts.material || ''} />
       </View>
       {expandRow('about', t('lifecycleAboutProduct'), t('lifecycleAboutProductSub'), 'verified-user',
-        <Text style={styles.paragraph}>{facts.traceableIdentity || t('lifecycleAboutProductFallback')}</Text>)}
+        <Text style={styles.paragraph}>{productData?.aboutProduct || t('lifecycleAboutProductFallback')}</Text>)}
       {expandRow('certs', t('lifecycleCertifications'), t('lifecycleCertificationsSub'), 'workspace-premium',
         certifications.length ? (
           <View style={{ gap: spacing.sm }}>
@@ -480,7 +510,11 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
         )) : <Text style={styles.emptyText}>{maintenance.description || t('lifecycleNoData')}</Text>}
         {!!maintenance.description && careTips.length > 0 && <Text style={styles.paragraph}>{maintenance.description}</Text>}
       </View>
-      <View style={styles.leafCard}>
+      <TouchableOpacity
+        style={styles.leafCard}
+        activeOpacity={0.7}
+        onPress={() => openInfoDialog(t('lifecycleCareHelpTitle'), `${t('lifecycleCareHint')}\n\n${t('lifecycleLearnCare')}`)}
+      >
         <View style={styles.leafIcon}><Icon name="eco" size={20} color={colors.success} /></View>
         <View style={{ flex: 1 }}>
           <Text style={styles.leafTitle}>{t('lifecycleCareHelpTitle')}</Text>
@@ -488,7 +522,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
           <Text style={styles.leafLink}>{t('lifecycleLearnCare')}</Text>
         </View>
         <Icon name="chevron-right" size={19} color={colors.muted} />
-      </View>
+      </TouchableOpacity>
     </View>
   );
 
@@ -502,22 +536,29 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
         {materialOrigins.length > 0 && (
           <>
             <Text style={[styles.cardTitle, { marginTop: spacing.md }]}>{t('lifecycleMaterialOrigins')}</Text>
-            {materialOrigins.map((o: any, i: number) => (
-              <View key={i} style={styles.originRow}>
-                <View style={styles.originIcon}>
-                  {o.icon ? (
-                    <Image source={{ uri: fileUrl(o.icon) }} style={styles.originImg} resizeMode="contain" />
-                  ) : (
-                    <Icon name="recycling" size={20} color={colors.primary} />
-                  )}
+            {materialOrigins.map((o: any, i: number) => {
+              const key = `materials-${i}`;
+              const open = openOrigin === key;
+              return (
+                <View key={i}>
+                  <TouchableOpacity style={styles.originRow} activeOpacity={0.7} onPress={() => setOpenOrigin(open ? null : key)}>
+                    <View style={styles.originIcon}>
+                      {o.icon ? (
+                        <Image source={{ uri: fileUrl(o.icon) }} style={styles.originImg} resizeMode="contain" />
+                      ) : (
+                        <Icon name="recycling" size={20} color={colors.primary} />
+                      )}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.originName}>{o.material || '—'}</Text>
+                      <Text style={styles.originSub}>{[o.country || o.origin, o.companyName].filter(Boolean).join(' · ') || '—'}</Text>
+                    </View>
+                    <Icon name={open ? 'expand-less' : 'expand-more'} size={22} color={colors.muted} />
+                  </TouchableOpacity>
+                  {open && renderOriginDetail(o)}
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.originName}>{o.material || '—'}</Text>
-                  <Text style={styles.originSub}>{[o.country || o.origin, o.companyName].filter(Boolean).join(' · ') || '—'}</Text>
-                </View>
-                <Icon name="chevron-right" size={19} color={colors.muted} />
-              </View>
-            ))}
+              );
+            })}
           </>
         )}
       </View>
@@ -538,14 +579,18 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
           </View>
         </View>
       )}
-      <View style={styles.leafCard}>
+      <TouchableOpacity
+        style={styles.leafCard}
+        activeOpacity={0.7}
+        onPress={() => openInfoDialog(t('lifecycleResponsibleSourcingTitle'), t('lifecycleResponsibleSourcing'))}
+      >
         <View style={styles.leafIcon}><Icon name="eco" size={20} color={colors.success} /></View>
         <View style={{ flex: 1 }}>
           <Text style={styles.leafTitle}>{t('lifecycleResponsibleSourcingTitle')}</Text>
           <Text style={styles.leafBody}>{t('lifecycleResponsibleSourcing')}</Text>
         </View>
         <Icon name="chevron-right" size={19} color={colors.muted} />
-      </View>
+      </TouchableOpacity>
     </View>
   );
 
@@ -556,7 +601,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
         {disposeLinks.map((l) => (
           <TouchableOpacity
             key={l.key}
-            style={[styles.disposeRow, !l.url && styles.disposeRowDisabled]}
+            style={styles.disposeRow}
             onPress={() => openUrl(l.url)}
             activeOpacity={l.url ? 0.7 : 1}
             disabled={!l.url}
@@ -566,7 +611,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
               <Text style={styles.disposeTitle}>{t(l.labelKey as any)}</Text>
               <Text style={styles.disposeSub}>{t(l.subKey as any)}</Text>
             </View>
-            {!!l.url && <Icon name="chevron-right" size={18} color={colors.muted} />}
+            <Icon name="chevron-right" size={18} color={colors.muted} />
           </TouchableOpacity>
         ))}
       </View>
@@ -591,23 +636,66 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
           </View>
         </View>
       )}
-      <View style={styles.leafCard}>
+      <TouchableOpacity
+        style={styles.leafCard}
+        activeOpacity={0.7}
+        onPress={() => openInfoDialog(t('lifecycleNeedHelpTitle'), t('lifecycleDisposeHelp'))}
+      >
         <View style={styles.leafIcon}><Icon name="help-outline" size={20} color={colors.primary} /></View>
         <View style={{ flex: 1 }}>
           <Text style={styles.leafTitle}>{t('lifecycleNeedHelpTitle')}</Text>
           <Text style={styles.leafBody}>{t('lifecycleDisposeHelp')}</Text>
         </View>
         <Icon name="chevron-right" size={19} color={colors.muted} />
-      </View>
+      </TouchableOpacity>
     </View>
   );
 
-  const renderTraceability = () => (
+  const renderTraceability = () => {
+    const traceOriginsKey = 'traceability';
+    const traceOriginsOpen = openOrigin === traceOriginsKey;
+    return (
     <View>
       <View style={styles.card}>
-        <Row icon="place" label={t('lifecycleCountryOfOrigin')} value={originCountry} chevron />
-        <Row icon="hub" label={t('lifecycleMaterialOrigins')} value={originCountries.length ? `${originCountries.length} ${t('lifecycleCountries')}` : ''} chevron />
-        <Row icon="local-shipping" label={t('lifecycleShippingRoute')} value={[routeInfo.origin, routeInfo.destination].filter(Boolean).join(' → ') || routeInfo.mode || t('lifecycleViewJourney')} chevron />
+        <Row icon="place" label={t('lifecycleCountryOfOrigin')} value={originCountry} />
+        {materialOrigins.length > 0 && (
+          <TouchableOpacity
+            style={styles.itemRow}
+            activeOpacity={0.7}
+            onPress={() => setOpenOrigin(traceOriginsOpen ? null : traceOriginsKey)}
+          >
+            <View style={styles.itemIcon}><Icon name="hub" size={19} color={colors.primary} /></View>
+            <Text style={styles.itemLabel}>{t('lifecycleMaterialOrigins')}</Text>
+            <Text style={styles.itemValue} numberOfLines={1}>{originCountries.length ? `${originCountries.length} ${t('lifecycleCountries')}` : ''}</Text>
+            <Icon name={traceOriginsOpen ? 'expand-less' : 'expand-more'} size={20} color={colors.muted} />
+          </TouchableOpacity>
+        )}
+        {traceOriginsOpen && materialOrigins.length > 0 && (
+          <View style={styles.jDetail}>
+            {materialOrigins.map((o: any, i: number) => (
+              <View key={i} style={[styles.originRow, i === materialOrigins.length - 1 && { borderBottomWidth: 0 }]}>
+                <View style={styles.originIcon}>
+                  {o.icon ? (
+                    <Image source={{ uri: fileUrl(o.icon) }} style={styles.originImg} resizeMode="contain" />
+                  ) : (
+                    <Icon name="recycling" size={20} color={colors.primary} />
+                  )}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.originName}>{o.material || '—'}</Text>
+                  <Text style={styles.originSub}>{[o.country || o.origin, o.companyName].filter(Boolean).join(' · ') || '—'}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+        <Row
+          icon="local-shipping"
+          label={t('lifecycleShippingRoute')}
+          value={[routeInfo.origin, routeInfo.destination].filter(Boolean).join(' → ') || routeInfo.mode || t('lifecycleViewJourney')}
+          chevron
+          onPress={() => { setTab('journey'); setOpenStage('transportation'); }}
+        />
         <Row icon="route" label={t('lifecycleDistanceTraveled')} value={esg.distance || ''} />
       </View>
       <View style={styles.card}>
@@ -615,7 +703,11 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
         <Row icon="cloud" label={t('co2Production')} value={esg.co2Production || ''} />
         <Row icon="local-shipping" label={t('co2Transportation')} value={routeInfo.emissions || esg.co2Transportation || ''} />
       </View>
-      <View style={styles.leafCard}>
+      <TouchableOpacity
+        style={styles.leafCard}
+        activeOpacity={0.7}
+        onPress={() => openInfoDialog(t('lifecycleVerifiedDataTitle'), `${t('lifecycleVerifiedData')}\n\n${t('lifecycleLearnMore')}`)}
+      >
         <View style={styles.leafIcon}><Icon name="verified-user" size={20} color={colors.primary} /></View>
         <View style={{ flex: 1 }}>
           <Text style={styles.leafTitle}>{t('lifecycleVerifiedDataTitle')}</Text>
@@ -623,9 +715,10 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
           <Text style={styles.leafLink}>{t('lifecycleLearnMore')}</Text>
         </View>
         <Icon name="chevron-right" size={19} color={colors.muted} />
-      </View>
+      </TouchableOpacity>
     </View>
-  );
+    );
+  };
 
   const renderTab = () => {
     switch (tab) {
@@ -720,6 +813,18 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
         videoId={playingVideoId}
         onClose={() => setPlayingVideoId(null)}
       />
+
+      <Modal visible={!!infoDialog} transparent animationType="fade" onRequestClose={() => setInfoDialog(null)}>
+        <TouchableOpacity style={styles.dialogOverlay} activeOpacity={1} onPress={() => setInfoDialog(null)}>
+          <TouchableOpacity style={styles.dialogCard} activeOpacity={1}>
+            <Text style={styles.dialogTitle}>{infoDialog?.title}</Text>
+            <Text style={styles.dialogBody}>{infoDialog?.body}</Text>
+            <TouchableOpacity style={styles.dialogClose} onPress={() => setInfoDialog(null)} activeOpacity={0.85}>
+              <Text style={styles.dialogCloseText}>{t('close')}</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </AppLayout>
   );
 }
@@ -841,6 +946,7 @@ const styles = StyleSheet.create({
   originRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border },
   originIcon: { width: 36, height: 36, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
   originImg: { width: 24, height: 24 },
+  originDetailImg: { width: 40, height: 40 },
   originName: { fontSize: 14, fontWeight: '600', color: colors.text },
   originSub: { fontSize: 12, color: colors.muted, marginTop: 2 },
   certRow: { flexDirection: 'row', gap: spacing.sm },
@@ -867,7 +973,6 @@ const styles = StyleSheet.create({
   chipText: { fontSize: 11, color: colors.text },
   // dispose
   disposeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border },
-  disposeRowDisabled: { opacity: 0.45 },
   disposeIcon: { width: 36, height: 36, borderRadius: radius.md, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
   disposeTitle: { fontSize: 13, fontWeight: '600', color: colors.heading },
   disposeSub: { fontSize: 11, color: colors.muted, marginTop: 1 },
@@ -912,4 +1017,24 @@ const styles = StyleSheet.create({
   leafTitle: { fontSize: 13, fontWeight: '700', color: colors.primary },
   leafBody: { fontSize: 12, color: colors.primaryDark, lineHeight: 17, marginTop: 2 },
   leafLink: { fontSize: 12, color: colors.accent, fontWeight: '600', marginTop: 4 },
+  dialogOverlay: { flex: 1, backgroundColor: colors.overlay, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
+  dialogCard: {
+    width: '100%',
+    maxWidth: 380,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.xl,
+    ...shadow(3),
+  },
+  dialogTitle: { fontSize: 16, fontWeight: '700', color: colors.heading, marginBottom: spacing.sm },
+  dialogBody: { fontSize: 14, color: colors.text, lineHeight: 20 },
+  dialogClose: {
+    marginTop: spacing.lg,
+    alignSelf: 'flex-end',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
+  },
+  dialogCloseText: { color: '#fff', fontSize: 14, fontWeight: '700' },
 });
