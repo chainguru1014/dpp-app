@@ -117,12 +117,12 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
           resizeMode="cover"
         >
           <View style={styles.heroBadge}>
-            <Icon name="qr-code-scanner" size={20} color={colors.primary} />
+            <Icon name="crop-free" size={20} color={colors.primary} />
           </View>
           <Text style={styles.heroTitle}>{t('scanTitle')}</Text>
           <Text style={styles.heroSub}>{t('homeScanHeroSub')}</Text>
           <GradientButton style={styles.heroBtn} onPress={() => openScanner()} activeOpacity={0.9}>
-            <Icon name="qr-code-scanner" size={16} color="#fff" />
+            <Icon name="crop-free" size={16} color="#fff" />
             <Text style={styles.heroBtnText}>{t('homeScanNow')}</Text>
           </GradientButton>
         </ImageBackground>
@@ -149,6 +149,7 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
               onViewAll={() => navigation.navigate('History')}
               emptyText={t('noHistoryYet')}
               hasItems={recentScans.length > 0}
+              style={styles.sectionFull}
             >
               {recentScans.map((p, i) => (
                 <ProductRow key={`${p._id}-${i}`} product={p} caption={scanCaption(p)} onPress={() => openProductSummary(p, false)} />
@@ -160,6 +161,7 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
               onViewAll={() => navigation.navigate('ScannedProducts')}
               emptyText={t('noOwnedProducts')}
               hasItems={myProducts.length > 0}
+              style={styles.sectionFull}
             >
               {myProducts.map((p, i) => (
                 <ProductRow key={`${p._id}-${i}`} product={p} caption={t('owned')} onPress={() => openProductSummary(p, true)} />
@@ -172,6 +174,7 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
                 onViewAll={() => navigation.navigate('FavoriteBrands')}
                 emptyText=""
                 hasItems
+                style={styles.sectionFull}
               >
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.brandStrip}>
                   {brands.map((b) => (
@@ -281,6 +284,7 @@ const styles = StyleSheet.create({
   brandLogoImg: { width: 42, height: 42 },
   brandLetter: { fontSize: 22, fontWeight: '800', color: colors.primary },
   brandName: { fontSize: 10, color: colors.muted, marginTop: 5, textAlign: 'center' },
+  sectionFull: { marginHorizontal: 0 },
   trustRow: {
     flexDirection: 'row',
     gap: spacing.sm,

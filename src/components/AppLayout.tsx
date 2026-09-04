@@ -295,7 +295,7 @@ export default function AppLayout({
         <View style={styles.topBarRow}>
           {logoLeft ? (
             <Image
-              source={require('../assets/yometel-logo-trans.png')}
+              source={require('../assets/yometel-logo-white.png')}
               style={styles.topBarLogo}
               resizeMode="contain"
             />
@@ -376,7 +376,7 @@ export default function AppLayout({
               <Text style={[styles.bottomTabLabel, isHomeSelected && styles.bottomTabLabelSelected]}>{t('bottomHome')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.bottomTab} onPress={handleScan} activeOpacity={0.7}>
-              <Icon name="qr-code-scanner" size={BOTTOM_TAB_ICON_SIZE} color={isScanSelected ? colors.primary : '#333333'} />
+              <Icon name="crop-free" size={BOTTOM_TAB_ICON_SIZE} color={isScanSelected ? colors.primary : '#333333'} />
               <Text style={[styles.bottomTabLabel, isScanSelected && styles.bottomTabLabelSelected]}>{t('bottomCapture')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.bottomTab} onPress={handleProducts} activeOpacity={0.7}>
@@ -496,7 +496,7 @@ function ScanCenterTab({ label, selected, onPress }: { label: string; selected: 
   return (
     <TouchableOpacity style={styles.scanTab} onPress={onPress} activeOpacity={0.85}>
       <View style={[styles.scanCircle, selected && styles.scanCircleActive]}>
-        <Icon name="qr-code-scanner" size={26} color={colors.white} />
+        <Icon name="crop-free" size={26} color={colors.white} />
       </View>
       <Text style={[styles.scanTabLabel, selected && styles.bottomTabLabelSelected]} numberOfLines={1}>
         {label}

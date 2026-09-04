@@ -43,16 +43,18 @@ export function SectionCard({
   emptyText,
   children,
   hasItems,
+  style,
 }: {
   title: string;
   onViewAll?: () => void;
   emptyText: string;
   children: React.ReactNode;
   hasItems: boolean;
+  style?: any;
 }) {
   const { t } = useI18n();
   return (
-    <View style={styles.section}>
+    <View style={[styles.section, style]}>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>{title}</Text>
         {onViewAll && (
