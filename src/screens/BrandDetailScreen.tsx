@@ -148,7 +148,7 @@ export default function BrandDetailScreen({ navigation, route, user, onLogout }:
           <Image source={{ uri: fileUrl(coverUrl) }} style={styles.cover} resizeMode="cover" />
         ) : (
           <View style={[styles.cover, styles.coverPlaceholder]}>
-            <Icon name="image" size={26} color="rgba(255,255,255,0.7)" />
+            <Icon name="image" size={30} color="rgba(255,255,255,0.7)" />
           </View>
         )}
 
@@ -157,7 +157,7 @@ export default function BrandDetailScreen({ navigation, route, user, onLogout }:
             {logoUrl ? (
               <Image source={{ uri: fileUrl(logoUrl) }} style={styles.logo} resizeMode="contain" />
             ) : (
-              <View style={[styles.logo, styles.logoPlaceholder]}><Icon name="storefront" size={22} color={colors.placeholder} /></View>
+              <View style={[styles.logo, styles.logoPlaceholder]}><Icon name="storefront" size={26} color={colors.placeholder} /></View>
             )}
             <View style={{ flex: 1 }}>
               <Text style={styles.brandName}>{brand.name || '—'}</Text>
@@ -176,7 +176,7 @@ export default function BrandDetailScreen({ navigation, route, user, onLogout }:
             </TouchableOpacity>
             {!!website && (
               <TouchableOpacity style={styles.websiteBtn} onPress={openWebsite} activeOpacity={0.7}>
-                <Icon name="open-in-new" size={16} color={colors.accent} />
+                <Icon name="open-in-new" size={18} color={colors.accent} />
                 <Text style={styles.websiteText} numberOfLines={1}>{website.replace(/^https?:\/\//, '')}</Text>
               </TouchableOpacity>
             )}
@@ -191,7 +191,7 @@ export default function BrandDetailScreen({ navigation, route, user, onLogout }:
             { icon: 'public', value: String(stats.countryCount), label: t('brandStatCountries') },
           ].map((s) => (
             <View key={s.label} style={styles.statTile}>
-              <Icon name={s.icon} size={16} color={colors.primary} />
+              <Icon name={s.icon} size={19} color={colors.primary} />
               <Text style={styles.statValue}>{s.value}</Text>
               <Text style={styles.statLabel}>{s.label}</Text>
             </View>
@@ -223,21 +223,21 @@ export default function BrandDetailScreen({ navigation, route, user, onLogout }:
                   <Image source={{ uri: img }} style={styles.productImage} resizeMode="cover" />
                 ) : (
                   <View style={[styles.productImage, styles.productImagePlaceholder]}>
-                    <Icon name="inventory-2" size={18} color={colors.placeholder} />
+                    <Icon name="inventory-2" size={20} color={colors.placeholder} />
                   </View>
                 )}
                 <View style={{ flex: 1 }}>
                   <Text style={styles.productName} numberOfLines={1}>{p?.name || '—'}</Text>
                   <Text style={styles.productSub} numberOfLines={1}>{p?.model || p?.brandInfo?.name || ''}</Text>
                 </View>
-                <Icon name="chevron-right" size={20} color={colors.muted} />
+                <Icon name="chevron-right" size={22} color={colors.muted} />
               </TouchableOpacity>
             );
           })
         )}
 
         <TouchableOpacity style={styles.introBtn} onPress={() => setIntroVisible(true)} activeOpacity={0.8}>
-          <Icon name="share" size={16} color={colors.primary} />
+          <Icon name="share" size={18} color={colors.primary} />
           <Text style={styles.introBtnText}>{t('brandIntroduceToFriend')}</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -307,17 +307,17 @@ const styles = StyleSheet.create({
     ...shadow(2),
   },
   headerTop: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' },
-  logo: { width: 48, height: 48, borderRadius: radius.md },
+  logo: { width: 56, height: 56, borderRadius: radius.md },
   logoPlaceholder: { backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
-  brandName: { fontSize: 17, fontWeight: '700', color: colors.heading },
-  brandDetail: { fontSize: 12, color: colors.muted, marginTop: 2 },
+  brandName: { fontSize: 19, fontWeight: '700', color: colors.heading },
+  brandDetail: { fontSize: 13, color: colors.muted, marginTop: 3, lineHeight: 18 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.md },
-  followBtn: { borderWidth: 1, borderColor: colors.primary, borderRadius: radius.pill, paddingHorizontal: spacing.lg, paddingVertical: 6 },
+  followBtn: { borderWidth: 1, borderColor: colors.primary, borderRadius: radius.pill, paddingHorizontal: spacing.lg, paddingVertical: 7 },
   followBtnActive: { backgroundColor: colors.primary },
-  followBtnText: { fontSize: 12, fontWeight: '700', color: colors.primary },
+  followBtnText: { fontSize: 13, fontWeight: '700', color: colors.primary },
   followBtnTextActive: { color: '#fff' },
-  websiteBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 },
-  websiteText: { fontSize: 12, color: colors.accent, flexShrink: 1 },
+  websiteBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, flexShrink: 1 },
+  websiteText: { fontSize: 13, color: colors.accent, flexShrink: 1 },
   statRow: { flexDirection: 'row', gap: spacing.sm, marginHorizontal: spacing.lg, marginBottom: spacing.lg },
   statTile: {
     flex: 1,
@@ -328,12 +328,12 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     alignItems: 'center',
   },
-  statValue: { fontSize: 16, fontWeight: '700', color: colors.primary, marginTop: 3 },
-  statLabel: { fontSize: 9, color: colors.muted, marginTop: 2, textAlign: 'center' },
+  statValue: { fontSize: 18, fontWeight: '700', color: colors.primary, marginTop: 4 },
+  statLabel: { fontSize: 10, color: colors.muted, marginTop: 3, textAlign: 'center' },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginHorizontal: spacing.lg, marginBottom: spacing.sm },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.primary },
-  viewAll: { fontSize: 13, color: colors.accent, fontWeight: '600' },
-  emptyText: { fontSize: 13, color: colors.muted, marginHorizontal: spacing.lg, paddingVertical: spacing.lg },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.primary },
+  viewAll: { fontSize: 14, color: colors.accent, fontWeight: '600' },
+  emptyText: { fontSize: 14, color: colors.muted, marginHorizontal: spacing.lg, paddingVertical: spacing.lg },
   productRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -346,10 +346,10 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.lg,
     marginBottom: spacing.sm,
   },
-  productImage: { width: 44, height: 44, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt },
+  productImage: { width: 52, height: 52, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt },
   productImagePlaceholder: { alignItems: 'center', justifyContent: 'center' },
-  productName: { fontSize: 14, fontWeight: '600', color: colors.heading },
-  productSub: { fontSize: 12, color: colors.muted, marginTop: 1 },
+  productName: { fontSize: 15, fontWeight: '600', color: colors.heading },
+  productSub: { fontSize: 13, color: colors.muted, marginTop: 2 },
   introBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -363,12 +363,12 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     backgroundColor: colors.surface,
   },
-  introBtnText: { fontSize: 13, fontWeight: '600', color: colors.primary },
+  introBtnText: { fontSize: 14, fontWeight: '600', color: colors.primary },
   sheetOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
   sheet: { backgroundColor: colors.surface, borderTopLeftRadius: radius.xxl, borderTopRightRadius: radius.xxl, padding: spacing.lg, paddingBottom: spacing.xxl },
   sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md },
-  sheetTitle: { fontSize: 17, fontWeight: '700', color: colors.heading },
-  sheetLabel: { fontSize: 12, color: colors.muted, marginTop: spacing.sm, marginBottom: spacing.xs },
+  sheetTitle: { fontSize: 18, fontWeight: '700', color: colors.heading },
+  sheetLabel: { fontSize: 13, color: colors.muted, marginTop: spacing.sm, marginBottom: spacing.xs },
   input: {
     backgroundColor: colors.surfaceAlt,
     borderRadius: radius.md,
@@ -389,9 +389,9 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginTop: spacing.md,
   },
-  brandMiniLogo: { width: 56, height: 40 },
-  brandMiniName: { fontSize: 13, fontWeight: '700', color: colors.heading },
-  brandMiniDetail: { fontSize: 11, color: colors.muted },
+  brandMiniLogo: { width: 64, height: 46 },
+  brandMiniName: { fontSize: 14, fontWeight: '700', color: colors.heading },
+  brandMiniDetail: { fontSize: 12, color: colors.muted, marginTop: 2 },
   sheetSend: { marginTop: spacing.lg, backgroundColor: colors.accent, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center' },
   sheetSendText: { color: '#fff', fontSize: 15, fontWeight: '600' },
 });

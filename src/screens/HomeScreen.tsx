@@ -107,7 +107,7 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
   ];
 
   return (
-    <AppLayout navigation={navigation} user={user} onLogout={onLogout} logoLeft flatContent>
+    <AppLayout navigation={navigation} user={user} onLogout={onLogout} logoLeft>
       <ScrollView style={styles.screen} contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         {/* Hero — "Scan a Product" over the brand artwork background */}
         <ImageBackground
@@ -116,9 +116,7 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
           imageStyle={styles.heroImage}
           resizeMode="cover"
         >
-          <View style={styles.heroBadge}>
-            <Icon name="crop-free" size={20} color={colors.primary} />
-          </View>
+          <Icon name="crop-free" size={28} color={colors.primary} style={styles.heroBadgeIcon} />
           <Text style={styles.heroTitle}>{t('scanTitle')}</Text>
           <Text style={styles.heroSub}>{t('homeScanHeroSub')}</Text>
           <GradientButton style={styles.heroBtn} onPress={() => openScanner()} activeOpacity={0.9}>
@@ -132,7 +130,7 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
           {actions.map((a) => (
             <TouchableOpacity key={a.key} style={styles.actionTile} activeOpacity={0.8} onPress={a.onPress}>
               <View style={styles.actionIcon}>
-                <Icon name={a.icon} size={20} color={colors.primary} />
+                <Icon name={a.icon} size={22} color={colors.primary} />
               </View>
               <Text style={styles.actionLabel}>{a.label}</Text>
               <Text style={styles.actionSub} numberOfLines={2}>{a.sub}</Text>
@@ -199,7 +197,7 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
         <View style={styles.trustRow}>
           {trust.map((x) => (
             <View key={x.title} style={styles.trustCol}>
-              <Icon name={x.icon} size={18} color={colors.primary} />
+              <Icon name={x.icon} size={20} color={colors.primary} />
               <Text style={styles.trustTitle}>{x.title}</Text>
               <Text style={styles.trustSub} numberOfLines={3}>{x.sub}</Text>
             </View>
@@ -222,17 +220,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   heroImage: { borderRadius: radius.xl },
-  heroBadge: {
-    width: 34,
-    height: 34,
-    borderRadius: radius.md,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.md,
-  },
-  heroTitle: { fontSize: 22, fontWeight: '800', color: colors.heading },
-  heroSub: { fontSize: 12, color: colors.text, marginTop: 6, lineHeight: 17, maxWidth: '62%' },
+  heroBadgeIcon: { marginBottom: spacing.sm },
+  heroTitle: { fontSize: 24, fontWeight: '800', color: colors.heading },
+  heroSub: { fontSize: 13, color: colors.text, marginTop: 7, lineHeight: 19, maxWidth: '62%' },
   heroBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -240,12 +230,12 @@ const styles = StyleSheet.create({
     gap: 6,
     marginTop: spacing.md,
     paddingHorizontal: spacing.lg,
-    paddingVertical: 10,
+    paddingVertical: 11,
     borderRadius: radius.pill,
     backgroundColor: colors.accent,
     ...shadow(1),
   },
-  heroBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  heroBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
   actionRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
   actionTile: {
     flex: 1,
@@ -259,20 +249,20 @@ const styles = StyleSheet.create({
     ...shadow(1),
   },
   actionIcon: {
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 40,
     borderRadius: radius.md,
     backgroundColor: colors.surfaceAlt,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  actionLabel: { fontSize: 12, fontWeight: '700', color: colors.heading, marginTop: spacing.sm, textAlign: 'center' },
-  actionSub: { fontSize: 10, color: colors.muted, marginTop: 2, textAlign: 'center' },
+  actionLabel: { fontSize: 13, fontWeight: '700', color: colors.heading, marginTop: spacing.sm, textAlign: 'center' },
+  actionSub: { fontSize: 11, color: colors.muted, marginTop: 3, textAlign: 'center', lineHeight: 14 },
   brandStrip: { gap: spacing.md, paddingVertical: spacing.xs },
-  brandTile: { width: 66, alignItems: 'center' },
+  brandTile: { width: 72, alignItems: 'center' },
   brandLogoBox: {
-    width: 62,
-    height: 62,
+    width: 68,
+    height: 68,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
@@ -281,9 +271,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...shadow(1),
   },
-  brandLogoImg: { width: 42, height: 42 },
-  brandLetter: { fontSize: 22, fontWeight: '800', color: colors.primary },
-  brandName: { fontSize: 10, color: colors.muted, marginTop: 5, textAlign: 'center' },
+  brandLogoImg: { width: 46, height: 46 },
+  brandLetter: { fontSize: 24, fontWeight: '800', color: colors.primary },
+  brandName: { fontSize: 11, color: colors.muted, marginTop: 6, textAlign: 'center' },
   sectionFull: { marginHorizontal: 0 },
   trustRow: {
     flexDirection: 'row',
@@ -297,6 +287,6 @@ const styles = StyleSheet.create({
     ...shadow(1),
   },
   trustCol: { flex: 1, alignItems: 'center' },
-  trustTitle: { fontSize: 11, fontWeight: '700', color: colors.heading, marginTop: 5, textAlign: 'center' },
-  trustSub: { fontSize: 9, color: colors.muted, marginTop: 2, textAlign: 'center', lineHeight: 12 },
+  trustTitle: { fontSize: 12, fontWeight: '700', color: colors.heading, marginTop: 6, textAlign: 'center' },
+  trustSub: { fontSize: 10, color: colors.muted, marginTop: 3, textAlign: 'center', lineHeight: 14 },
 });

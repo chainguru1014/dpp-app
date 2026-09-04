@@ -119,7 +119,7 @@ export default function ProductHistoryScreen({ navigation, route, user, onLogout
                         <View style={[styles.iconBubble, { backgroundColor: isScan ? '#e7f0fb' : '#e6f4ea' }]}>
                           <Icon
                             name={isScan ? 'qr-code-scanner' : 'place'}
-                            size={22}
+                            size={26}
                             color={isScan ? colors.primary : colors.success}
                           />
                         </View>
@@ -148,21 +148,21 @@ export default function ProductHistoryScreen({ navigation, route, user, onLogout
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg, padding: spacing.lg },
   tabRow: { flexDirection: 'row', backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: 4, marginBottom: spacing.md },
-  tab: { flex: 1, paddingVertical: 9, borderRadius: radius.sm, alignItems: 'center' },
+  tab: { flex: 1, paddingVertical: 10, borderRadius: radius.sm, alignItems: 'center' },
   tabActive: { backgroundColor: colors.primary },
-  tabText: { fontSize: 13, fontWeight: '600', color: colors.muted },
+  tabText: { fontSize: 14, fontWeight: '600', color: colors.muted },
   tabTextActive: { color: '#fff' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xxxl },
-  emptyText: { fontSize: 15, color: colors.muted },
+  emptyText: { fontSize: 16, color: colors.muted },
   list: { paddingBottom: spacing.xxxl },
-  groupLabel: { fontSize: 12, fontWeight: '700', color: colors.muted, marginTop: spacing.md, marginBottom: spacing.sm, textTransform: 'uppercase', letterSpacing: 0.5 },
+  groupLabel: { fontSize: 13, fontWeight: '700', color: colors.muted, marginTop: spacing.md, marginBottom: spacing.sm, textTransform: 'uppercase', letterSpacing: 0.5 },
   row: {
     flexDirection: 'row',
     gap: spacing.md,
   },
-  railCol: { alignItems: 'center', justifyContent: 'center', width: 44, position: 'relative' },
+  railCol: { alignItems: 'center', justifyContent: 'center', width: 52, position: 'relative' },
   rail: { position: 'absolute', top: 0, bottom: -8, width: 2, backgroundColor: colors.border },
-  iconBubble: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  iconBubble: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
   info: {
     flex: 1,
     backgroundColor: colors.surface,
@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     ...shadow(1),
   },
-  eventTitle: { fontSize: 14, fontWeight: '600', color: colors.heading },
-  eventMeta: { fontSize: 12, color: colors.muted, marginTop: 2 },
-  eventLoc: { fontSize: 12, color: colors.placeholder, marginTop: 1 },
+  eventTitle: { fontSize: 15, fontWeight: '600', color: colors.heading },
+  eventMeta: { fontSize: 13, color: colors.muted, marginTop: 3 },
+  eventLoc: { fontSize: 13, color: colors.placeholder, marginTop: 2 },
 });

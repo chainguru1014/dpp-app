@@ -109,7 +109,7 @@ export default function NotificationsScreen({ navigation, user, onLogout }: Prop
   const hasUnread = items.some((n) => !n.read);
 
   return (
-    <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton onBackPress={() => navigation.navigate(user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Home')} flatContent>
+    <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton onBackPress={() => navigation.navigate(user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Home')} flatContent={user?.actorKind === 'Employee'}>
       <View style={styles.screen}>
         {hasUnread && (
           <TouchableOpacity style={styles.markAll} onPress={markAllRead} activeOpacity={0.7}>
@@ -132,7 +132,7 @@ export default function NotificationsScreen({ navigation, user, onLogout }: Prop
                   onPress={() => onPressItem(item)}
                 >
                   <View style={[styles.iconBubble, { backgroundColor: `${color}22` }]}>
-                    <Icon name={TYPE_ICON[item.type] || 'notifications'} size={24} color={color} />
+                    <Icon name={TYPE_ICON[item.type] || 'notifications'} size={28} color={color} />
                   </View>
                   <View style={styles.info}>
                     <Text style={[styles.title, !item.read && styles.titleUnread]} numberOfLines={1}>{item.title}</Text>
@@ -140,7 +140,7 @@ export default function NotificationsScreen({ navigation, user, onLogout }: Prop
                   </View>
                   <View style={styles.metaCol}>
                     <Text style={styles.time}>{relativeTime(item.createdAt)}</Text>
-                    <Icon name="chevron-right" size={18} color={colors.muted} />
+                    <Icon name="chevron-right" size={20} color={colors.muted} />
                   </View>
                 </TouchableOpacity>
               );
@@ -179,11 +179,11 @@ const styles = StyleSheet.create({
     ...shadow(1),
   },
   rowUnread: { borderColor: colors.accent, backgroundColor: '#f4f8ff' },
-  iconBubble: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  iconBubble: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
   info: { flex: 1 },
-  title: { fontSize: 14, color: colors.heading },
+  title: { fontSize: 16, color: colors.heading },
   titleUnread: { fontWeight: '700' },
-  message: { fontSize: 12, color: colors.muted, marginTop: 2, lineHeight: 16 },
-  metaCol: { alignItems: 'flex-end', gap: 4 },
-  time: { fontSize: 11, color: colors.placeholder },
+  message: { fontSize: 14, color: colors.muted, marginTop: 3, lineHeight: 19 },
+  metaCol: { alignItems: 'flex-end', gap: 5 },
+  time: { fontSize: 12, color: colors.placeholder },
 });

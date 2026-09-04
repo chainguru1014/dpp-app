@@ -24,7 +24,7 @@ export function ProductRow({ product, caption, onPress }: { product: any; captio
         <Image source={{ uri: img }} style={styles.rowImage} resizeMode="cover" />
       ) : (
         <View style={[styles.rowImage, styles.rowImagePlaceholder]}>
-          <Icon name="inventory-2" size={20} color={colors.placeholder} />
+          <Icon name="inventory-2" size={22} color={colors.placeholder} />
         </View>
       )}
       <View style={styles.rowBody}>
@@ -32,7 +32,7 @@ export function ProductRow({ product, caption, onPress }: { product: any; captio
         <Text style={styles.rowSub} numberOfLines={1}>{product?.brandInfo?.name || product?.model || ''}</Text>
         <Text style={styles.rowCaption} numberOfLines={1}>{caption}</Text>
       </View>
-      <Icon name="chevron-right" size={22} color={colors.muted} />
+      <Icon name="chevron-right" size={24} color={colors.muted} />
     </TouchableOpacity>
   );
 }
@@ -85,14 +85,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.sm,
   },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.primary },
-  viewAll: { fontSize: 13, color: colors.accent, fontWeight: '600' },
-  emptyText: { fontSize: 13, color: colors.muted, paddingVertical: spacing.sm },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, gap: spacing.md },
-  rowImage: { width: 48, height: 48, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.primary },
+  viewAll: { fontSize: 14, color: colors.accent, fontWeight: '600' },
+  emptyText: { fontSize: 14, color: colors.muted, paddingVertical: spacing.sm },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm + 2, gap: spacing.md },
+  rowImage: { width: 54, height: 54, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt },
   rowImagePlaceholder: { alignItems: 'center', justifyContent: 'center' },
   rowBody: { flex: 1 },
-  rowName: { fontSize: 14, fontWeight: '600', color: colors.heading },
-  rowSub: { fontSize: 12, color: colors.muted, marginTop: 1 },
-  rowCaption: { fontSize: 11, color: colors.placeholder, marginTop: 2 },
+  rowName: { fontSize: 15, fontWeight: '600', color: colors.heading },
+  rowSub: { fontSize: 13, color: colors.muted, marginTop: 2 },
+  rowCaption: { fontSize: 12, color: colors.placeholder, marginTop: 3 },
 });

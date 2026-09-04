@@ -116,7 +116,7 @@ export default function HistoryScreen({ navigation, user, onLogout }: Props) {
   };
 
   return (
-    <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton onBackPress={() => navigation.navigate('Home')} flatContent>
+    <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton onBackPress={() => navigation.navigate('Home')}>
       <View style={styles.screen}>
         <View style={styles.tabRow}>
           {([
@@ -146,14 +146,14 @@ export default function HistoryScreen({ navigation, user, onLogout }: Props) {
                 {row.image ? (
                   <Image source={{ uri: row.image }} style={styles.thumb} resizeMode="cover" />
                 ) : (
-                  <View style={[styles.thumb, styles.thumbPlaceholder]}><Icon name="inventory-2" size={18} color={colors.placeholder} /></View>
+                  <View style={[styles.thumb, styles.thumbPlaceholder]}><Icon name="inventory-2" size={22} color={colors.placeholder} /></View>
                 )}
                 <View style={styles.info}>
                   <Text style={styles.name} numberOfLines={1}>{row.name}</Text>
                   {!!row.sub && <Text style={styles.sub} numberOfLines={1}>{row.sub}</Text>}
                   {!!row.when && <Text style={styles.time}>{new Date(row.when).toLocaleDateString()}</Text>}
                 </View>
-                <Icon name="chevron-right" size={20} color={colors.muted} />
+                <Icon name="chevron-right" size={22} color={colors.muted} />
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -172,12 +172,12 @@ const styles = StyleSheet.create({
     padding: 4,
     marginBottom: spacing.md,
   },
-  tab: { flex: 1, paddingVertical: 9, borderRadius: radius.sm, alignItems: 'center' },
+  tab: { flex: 1, paddingVertical: 10, borderRadius: radius.sm, alignItems: 'center' },
   tabActive: { backgroundColor: colors.primary },
-  tabText: { fontSize: 13, fontWeight: '600', color: colors.muted },
+  tabText: { fontSize: 14, fontWeight: '600', color: colors.muted },
   tabTextActive: { color: '#fff' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xxxl },
-  emptyText: { fontSize: 15, color: colors.muted },
+  emptyText: { fontSize: 16, color: colors.muted },
   list: { paddingBottom: spacing.xxxl },
   row: {
     flexDirection: 'row',
@@ -187,14 +187,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: spacing.sm,
+    padding: spacing.md,
     marginBottom: spacing.sm,
     ...shadow(1),
   },
-  thumb: { width: 48, height: 56, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt },
+  thumb: { width: 56, height: 64, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt },
   thumbPlaceholder: { alignItems: 'center', justifyContent: 'center' },
   info: { flex: 1 },
-  name: { fontSize: 14, fontWeight: '600', color: colors.heading },
-  sub: { fontSize: 12, color: colors.muted, marginTop: 1 },
-  time: { fontSize: 11, color: colors.placeholder, marginTop: 3 },
+  name: { fontSize: 15, fontWeight: '600', color: colors.heading },
+  sub: { fontSize: 13, color: colors.muted, marginTop: 2 },
+  time: { fontSize: 12, color: colors.placeholder, marginTop: 4 },
 });

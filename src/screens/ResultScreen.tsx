@@ -1580,13 +1580,13 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
                   <Text style={styles.ovCardTitle}>{t('overviewKeyHighlights')}</Text>
                   {extra.map((e) => (
                     <View key={e.text} style={styles.ovHlRow}>
-                      <Icon name={e.icon} size={14} color={BRAND_COLOR} />
+                      <Icon name={e.icon} size={17} color={BRAND_COLOR} />
                       <Text style={styles.ovHlText} numberOfLines={1}>{e.text}</Text>
                     </View>
                   ))}
                   {rows.map(({ key, icon, format }) => (
                     <View key={key} style={styles.ovHlRow}>
-                      <Icon name={icon} size={14} color={BRAND_COLOR} />
+                      <Icon name={icon} size={17} color={BRAND_COLOR} />
                       <Text style={styles.ovHlText} numberOfLines={1}>{format(String(facts[key] || ''))}</Text>
                     </View>
                   ))}
@@ -1601,7 +1601,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
                 {LIFECYCLE_STAGES.map((s, i) => (
                   <React.Fragment key={s.key}>
                     <View style={styles.ovLcStage}>
-                      <View style={styles.ovLcDot}><Icon name={s.icon} size={24} color={BRAND_COLOR} /></View>
+                      <View style={styles.ovLcDot}><Icon name={s.icon} size={27} color={BRAND_COLOR} /></View>
                       <Text style={styles.ovLcLabel} numberOfLines={1}>{t(s.labelKey as any)}</Text>
                     </View>
                     {i < LIFECYCLE_STAGES.length - 1 && <View style={styles.ovLcConn} />}
@@ -2181,22 +2181,22 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     ...shadow(1),
   },
-  ovCardTitle: { fontSize: 13, fontWeight: '700', color: colors.primary, marginBottom: 6 },
-  ovHlRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 3 },
-  ovHlText: { flex: 1, fontSize: 12, color: colors.text },
+  ovCardTitle: { fontSize: 15, fontWeight: '700', color: colors.primary, marginBottom: 8 },
+  ovHlRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 6 },
+  ovHlText: { flex: 1, fontSize: 14, color: colors.text, lineHeight: 19 },
   ovLcStrip: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6 },
-  ovLcStage: { alignItems: 'center', width: 58 },
+  ovLcStage: { alignItems: 'center', width: 64 },
   ovLcDot: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: colors.surfaceAlt,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 5,
+    marginBottom: 6,
   },
-  ovLcLabel: { fontSize: 9, color: colors.muted, textAlign: 'center' },
-  ovLcConn: { flex: 1, height: 2, backgroundColor: colors.primary, marginTop: 21, borderRadius: 1 },
+  ovLcLabel: { fontSize: 10, color: colors.muted, textAlign: 'center' },
+  ovLcConn: { flex: 1, height: 2, backgroundColor: colors.primary, marginTop: 24, borderRadius: 1 },
   ovViewLc: {
     flexDirection: 'row',
     alignItems: 'center',

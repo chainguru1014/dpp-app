@@ -80,10 +80,10 @@ export default function FavoriteBrandsScreen({ navigation, user, onLogout }: Pro
     });
 
   return (
-    <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton onBackPress={() => navigation.navigate('Home')} flatContent>
+    <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton onBackPress={() => navigation.navigate('Home')}>
       <View style={styles.screen}>
         <View style={styles.searchWrap}>
-          <Icon name="search" size={18} color={colors.muted} />
+          <Icon name="search" size={20} color={colors.muted} />
           <TextInput
             style={styles.searchInput}
             value={search}
@@ -97,7 +97,7 @@ export default function FavoriteBrandsScreen({ navigation, user, onLogout }: Pro
           <Text style={styles.metaText}>{t('brandsCount').replace('{count}', String(list.length))}</Text>
           <TouchableOpacity style={styles.sortToggle} onPress={() => setSortAsc((v) => !v)} activeOpacity={0.7}>
             <Text style={styles.sortToggleText}>{t('brandsSort')}: {sortAsc ? 'A–Z' : 'Z–A'}</Text>
-            <Icon name="expand-more" size={16} color={colors.primary} />
+            <Icon name="expand-more" size={18} color={colors.primary} />
           </TouchableOpacity>
         </View>
 
@@ -113,7 +113,7 @@ export default function FavoriteBrandsScreen({ navigation, user, onLogout }: Pro
                   <Image source={{ uri: logoUri(brand.logoRaw) }} style={styles.cardLogo} resizeMode="contain" />
                 ) : (
                   <View style={[styles.cardLogo, styles.cardLogoPlaceholder]}>
-                    <Icon name="storefront" size={22} color={colors.placeholder} />
+                    <Icon name="storefront" size={26} color={colors.placeholder} />
                   </View>
                 )}
                 <View style={styles.followingPill}>
@@ -122,7 +122,7 @@ export default function FavoriteBrandsScreen({ navigation, user, onLogout }: Pro
                 <Text style={styles.cardDetail} numberOfLines={2}>{brand.detail || '—'}</Text>
                 <TouchableOpacity style={styles.viewBtn} onPress={() => openBrand(brand)} activeOpacity={0.7}>
                   <Text style={styles.viewBtnText}>{t('brandsView')}</Text>
-                  <Icon name="arrow-forward" size={14} color={colors.accent} />
+                  <Icon name="arrow-forward" size={16} color={colors.accent} />
                 </TouchableOpacity>
               </View>
             ))}
@@ -147,13 +147,13 @@ const styles = StyleSheet.create({
     height: 44,
     marginBottom: spacing.md,
   },
-  searchInput: { flex: 1, fontSize: 14, color: colors.text, paddingVertical: 0 },
+  searchInput: { flex: 1, fontSize: 15, color: colors.text, paddingVertical: 0 },
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
-  metaText: { fontSize: 12, color: colors.muted, fontWeight: '600' },
-  sortToggle: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  sortToggleText: { fontSize: 12, color: colors.primary, fontWeight: '700' },
+  metaText: { fontSize: 13, color: colors.muted, fontWeight: '600' },
+  sortToggle: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  sortToggleText: { fontSize: 13, color: colors.primary, fontWeight: '700' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xxxl },
-  emptyText: { fontSize: 15, color: colors.muted, textAlign: 'center' },
+  emptyText: { fontSize: 16, color: colors.muted, textAlign: 'center' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', paddingBottom: spacing.xxxl },
   card: {
     width: '48%',
@@ -165,18 +165,18 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     ...shadow(1),
   },
-  cardLogo: { width: 96, height: 40, marginBottom: spacing.sm, alignSelf: 'flex-start' },
-  cardLogoPlaceholder: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
+  cardLogo: { width: 108, height: 46, marginBottom: spacing.sm, alignSelf: 'flex-start' },
+  cardLogoPlaceholder: { width: 56, height: 56, alignItems: 'center', justifyContent: 'center' },
   followingPill: {
     alignSelf: 'flex-start',
     backgroundColor: colors.primary,
     borderRadius: radius.pill,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
     marginBottom: spacing.sm,
   },
-  followingPillText: { fontSize: 10, color: '#fff', fontWeight: '600' },
-  cardDetail: { fontSize: 12, color: colors.muted, lineHeight: 17, minHeight: 34, marginBottom: spacing.sm },
-  viewBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  viewBtnText: { fontSize: 13, color: colors.accent, fontWeight: '600' },
+  followingPillText: { fontSize: 11, color: '#fff', fontWeight: '600' },
+  cardDetail: { fontSize: 13, color: colors.muted, lineHeight: 19, minHeight: 38, marginBottom: spacing.sm },
+  viewBtn: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  viewBtnText: { fontSize: 14, color: colors.accent, fontWeight: '600' },
 });
