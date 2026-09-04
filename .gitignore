@@ -78,3 +78,4 @@ app-web.err.local-dev.log
 .local-dev.log
 app-web.err
 app-web.out
+.dev.log
