@@ -41,7 +41,7 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
     // the user there next instead of back to Login.
     if (userData && !userData.aiConciergeConsentAt) {
       navigation.replace('AiConciergeConsent', {
-        redirectTo: redirectTo || 'Scanner',
+        redirectTo: redirectTo || 'Home',
         redirectParams: redirectParams || {},
       });
       return;
@@ -50,7 +50,7 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
       navigation.replace(redirectTo, redirectParams || {});
       return;
     }
-    navigation.replace('Scanner');
+    navigation.replace('Home');
   };
 
   // Tag the session with which kind of account this is so ownership-transfer

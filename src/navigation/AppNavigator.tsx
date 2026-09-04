@@ -4,6 +4,7 @@ import { CommonActions } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import LoginScreen from '../screens/LoginScreen';
+import HomeScreen from '../screens/HomeScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import AiConciergeConsentScreen from '../screens/AiConciergeConsentScreen';
 import ProductSummaryScreen from '../screens/ProductSummaryScreen';
@@ -162,7 +163,7 @@ export default function AppNavigator({ navigationRef }: { navigationRef: any }) 
           ? 'EmployeeHome'
           : !user.aiConciergeConsentAt
           ? 'AiConciergeConsent'
-          : 'Scanner'
+          : 'Home'
       }
     >
       <Stack.Screen name="Login">
@@ -230,6 +231,10 @@ export default function AppNavigator({ navigationRef }: { navigationRef: any }) 
 
       <Stack.Screen name="SendProductInfo">
         {(props) => <SendProductInfoScreen {...props} user={user} onLogout={handleLogout} />}
+      </Stack.Screen>
+
+      <Stack.Screen name="Home">
+        {(props) => <HomeScreen {...props} user={user} onLogout={handleLogout} />}
       </Stack.Screen>
 
       <Stack.Screen name="Scanner">

@@ -203,7 +203,7 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
       await AsyncStorage.setItem('userToken', data.token || '');
       await AsyncStorage.setItem('user', JSON.stringify(updated));
       onUserUpdate?.(updated);
-      navigation.navigate(isEmployee ? 'EmployeeHome' : 'Scanner');
+      navigation.navigate(isEmployee ? 'EmployeeHome' : 'Home');
     } catch (err: any) {
       setSaveError(err?.message || t('failedToUpdateProfile'));
     } finally {
@@ -214,7 +214,7 @@ export default function EditProfileScreen({ navigation, route, user, onLogout, o
   const avatarUri = profile.avatar ? fileUrl(profile.avatar) : '';
 
   return (
-    <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton onBackPress={() => navigation.navigate(isEmployee ? 'EmployeeHome' : 'Scanner')} flatContent>
+    <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton onBackPress={() => navigation.navigate(isEmployee ? 'EmployeeHome' : 'Home')} flatContent>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
         <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
           {!isAgent && (

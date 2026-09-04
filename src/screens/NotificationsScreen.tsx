@@ -109,7 +109,7 @@ export default function NotificationsScreen({ navigation, user, onLogout }: Prop
   const hasUnread = items.some((n) => !n.read);
 
   return (
-    <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton onBackPress={() => navigation.navigate(user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Scanner')} flatContent>
+    <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton onBackPress={() => navigation.navigate(user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Home')} flatContent>
       <View style={styles.screen}>
         {hasUnread && (
           <TouchableOpacity style={styles.markAll} onPress={markAllRead} activeOpacity={0.7}>

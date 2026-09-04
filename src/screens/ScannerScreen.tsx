@@ -878,7 +878,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         navigation={navigation}
         user={user}
         onLogout={onLogout}
-        title={t('scanTitle')} flatContent flushBottom
+        showBackButton onBackPress={() => navigation.navigate('Home')} title={t('scanTitle')} flatContent flushBottom
       >
         <View style={styles.stateContainer}>
           <View style={styles.stateCard}>
@@ -898,7 +898,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         navigation={navigation}
         user={user}
         onLogout={onLogout}
-        title={t('scanTitle')} flatContent flushBottom
+        showBackButton onBackPress={() => navigation.navigate('Home')} title={t('scanTitle')} flatContent flushBottom
       >
         <View style={styles.stateContainer}>
           <View style={styles.stateCard}>
@@ -915,7 +915,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
   // Web photo-scan mode (http / no live camera) — clean light layout.
   if (Platform.OS === 'web' && webPhotoMode) {
     return (
-      <AppLayout navigation={navigation} user={user} onLogout={onLogout} title={t('scanTitle')} flatContent flushBottom>
+      <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton onBackPress={() => navigation.navigate('Home')} title={t('scanTitle')} flatContent flushBottom>
         <View style={styles.photoContainer}>
           <View style={styles.photoScanCard}>
             <Image source={require('../assets/qr-code.png')} style={styles.photoScanIcon} resizeMode="contain" />
@@ -941,7 +941,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         navigation={navigation}
         user={user}
         onLogout={onLogout}
-        title={t('scanTitle')} flatContent flushBottom
+        showBackButton onBackPress={() => navigation.navigate('Home')} title={t('scanTitle')} flatContent flushBottom
       >
         <View style={styles.container}>
           <View style={styles.scanViewport}>
@@ -971,7 +971,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         navigation={navigation}
         user={user}
         onLogout={onLogout}
-        title={t('scanTitle')} flatContent flushBottom
+        showBackButton onBackPress={() => navigation.navigate('Home')} title={t('scanTitle')} flatContent flushBottom
       >
         <View style={styles.stateContainer}>
           <View style={styles.stateCard}>
@@ -992,7 +992,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         navigation={navigation}
         user={user}
         onLogout={onLogout}
-        title={t('scanTitle')} flatContent flushBottom
+        showBackButton onBackPress={() => navigation.navigate('Home')} title={t('scanTitle')} flatContent flushBottom
       >
         <View style={styles.container}>
           <View style={styles.scanViewport}>
@@ -1022,7 +1022,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
       navigation={navigation}
       user={user}
       onLogout={onLogout}
-      title={t('scanTitle')} flatContent flushBottom
+      showBackButton onBackPress={() => navigation.navigate('Home')} title={t('scanTitle')} flatContent flushBottom
     >
       <View style={styles.stateContainer}>
         <View style={styles.stateCard}>

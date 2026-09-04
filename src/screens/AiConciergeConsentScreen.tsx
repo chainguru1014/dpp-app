@@ -134,7 +134,7 @@ export default function AiConciergeConsentScreen({ navigation, route, onLogin }:
     if (mode === 'review') {
       navigation.goBack();
     } else {
-      const redirectTo = route?.params?.redirectTo || 'Scanner';
+      const redirectTo = route?.params?.redirectTo || 'Home';
       const redirectParams = route?.params?.redirectParams || {};
       navigation.replace(redirectTo, redirectParams);
     }

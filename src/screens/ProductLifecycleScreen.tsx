@@ -636,11 +636,11 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
       user={user}
       onLogout={onLogout}
       showBackButton
-      onBackPress={() => navigation.navigate(user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Scanner')}
+      onBackPress={() => navigation.navigate(user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Home')}
       title={t('titleProductLifecycle')}
       flatContent
       bottomBar={user && user.actorKind !== 'Employee' ? 'product' : 'auto'}
-      rightIcon="notification"
+      rightIcon="menu"
       isFavorite={isInAlbum}
       onToggleFavorite={toggleFavorite}
       product={productData}

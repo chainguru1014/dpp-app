@@ -22,7 +22,7 @@ import GradientView from './GradientView';
 import { colors, radius, shadow } from '../theme';
 
 type BottomBarKind = 'auto' | 'consumer' | 'product' | 'none';
-type RightIconKind = 'notification' | 'heart' | 'share' | 'none';
+type RightIconKind = 'notification' | 'heart' | 'share' | 'menu' | 'none';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -58,6 +58,8 @@ interface AppLayoutProps {
   // instead of reserving BOTTOM_BAR_HEIGHT of padding for it — used by the
   // Scanner so the camera viewport extends all the way down.
   flushBottom?: boolean;
+  // Home screen: show the Yometel wordmark on the top-bar left and no title.
+  logoLeft?: boolean;
   title?: string;
   subtitle?: string;
 }
@@ -107,6 +109,7 @@ export default function AppLayout({
   hideBottomBar = false,
   flatContent = false,
   flushBottom = false,
+  logoLeft = false,
   onGuestAction,
   onActionMenuPress,
   isBrandFollowed = false,
@@ -151,7 +154,7 @@ export default function AppLayout({
   })();
 
   const productsTarget = isEmployeeActor ? 'CorporateReview' : 'ScannedProducts';
-  const homeBaseRoute = isEmployeeActor ? 'EmployeeHome' : 'Scanner';
+  const homeBaseRoute = isEmployeeActor ? 'EmployeeHome' : 'Home';
 
   const handleNotifications = () => {
     if (!isAuthenticated) {
@@ -267,6 +270,13 @@ export default function AppLayout({
         </TouchableOpacity>
       );
     }
+    if (rightIcon === 'menu') {
+      return (
+        <TouchableOpacity onPress={() => setActionSheetVisible(true)} style={styles.iconButton} activeOpacity={0.7}>
+          <Icon name="menu" size={26} color={colors.white} />
+        </TouchableOpacity>
+      );
+    }
     return (
       <TouchableOpacity onPress={handleNotifications} style={styles.iconButton} activeOpacity={0.7}>
         <View>
@@ -283,7 +293,13 @@ export default function AppLayout({
     <View style={styles.container}>
       <GradientView style={styles.topBar} angle="vertical">
         <View style={styles.topBarRow}>
-          {showBackButton ? (
+          {logoLeft ? (
+            <Image
+              source={require('../assets/yometel-logo-trans.png')}
+              style={styles.topBarLogo}
+              resizeMode="contain"
+            />
+          ) : showBackButton ? (
             <TouchableOpacity onPress={handleBack} style={styles.iconButton} activeOpacity={0.7}>
               <Icon name="arrow-back" size={24} color={colors.white} />
             </TouchableOpacity>
@@ -292,10 +308,12 @@ export default function AppLayout({
           )}
 
           <View style={styles.titleBlock} pointerEvents="none">
-            <Text style={styles.titleText} numberOfLines={1}>
-              {computedTitle ?? t('homeHeroEyebrow')}
-            </Text>
-            {!!computedSubtitle && (
+            {!logoLeft && (
+              <Text style={styles.titleText} numberOfLines={1}>
+                {computedTitle ?? t('homeHeroEyebrow')}
+              </Text>
+            )}
+            {!logoLeft && !!computedSubtitle && (
               <Text style={styles.subtitleText} numberOfLines={1}>
                 {computedSubtitle}
               </Text>
@@ -325,7 +343,7 @@ export default function AppLayout({
           profileActive={profileSheetVisible}
           t={t}
           onScan={handleScan}
-          onProducts={handleProducts}
+          onHome={handleHome}
           onHistory={handleHistory}
           onBrands={handleBrands}
           onProfile={openProfileSheet}
@@ -335,11 +353,10 @@ export default function AppLayout({
       {effectiveBar === 'product' && (
         <ProductBottomBar
           routeName={route.name}
-          moreActive={actionSheetVisible}
           t={t}
           onOverview={handleProductOverview}
           onLifecycle={handleProductLifecycle}
-          onMore={() => setActionSheetVisible(true)}
+          onScan={handleScan}
         />
       )}
 
@@ -478,33 +495,48 @@ function BottomTab({
   );
 }
 
+// Prominent centre "Scan" button — a raised circle that overhangs the bar's
+// top edge, used as the middle item of both consumer and product bars.
+function ScanCenterTab({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
+  return (
+    <TouchableOpacity style={styles.scanTab} onPress={onPress} activeOpacity={0.85}>
+      <View style={[styles.scanCircle, selected && styles.scanCircleActive]}>
+        <Icon name="qr-code-scanner" size={26} color={colors.white} />
+      </View>
+      <Text style={[styles.scanTabLabel, selected && styles.bottomTabLabelSelected]} numberOfLines={1}>
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
 function ConsumerBottomBar({
   routeName,
   profileActive,
   t,
   onScan,
-  onProducts,
+  onHome,
   onHistory,
   onBrands,
   onProfile,
 }: any) {
   return (
     <View style={styles.bottomBar}>
-      <BottomTab mi icon="qr-code-scanner" label={t('bottomScan')} selected={routeName === 'Scanner' || routeName === 'EnterCode'} onPress={onScan} />
-      <BottomTab icon="shopping-bag" label={t('bottomMyProducts')} selected={routeName === 'ScannedProducts' || routeName === 'ProductSummary'} onPress={onProducts} />
-      <BottomTab icon="clock" label={t('bottomHistory')} selected={routeName === 'History' || routeName === 'ProductHistory' || routeName === 'PurchaseHistory'} onPress={onHistory} />
+      <BottomTab icon="home" label={t('bottomHome')} selected={routeName === 'Home' || routeName === 'ScannedProducts' || routeName === 'ProductSummary'} onPress={onHome} />
       <BottomTab icon="tag" label={t('bottomBrands')} selected={routeName === 'FavoriteBrands' || routeName === 'BrandDetail'} onPress={onBrands} />
-      <BottomTab icon="user" label={t('bottomProfile')} selected={profileActive || routeName === 'EditProfile'} onPress={onProfile} />
+      <ScanCenterTab label={t('bottomScan')} selected={routeName === 'Scanner' || routeName === 'EnterCode'} onPress={onScan} />
+      <BottomTab icon="clock" label={t('bottomHistory')} selected={routeName === 'History' || routeName === 'ProductHistory' || routeName === 'PurchaseHistory'} onPress={onHistory} />
+      <BottomTab mi icon="account-circle" label={t('bottomProfile')} selected={profileActive || routeName === 'EditProfile'} onPress={onProfile} />
     </View>
   );
 }
 
-function ProductBottomBar({ routeName, moreActive, t, onOverview, onLifecycle, onMore }: any) {
+function ProductBottomBar({ routeName, t, onOverview, onLifecycle, onScan }: any) {
   return (
     <View style={styles.bottomBar}>
       <BottomTab icon="grid" label={t('bottomOverview')} selected={routeName === 'Result' || routeName === 'ProductSummary'} onPress={onOverview} />
+      <ScanCenterTab label={t('bottomScan')} selected={routeName === 'Scanner'} onPress={onScan} />
       <BottomTab icon="refresh-cw" label={t('bottomLifecycle')} selected={routeName === 'ProductLifecycle'} onPress={onLifecycle} />
-      <BottomTab icon="more-horizontal" label={t('bottomMore')} selected={moreActive} onPress={onMore} />
     </View>
   );
 }
@@ -536,6 +568,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   iconButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
+  topBarLogo: { width: 118, height: 30, marginLeft: 10 },
   topBarRight: { flexDirection: 'row', alignItems: 'center' },
   titleBlock: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   titleText: { color: '#fff', fontSize: 17, fontWeight: '600', letterSpacing: 0.3, textAlign: 'center' },
@@ -568,6 +601,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: radius.xxl,
     borderTopWidth: 1,
     borderTopColor: colors.border,
+    overflow: 'visible',
     zIndex: 1000,
     elevation: 12,
     shadowColor: colors.navy,
@@ -589,6 +623,21 @@ const styles = StyleSheet.create({
   bottomTabImgSelected: { tintColor: colors.primary },
   bottomTabLabel: { fontSize: 10, color: '#333333', marginTop: 3 },
   bottomTabLabelSelected: { color: colors.primary, fontWeight: '600' },
+  scanTab: { flex: 1, height: '100%', alignItems: 'center', justifyContent: 'center' },
+  scanCircle: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    marginTop: -22,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 4,
+    borderColor: colors.surface,
+    ...shadow(2),
+  },
+  scanCircleActive: { backgroundColor: colors.primaryDark },
+  scanTabLabel: { fontSize: 10, color: colors.primary, marginTop: 2, fontWeight: '600' },
   modalOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
   sheet: {
     backgroundColor: colors.surface,

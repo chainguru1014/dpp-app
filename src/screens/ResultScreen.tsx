@@ -1436,12 +1436,12 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
       showBackButton={isAuthenticatedUser}
       onBackPress={
         isAuthenticatedUser
-          ? () => navigation.navigate(user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Scanner')
+          ? () => navigation.navigate(user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Home')
           : undefined
       }
       bottomBar={isAuthenticatedUser && !isEmployeeActor ? 'product' : 'auto'}
       flatContent={isEmployeeActor}
-      rightIcon="notification"
+      rightIcon="menu"
       isFavorite={isInAlbum}
       onToggleFavorite={() => handleActionMenuPress('toggleAlbum')}
       product={productData}
