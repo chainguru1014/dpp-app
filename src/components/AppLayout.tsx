@@ -368,7 +368,6 @@ export default function AppLayout({
         return (
           <View style={styles.bottomBar}>
             <TouchableOpacity style={styles.bottomTab} onPress={handleHome} activeOpacity={0.7}>
-              {isHomeSelected && <View style={styles.bottomTabIndicator} />}
               <Image
                 source={require('../assets/home.png')}
                 style={[styles.bottomTabImg, isHomeSelected && styles.bottomTabImgSelected]}
@@ -377,17 +376,14 @@ export default function AppLayout({
               <Text style={[styles.bottomTabLabel, isHomeSelected && styles.bottomTabLabelSelected]}>{t('bottomHome')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.bottomTab} onPress={handleScan} activeOpacity={0.7}>
-              {isScanSelected && <View style={styles.bottomTabIndicator} />}
               <Icon name="qr-code-scanner" size={BOTTOM_TAB_ICON_SIZE} color={isScanSelected ? colors.primary : '#333333'} />
               <Text style={[styles.bottomTabLabel, isScanSelected && styles.bottomTabLabelSelected]}>{t('bottomCapture')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.bottomTab} onPress={handleProducts} activeOpacity={0.7}>
-              {isProductsSelected && <View style={styles.bottomTabIndicator} />}
               <FeatherIcon name="file-text" size={BOTTOM_TAB_ICON_SIZE} color={isProductsSelected ? colors.primary : '#333333'} />
               <Text style={[styles.bottomTabLabel, isProductsSelected && styles.bottomTabLabelSelected]}>{t('bottomReview')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.bottomTab} onPress={openProfileSheet} activeOpacity={0.7}>
-              {isProfileSelected && <View style={styles.bottomTabIndicator} />}
               <Icon name="person" size={BOTTOM_TAB_ICON_SIZE} color={isProfileSelected ? colors.primary : '#333333'} />
               <Text style={[styles.bottomTabLabel, isProfileSelected && styles.bottomTabLabelSelected]}>{t('bottomProfile')}</Text>
             </TouchableOpacity>
@@ -486,7 +482,6 @@ function BottomTab({
   const Glyph: any = mi ? Icon : FeatherIcon;
   return (
     <TouchableOpacity style={styles.bottomTab} onPress={onPress} activeOpacity={0.7}>
-      {selected && <View style={styles.bottomTabIndicator} />}
       <Glyph name={icon} size={BOTTOM_TAB_ICON_SIZE} color={selected ? colors.primary : '#7a8aa3'} />
       <Text style={[styles.bottomTabLabel, selected && styles.bottomTabLabelSelected]} numberOfLines={1}>
         {label}
@@ -610,15 +605,6 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
   },
   bottomTab: { flex: 1, height: '100%', alignItems: 'center', justifyContent: 'center' },
-  bottomTabIndicator: {
-    position: 'absolute',
-    bottom: 0,
-    alignSelf: 'center',
-    width: 34,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: colors.primary,
-  },
   bottomTabImg: { width: BOTTOM_TAB_ICON_SIZE, height: BOTTOM_TAB_ICON_SIZE, tintColor: '#333333' },
   bottomTabImgSelected: { tintColor: colors.primary },
   bottomTabLabel: { fontSize: 10, color: '#333333', marginTop: 3 },
