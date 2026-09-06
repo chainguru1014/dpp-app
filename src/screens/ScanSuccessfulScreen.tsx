@@ -77,21 +77,21 @@ export default function ScanSuccessfulScreen({ navigation, route, user, onLogout
               </View>
             </View>
           ))}
+        </View>
+
+        <View style={styles.footer}>
+          <GradientButton style={styles.primaryButton} onPress={goToProductDetail} activeOpacity={0.85}>
+            <Text style={styles.primaryButtonText} numberOfLines={1}>{t('detectedViewProduct')}</Text>
+          </GradientButton>
+          <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.replace('Scanner')} activeOpacity={0.8}>
+            <Text style={styles.secondaryButtonText} numberOfLines={1}>{t('detectedScanAnother')}</Text>
+          </TouchableOpacity>
           <TouchableOpacity
             style={styles.privacyLink}
             onPress={() => navigation.navigate('PrivatePolicy', { productData, securityPassed, productId, qrcodeId })}
             activeOpacity={0.7}
           >
             <Text style={styles.linkText}>{t('privatePolicy')}</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.footer}>
-          <GradientButton style={styles.primaryButton} onPress={goToProductDetail} activeOpacity={0.85}>
-            <Text style={styles.primaryButtonText}>{t('detectedViewProduct')}</Text>
-          </GradientButton>
-          <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.replace('Scanner')} activeOpacity={0.8}>
-            <Text style={styles.secondaryButtonText}>{t('detectedScanAnother')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
     ...shadow(1),
   },
   primaryButtonText: { color: '#fff', fontSize: 20, fontWeight: '600' },
-  privacyLink: { alignSelf: 'center', paddingTop: spacing.sm, marginTop: spacing.xs },
+  privacyLink: { alignSelf: 'center', paddingVertical: spacing.sm, marginTop: spacing.md },
   secondaryButton: {
     marginTop: spacing.sm,
     borderRadius: radius.md,
