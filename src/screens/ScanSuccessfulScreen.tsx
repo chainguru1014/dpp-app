@@ -138,8 +138,9 @@ const styles = StyleSheet.create({
   primaryButton: {
     backgroundColor: colors.accent,
     borderRadius: radius.md,
-    paddingVertical: 13,
+    height: 48,
     alignItems: 'center',
+    justifyContent: 'center',
     ...shadow(1),
   },
   primaryButtonText: { color: '#fff', fontSize: 20, fontWeight: '600' },
@@ -147,8 +148,9 @@ const styles = StyleSheet.create({
   secondaryButton: {
     marginTop: spacing.sm,
     borderRadius: radius.md,
-    paddingVertical: 12,
+    height: 48,
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: colors.accent,
     backgroundColor: colors.surface,

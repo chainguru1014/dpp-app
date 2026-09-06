@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
   footer: { marginTop: 'auto', paddingTop: spacing.md },
   primaryButton: {
     borderRadius: radius.md,
-    paddingVertical: 14,
+    height: 48, justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: colors.accent,
     ...shadow(1),
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
   secondaryButton: {
     marginTop: spacing.sm,
     borderRadius: radius.md,
-    paddingVertical: 13,
+    height: 48, justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.accent,
