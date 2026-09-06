@@ -63,7 +63,6 @@ export default function ScanSuccessfulScreen({ navigation, route, user, onLogout
             onPlayVideo={setPlayingVideoId}
           />
           <Text style={styles.productName} numberOfLines={1}>{productData?.name || '—'}</Text>
-          {!!productData?.model && <Text style={styles.productModel} numberOfLines={1}>{productData.model}</Text>}
         </View>
 
         <View style={styles.card}>
