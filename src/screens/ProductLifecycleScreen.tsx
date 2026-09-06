@@ -68,7 +68,7 @@ const fileUrl = (filename: string) => {
 function Bar({ label, percent }: { label: string; percent: number }) {
   return (
     <View style={styles.barRow}>
-      <Text style={styles.barLabel} numberOfLines={1}>{label}</Text>
+      <Text style={styles.barLabel} numberOfLines={2}>{label}</Text>
       <View style={styles.barTrack}>
         <View style={[styles.barFill, { width: `${Math.max(2, Math.min(100, percent))}%` }]} />
       </View>
@@ -893,7 +893,7 @@ const styles = StyleSheet.create({
   tipText: { flex: 1, fontSize: 19, color: colors.text, lineHeight: 27 },
   // materials
   barRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 6 },
-  barLabel: { width: 100, fontSize: 18, color: colors.text },
+  barLabel: { width: 150, fontSize: 18, color: colors.text },
   barTrack: { flex: 1, height: 9, borderRadius: 5, backgroundColor: colors.surfaceAlt, overflow: 'hidden' },
   barFill: { height: '100%', borderRadius: 5, backgroundColor: colors.primary },
   barValue: { width: 44, fontSize: 18, color: colors.muted, textAlign: 'right' },
