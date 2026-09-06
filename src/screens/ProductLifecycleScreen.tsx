@@ -18,11 +18,10 @@ interface Props {
   onLogout?: () => void;
 }
 
-type TabKey = 'journey' | 'details' | 'care' | 'materials' | 'dispose' | 'traceability';
+type TabKey = 'journey' | 'care' | 'materials' | 'dispose' | 'traceability';
 
 const TABS: { key: TabKey; labelKey: string }[] = [
   { key: 'journey', labelKey: 'lifecycleTabJourney' },
-  { key: 'details', labelKey: 'lifecycleTabDetails' },
   { key: 'care', labelKey: 'lifecycleTabCare' },
   { key: 'materials', labelKey: 'lifecycleTabMaterials' },
   { key: 'dispose', labelKey: 'lifecycleTabDispose' },
@@ -107,7 +106,6 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
   // Journey stages are all collapsed by default — a down-chevron invites the tap.
   const [openStage, setOpenStage] = useState<string | null>(null);
   const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
-  const [openRow, setOpenRow] = useState<string | null>(null);
   // Which Material Origins row (by index) is expanded — Materials tab and
   // Traceability tab each track their own via a prefixed key.
   const [openOrigin, setOpenOrigin] = useState<string | null>(null);
@@ -371,7 +369,13 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
   };
 
   const renderJourney = () => (
-    <View style={{ paddingTop: spacing.xxl }}>
+    <View style={{ paddingTop: spacing.lg }}>
+      {!!productData?.aboutProduct && (
+        <View style={[styles.card, { marginBottom: spacing.lg }]}>
+          <Text style={styles.cardTitle}>{t('lifecycleAboutProduct')}</Text>
+          <Text style={styles.paragraph}>{productData.aboutProduct}</Text>
+        </View>
+      )}
       {JOURNEY_STAGES.map((s, i) => {
         const open = openStage === s.key;
         const detail = renderStageDetail(s.key);
@@ -421,67 +425,6 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
     </View>
   );
 
-  const expandRow = (key: string, title: string, sub: string, icon: string, body: React.ReactNode) => {
-    const open = openRow === key;
-    return (
-      <View style={styles.card}>
-        <TouchableOpacity style={styles.expandHead} activeOpacity={0.7} onPress={() => setOpenRow(open ? null : key)}>
-          <View style={styles.expandIcon}><Icon name={icon} size={19} color={colors.primary} /></View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.expandTitle}>{title}</Text>
-            {!!sub && <Text style={styles.expandSub}>{sub}</Text>}
-          </View>
-          <Icon name={open ? 'expand-less' : 'chevron-right'} size={20} color={colors.muted} />
-        </TouchableOpacity>
-        {open && <View style={styles.expandBody}>{body}</View>}
-      </View>
-    );
-  };
-
-  const renderDetails = () => (
-    <View>
-      <View style={styles.hintCard}>
-        <Icon name="info-outline" size={20} color={colors.primary} />
-        <View style={{ flex: 1 }}>
-          <Text style={styles.hintTitle}>{t('lifecycleDetailsHintTitle')}</Text>
-          <Text style={styles.hintBody}>{t('lifecycleDetailsHint')}</Text>
-        </View>
-      </View>
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>{t('lifecycleProductFacts')}</Text>
-        <Row icon="category" label={t('factProductType')} value={productData?.productType || ''} />
-        <Row icon="business" label={t('summaryBrand')} value={productData?.brandInfo?.name || ''} />
-        <Row icon="sell" label={t('model')} value={productData?.model || ''} />
-        <Row icon="palette" label={t('factColor')} value={productData?.color || ''} />
-        <Row icon="straighten" label={t('factSize')} value={productData?.size || ''} />
-        <Row icon="public" label={t('lifecycleCountryOfManufacture')} value={originCountry} />
-        <Row icon="event" label={t('factManufactureDate')} value={productData?.manufactureDate || ''} />
-        <Row icon="spa" label={t('summaryMaterial')} value={facts.material || ''} />
-      </View>
-      {expandRow('about', t('lifecycleAboutProduct'), t('lifecycleAboutProductSub'), 'verified-user',
-        <Text style={styles.paragraph}>{productData?.aboutProduct || t('lifecycleAboutProductFallback')}</Text>)}
-      {expandRow('certs', t('lifecycleCertifications'), t('lifecycleCertificationsSub'), 'workspace-premium',
-        certifications.length ? (
-          <View style={{ gap: spacing.sm }}>
-            {certifications.map((c, i) => (
-              <View key={i} style={styles.certLine}>
-                <View style={styles.certLineIcon}>
-                  {c.icon ? (
-                    <Image source={{ uri: fileUrl(c.icon) }} style={styles.certImg} resizeMode="contain" />
-                  ) : (
-                    <Icon name="verified" size={19} color={colors.primary} />
-                  )}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.certLineTitle}>{c.title}</Text>
-                  {!!c.content && <Text style={styles.certLineBody}>{c.content}</Text>}
-                </View>
-              </View>
-            ))}
-          </View>
-        ) : <Text style={styles.paragraph}>{t('lifecycleNoData')}</Text>)}
-    </View>
-  );
 
   const renderCare = () => (
     <View>
@@ -723,7 +666,6 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
   const renderTab = () => {
     switch (tab) {
       case 'journey': return renderJourney();
-      case 'details': return renderDetails();
       case 'care': return renderCare();
       case 'materials': return renderMaterials();
       case 'dispose': return renderDispose();
@@ -936,10 +878,11 @@ const styles = StyleSheet.create({
   expandSub: { fontSize: 17, color: colors.muted, marginTop: 2 },
   expandBody: { marginTop: spacing.sm, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border },
   // care
-  careRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.lg, justifyContent: 'flex-start', alignItems: 'flex-start' },
-  careItem: { width: 74, alignItems: 'center', justifyContent: 'flex-start' },
-  careIconScale: { transform: [{ scale: 1.2 }], marginVertical: 4 },
-  careLabel: { fontSize: 17, color: colors.text, textAlign: 'center', marginTop: 6 },
+  careRow: { flexDirection: 'row', flexWrap: 'wrap', rowGap: spacing.md, justifyContent: 'flex-start', alignItems: 'flex-start' },
+  // Exactly four symbols per line.
+  careItem: { width: '25%', alignItems: 'center', justifyContent: 'flex-start', paddingHorizontal: 2 },
+  careIconScale: { transform: [{ scale: 1.05 }], marginVertical: 4 },
+  careLabel: { fontSize: 14, color: colors.text, textAlign: 'center', marginTop: 6, lineHeight: 18 },
   tipRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, paddingVertical: 6 },
   tipText: { flex: 1, fontSize: 19, color: colors.text, lineHeight: 27 },
   // materials

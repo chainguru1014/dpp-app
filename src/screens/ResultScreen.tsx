@@ -1553,16 +1553,14 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
               </View>
             </View>
 
-            {/* Key Highlights — product-detail facts only (no free-text description). */}
+            {/* Key Highlights — Type / Color / Size. */}
             {(() => {
-              const facts = productData?.detailFacts || {};
               const extra = [
                 productData?.productType && { icon: 'category', text: `${t('factProductType')}: ${productData.productType}` },
                 productData?.color && { icon: 'palette', text: `${t('factColor')}: ${productData.color}` },
                 productData?.size && { icon: 'straighten', text: `${t('factSize')}: ${productData.size}` },
               ].filter(Boolean) as { icon: string; text: string }[];
-              const rows = DETAIL_FACT_ROWS.filter((r) => r.key !== 'traceableIdentity' && facts[r.key]);
-              if (!rows.length && !extra.length) return null;
+              if (!extra.length) return null;
               return (
                 <View style={styles.ovCard}>
                   <Text style={styles.ovCardTitle}>{t('overviewKeyHighlights')}</Text>
@@ -1570,12 +1568,6 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
                     <View key={e.text} style={styles.ovHlRow}>
                       <Icon name={e.icon} size={17} color={BRAND_COLOR} />
                       <Text style={styles.ovHlText} numberOfLines={1}>{e.text}</Text>
-                    </View>
-                  ))}
-                  {rows.map(({ key, icon, format }) => (
-                    <View key={key} style={styles.ovHlRow}>
-                      <Icon name={icon} size={17} color={BRAND_COLOR} />
-                      <Text style={styles.ovHlText} numberOfLines={1}>{format(String(facts[key] || ''))}</Text>
                     </View>
                   ))}
                 </View>
@@ -1641,10 +1633,10 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
                     activeOpacity={0.85}
                     disabled={locked}
                   >
-                    <Text style={styles.ovPrimaryCtaText}>{label}</Text>
+                    <Text style={styles.ovPrimaryCtaText} numberOfLines={1}>{label}</Text>
                   </GradientButton>
                   <TouchableOpacity style={styles.ovSecondaryCta} onPress={() => navigation.navigate('Scanner')} activeOpacity={0.8}>
-                    <Text style={styles.ovSecondaryCtaText}>{t('detectedScanAnother')}</Text>
+                    <Text style={styles.ovSecondaryCtaText} numberOfLines={1}>{t('overviewScanProduct')}</Text>
                   </TouchableOpacity>
                 </View>
               );
@@ -2200,7 +2192,7 @@ const styles = StyleSheet.create({
   ovIconRow: { flexDirection: 'row', gap: spacing.sm, marginHorizontal: spacing.lg, marginTop: spacing.sm },
   ovIconBtn: {
     flex: 1,
-    height: 36,
+    height: 48,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
@@ -2212,25 +2204,25 @@ const styles = StyleSheet.create({
   ovCtaRow: { flexDirection: 'row', gap: spacing.sm, marginHorizontal: spacing.lg, marginTop: spacing.sm },
   ovPrimaryCta: {
     flex: 1,
+    height: 48,
     borderRadius: radius.md,
-    paddingVertical: 11,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.accent,
     ...shadow(1),
   },
-  ovPrimaryCtaText: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  ovPrimaryCtaText: { color: '#fff', fontSize: 17, fontWeight: '700' },
   ovSecondaryCta: {
     flex: 1,
+    height: 48,
     borderRadius: radius.md,
-    paddingVertical: 11,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: colors.accent,
     backgroundColor: colors.surface,
   },
-  ovSecondaryCtaText: { color: colors.accent, fontSize: 18, fontWeight: '600' },
+  ovSecondaryCtaText: { color: colors.accent, fontSize: 17, fontWeight: '600' },
   // --- Product Overview redesign (Phase 3) ---
   overviewCard: {
     backgroundColor: colors.surface,

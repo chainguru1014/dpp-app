@@ -52,29 +52,16 @@ export default function ProductSummaryScreen({ navigation, route, user, onLogout
   const videos = Array.isArray(product?.videos) ? product.videos : [];
   const hasMedia = images.length > 0 || videos.length > 0;
   const addedDate = registeredDate(product?._id, product?.createdAt);
-  const validYears = Number(product?.warrantyValidYears) || 0;
-  const validUntil = addedDate && validYears
-    ? new Date(addedDate.getFullYear() + validYears, addedDate.getMonth(), addedDate.getDate())
-    : null;
-  const serial = product?.skuStyleNumber || (product?.token_id != null ? String(product.token_id) : '');
 
   const facts = product?.detailFacts || {};
   const rows: { label: string; value: string }[] = [
     { label: t('summaryBrand'), value: product?.brandInfo?.name || '' },
     { label: t('summaryCategory'), value: CATEGORY_LABEL[product?.itemCategory] || '' },
     { label: t('factProductType'), value: product?.productType || '' },
-    { label: t('summarySerialNumber'), value: serial },
     { label: t('factColor'), value: product?.color || '' },
     { label: t('factSize'), value: product?.size || '' },
     { label: t('summaryMaterial'), value: facts.material || '' },
-    { label: t('lifecycleFit'), value: facts.fit || '' },
-    { label: t('lifecycleWash'), value: facts.wash || '' },
-    { label: t('lifecycleDurability'), value: facts.durability || '' },
-    { label: t('factManufactureDate'), value: product?.manufactureDate || '' },
-    { label: t('summaryDateAdded'), value: fmt(addedDate) },
-    { label: t('summaryWarrantyStatus'), value: product?.warrantyStatus || '' },
-    { label: t('summaryValidUntil'), value: fmt(validUntil) },
-  ].filter((r) => !!r.value).slice(0, 10);
+  ].filter((r) => !!r.value);
 
   const goToDetails = () =>
     navigation.navigate('Result', {
@@ -103,9 +90,6 @@ export default function ProductSummaryScreen({ navigation, route, user, onLogout
               <Icon name="verified" size={15} color={colors.primary} />
               <Text style={styles.verifiedText}>{t('summaryVerified')}</Text>
             </View>
-            <Text style={styles.metaLine} numberOfLines={1}>
-              {[product?.brandInfo?.name, serial ? `S/N: ${serial}` : ''].filter(Boolean).join('  •  ')}
-            </Text>
             {owned && !!addedDate && (
               <Text style={styles.metaLine} numberOfLines={1}>{t('summaryOwnedSince')} {fmt(addedDate)}</Text>
             )}
