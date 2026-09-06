@@ -427,7 +427,7 @@ const styles = StyleSheet.create({
   saveButton: {
     backgroundColor: colors.accent,
     borderRadius: radius.md,
-    height: 48,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: spacing.lg,
@@ -436,7 +436,7 @@ const styles = StyleSheet.create({
   saveText: { color: colors.white, fontSize: fontSize.lg, fontWeight: '600' },
   cancelButton: {
     borderRadius: radius.md,
-    height: 48,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: spacing.md,

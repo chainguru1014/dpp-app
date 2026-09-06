@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: spacing.xs,
   },
-  title: { fontSize: 23, fontWeight: '700', color: colors.heading },
+  title: { fontSize: 20, fontWeight: '700', color: colors.heading },
   subtitle: { fontSize: 17, color: colors.muted, marginTop: 1 },
   card: {
     backgroundColor: colors.surface,
@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
   primaryButton: {
     backgroundColor: colors.accent,
     borderRadius: radius.md,
-    height: 48,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
     ...shadow(1),
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
   secondaryButton: {
     marginTop: spacing.sm,
     borderRadius: radius.md,
-    height: 48,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,

@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     backgroundColor: colors.accent,
     borderRadius: radius.md,
-    height: 48,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
     ...shadow(1),

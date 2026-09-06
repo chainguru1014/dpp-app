@@ -829,7 +829,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xs,
   },
   tabBtn: { flex: 1, alignItems: 'center', paddingVertical: 14, paddingHorizontal: 2 },
-  tabText: { fontSize: 13, fontWeight: '700', color: colors.muted, textAlign: 'center' },
+  tabText: { fontSize: 15, fontWeight: '700', color: colors.muted, textAlign: 'center' },
   tabTextActive: { color: colors.primary },
   tabUnderline: {
     position: 'absolute',
@@ -902,7 +902,7 @@ const styles = StyleSheet.create({
   originImg: { width: 24, height: 24 },
   originDetailImg: { width: 40, height: 40 },
   originName: { fontSize: 19, fontWeight: '600', color: colors.text },
-  originSub: { fontSize: 17, color: colors.muted, marginTop: 2 },
+  originSub: { fontSize: 19, color: colors.muted, marginTop: 2 },
   certRow: { flexDirection: 'row', gap: spacing.sm },
   certBadge: {
     flex: 1,
@@ -928,8 +928,8 @@ const styles = StyleSheet.create({
   // dispose
   disposeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border },
   disposeIcon: { width: 36, height: 36, borderRadius: radius.md, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
-  disposeTitle: { fontSize: 18, fontWeight: '600', color: colors.heading },
-  disposeSub: { fontSize: 17, color: colors.muted, marginTop: 1 },
+  disposeTitle: { fontSize: 20, fontWeight: '600', color: colors.heading },
+  disposeSub: { fontSize: 19, color: colors.muted, marginTop: 1 },
   tileRow: { flexDirection: 'row', gap: spacing.sm },
   tile: {
     flex: 1,

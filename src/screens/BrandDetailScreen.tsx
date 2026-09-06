@@ -392,6 +392,6 @@ const styles = StyleSheet.create({
   brandMiniLogo: { width: 64, height: 46 },
   brandMiniName: { fontSize: 19, fontWeight: '700', color: colors.heading },
   brandMiniDetail: { fontSize: 17, color: colors.muted, marginTop: 2 },
-  sheetSend: { marginTop: spacing.lg, backgroundColor: colors.accent, borderRadius: radius.md, height: 48, justifyContent: 'center', alignItems: 'center' },
+  sheetSend: { marginTop: spacing.lg, backgroundColor: colors.accent, borderRadius: radius.md, height: 44, justifyContent: 'center', alignItems: 'center' },
   sheetSendText: { color: '#fff', fontSize: 20, fontWeight: '600' },
 });

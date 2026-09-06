@@ -139,8 +139,8 @@ const styles = StyleSheet.create({
   previewName: { fontSize: 19, fontWeight: '700', color: colors.heading },
   previewSub: { fontSize: 17, color: colors.muted, marginTop: 1 },
   previewId: { fontSize: 17, color: colors.placeholder, marginTop: 2 },
-  sendBtn: { marginTop: spacing.xl, backgroundColor: colors.accent, borderRadius: radius.md, height: 48, justifyContent: 'center', alignItems: 'center', ...shadow(1) },
+  sendBtn: { marginTop: spacing.xl, backgroundColor: colors.accent, borderRadius: radius.md, height: 44, justifyContent: 'center', alignItems: 'center', ...shadow(1) },
   sendBtnText: { color: '#fff', fontSize: 20, fontWeight: '600' },
-  cancelBtn: { marginTop: spacing.md, height: 48, justifyContent: 'center', alignItems: 'center', borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+  cancelBtn: { marginTop: spacing.md, height: 44, justifyContent: 'center', alignItems: 'center', borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
   cancelBtnText: { color: colors.primary, fontSize: 20, fontWeight: '600' },
 });

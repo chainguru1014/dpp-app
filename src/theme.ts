@@ -174,7 +174,7 @@ export const ui = StyleSheet.create({
   buttonPrimary: {
     backgroundColor: colors.accent,
     borderRadius: radius.md,
-    height: 48,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
     ...shadow(1),
@@ -187,7 +187,7 @@ export const ui = StyleSheet.create({
   buttonGhost: {
     backgroundColor: colors.surfaceAlt,
     borderRadius: radius.md,
-    height: 48,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
