@@ -127,12 +127,41 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
               title={t('homeRecentScans')}
               onViewAll={() => navigation.navigate('History')}
               emptyText={t('noHistoryYet')}
-              hasItems={recentScans.length > 0}
+              hasItems={recentScans.length > 0 || brands.length > 0}
               style={styles.sectionFull}
             >
-              {recentScans.map((p, i) => (
-                <ProductRow key={`${p._id}-${i}`} product={p} caption={scanCaption(p)} onPress={() => openProductSummary(p, false)} />
-              ))}
+              {recentScans.length > 0 ? (
+                recentScans.map((p, i) => (
+                  <ProductRow key={`${p._id}-${i}`} product={p} caption={scanCaption(p)} onPress={() => openProductSummary(p, false)} />
+                ))
+              ) : (
+                <Text style={styles.inlineEmpty}>{t('noHistoryYet')}</Text>
+              )}
+
+              {brands.length > 0 && (
+                <View style={styles.brandsInline}>
+                  <View style={styles.brandsInlineHead}>
+                    <Text style={styles.brandsInlineTitle}>{t('homeFeaturedBrands')}</Text>
+                    <TouchableOpacity onPress={() => navigation.navigate('FavoriteBrands')} activeOpacity={0.7}>
+                      <Text style={styles.brandsInlineViewAll}>{t('viewAll')}</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.brandStrip}>
+                    {brands.map((b) => (
+                      <TouchableOpacity key={b.id} style={styles.brandTile} activeOpacity={0.8} onPress={() => openBrand(b)}>
+                        <View style={styles.brandLogoBox}>
+                          {b.logo ? (
+                            <Image source={{ uri: b.logo }} style={styles.brandLogoImg} resizeMode="contain" />
+                          ) : (
+                            <Text style={styles.brandLetter}>{b.name.charAt(0).toUpperCase()}</Text>
+                          )}
+                        </View>
+                        <Text style={styles.brandName} numberOfLines={1}>{b.name}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
             </SectionCard>
 
             <SectionCard
@@ -146,31 +175,6 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
                 <ProductRow key={`${p._id}-${i}`} product={p} caption={t('owned')} onPress={() => openProductSummary(p, true)} />
               ))}
             </SectionCard>
-
-            {brands.length > 0 && (
-              <SectionCard
-                title={t('homeFeaturedBrands')}
-                onViewAll={() => navigation.navigate('FavoriteBrands')}
-                emptyText=""
-                hasItems
-                style={styles.sectionFull}
-              >
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.brandStrip}>
-                  {brands.map((b) => (
-                    <TouchableOpacity key={b.id} style={styles.brandTile} activeOpacity={0.8} onPress={() => openBrand(b)}>
-                      <View style={styles.brandLogoBox}>
-                        {b.logo ? (
-                          <Image source={{ uri: b.logo }} style={styles.brandLogoImg} resizeMode="contain" />
-                        ) : (
-                          <Text style={styles.brandLetter}>{b.name.charAt(0).toUpperCase()}</Text>
-                        )}
-                      </View>
-                      <Text style={styles.brandName} numberOfLines={1}>{b.name}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </SectionCard>
-            )}
           </>
         )}
 
@@ -216,6 +220,11 @@ const styles = StyleSheet.create({
     ...shadow(1),
   },
   heroBtnText: { color: '#fff', fontSize: 19, fontWeight: '700' },
+  inlineEmpty: { fontSize: 19, color: colors.muted, paddingVertical: spacing.sm },
+  brandsInline: { marginTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.sm },
+  brandsInlineHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs },
+  brandsInlineTitle: { fontSize: 19, fontWeight: '700', color: colors.primary },
+  brandsInlineViewAll: { fontSize: 17, color: colors.accent, fontWeight: '600' },
   brandStrip: { gap: spacing.md, paddingVertical: spacing.xs },
   brandTile: { width: 72, alignItems: 'center' },
   brandLogoBox: {
