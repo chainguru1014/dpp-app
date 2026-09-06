@@ -632,14 +632,25 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
             ))}
           </View>
         )}
-        <Row
-          icon="local-shipping"
-          label={t('lifecycleShippingRoute')}
-          value={[routeInfo.origin, routeInfo.destination].filter(Boolean).join(' → ') || routeInfo.mode || t('lifecycleViewJourney')}
-          chevron
-          onPress={() => { setTab('journey'); setOpenStage('transportation'); }}
-        />
-        <Row icon="route" label={t('lifecycleDistanceTraveled')} value={esg.distance || ''} />
+        {(() => {
+          const jOpen = openOrigin === 'trace-journey';
+          return (
+            <>
+              <TouchableOpacity style={styles.itemRow} activeOpacity={0.7} onPress={() => setOpenOrigin(jOpen ? null : 'trace-journey')}>
+                <View style={styles.itemIcon}><Icon name="local-shipping" size={19} color={colors.primary} /></View>
+                <Text style={styles.itemLabel}>{t('lifecycleShippingRoute')}</Text>
+                <Icon name={jOpen ? 'expand-less' : 'expand-more'} size={22} color={colors.muted} />
+              </TouchableOpacity>
+              {jOpen && (
+                <View style={styles.jDetail}>
+                  <Row label={t('lifecycleShippingLogLabel')} value={esg.shippingLog || ''} />
+                  <Row label={t('lifecycleShippingDistance')} value={esg.distance || ''} />
+                  <Row label={t('lifecycleEstEmissions')} value={routeInfo.emissions || esg.co2Transportation || ''} />
+                </View>
+              )}
+            </>
+          );
+        })()}
       </View>
       <View style={styles.card}>
         <Text style={styles.cardTitle}>{t('lifecycleEnvImpact')}</Text>
@@ -736,19 +747,14 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
 
         {/* Rounded sheet: underline tab row + tab content. */}
         <View style={styles.sheet}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.tabRow}
-            contentContainerStyle={styles.tabRowContent}
-          >
+          <View style={styles.tabRow}>
             {TABS.map((tb) => (
               <TouchableOpacity key={tb.key} style={styles.tabBtn} onPress={() => setTab(tb.key)} activeOpacity={0.7}>
                 <Text style={[styles.tabText, tab === tb.key && styles.tabTextActive]} numberOfLines={1}>{t(tb.labelKey as any)}</Text>
                 {tab === tb.key && <View style={styles.tabUnderline} />}
               </TouchableOpacity>
             ))}
-          </ScrollView>
+          </View>
           <ScrollView style={styles.tabScroll} contentContainerStyle={styles.tabScrollContent} showsVerticalScrollIndicator={false}>
             {renderTab()}
           </ScrollView>
@@ -816,14 +822,14 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   tabRow: {
-    flexGrow: 0,
+    flexDirection: 'row',
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    paddingHorizontal: spacing.xs,
   },
-  tabRowContent: { paddingHorizontal: spacing.sm },
-  tabBtn: { alignItems: 'center', paddingVertical: 14, paddingHorizontal: spacing.md },
-  tabText: { fontSize: 18, fontWeight: '700', color: colors.muted, textAlign: 'center' },
+  tabBtn: { flex: 1, alignItems: 'center', paddingVertical: 14, paddingHorizontal: 2 },
+  tabText: { fontSize: 13, fontWeight: '700', color: colors.muted, textAlign: 'center' },
   tabTextActive: { color: colors.primary },
   tabUnderline: {
     position: 'absolute',

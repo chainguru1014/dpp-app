@@ -58,15 +58,12 @@ export default function ScanSuccessfulScreen({ navigation, route, user, onLogout
             images={images}
             videos={videos}
             hideHeader
-            maxHeight={170}
+            maxHeight={140}
             watchLabel={t('watchVideo')}
             onPlayVideo={setPlayingVideoId}
           />
           <Text style={styles.productName} numberOfLines={1}>{productData?.name || '—'}</Text>
           {!!productData?.model && <Text style={styles.productModel} numberOfLines={1}>{productData.model}</Text>}
-          {(productData?.pmc_code || productData?.token_id != null) && (
-            <Text style={styles.productId} numberOfLines={1}>ID: {productData?.pmc_code || productData?.token_id}</Text>
-          )}
         </View>
 
         <View style={styles.card}>

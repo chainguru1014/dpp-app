@@ -198,13 +198,15 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     padding: spacing.lg,
     backgroundColor: '#e6effb',
-    minHeight: 190,
+    // Match the artwork's ~2:1 ratio so the full image (bag + phone) shows
+    // without cropping; text sits over the empty left of the illustration.
+    aspectRatio: 2,
     justifyContent: 'center',
   },
   heroImage: { borderRadius: radius.xl },
   heroBadgeIcon: { marginBottom: spacing.sm },
-  heroTitle: { fontSize: 32, fontWeight: '800', color: colors.heading },
-  heroSub: { fontSize: 18, color: colors.text, marginTop: 7, lineHeight: 26, maxWidth: '62%' },
+  heroTitle: { fontSize: 25, fontWeight: '800', color: colors.heading },
+  heroSub: { fontSize: 15, color: colors.text, marginTop: 6, lineHeight: 20, maxWidth: '52%' },
   heroBtn: {
     flexDirection: 'row',
     alignItems: 'center',
