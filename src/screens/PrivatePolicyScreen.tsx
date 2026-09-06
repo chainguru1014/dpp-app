@@ -114,11 +114,11 @@ const styles = StyleSheet.create({
   },
   title: {
     ...ui.screenTitle,
-    fontSize: 28,
+    fontSize: 38,
     marginBottom: spacing.xs,
   },
   updated: {
-    fontSize: 12,
+    fontSize: 16,
     color: colors.muted,
     fontWeight: '400',
     letterSpacing: 1,
@@ -134,14 +134,14 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   paragraph: {
-    fontSize: 15,
+    fontSize: 20,
     color: colors.text,
-    lineHeight: 22,
+    lineHeight: 30,
     marginBottom: spacing.md,
   },
   link: {
     marginTop: spacing.xs,
-    fontSize: 15,
+    fontSize: 20,
     color: colors.accent,
     textDecorationLine: 'underline',
   },
@@ -173,12 +173,12 @@ const styles = StyleSheet.create({
   },
   checkboxMark: {
     color: colors.white,
-    fontSize: 16,
+    fontSize: 22,
     fontWeight: '400',
-    lineHeight: 18,
+    lineHeight: 24,
   },
   confirmLabel: {
-    fontSize: 15,
+    fontSize: 20,
     color: colors.text,
     fontWeight: '400',
   },

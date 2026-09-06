@@ -2136,9 +2136,9 @@ const styles = StyleSheet.create({
   ovHeaderRow: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' },
   ovHeaderMedia: { width: 132 },
   ovHeaderInfo: { flex: 1 },
-  ovName: { fontSize: 16, fontWeight: '700', color: colors.heading },
-  ovModel: { fontSize: 12, color: colors.muted, marginTop: 2 },
-  ovId: { fontSize: 11, color: colors.placeholder, marginTop: 2 },
+  ovName: { fontSize: 22, fontWeight: '700', color: colors.heading },
+  ovModel: { fontSize: 16, color: colors.muted, marginTop: 2 },
+  ovId: { fontSize: 15, color: colors.placeholder, marginTop: 2 },
   ovAuthBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2157,8 +2157,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  ovAuthBadgeTitle: { fontSize: 12, fontWeight: '700', color: colors.heading },
-  ovAuthBadgeSub: { fontSize: 10, color: colors.muted, marginTop: 1 },
+  ovAuthBadgeTitle: { fontSize: 16, fontWeight: '700', color: colors.heading },
+  ovAuthBadgeSub: { fontSize: 14, color: colors.muted, marginTop: 1 },
   ovCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
@@ -2169,9 +2169,9 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     ...shadow(1),
   },
-  ovCardTitle: { fontSize: 15, fontWeight: '700', color: colors.primary, marginBottom: 8 },
+  ovCardTitle: { fontSize: 20, fontWeight: '700', color: colors.primary, marginBottom: 8 },
   ovHlRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 6 },
-  ovHlText: { flex: 1, fontSize: 14, color: colors.text, lineHeight: 19 },
+  ovHlText: { flex: 1, fontSize: 19, color: colors.text, lineHeight: 26 },
   ovLcStrip: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6 },
   ovLcStage: { alignItems: 'center', width: 64 },
   ovLcDot: {
@@ -2183,7 +2183,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 6,
   },
-  ovLcLabel: { fontSize: 10, color: colors.muted, textAlign: 'center' },
+  ovLcLabel: { fontSize: 14, color: colors.muted, textAlign: 'center' },
   ovLcConn: { flex: 1, height: 2, backgroundColor: colors.primary, marginTop: 24, borderRadius: 1 },
   ovViewLc: {
     flexDirection: 'row',
@@ -2193,7 +2193,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     paddingTop: 4,
   },
-  ovViewLcText: { fontSize: 12, fontWeight: '600', color: colors.accent },
+  ovViewLcText: { fontSize: 16, fontWeight: '600', color: colors.accent },
   // Anchored to the foot of the scroll content (contentContainer has flexGrow:1),
   // so the Like/Share + CTA rows sit at the bottom of the content layer.
   ovBottomGroup: { marginTop: 'auto', paddingTop: spacing.lg, paddingBottom: spacing.sm },
@@ -2219,7 +2219,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
     ...shadow(1),
   },
-  ovPrimaryCtaText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  ovPrimaryCtaText: { color: '#fff', fontSize: 18, fontWeight: '700' },
   ovSecondaryCta: {
     flex: 1,
     borderRadius: radius.md,
@@ -2230,7 +2230,7 @@ const styles = StyleSheet.create({
     borderColor: colors.accent,
     backgroundColor: colors.surface,
   },
-  ovSecondaryCtaText: { color: colors.accent, fontSize: 13, fontWeight: '600' },
+  ovSecondaryCtaText: { color: colors.accent, fontSize: 18, fontWeight: '600' },
   // --- Product Overview redesign (Phase 3) ---
   overviewCard: {
     backgroundColor: colors.surface,
@@ -2242,10 +2242,10 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     ...shadow(1),
   },
-  overviewCardTitle: { fontSize: 15, fontWeight: '700', color: colors.primary, marginBottom: spacing.sm },
+  overviewCardTitle: { fontSize: 20, fontWeight: '700', color: colors.primary, marginBottom: spacing.sm },
   highlightRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, paddingVertical: 4 },
-  highlightText: { flex: 1, fontSize: 13, color: colors.text, lineHeight: 18 },
-  overviewDetailText: { fontSize: 13, color: colors.muted, lineHeight: 19, marginTop: spacing.sm },
+  highlightText: { flex: 1, fontSize: 18, color: colors.text, lineHeight: 24 },
+  overviewDetailText: { fontSize: 18, color: colors.muted, lineHeight: 26, marginTop: spacing.sm },
   lifecycleStrip: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: spacing.md },
   lifecycleStage: { alignItems: 'center', width: 58 },
   lifecycleDot: {
@@ -2257,7 +2257,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 4,
   },
-  lifecycleStageLabel: { fontSize: 9, color: colors.muted, textAlign: 'center' },
+  lifecycleStageLabel: { fontSize: 12, color: colors.muted, textAlign: 'center' },
   lifecycleConnector: { flex: 1, height: 1, backgroundColor: colors.border, marginTop: 17 },
   viewLifecycleBtn: {
     flexDirection: 'row',
@@ -2268,7 +2268,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
-  viewLifecycleText: { fontSize: 13, fontWeight: '600', color: colors.accent },
+  viewLifecycleText: { fontSize: 18, fontWeight: '600', color: colors.accent },
   overviewBuyButton: {
     marginHorizontal: spacing.lg,
     marginTop: spacing.lg,
@@ -2278,7 +2278,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
     ...shadow(1),
   },
-  overviewBuyText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  overviewBuyText: { color: '#fff', fontSize: 20, fontWeight: '700' },
   overviewActionRow: { flexDirection: 'row', gap: spacing.md, marginHorizontal: spacing.lg, marginTop: spacing.md },
   overviewActionBtn: {
     flex: 1,
@@ -2293,7 +2293,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   overviewActionBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  overviewActionText: { fontSize: 13, fontWeight: '600', color: colors.primary },
+  overviewActionText: { fontSize: 18, fontWeight: '600', color: colors.primary },
   overviewActionTextActive: { color: '#fff' },
   overviewToast: {
     flexDirection: 'row',
@@ -2306,7 +2306,7 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.lg,
     marginTop: spacing.md,
   },
-  overviewToastText: { flex: 1, fontSize: 13, color: colors.success, fontWeight: '600' },
+  overviewToastText: { flex: 1, fontSize: 18, color: colors.success, fontWeight: '600' },
   shareOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
   shareSheet: {
     backgroundColor: colors.surface,
@@ -2317,8 +2317,8 @@ const styles = StyleSheet.create({
   },
   shareHandle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border, marginBottom: spacing.md },
   shareHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md },
-  shareTitle: { fontSize: 17, fontWeight: '700', color: colors.heading },
-  shareLabel: { fontSize: 12, color: colors.muted, marginTop: spacing.sm, marginBottom: spacing.xs },
+  shareTitle: { fontSize: 23, fontWeight: '700', color: colors.heading },
+  shareLabel: { fontSize: 16, color: colors.muted, marginTop: spacing.sm, marginBottom: spacing.xs },
   shareOptionsRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.xs, marginBottom: spacing.md },
   shareOption: { alignItems: 'center', width: 68 },
   shareOptionIcon: {
@@ -2330,15 +2330,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 4,
   },
-  shareOptionLabel: { fontSize: 11, color: colors.text },
+  shareOptionLabel: { fontSize: 15, color: colors.text },
   shareProductCard: {
     backgroundColor: colors.surfaceAlt,
     borderRadius: radius.md,
     padding: spacing.md,
   },
-  shareProductName: { fontSize: 14, fontWeight: '700', color: colors.heading },
-  shareProductBrand: { fontSize: 12, color: colors.muted, marginTop: 1 },
-  shareProductId: { fontSize: 11, color: colors.placeholder, marginTop: 2 },
+  shareProductName: { fontSize: 19, fontWeight: '700', color: colors.heading },
+  shareProductBrand: { fontSize: 16, color: colors.muted, marginTop: 1 },
+  shareProductId: { fontSize: 15, color: colors.placeholder, marginTop: 2 },
   content: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -2351,19 +2351,19 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   productName: {
-    fontSize: 20,
+    fontSize: 27,
     fontWeight: '400',
     color: colors.primary,
     marginBottom: 5,
     textAlign: 'center',
   },
   productModel: {
-    fontSize: 16,
+    fontSize: 22,
     color: colors.muted,
     textAlign: 'center',
   },
   pmcBadge: {
-    fontSize: 14,
+    fontSize: 19,
     fontWeight: '600',
     color: colors.muted,
     textAlign: 'center',
@@ -2408,7 +2408,7 @@ const styles = StyleSheet.create({
   videoSlideCaption: {
     marginTop: 8,
     color: '#fff',
-    fontSize: 13,
+    fontSize: 18,
     textAlign: 'center',
     textShadowColor: 'rgba(0,0,0,0.8)',
     textShadowOffset: { width: 0, height: 1 },
@@ -2448,9 +2448,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   detailText: {
-    fontSize: 14,
+    fontSize: 19,
     color: colors.text,
-    lineHeight: 20,
+    lineHeight: 27,
   },
   productDetailMainRow: {
     flexDirection: 'row',
@@ -2480,7 +2480,7 @@ const styles = StyleSheet.create({
   },
   brandNameText: {
     marginTop: 8,
-    fontSize: 12,
+    fontSize: 16,
     fontWeight: '400',
     color: colors.primary,
     textAlign: 'center',
@@ -2501,9 +2501,9 @@ const styles = StyleSheet.create({
   },
   detailFactText: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 19,
     color: colors.text,
-    lineHeight: 20,
+    lineHeight: 27,
   },
   videosContainer: {
     marginVertical: 15,
@@ -2520,7 +2520,7 @@ const styles = StyleSheet.create({
   videoText: {
     marginLeft: 10,
     color: colors.primary,
-    fontSize: 14,
+    fontSize: 19,
   },
   filesContainer: {
     marginVertical: 15,
@@ -2537,39 +2537,39 @@ const styles = StyleSheet.create({
   fileText: {
     marginLeft: 10,
     color: colors.primary,
-    fontSize: 14,
+    fontSize: 19,
   },
   sectionContent: {
     minHeight: 1,
     paddingVertical: 10,
   },
   sectionText: {
-    fontSize: 14,
+    fontSize: 19,
     color: colors.muted,
-    lineHeight: 20,
+    lineHeight: 27,
     paddingHorizontal: 20,
   },
   sectionTitleBlue: {
-    fontSize: 14,
+    fontSize: 19,
     fontWeight: '400',
     color: colors.primary,
     marginBottom: 8,
     paddingHorizontal: 20,
   },
   productIdText: {
-    fontSize: 12,
+    fontSize: 16,
     color: colors.muted,
     marginBottom: 8,
     paddingHorizontal: 20,
   },
   materialText: {
-    fontSize: 13,
+    fontSize: 18,
     color: colors.text,
     marginBottom: 4,
     paddingHorizontal: 20,
   },
   careSymbolsLabel: {
-    fontSize: 12,
+    fontSize: 16,
     color: colors.muted,
     marginBottom: 8,
     paddingHorizontal: 20,
@@ -2588,13 +2588,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   careSymbolLabel: {
-    fontSize: 10,
+    fontSize: 14,
     color: colors.primary,
     textAlign: 'center',
     marginTop: 4,
   },
   noDataText: {
-    fontSize: 12,
+    fontSize: 16,
     color: colors.muted,
     fontStyle: 'italic',
     marginBottom: 15,
@@ -2605,10 +2605,10 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   maintenanceDescription: {
-    fontSize: 13,
+    fontSize: 18,
     color: colors.text,
     marginBottom: 15,
-    lineHeight: 20,
+    lineHeight: 27,
     paddingHorizontal: 20,
   },
   dppInfoBox: {
@@ -2621,13 +2621,13 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
   },
   dppTitle: {
-    fontSize: 14,
+    fontSize: 19,
     fontWeight: '400',
     color: colors.primary,
     marginBottom: 4,
   },
   dppText: {
-    fontSize: 12,
+    fontSize: 16,
     color: colors.text,
     marginBottom: 2,
   },
@@ -2651,7 +2651,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   accordionHeaderText: {
-    fontSize: 16,
+    fontSize: 22,
     fontWeight: '400',
     color: '#fff',
     letterSpacing: 0.3,
@@ -2691,7 +2691,7 @@ const styles = StyleSheet.create({
   },
   securityCheckText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 22,
     fontWeight: '400',
     marginLeft: 10,
     letterSpacing: 0.3,
@@ -2715,14 +2715,14 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
   },
   authenticatedTitle: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: '400',
     color: colors.primary,
     marginBottom: 10,
     textAlign: 'center',
   },
   authenticatedText: {
-    fontSize: 14,
+    fontSize: 19,
     color: colors.muted,
     textAlign: 'center',
     marginBottom: 5,
@@ -2768,7 +2768,7 @@ const styles = StyleSheet.create({
     tintColor: '#fff',
   },
   actionPillText: {
-    fontSize: 13,
+    fontSize: 18,
     fontWeight: '600',
     color: colors.text,
   },
@@ -2787,7 +2787,7 @@ const styles = StyleSheet.create({
   },
   productInfoButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 22,
     fontWeight: '600',
   },
   cameraContainer: {
@@ -2801,7 +2801,7 @@ const styles = StyleSheet.create({
   },
   cameraPlaceholder: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 24,
     marginBottom: 20,
   },
   topContent: {
@@ -2810,7 +2810,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   centerText: {
-    fontSize: 18,
+    fontSize: 24,
     color: '#fff',
     textAlign: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
@@ -2833,7 +2833,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: '400',
   },
   disposalLinksContainer: {
@@ -2845,11 +2845,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   disposalLabel: {
-    fontSize: 12,
+    fontSize: 16,
     color: colors.muted,
   },
   disposalLink: {
-    fontSize: 13,
+    fontSize: 18,
     color: colors.primary,
     textDecorationLine: 'underline',
   },
@@ -2864,19 +2864,19 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
   },
   environmentText: {
-    fontSize: 13,
+    fontSize: 18,
     fontWeight: '400',
     color: '#fff',
   },
   inquiryLabel: {
-    fontSize: 12,
+    fontSize: 16,
     color: colors.muted,
     marginTop: 15,
     marginBottom: 4,
     paddingHorizontal: 20,
   },
   inquiryLink: {
-    fontSize: 13,
+    fontSize: 18,
     color: colors.primary,
     textDecorationLine: 'underline',
     paddingHorizontal: 20,
@@ -2906,7 +2906,7 @@ const styles = StyleSheet.create({
     ...shadow(3),
   },
   joinModalText: {
-    fontSize: 18,
+    fontSize: 24,
     color: colors.primary,
     textAlign: 'center',
     marginBottom: 18,
@@ -2924,12 +2924,12 @@ const styles = StyleSheet.create({
   },
   joinModalButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 22,
     fontWeight: '400',
   },
   joinModalCancel: {
     color: colors.primary,
-    fontSize: 14,
+    fontSize: 19,
   },
   joinModalSecondary: {
     borderRadius: 8,
@@ -2943,7 +2943,7 @@ const styles = StyleSheet.create({
   },
   joinModalSecondaryText: {
     color: colors.primary,
-    fontSize: 16,
+    fontSize: 22,
     fontWeight: '400',
   },
   copyInfoModalOverlay: {
@@ -2962,10 +2962,10 @@ const styles = StyleSheet.create({
     ...shadow(3),
   },
   copyInfoModalText: {
-    fontSize: 16,
+    fontSize: 22,
     color: colors.text,
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 30,
   },
   careModalOverlay: {
     flex: 1,
@@ -2983,15 +2983,15 @@ const styles = StyleSheet.create({
     ...shadow(3),
   },
   careModalTitle: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: '400',
     color: colors.primary,
     marginBottom: 8,
   },
   careModalDescription: {
-    fontSize: 14,
+    fontSize: 19,
     color: colors.text,
-    lineHeight: 20,
+    lineHeight: 27,
   },
   copyRow: {
     flexDirection: 'row',
@@ -3004,11 +3004,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   copyRowLabel: {
-    fontSize: 12,
+    fontSize: 16,
     color: colors.muted,
   },
   copyRowValue: {
-    fontSize: 13,
+    fontSize: 18,
     color: colors.text,
     marginTop: 2,
   },
@@ -3020,7 +3020,7 @@ const styles = StyleSheet.create({
   },
   copyButtonText: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: 16,
     fontWeight: '400',
   },
   dialogActionButton: {
@@ -3029,7 +3029,7 @@ const styles = StyleSheet.create({
   },
   dialogActionButtonText: {
     color: colors.primary,
-    fontSize: 14,
+    fontSize: 19,
     fontWeight: '400',
   },
   emailDialogCard: {
@@ -3041,7 +3041,7 @@ const styles = StyleSheet.create({
     ...shadow(3),
   },
   transferHelpText: {
-    fontSize: 13,
+    fontSize: 18,
     color: colors.muted,
     marginBottom: 12,
   },
@@ -3054,7 +3054,7 @@ const styles = StyleSheet.create({
     height: 200,
   },
   transferEmailLabel: {
-    fontSize: 13,
+    fontSize: 18,
     fontWeight: '400',
     color: colors.heading,
     marginBottom: 6,
@@ -3069,7 +3069,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   ownerInfoLabel: {
-    fontSize: 11,
+    fontSize: 15,
     fontWeight: '400',
     color: colors.muted,
     textTransform: 'uppercase',
@@ -3077,12 +3077,12 @@ const styles = StyleSheet.create({
     marginBottom: 3,
   },
   ownerInfoName: {
-    fontSize: 14,
+    fontSize: 19,
     fontWeight: '400',
     color: colors.heading,
   },
   ownerInfoEmail: {
-    fontSize: 13,
+    fontSize: 18,
     color: colors.text,
     marginTop: 1,
   },
@@ -3093,7 +3093,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   checkboxLabel: {
-    fontSize: 14,
+    fontSize: 19,
     fontWeight: '400',
     color: colors.heading,
     marginLeft: 8,
@@ -3118,7 +3118,7 @@ const styles = StyleSheet.create({
     borderColor: colors.accent,
   },
   methodChipText: {
-    fontSize: 12,
+    fontSize: 16,
     color: colors.text,
     fontWeight: '400',
   },
@@ -3126,7 +3126,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   otErrorText: {
-    fontSize: 13,
+    fontSize: 18,
     color: colors.danger,
     marginBottom: 8,
   },
@@ -3138,7 +3138,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 11,
     marginBottom: 10,
-    fontSize: 14,
+    fontSize: 19,
     color: colors.text,
   },
   textArea: {
@@ -3150,7 +3150,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 11,
     marginBottom: 10,
-    fontSize: 14,
+    fontSize: 19,
     color: colors.text,
     textAlignVertical: 'top',
   },
@@ -3165,7 +3165,7 @@ const styles = StyleSheet.create({
   },
   dialogActionSecondaryText: {
     color: colors.muted,
-    fontSize: 14,
+    fontSize: 19,
   },
   dialogActionPrimary: {
     paddingVertical: 10,
@@ -3175,7 +3175,7 @@ const styles = StyleSheet.create({
   },
   dialogActionPrimaryText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 19,
     fontWeight: '400',
   },
 });

@@ -157,10 +157,10 @@ const styles = StyleSheet.create({
   headerInfo: { flex: 1 },
   thumb: { width: 140, height: 140, borderRadius: radius.md, backgroundColor: colors.surfaceAlt },
   thumbPlaceholder: { alignItems: 'center', justifyContent: 'center' },
-  name: { fontSize: 19, fontWeight: '700', color: colors.heading },
+  name: { fontSize: 26, fontWeight: '700', color: colors.heading },
   verifiedRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 5 },
-  verifiedText: { fontSize: 13, fontWeight: '600', color: colors.primary },
-  metaLine: { fontSize: 13, color: colors.muted, marginTop: 4, lineHeight: 18 },
+  verifiedText: { fontSize: 18, fontWeight: '600', color: colors.primary },
+  metaLine: { fontSize: 18, color: colors.muted, marginTop: 4, lineHeight: 24 },
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
@@ -170,8 +170,8 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     ...shadow(1),
   },
-  cardTitle: { fontSize: 16, fontWeight: '700', color: colors.primary, marginBottom: spacing.sm },
-  emptyText: { fontSize: 14, color: colors.muted },
+  cardTitle: { fontSize: 22, fontWeight: '700', color: colors.primary, marginBottom: spacing.sm },
+  emptyText: { fontSize: 19, color: colors.muted },
   dataRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -181,8 +181,8 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
     gap: spacing.lg,
   },
-  dataLabel: { fontSize: 14, color: colors.muted, flexShrink: 0, lineHeight: 19 },
-  dataValue: { fontSize: 14, color: colors.text, fontWeight: '600', flex: 1, textAlign: 'right', lineHeight: 19 },
+  dataLabel: { fontSize: 19, color: colors.muted, flexShrink: 0, lineHeight: 26 },
+  dataValue: { fontSize: 19, color: colors.text, fontWeight: '600', flex: 1, textAlign: 'right', lineHeight: 26 },
   footer: { marginTop: 'auto', paddingTop: spacing.md },
   primaryButton: {
     borderRadius: radius.md,
@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
     ...shadow(1),
   },
-  primaryButtonText: { color: colors.white, fontSize: 15, fontWeight: '600' },
+  primaryButtonText: { color: colors.white, fontSize: 20, fontWeight: '600' },
   secondaryButton: {
     marginTop: spacing.sm,
     borderRadius: radius.md,
@@ -201,5 +201,5 @@ const styles = StyleSheet.create({
     borderColor: colors.accent,
     backgroundColor: colors.surface,
   },
-  secondaryButtonText: { color: colors.accent, fontSize: 15, fontWeight: '600' },
+  secondaryButtonText: { color: colors.accent, fontSize: 20, fontWeight: '600' },
 });

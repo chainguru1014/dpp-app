@@ -183,9 +183,9 @@ const styles = StyleSheet.create({
   containerFlush: { paddingTop: 0 },
   imageCardFlush: { borderWidth: 0, shadowOpacity: 0, elevation: 0 },
   textHeader: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12, alignItems: 'center' },
-  productName: { fontSize: 20, fontWeight: '400', color: colors.primary, marginBottom: 5, textAlign: 'center' },
-  productModel: { fontSize: 16, color: colors.muted, textAlign: 'center' },
-  pmcBadge: { fontSize: 14, fontWeight: '600', color: colors.muted, textAlign: 'center', marginTop: 4 },
+  productName: { fontSize: 27, fontWeight: '400', color: colors.primary, marginBottom: 5, textAlign: 'center' },
+  productModel: { fontSize: 22, color: colors.muted, textAlign: 'center' },
+  pmcBadge: { fontSize: 19, fontWeight: '600', color: colors.muted, textAlign: 'center', marginTop: 4 },
   carousel: { width: '100%' },
   slidePage: { paddingHorizontal: 16 },
   imageCard: {
@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
   videoSlideCaption: {
     marginTop: 8,
     color: '#fff',
-    fontSize: 13,
+    fontSize: 18,
     textAlign: 'center',
     textShadowColor: 'rgba(0,0,0,0.8)',
     textShadowOffset: { width: 0, height: 1 },

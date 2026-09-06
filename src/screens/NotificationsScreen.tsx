@@ -162,9 +162,9 @@ export default function NotificationsScreen({ navigation, user, onLogout }: Prop
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg, padding: spacing.lg },
   markAll: { alignSelf: 'flex-end', marginBottom: spacing.sm },
-  markAllText: { fontSize: 12, color: colors.accent, fontWeight: '600' },
+  markAllText: { fontSize: 16, color: colors.accent, fontWeight: '600' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xxxl },
-  emptyText: { fontSize: 15, color: colors.muted },
+  emptyText: { fontSize: 20, color: colors.muted },
   list: { paddingBottom: spacing.xxxl },
   row: {
     flexDirection: 'row',
@@ -181,9 +181,9 @@ const styles = StyleSheet.create({
   rowUnread: { borderColor: colors.accent, backgroundColor: '#f4f8ff' },
   iconBubble: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
   info: { flex: 1 },
-  title: { fontSize: 16, color: colors.heading },
+  title: { fontSize: 22, color: colors.heading },
   titleUnread: { fontWeight: '700' },
-  message: { fontSize: 14, color: colors.muted, marginTop: 3, lineHeight: 19 },
+  message: { fontSize: 19, color: colors.muted, marginTop: 3, lineHeight: 26 },
   metaCol: { alignItems: 'flex-end', gap: 5 },
-  time: { fontSize: 12, color: colors.placeholder },
+  time: { fontSize: 16, color: colors.placeholder },
 });

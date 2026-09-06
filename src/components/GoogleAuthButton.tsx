@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#000000',
-    fontSize: 13,
+    fontSize: 18,
     fontWeight: '400',
   },
   googleIcon: {

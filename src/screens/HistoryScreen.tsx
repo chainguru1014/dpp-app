@@ -174,10 +174,10 @@ const styles = StyleSheet.create({
   },
   tab: { flex: 1, paddingVertical: 10, borderRadius: radius.sm, alignItems: 'center' },
   tabActive: { backgroundColor: colors.primary },
-  tabText: { fontSize: 14, fontWeight: '600', color: colors.muted },
+  tabText: { fontSize: 19, fontWeight: '600', color: colors.muted },
   tabTextActive: { color: '#fff' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xxxl },
-  emptyText: { fontSize: 16, color: colors.muted },
+  emptyText: { fontSize: 22, color: colors.muted },
   list: { paddingBottom: spacing.xxxl },
   row: {
     flexDirection: 'row',
@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
   thumb: { width: 56, height: 64, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt },
   thumbPlaceholder: { alignItems: 'center', justifyContent: 'center' },
   info: { flex: 1 },
-  name: { fontSize: 15, fontWeight: '600', color: colors.heading },
-  sub: { fontSize: 13, color: colors.muted, marginTop: 2 },
-  time: { fontSize: 12, color: colors.placeholder, marginTop: 4 },
+  name: { fontSize: 20, fontWeight: '600', color: colors.heading },
+  sub: { fontSize: 18, color: colors.muted, marginTop: 2 },
+  time: { fontSize: 16, color: colors.placeholder, marginTop: 4 },
 });

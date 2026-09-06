@@ -1082,7 +1082,7 @@ const styles = StyleSheet.create({
   },
   overlayHintText: {
     color: '#fff',
-    fontSize: 13,
+    fontSize: 18,
     fontWeight: '400',
     textAlign: 'center',
     textShadowColor: 'rgba(0,0,0,0.6)',
@@ -1120,7 +1120,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     backgroundColor: 'rgba(255,255,255,0.95)',
   },
-  overlayActionText: { color: colors.primary, fontSize: 13, fontWeight: '700' },
+  overlayActionText: { color: colors.primary, fontSize: 18, fontWeight: '700' },
   overlayLoadingPill: {
     flex: 1,
     flexDirection: 'row',
@@ -1131,13 +1131,13 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
-  overlayLoadingText: { color: '#fff', fontSize: 13, fontWeight: '600' },
+  overlayLoadingText: { color: '#fff', fontSize: 18, fontWeight: '600' },
   overlayCornerButton: {
     alignItems: 'center',
   },
   overlayCornerText: {
     color: '#fff',
-    fontSize: 11,
+    fontSize: 15,
     marginTop: 2,
     textShadowColor: 'rgba(0,0,0,0.6)',
     textShadowOffset: { width: 0, height: 1 },
@@ -1204,8 +1204,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.sm,
   },
-  recentScansHeaderText: { fontSize: 13, fontWeight: '700', color: colors.muted },
-  recentScansCount: { fontSize: 12, color: colors.muted },
+  recentScansHeaderText: { fontSize: 18, fontWeight: '700', color: colors.muted },
+  recentScansCount: { fontSize: 16, color: colors.muted },
   recentScansStrip: {
     height: 64,
     marginBottom: spacing.md,
@@ -1252,16 +1252,16 @@ const styles = StyleSheet.create({
     marginLeft: spacing.sm,
   },
   recentScanId: {
-    fontSize: 11,
+    fontSize: 15,
     fontWeight: '700',
     color: colors.primary,
   },
   recentScanTime: {
-    fontSize: 9,
+    fontSize: 12,
     color: colors.muted,
   },
   recentScanName: {
-    fontSize: 10,
+    fontSize: 14,
     color: colors.text,
     fontWeight: '500',
   },
@@ -1285,7 +1285,7 @@ const styles = StyleSheet.create({
   },
   whiteBoardButtonText: {
     color: colors.primary,
-    fontSize: 13,
+    fontSize: 18,
     fontWeight: '700',
   },
   whiteBoardNfc: {
@@ -1294,7 +1294,7 @@ const styles = StyleSheet.create({
   },
   whiteBoardNfcText: {
     color: colors.primary,
-    fontSize: 13,
+    fontSize: 18,
     fontWeight: '600',
     textDecorationLine: 'underline',
   },
@@ -1307,7 +1307,7 @@ const styles = StyleSheet.create({
   },
   loadingPillLightText: {
     color: colors.primary,
-    fontSize: 14,
+    fontSize: 19,
     fontWeight: '400',
   },
   helpOverlay: {
@@ -1325,24 +1325,24 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     ...shadow(3),
   },
-  helpTitle: { fontSize: 17, fontWeight: '700', color: colors.heading, marginBottom: spacing.sm },
-  helpBody: { fontSize: 14, color: colors.text, lineHeight: 20, marginBottom: spacing.lg },
+  helpTitle: { fontSize: 23, fontWeight: '700', color: colors.heading, marginBottom: spacing.sm },
+  helpBody: { fontSize: 19, color: colors.text, lineHeight: 27, marginBottom: spacing.lg },
   helpCloseButton: {
     backgroundColor: colors.primary,
     borderRadius: radius.pill,
     paddingVertical: spacing.sm,
     alignItems: 'center',
   },
-  helpCloseButtonText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  helpCloseButtonText: { color: '#fff', fontSize: 19, fontWeight: '700' },
   scanCaption: {
     color: 'rgba(255,255,255,0.82)',
-    fontSize: 13,
+    fontSize: 18,
     textAlign: 'center',
   },
   scanCaptionLink: {
     marginBottom: 20,
     color: '#fff',
-    fontSize: 14,
+    fontSize: 19,
     fontWeight: '400',
     textAlign: 'center',
     textDecorationLine: 'underline',
@@ -1389,7 +1389,7 @@ const styles = StyleSheet.create({
     borderColor: colors.accent,
   },
   manualChipText: {
-    fontSize: 11,
+    fontSize: 15,
     color: colors.text,
   },
   manualChipTextActive: {
@@ -1402,7 +1402,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     paddingVertical: 0,
     paddingHorizontal: 14,
-    fontSize: 14,
+    fontSize: 19,
     color: colors.text,
     marginBottom: spacing.md,
   },
@@ -1446,18 +1446,18 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   photoScanTitle: {
-    fontSize: 17,
+    fontSize: 23,
     fontWeight: '400',
     color: colors.heading,
     textAlign: 'center',
     marginBottom: 6,
   },
   photoScanSubtitle: {
-    fontSize: 13,
+    fontSize: 18,
     color: colors.muted,
     textAlign: 'center',
     marginBottom: 18,
-    lineHeight: 19,
+    lineHeight: 26,
   },
   photoScanButton: {
     backgroundColor: colors.accent,
@@ -1468,7 +1468,7 @@ const styles = StyleSheet.create({
   },
   photoScanButtonText: {
     color: '#fff',
-    fontSize: 15,
+    fontSize: 20,
     fontWeight: '400',
   },
   loadingPill: {
@@ -1483,7 +1483,7 @@ const styles = StyleSheet.create({
   },
   loadingPillText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 19,
     fontWeight: '400',
   },
   // Light-theme state screens (permission / unavailable / loading)
@@ -1524,11 +1524,11 @@ const styles = StyleSheet.create({
     tintColor: colors.danger,
   },
   stateTitle: {
-    fontSize: 16,
+    fontSize: 22,
     color: colors.text,
     fontWeight: '400',
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 30,
   },
   // Transient "adjusting focus" pill (autofocus fallback engaged).
   focusHintPill: {
@@ -1543,7 +1543,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.lg,
   },
-  focusHintText: { color: '#fff', fontSize: 12, fontWeight: '500' },
+  focusHintText: { color: '#fff', fontSize: 16, fontWeight: '500' },
   // Full-viewport recovery card shown when the camera feed has frozen.
   stalledOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -1562,7 +1562,7 @@ const styles = StyleSheet.create({
     ...shadow(3),
   },
   stalledTitle: {
-    fontSize: 16,
+    fontSize: 22,
     fontWeight: '700',
     color: colors.heading,
     textAlign: 'center',
@@ -1570,10 +1570,10 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   stalledBody: {
-    fontSize: 13,
+    fontSize: 18,
     color: colors.text,
     textAlign: 'center',
-    lineHeight: 19,
+    lineHeight: 26,
     marginBottom: spacing.lg,
   },
   stalledButton: {
@@ -1584,12 +1584,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.sm,
   },
-  stalledButtonText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  stalledButtonText: { color: '#fff', fontSize: 19, fontWeight: '700' },
   stalledSecondary: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
     paddingVertical: spacing.sm,
   },
-  stalledSecondaryText: { color: colors.primary, fontSize: 13, fontWeight: '600' },
+  stalledSecondaryText: { color: colors.primary, fontSize: 18, fontWeight: '600' },
 });

@@ -125,7 +125,7 @@ export default function EnterCodeScreen({ navigation, route, user, onLogout }: E
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   container: { padding: spacing.lg, paddingBottom: spacing.xxxl },
-  prompt: { fontSize: 14, color: colors.muted, marginBottom: spacing.lg },
+  prompt: { fontSize: 19, color: colors.muted, marginBottom: spacing.lg },
   typeRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.xl },
   typeTile: {
     flex: 1,
@@ -139,9 +139,9 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   typeTileActive: { borderColor: colors.primary, backgroundColor: colors.surfaceAlt },
-  typeLabel: { fontSize: 11, color: colors.muted, fontWeight: '600', textAlign: 'center' },
+  typeLabel: { fontSize: 15, color: colors.muted, fontWeight: '600', textAlign: 'center' },
   typeLabelActive: { color: colors.primary },
-  label: { fontSize: 14, fontWeight: '700', color: colors.heading, marginBottom: spacing.sm },
+  label: { fontSize: 19, fontWeight: '700', color: colors.heading, marginBottom: spacing.sm },
   inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -153,8 +153,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     height: 48,
   },
-  input: { flex: 1, fontSize: 14, color: colors.text, paddingVertical: 0 },
-  errorText: { color: colors.danger, fontSize: 13, marginTop: spacing.sm },
+  input: { flex: 1, fontSize: 19, color: colors.text, paddingVertical: 0 },
+  errorText: { color: colors.danger, fontSize: 18, marginTop: spacing.sm },
   checkButton: {
     marginTop: spacing.lg,
     backgroundColor: colors.accent,
@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
     ...shadow(1),
   },
   checkButtonDisabled: { opacity: 0.5 },
-  checkButtonText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  checkButtonText: { color: '#fff', fontSize: 20, fontWeight: '600' },
   hintCard: {
     flexDirection: 'row',
     gap: spacing.sm,
@@ -174,5 +174,5 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginTop: spacing.xl,
   },
-  hintText: { flex: 1, fontSize: 13, color: colors.muted, lineHeight: 18 },
+  hintText: { flex: 1, fontSize: 18, color: colors.muted, lineHeight: 24 },
 });

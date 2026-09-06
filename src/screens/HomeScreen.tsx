@@ -12,7 +12,6 @@ import {
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useFocusEffect } from '@react-navigation/native';
 import AppLayout from '../components/AppLayout';
-import GradientButton from '../components/GradientButton';
 import { ProductRow, SectionCard } from '../components/ProductListParts';
 import { useI18n } from '../i18n/I18nContext';
 import { API_BASE_URL } from '../config/api';
@@ -94,12 +93,6 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
     return `${t('scannedLabel')}${time ? ` • ${time}` : ''}`;
   };
 
-  const actions = [
-    { key: 'camera', icon: 'photo-camera', label: t('homeActionCameraScan'), sub: t('homeActionCameraScanSub'), onPress: () => openScanner() },
-    { key: 'upload', icon: 'image', label: t('homeActionUploadImage'), sub: t('homeActionUploadImageSub'), onPress: () => openScanner({ startUpload: true }) },
-    { key: 'enter', icon: 'keyboard', label: t('homeActionEnterCode'), sub: t('homeActionEnterCodeSub'), onPress: () => navigation.navigate('EnterCode') },
-  ];
-
   const trust = [
     { icon: 'verified-user', title: t('homeTrustVerify'), sub: t('homeTrustVerifySub') },
     { icon: 'timeline', title: t('homeTrustLifecycle'), sub: t('homeTrustLifecycleSub') },
@@ -109,34 +102,23 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
   return (
     <AppLayout navigation={navigation} user={user} onLogout={onLogout} logoLeft>
       <ScrollView style={styles.screen} contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        {/* Hero — "Scan a Product" over the brand artwork background */}
-        <ImageBackground
-          source={require('../assets/scan-product.png')}
-          style={styles.hero}
-          imageStyle={styles.heroImage}
-          resizeMode="cover"
-        >
-          <Icon name="crop-free" size={28} color={colors.primary} style={styles.heroBadgeIcon} />
-          <Text style={styles.heroTitle}>{t('scanTitle')}</Text>
-          <Text style={styles.heroSub}>{t('homeScanHeroSub')}</Text>
-          <GradientButton style={styles.heroBtn} onPress={() => openScanner()} activeOpacity={0.9}>
-            <Icon name="crop-free" size={16} color="#fff" />
-            <Text style={styles.heroBtnText}>{t('homeScanNow')}</Text>
-          </GradientButton>
-        </ImageBackground>
-
-        {/* Quick actions */}
-        <View style={styles.actionRow}>
-          {actions.map((a) => (
-            <TouchableOpacity key={a.key} style={styles.actionTile} activeOpacity={0.8} onPress={a.onPress}>
-              <View style={styles.actionIcon}>
-                <Icon name={a.icon} size={22} color={colors.primary} />
-              </View>
-              <Text style={styles.actionLabel}>{a.label}</Text>
-              <Text style={styles.actionSub} numberOfLines={2}>{a.sub}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {/* The one and only way to start a scan from Home — the whole card taps. */}
+        <TouchableOpacity activeOpacity={0.9} onPress={() => openScanner()}>
+          <ImageBackground
+            source={require('../assets/scan-product.png')}
+            style={styles.hero}
+            imageStyle={styles.heroImage}
+            resizeMode="cover"
+          >
+            <Icon name="crop-free" size={34} color={colors.primary} style={styles.heroBadgeIcon} />
+            <Text style={styles.heroTitle}>{t('scanTitle')}</Text>
+            <Text style={styles.heroSub}>{t('homeScanHeroSub')}</Text>
+            <View style={styles.heroBtn}>
+              <Icon name="crop-free" size={20} color="#fff" />
+              <Text style={styles.heroBtnText}>{t('homeScanNow')}</Text>
+            </View>
+          </ImageBackground>
+        </TouchableOpacity>
 
         {loading ? (
           <ActivityIndicator size="large" color={colors.accent} style={{ marginTop: spacing.xl }} />
@@ -221,8 +203,8 @@ const styles = StyleSheet.create({
   },
   heroImage: { borderRadius: radius.xl },
   heroBadgeIcon: { marginBottom: spacing.sm },
-  heroTitle: { fontSize: 24, fontWeight: '800', color: colors.heading },
-  heroSub: { fontSize: 13, color: colors.text, marginTop: 7, lineHeight: 19, maxWidth: '62%' },
+  heroTitle: { fontSize: 32, fontWeight: '800', color: colors.heading },
+  heroSub: { fontSize: 18, color: colors.text, marginTop: 7, lineHeight: 26, maxWidth: '62%' },
   heroBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -235,29 +217,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
     ...shadow(1),
   },
-  heroBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
-  actionRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
-  actionTile: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xs,
-    alignItems: 'center',
-    ...shadow(1),
-  },
-  actionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    backgroundColor: colors.surfaceAlt,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionLabel: { fontSize: 13, fontWeight: '700', color: colors.heading, marginTop: spacing.sm, textAlign: 'center' },
-  actionSub: { fontSize: 11, color: colors.muted, marginTop: 3, textAlign: 'center', lineHeight: 14 },
+  heroBtnText: { color: '#fff', fontSize: 19, fontWeight: '700' },
   brandStrip: { gap: spacing.md, paddingVertical: spacing.xs },
   brandTile: { width: 72, alignItems: 'center' },
   brandLogoBox: {
@@ -272,8 +232,8 @@ const styles = StyleSheet.create({
     ...shadow(1),
   },
   brandLogoImg: { width: 46, height: 46 },
-  brandLetter: { fontSize: 24, fontWeight: '800', color: colors.primary },
-  brandName: { fontSize: 11, color: colors.muted, marginTop: 6, textAlign: 'center' },
+  brandLetter: { fontSize: 32, fontWeight: '800', color: colors.primary },
+  brandName: { fontSize: 15, color: colors.muted, marginTop: 6, textAlign: 'center' },
   sectionFull: { marginHorizontal: 0 },
   trustRow: {
     flexDirection: 'row',
@@ -287,6 +247,6 @@ const styles = StyleSheet.create({
     ...shadow(1),
   },
   trustCol: { flex: 1, alignItems: 'center' },
-  trustTitle: { fontSize: 12, fontWeight: '700', color: colors.heading, marginTop: 6, textAlign: 'center' },
-  trustSub: { fontSize: 10, color: colors.muted, marginTop: 3, textAlign: 'center', lineHeight: 14 },
+  trustTitle: { fontSize: 16, fontWeight: '700', color: colors.heading, marginTop: 6, textAlign: 'center' },
+  trustSub: { fontSize: 14, color: colors.muted, marginTop: 3, textAlign: 'center', lineHeight: 19 },
 });

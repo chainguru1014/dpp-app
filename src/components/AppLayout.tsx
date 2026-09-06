@@ -11,6 +11,7 @@ import {
   Dimensions,
   Platform,
   StatusBar,
+  useWindowDimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -87,10 +88,10 @@ const EMPLOYEE_BRAND_TITLE = 'Yometel Traceability';
 // Big-height top bar. Room for the status bar on native; web has none, so keep
 // the pad at 0 (no empty band above the title / notification icon).
 const STATUS_BAR_PAD = Platform.OS === 'ios' ? 44 : Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
-const TOP_BAR_CONTENT = 50;
+const TOP_BAR_CONTENT = 56;
 const TOP_BAR_HEIGHT = STATUS_BAR_PAD + TOP_BAR_CONTENT;
-const BOTTOM_BAR_HEIGHT = 60;
-const BOTTOM_TAB_ICON_SIZE = 22;
+const BOTTOM_BAR_HEIGHT = 68;
+const BOTTOM_TAB_ICON_SIZE = 24;
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CONTENT_TOP = SCREEN_HEIGHT / 2;
@@ -126,6 +127,10 @@ export default function AppLayout({
 }: AppLayoutProps) {
   const { t, locale, setLocale, languages } = useI18n();
   const route = useRoute();
+  // On a wide (laptop) browser, present the app as a centred phone-width
+  // column on a soft backdrop instead of stretching edge to edge.
+  const { width: winWidth } = useWindowDimensions();
+  const isWide = Platform.OS === 'web' && winWidth >= 700;
   const isHomeRoute = route.name === 'Home' || route.name === 'EmployeeHome';
   const routeTitleKey = ROUTE_TITLE_KEYS[route.name];
   const computedTitle = title ?? (
@@ -259,28 +264,28 @@ export default function AppLayout({
     if (rightIcon === 'heart') {
       return (
         <TouchableOpacity onPress={onToggleFavorite} style={styles.iconButton} activeOpacity={0.7}>
-          <Icon name={isFavorite ? 'favorite' : 'favorite-border'} size={26} color={colors.white} />
+          <Icon name={isFavorite ? 'favorite' : 'favorite-border'} size={30} color={colors.white} />
         </TouchableOpacity>
       );
     }
     if (rightIcon === 'share') {
       return (
         <TouchableOpacity onPress={onShare} style={styles.iconButton} activeOpacity={0.7}>
-          <Icon name="share" size={24} color={colors.white} />
+          <Icon name="share" size={28} color={colors.white} />
         </TouchableOpacity>
       );
     }
     if (rightIcon === 'menu') {
       return (
         <TouchableOpacity onPress={() => setActionSheetVisible(true)} style={styles.iconButton} activeOpacity={0.7}>
-          <Icon name="menu" size={26} color={colors.white} />
+          <Icon name="menu" size={30} color={colors.white} />
         </TouchableOpacity>
       );
     }
     return (
       <TouchableOpacity onPress={handleNotifications} style={styles.iconButton} activeOpacity={0.7}>
         <View>
-          <Icon name="notifications" size={26} color={colors.white} />
+          <Icon name="notifications" size={30} color={colors.white} />
           <NotificationBadge userId={user?._id ? String(user._id) : undefined} />
         </View>
       </TouchableOpacity>
@@ -290,7 +295,8 @@ export default function AppLayout({
   const contentBottomPad = effectiveBar === 'none' || flushBottom ? 0 : BOTTOM_BAR_HEIGHT;
 
   return (
-    <View style={styles.container}>
+    <View style={isWide ? styles.wideBackdrop : styles.fill}>
+    <View style={[styles.container, isWide && styles.wideColumn]}>
       <GradientView style={styles.topBar} angle="vertical">
         <View style={styles.topBarRow}>
           {logoLeft ? (
@@ -301,7 +307,7 @@ export default function AppLayout({
             />
           ) : showBackButton ? (
             <TouchableOpacity onPress={handleBack} style={styles.iconButton} activeOpacity={0.7}>
-              <Icon name="arrow-back" size={24} color={colors.white} />
+              <Icon name="arrow-back" size={28} color={colors.white} />
             </TouchableOpacity>
           ) : (
             <View style={styles.iconButton} />
@@ -464,6 +470,7 @@ export default function AppLayout({
       </Modal>
 
     </View>
+    </View>
   );
 }
 
@@ -546,6 +553,16 @@ function ProductBottomBar({ routeName, t, onOverview, onLifecycle, onScan }: any
 const styles = StyleSheet.create({
   // Blue behind everything — the rounded top corners of the content sheet
   // reveal this strip, merging visually with the top bar into one shape.
+  fill: { flex: 1 },
+  // Laptop / wide-browser: soft page backdrop with a centred phone-width column.
+  wideBackdrop: { flex: 1, backgroundColor: '#dfe6f0', alignItems: 'center' },
+  wideColumn: {
+    width: 460,
+    maxWidth: '100%',
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: '#c9d3e2',
+  },
   container: { flex: 1, backgroundColor: colors.primary, position: 'relative' },
   topBar: {
     position: 'absolute',
@@ -569,12 +586,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 12,
   },
-  iconButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
-  topBarLogo: { width: 118, height: 30, marginLeft: 10 },
+  iconButton: { width: 46, height: 46, justifyContent: 'center', alignItems: 'center' },
+  topBarLogo: { width: 132, height: 34, marginLeft: 10 },
   topBarRight: { flexDirection: 'row', alignItems: 'center' },
   titleBlock: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  titleText: { color: '#fff', fontSize: 17, fontWeight: '600', letterSpacing: 0.3, textAlign: 'center' },
-  subtitleText: { color: 'rgba(255,255,255,0.85)', fontSize: 12, fontWeight: '400', marginTop: 1, textAlign: 'center' },
+  titleText: { color: '#fff', fontSize: 23, fontWeight: '600', letterSpacing: 0.3, textAlign: 'center' },
+  subtitleText: { color: 'rgba(255,255,255,0.85)', fontSize: 16, fontWeight: '400', marginTop: 1, textAlign: 'center' },
   content: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -614,7 +631,7 @@ const styles = StyleSheet.create({
   bottomTab: { flex: 1, height: '100%', alignItems: 'center', justifyContent: 'center' },
   bottomTabImg: { width: BOTTOM_TAB_ICON_SIZE, height: BOTTOM_TAB_ICON_SIZE, tintColor: '#333333' },
   bottomTabImgSelected: { tintColor: colors.primary },
-  bottomTabLabel: { fontSize: 10, color: '#333333', marginTop: 3 },
+  bottomTabLabel: { fontSize: 12, color: '#333333', marginTop: 3 },
   bottomTabLabelSelected: { color: colors.primary, fontWeight: '600' },
   scanTab: { flex: 1, height: '100%', alignItems: 'center', justifyContent: 'center' },
   scanCircle: {
@@ -630,7 +647,7 @@ const styles = StyleSheet.create({
     ...shadow(2),
   },
   scanCircleActive: { backgroundColor: colors.primaryDark },
-  scanTabLabel: { fontSize: 10, color: colors.primary, marginTop: 2, fontWeight: '600' },
+  scanTabLabel: { fontSize: 12, color: colors.primary, marginTop: 2, fontWeight: '600' },
   productTabShiftRight: { flex: 1, transform: [{ translateX: 16 }] },
   productTabShiftLeft: { flex: 1, transform: [{ translateX: -16 }] },
   modalOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
@@ -643,11 +660,11 @@ const styles = StyleSheet.create({
     maxHeight: SCREEN_HEIGHT - TOP_BAR_HEIGHT,
     ...shadow(3),
   },
-  sheetTitle: { fontSize: 20, fontWeight: '600', color: colors.heading, marginBottom: 4 },
-  sheetSubtitle: { fontSize: 13, color: colors.muted, marginBottom: 14 },
+  sheetTitle: { fontSize: 27, fontWeight: '600', color: colors.heading, marginBottom: 4 },
+  sheetSubtitle: { fontSize: 18, color: colors.muted, marginBottom: 14 },
   menuScroll: { maxHeight: SCREEN_HEIGHT - TOP_BAR_HEIGHT - 120 },
   menuSectionLabel: {
-    fontSize: 12,
+    fontSize: 16,
     color: colors.muted,
     letterSpacing: 0.6,
     textTransform: 'uppercase',
@@ -656,7 +673,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
   },
   menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15, paddingHorizontal: 5, minHeight: 48 },
-  menuItemText: { marginLeft: 15, fontSize: 16, color: colors.text, fontWeight: '400' },
+  menuItemText: { marginLeft: 15, fontSize: 22, color: colors.text, fontWeight: '400' },
   menuItemIcon: { width: 24, height: 24, tintColor: colors.primary },
   menuDivider: { height: 1, backgroundColor: colors.border },
   langOverlay: { flex: 1 },
@@ -683,10 +700,10 @@ const styles = StyleSheet.create({
   morePopoverItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13, paddingHorizontal: 4, minHeight: 44 },
   langItem: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: radius.sm },
   langItemActive: { backgroundColor: colors.surfaceAlt },
-  langText: { fontSize: 15, color: colors.text, fontWeight: '400' },
+  langText: { fontSize: 20, color: colors.text, fontWeight: '400' },
   langTextActive: { color: colors.accent, fontWeight: '400' },
   avatarPopover: { minWidth: 160, paddingHorizontal: 4 },
   avatarMenuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 10, borderRadius: radius.sm },
   avatarMenuIcon: { width: 20, height: 20, tintColor: colors.primary },
-  avatarMenuText: { marginLeft: 12, fontSize: 15, color: colors.text, fontWeight: '400' },
+  avatarMenuText: { marginLeft: 12, fontSize: 20, color: colors.text, fontWeight: '400' },
 });

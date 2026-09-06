@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     color: '#ffffff',
-    fontSize: 22,
+    fontSize: 30,
     fontWeight: '600',
     textAlign: 'center',
     paddingTop: 56,
@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
   // this content was overflowing the card (and getting clipped) on shorter
   // devices; denser typography fits it without relying on scrolling.
   welcome: {
-    fontSize: 11,
+    fontSize: 15,
     fontWeight: '600',
     color: colors.muted,
     textAlign: 'center',
@@ -334,7 +334,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   title: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: '400',
     color: colors.heading,
     textAlign: 'center',
@@ -377,19 +377,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   featureTitle: {
-    fontSize: 13,
+    fontSize: 18,
     fontWeight: '700',
     color: colors.heading,
     marginBottom: 2,
   },
   featureDescription: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 16,
+    lineHeight: 22,
     color: colors.muted,
   },
   consentLabel: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 16,
+    lineHeight: 22,
     color: colors.text,
     marginTop: spacing.xs,
     marginBottom: spacing.lg,
@@ -423,7 +423,7 @@ const styles = StyleSheet.create({
     borderColor: '#e5e7eb',
   },
   consentButtonText: {
-    fontSize: 13,
+    fontSize: 18,
     fontWeight: '400',
     color: colors.text,
   },
@@ -450,5 +450,5 @@ const styles = StyleSheet.create({
     ...shadow(1),
   },
   buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: colors.white, fontSize: 13, fontWeight: '400' },
+  buttonText: { color: colors.white, fontSize: 18, fontWeight: '400' },
 });

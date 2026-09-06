@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
     paddingHorizontal: 16,
     marginBottom: spacing.md,
-    fontSize: 14,
+    fontSize: 19,
     color: colors.text,
     borderWidth: 1,
     borderColor: colors.borderStrong,
@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
     borderColor: colors.borderStrong,
   },
   inputIcon: { marginRight: 8 },
-  inputField: { flex: 1, fontSize: 14, color: colors.text, paddingVertical: 0 },
+  inputField: { flex: 1, fontSize: 19, color: colors.text, paddingVertical: 0 },
   button: {
     backgroundColor: colors.primary,
     borderRadius: radius.md,
@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: colors.white,
-    fontSize: 13,
+    fontSize: 18,
     fontWeight: '400',
   },
   linkButton: {
@@ -291,7 +291,7 @@ const styles = StyleSheet.create({
   },
   linkText: {
     color: colors.navy,
-    fontSize: 14,
+    fontSize: 19,
     fontWeight: '400',
   },
   linkTextDisabled: {
@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: colors.danger,
-    fontSize: 13,
+    fontSize: 18,
     textAlign: 'left',
   },
 });

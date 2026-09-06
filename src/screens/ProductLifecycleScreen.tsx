@@ -794,14 +794,19 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
 
         {/* Rounded sheet: underline tab row + tab content. */}
         <View style={styles.sheet}>
-          <View style={styles.tabRow}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.tabRow}
+            contentContainerStyle={styles.tabRowContent}
+          >
             {TABS.map((tb) => (
               <TouchableOpacity key={tb.key} style={styles.tabBtn} onPress={() => setTab(tb.key)} activeOpacity={0.7}>
                 <Text style={[styles.tabText, tab === tb.key && styles.tabTextActive]} numberOfLines={1}>{t(tb.labelKey as any)}</Text>
                 {tab === tb.key && <View style={styles.tabUnderline} />}
               </TouchableOpacity>
             ))}
-          </View>
+          </ScrollView>
           <ScrollView style={styles.tabScroll} contentContainerStyle={styles.tabScrollContent} showsVerticalScrollIndicator={false}>
             {renderTab()}
           </ScrollView>
@@ -842,8 +847,8 @@ const styles = StyleSheet.create({
   headerMedia: { width: 120 },
   headerThumb: { width: 120, height: 112, borderRadius: radius.md, backgroundColor: 'rgba(255,255,255,0.15)' },
   headerThumbPlaceholder: { alignItems: 'center', justifyContent: 'center' },
-  headerName: { fontSize: 17, fontWeight: '700', color: '#fff', marginBottom: 4 },
-  headerMeta: { fontSize: 12, color: 'rgba(255,255,255,0.9)', marginTop: 3, lineHeight: 16 },
+  headerName: { fontSize: 23, fontWeight: '700', color: '#fff', marginBottom: 4 },
+  headerMeta: { fontSize: 16, color: 'rgba(255,255,255,0.9)', marginTop: 3, lineHeight: 22 },
   authCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -859,8 +864,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  authTitle: { fontSize: 13, fontWeight: '700', color: '#fff' },
-  authSub: { fontSize: 10, color: 'rgba(255,255,255,0.85)', marginTop: 1 },
+  authTitle: { fontSize: 18, fontWeight: '700', color: '#fff' },
+  authSub: { fontSize: 14, color: 'rgba(255,255,255,0.85)', marginTop: 1 },
   sheet: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -869,14 +874,14 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   tabRow: {
-    flexDirection: 'row',
+    flexGrow: 0,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    paddingHorizontal: spacing.xs,
   },
-  tabBtn: { flex: 1, alignItems: 'center', paddingVertical: 12, paddingHorizontal: 2 },
-  tabText: { fontSize: 12, fontWeight: '700', color: colors.muted, textAlign: 'center' },
+  tabRowContent: { paddingHorizontal: spacing.sm },
+  tabBtn: { alignItems: 'center', paddingVertical: 14, paddingHorizontal: spacing.md },
+  tabText: { fontSize: 17, fontWeight: '700', color: colors.muted, textAlign: 'center' },
   tabTextActive: { color: colors.primary },
   tabUnderline: {
     position: 'absolute',
@@ -897,9 +902,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     ...shadow(1),
   },
-  cardTitle: { fontSize: 15, fontWeight: '700', color: colors.primary, marginBottom: 9 },
-  paragraph: { fontSize: 14, color: colors.text, lineHeight: 21 },
-  emptyText: { fontSize: 14, color: colors.muted, paddingVertical: spacing.sm },
+  cardTitle: { fontSize: 20, fontWeight: '700', color: colors.primary, marginBottom: 9 },
+  paragraph: { fontSize: 19, color: colors.text, lineHeight: 28 },
+  emptyText: { fontSize: 19, color: colors.muted, paddingVertical: spacing.sm },
   // journey
   jItem: { flexDirection: 'row', gap: spacing.lg },
   jRail: { alignItems: 'center', width: 48 },
@@ -914,41 +919,41 @@ const styles = StyleSheet.create({
   jLine: { flex: 1, width: 3, backgroundColor: colors.primary, marginVertical: 6, minHeight: 24, borderRadius: 2 },
   jBody: { flex: 1, paddingBottom: spacing.xxl },
   jTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  jTitle: { fontSize: 16, fontWeight: '700', color: '#000' },
-  jDesc: { fontSize: 13, color: colors.muted, marginTop: 3, lineHeight: 18 },
+  jTitle: { fontSize: 22, fontWeight: '700', color: '#000' },
+  jDesc: { fontSize: 18, color: colors.muted, marginTop: 3, lineHeight: 24 },
   jDetail: { marginTop: spacing.md, backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: spacing.md },
-  jDetailEmpty: { fontSize: 12, color: colors.muted },
-  jLink: { fontSize: 13, color: colors.accent, fontWeight: '600', paddingVertical: 3 },
+  jDetailEmpty: { fontSize: 16, color: colors.muted },
+  jLink: { fontSize: 18, color: colors.accent, fontWeight: '600', paddingVertical: 3 },
   // rows
   itemRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border },
   itemIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
-  itemLabel: { flex: 1, fontSize: 14, color: colors.muted },
-  itemValue: { fontSize: 14, color: colors.text, fontWeight: '600', textAlign: 'right' },
+  itemLabel: { flex: 1, fontSize: 19, color: colors.muted },
+  itemValue: { fontSize: 19, color: colors.text, fontWeight: '600', textAlign: 'right' },
   // expand
   expandHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   expandIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
-  expandTitle: { fontSize: 15, fontWeight: '700', color: colors.heading },
-  expandSub: { fontSize: 12, color: colors.muted, marginTop: 2 },
+  expandTitle: { fontSize: 20, fontWeight: '700', color: colors.heading },
+  expandSub: { fontSize: 16, color: colors.muted, marginTop: 2 },
   expandBody: { marginTop: spacing.sm, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border },
   // care
   careRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.lg, justifyContent: 'flex-start', alignItems: 'flex-start' },
   careItem: { width: 74, alignItems: 'center', justifyContent: 'flex-start' },
   careIconScale: { transform: [{ scale: 1.2 }], marginVertical: 4 },
-  careLabel: { fontSize: 11, color: colors.text, textAlign: 'center', marginTop: 6 },
+  careLabel: { fontSize: 15, color: colors.text, textAlign: 'center', marginTop: 6 },
   tipRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, paddingVertical: 6 },
-  tipText: { flex: 1, fontSize: 14, color: colors.text, lineHeight: 20 },
+  tipText: { flex: 1, fontSize: 19, color: colors.text, lineHeight: 27 },
   // materials
   barRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 6 },
-  barLabel: { width: 100, fontSize: 13, color: colors.text },
+  barLabel: { width: 100, fontSize: 18, color: colors.text },
   barTrack: { flex: 1, height: 9, borderRadius: 5, backgroundColor: colors.surfaceAlt, overflow: 'hidden' },
   barFill: { height: '100%', borderRadius: 5, backgroundColor: colors.primary },
-  barValue: { width: 44, fontSize: 13, color: colors.muted, textAlign: 'right' },
+  barValue: { width: 44, fontSize: 18, color: colors.muted, textAlign: 'right' },
   originRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border },
   originIcon: { width: 36, height: 36, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
   originImg: { width: 24, height: 24 },
   originDetailImg: { width: 40, height: 40 },
-  originName: { fontSize: 14, fontWeight: '600', color: colors.text },
-  originSub: { fontSize: 12, color: colors.muted, marginTop: 2 },
+  originName: { fontSize: 19, fontWeight: '600', color: colors.text },
+  originSub: { fontSize: 16, color: colors.muted, marginTop: 2 },
   certRow: { flexDirection: 'row', gap: spacing.sm },
   certBadge: {
     flex: 1,
@@ -960,22 +965,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 7,
   },
-  certBadgeText: { fontSize: 11, color: colors.text, fontWeight: '500', textAlign: 'center' },
+  certBadgeText: { fontSize: 15, color: colors.text, fontWeight: '500', textAlign: 'center' },
   certImg: { width: 40, height: 40 },
   certLine: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
   certLineIcon: { width: 36, height: 36, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
-  certLineTitle: { fontSize: 14, fontWeight: '600', color: colors.text },
-  certLineBody: { fontSize: 12, color: colors.muted, marginTop: 2 },
+  certLineTitle: { fontSize: 19, fontWeight: '600', color: colors.text },
+  certLineBody: { fontSize: 16, color: colors.muted, marginTop: 2 },
   tileImg: { width: 38, height: 38 },
-  tileDesc: { fontSize: 9, color: colors.placeholder, textAlign: 'center', marginTop: 2 },
+  tileDesc: { fontSize: 12, color: colors.placeholder, textAlign: 'center', marginTop: 2 },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: colors.border, borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: 4 },
-  chipText: { fontSize: 11, color: colors.text },
+  chipText: { fontSize: 15, color: colors.text },
   // dispose
   disposeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border },
   disposeIcon: { width: 36, height: 36, borderRadius: radius.md, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
-  disposeTitle: { fontSize: 13, fontWeight: '600', color: colors.heading },
-  disposeSub: { fontSize: 11, color: colors.muted, marginTop: 1 },
+  disposeTitle: { fontSize: 18, fontWeight: '600', color: colors.heading },
+  disposeSub: { fontSize: 15, color: colors.muted, marginTop: 1 },
   tileRow: { flexDirection: 'row', gap: spacing.sm },
   tile: {
     flex: 1,
@@ -987,8 +992,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
-  tileValue: { fontSize: 14, fontWeight: '700', color: colors.primary },
-  tileLabel: { fontSize: 9, color: colors.muted, textAlign: 'center' },
+  tileValue: { fontSize: 19, fontWeight: '700', color: colors.primary },
+  tileLabel: { fontSize: 12, color: colors.muted, textAlign: 'center' },
   // info / leaf cards
   hintCard: {
     flexDirection: 'row',
@@ -998,12 +1003,12 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.sm,
   },
-  hintTitle: { fontSize: 13, fontWeight: '700', color: colors.primary },
-  hintBody: { fontSize: 12, color: colors.primaryDark, lineHeight: 17, marginTop: 2 },
+  hintTitle: { fontSize: 18, fontWeight: '700', color: colors.primary },
+  hintBody: { fontSize: 16, color: colors.primaryDark, lineHeight: 23, marginTop: 2 },
   infoCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md, marginBottom: spacing.sm },
   infoCardIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
-  infoCardTitle: { fontSize: 13, fontWeight: '700', color: colors.heading },
-  infoCardBody: { fontSize: 11, color: colors.muted, marginTop: 1 },
+  infoCardTitle: { fontSize: 18, fontWeight: '700', color: colors.heading },
+  infoCardBody: { fontSize: 15, color: colors.muted, marginTop: 1 },
   leafCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1014,9 +1019,9 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   leafIcon: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
-  leafTitle: { fontSize: 13, fontWeight: '700', color: colors.primary },
-  leafBody: { fontSize: 12, color: colors.primaryDark, lineHeight: 17, marginTop: 2 },
-  leafLink: { fontSize: 12, color: colors.accent, fontWeight: '600', marginTop: 4 },
+  leafTitle: { fontSize: 18, fontWeight: '700', color: colors.primary },
+  leafBody: { fontSize: 16, color: colors.primaryDark, lineHeight: 23, marginTop: 2 },
+  leafLink: { fontSize: 16, color: colors.accent, fontWeight: '600', marginTop: 4 },
   dialogOverlay: { flex: 1, backgroundColor: colors.overlay, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
   dialogCard: {
     width: '100%',
@@ -1026,8 +1031,8 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     ...shadow(3),
   },
-  dialogTitle: { fontSize: 16, fontWeight: '700', color: colors.heading, marginBottom: spacing.sm },
-  dialogBody: { fontSize: 14, color: colors.text, lineHeight: 20 },
+  dialogTitle: { fontSize: 22, fontWeight: '700', color: colors.heading, marginBottom: spacing.sm },
+  dialogBody: { fontSize: 19, color: colors.text, lineHeight: 27 },
   dialogClose: {
     marginTop: spacing.lg,
     alignSelf: 'flex-end',
@@ -1036,5 +1041,5 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     backgroundColor: colors.primary,
   },
-  dialogCloseText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  dialogCloseText: { color: '#fff', fontSize: 19, fontWeight: '700' },
 });

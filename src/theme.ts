@@ -76,13 +76,13 @@ export const radius = {
 } as const;
 
 export const fontSize = {
-  xs: 11,
-  sm: 12,
-  md: 14,
-  lg: 16,
-  xl: 18,
-  xxl: 22,
-  xxxl: 28,
+  xs: 15,
+  sm: 16,
+  md: 19,
+  lg: 22,
+  xl: 25,
+  xxl: 30,
+  xxxl: 38,
 } as const;
 
 /** Soft, navy-tinted elevation. Level 1 (subtle) → 3 (hero / floating). */

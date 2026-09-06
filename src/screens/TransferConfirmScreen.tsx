@@ -228,13 +228,13 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   title: {
-    fontSize: 22,
+    fontSize: 30,
     fontWeight: '400',
     color: colors.heading,
     marginBottom: 4,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 19,
     color: colors.muted,
     marginBottom: spacing.lg,
   },
@@ -248,7 +248,7 @@ const styles = StyleSheet.create({
     ...shadow(1),
   },
   cardHeading: {
-    fontSize: 15,
+    fontSize: 20,
     fontWeight: '400',
     color: colors.heading,
     marginBottom: 8,
@@ -268,12 +268,12 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   rowLabel: {
-    fontSize: 13,
+    fontSize: 18,
     color: colors.muted,
     flex: 1,
   },
   rowValue: {
-    fontSize: 14,
+    fontSize: 19,
     color: colors.text,
     fontWeight: '400',
     flex: 1.4,
@@ -299,7 +299,7 @@ const styles = StyleSheet.create({
     borderColor: colors.accent,
   },
   methodChipText: {
-    fontSize: 13,
+    fontSize: 18,
     color: colors.text,
     fontWeight: '400',
   },
@@ -322,7 +322,7 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     color: '#fff',
-    fontSize: 15,
+    fontSize: 20,
     fontWeight: '400',
   },
   secondaryButton: {
@@ -336,22 +336,22 @@ const styles = StyleSheet.create({
   },
   secondaryButtonText: {
     color: colors.text,
-    fontSize: 15,
+    fontSize: 20,
     fontWeight: '400',
   },
   errorText: {
-    fontSize: 15,
+    fontSize: 20,
     color: colors.danger,
     textAlign: 'center',
   },
   statusNote: {
-    fontSize: 13,
+    fontSize: 18,
     color: colors.danger,
     marginBottom: spacing.md,
     textAlign: 'center',
   },
   loginNote: {
-    fontSize: 14,
+    fontSize: 19,
     color: colors.text,
     marginBottom: 12,
     textAlign: 'center',

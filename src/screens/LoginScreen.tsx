@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     color: '#ffffff',
-    fontSize: 22,
+    fontSize: 30,
     fontWeight: '600',
     textAlign: 'center',
     paddingTop: 56,
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
     height: 48,
   },
   title: {
-    fontSize: 24,
+    fontSize: 32,
     fontWeight: '400',
     color: colors.heading,
     marginBottom: spacing.xl,
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
   },
   apiErrorText: {
     color: colors.danger,
-    fontSize: 13,
+    fontSize: 18,
     textAlign: 'left',
   },
   dividerRow: {
@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
     marginVertical: spacing.md,
   },
   dividerLine: { flex: 1, height: 1, backgroundColor: colors.borderStrong },
-  dividerText: { fontSize: 12, color: colors.muted },
+  dividerText: { fontSize: 16, color: colors.muted },
   socialRow: {
     flexDirection: 'row',
     gap: spacing.sm,
@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   authModeLinkText: {
-    fontSize: 14,
+    fontSize: 19,
     fontWeight: '400',
     color: colors.primary,
   },
@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   privacyLinkText: {
-    fontSize: 13,
+    fontSize: 18,
     fontWeight: '400',
     color: colors.muted,
     textDecorationLine: 'underline',
