@@ -110,7 +110,6 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
             imageStyle={styles.heroImage}
             resizeMode="cover"
           >
-            <Icon name="crop-free" size={34} color={colors.primary} style={styles.heroBadgeIcon} />
             <Text style={styles.heroTitle}>{t('scanTitle')}</Text>
             <Text style={styles.heroSub}>{t('homeScanHeroSub')}</Text>
             <View style={styles.heroBtn}>
@@ -198,13 +197,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     padding: spacing.lg,
     backgroundColor: '#e6effb',
-    // Match the artwork's ~2:1 ratio so the full image (bag + phone) shows
-    // without cropping; text sits over the empty left of the illustration.
-    aspectRatio: 2,
+    minHeight: 250,
     justifyContent: 'center',
   },
   heroImage: { borderRadius: radius.xl },
-  heroBadgeIcon: { marginBottom: spacing.sm },
   heroTitle: { fontSize: 25, fontWeight: '800', color: colors.heading },
   heroSub: { fontSize: 15, color: colors.text, marginTop: 6, lineHeight: 20, maxWidth: '52%' },
   heroBtn: {
