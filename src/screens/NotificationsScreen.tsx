@@ -72,7 +72,7 @@ export default function NotificationsScreen({ navigation, user, onLogout }: Prop
   useEffect(() => {
     mounted.current = true;
     load();
-    const id = setInterval(load, 5000);
+    const id = setInterval(load, 30000);
     return () => {
       mounted.current = false;
       clearInterval(id);

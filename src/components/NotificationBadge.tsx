@@ -3,10 +3,11 @@ import { View, Text, StyleSheet } from 'react-native';
 import { API_BASE_URL } from '../config/api';
 
 /**
- * Self-contained unread-count badge. It polls every 3 seconds on its own so the
- * tick only re-renders THIS tiny leaf — not the surrounding AppLayout, whose
- * re-render would otherwise churn its Modals and dismiss any open dialog.
+ * Self-contained unread-count badge. It polls on its own so the tick only
+ * re-renders THIS tiny leaf — not the surrounding AppLayout, whose re-render
+ * would otherwise churn its Modals and dismiss any open dialog.
  */
+const POLL_MS = 45000;
 export default function NotificationBadge({ userId }: { userId?: string }) {
   const [count, setCount] = useState(0);
 
@@ -31,10 +32,14 @@ export default function NotificationBadge({ userId }: { userId?: string }) {
       }
     };
     fetchCount();
-    const id = setInterval(fetchCount, 3000);
+    const id = setInterval(fetchCount, POLL_MS);
+    const onFocus = () => fetchCount();
+    const w: any = typeof window !== 'undefined' ? window : null;
+    w?.addEventListener?.('focus', onFocus);
     return () => {
       active = false;
       clearInterval(id);
+      w?.removeEventListener?.('focus', onFocus);
     };
   }, [userId]);
 
