@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     padding: spacing.lg,
     backgroundColor: '#e6effb',
-    minHeight: 250,
+    minHeight: 230,
     justifyContent: 'center',
   },
   heroImage: { borderRadius: radius.xl },
