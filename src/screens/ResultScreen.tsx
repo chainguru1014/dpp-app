@@ -396,7 +396,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
       }
     };
     fetchStatus();
-    const id = setInterval(fetchStatus, 20000);
+    const id = setInterval(fetchStatus, 5000);
     const w: any = typeof window !== 'undefined' ? window : null;
     const onFocus = () => fetchStatus();
     w?.addEventListener?.('focus', onFocus);

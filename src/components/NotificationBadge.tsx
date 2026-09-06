@@ -7,7 +7,7 @@ import { API_BASE_URL } from '../config/api';
  * re-renders THIS tiny leaf — not the surrounding AppLayout, whose re-render
  * would otherwise churn its Modals and dismiss any open dialog.
  */
-const POLL_MS = 45000;
+const POLL_MS = 5000;
 export default function NotificationBadge({ userId }: { userId?: string }) {
   const [count, setCount] = useState(0);
 
