@@ -396,10 +396,14 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
       }
     };
     fetchStatus();
-    const id = setInterval(fetchStatus, 4000);
+    const id = setInterval(fetchStatus, 20000);
+    const w: any = typeof window !== 'undefined' ? window : null;
+    const onFocus = () => fetchStatus();
+    w?.addEventListener?.('focus', onFocus);
     return () => {
       active = false;
       clearInterval(id);
+      w?.removeEventListener?.('focus', onFocus);
     };
   }, [user?._id, productData?._id, productData?.token_id]);
 
