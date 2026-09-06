@@ -162,7 +162,7 @@ export default function NotificationsScreen({ navigation, user, onLogout }: Prop
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg, padding: spacing.lg },
   markAll: { alignSelf: 'flex-end', marginBottom: spacing.sm },
-  markAllText: { fontSize: 16, color: colors.accent, fontWeight: '600' },
+  markAllText: { fontSize: 17, color: colors.accent, fontWeight: '600' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xxxl },
   emptyText: { fontSize: 20, color: colors.muted },
   list: { paddingBottom: spacing.xxxl },
@@ -185,5 +185,5 @@ const styles = StyleSheet.create({
   titleUnread: { fontWeight: '700' },
   message: { fontSize: 19, color: colors.muted, marginTop: 3, lineHeight: 26 },
   metaCol: { alignItems: 'flex-end', gap: 5 },
-  time: { fontSize: 16, color: colors.placeholder },
+  time: { fontSize: 17, color: colors.placeholder },
 });

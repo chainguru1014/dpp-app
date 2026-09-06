@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   typeTileActive: { borderColor: colors.primary, backgroundColor: colors.surfaceAlt },
-  typeLabel: { fontSize: 15, color: colors.muted, fontWeight: '600', textAlign: 'center' },
+  typeLabel: { fontSize: 17, color: colors.muted, fontWeight: '600', textAlign: 'center' },
   typeLabelActive: { color: colors.primary },
   label: { fontSize: 19, fontWeight: '700', color: colors.heading, marginBottom: spacing.sm },
   inputWrap: {

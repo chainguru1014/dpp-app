@@ -196,5 +196,5 @@ const styles = StyleSheet.create({
   info: { flex: 1 },
   name: { fontSize: 20, fontWeight: '600', color: colors.heading },
   sub: { fontSize: 18, color: colors.muted, marginTop: 2 },
-  time: { fontSize: 16, color: colors.placeholder, marginTop: 4 },
+  time: { fontSize: 17, color: colors.placeholder, marginTop: 4 },
 });

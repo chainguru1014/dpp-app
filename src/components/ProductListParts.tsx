@@ -94,5 +94,5 @@ const styles = StyleSheet.create({
   rowBody: { flex: 1 },
   rowName: { fontSize: 20, fontWeight: '600', color: colors.heading },
   rowSub: { fontSize: 18, color: colors.muted, marginTop: 2 },
-  rowCaption: { fontSize: 16, color: colors.placeholder, marginTop: 3 },
+  rowCaption: { fontSize: 17, color: colors.placeholder, marginTop: 3 },
 });

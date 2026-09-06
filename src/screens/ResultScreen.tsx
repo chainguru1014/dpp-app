@@ -2137,8 +2137,8 @@ const styles = StyleSheet.create({
   ovHeaderMedia: { width: 132 },
   ovHeaderInfo: { flex: 1 },
   ovName: { fontSize: 22, fontWeight: '700', color: colors.heading },
-  ovModel: { fontSize: 16, color: colors.muted, marginTop: 2 },
-  ovId: { fontSize: 15, color: colors.placeholder, marginTop: 2 },
+  ovModel: { fontSize: 17, color: colors.muted, marginTop: 2 },
+  ovId: { fontSize: 17, color: colors.placeholder, marginTop: 2 },
   ovAuthBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2157,8 +2157,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  ovAuthBadgeTitle: { fontSize: 16, fontWeight: '700', color: colors.heading },
-  ovAuthBadgeSub: { fontSize: 14, color: colors.muted, marginTop: 1 },
+  ovAuthBadgeTitle: { fontSize: 17, fontWeight: '700', color: colors.heading },
+  ovAuthBadgeSub: { fontSize: 16, color: colors.muted, marginTop: 1 },
   ovCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
@@ -2183,7 +2183,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 6,
   },
-  ovLcLabel: { fontSize: 14, color: colors.muted, textAlign: 'center' },
+  ovLcLabel: { fontSize: 16, color: colors.muted, textAlign: 'center' },
   ovLcConn: { flex: 1, height: 2, backgroundColor: colors.primary, marginTop: 24, borderRadius: 1 },
   ovViewLc: {
     flexDirection: 'row',
@@ -2193,7 +2193,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     paddingTop: 4,
   },
-  ovViewLcText: { fontSize: 16, fontWeight: '600', color: colors.accent },
+  ovViewLcText: { fontSize: 17, fontWeight: '600', color: colors.accent },
   // Anchored to the foot of the scroll content (contentContainer has flexGrow:1),
   // so the Like/Share + CTA rows sit at the bottom of the content layer.
   ovBottomGroup: { marginTop: 'auto', paddingTop: spacing.lg, paddingBottom: spacing.sm },
@@ -2257,7 +2257,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 4,
   },
-  lifecycleStageLabel: { fontSize: 12, color: colors.muted, textAlign: 'center' },
+  lifecycleStageLabel: { fontSize: 16, color: colors.muted, textAlign: 'center' },
   lifecycleConnector: { flex: 1, height: 1, backgroundColor: colors.border, marginTop: 17 },
   viewLifecycleBtn: {
     flexDirection: 'row',
@@ -2318,7 +2318,7 @@ const styles = StyleSheet.create({
   shareHandle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border, marginBottom: spacing.md },
   shareHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md },
   shareTitle: { fontSize: 23, fontWeight: '700', color: colors.heading },
-  shareLabel: { fontSize: 16, color: colors.muted, marginTop: spacing.sm, marginBottom: spacing.xs },
+  shareLabel: { fontSize: 17, color: colors.muted, marginTop: spacing.sm, marginBottom: spacing.xs },
   shareOptionsRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.xs, marginBottom: spacing.md },
   shareOption: { alignItems: 'center', width: 68 },
   shareOptionIcon: {
@@ -2330,15 +2330,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 4,
   },
-  shareOptionLabel: { fontSize: 15, color: colors.text },
+  shareOptionLabel: { fontSize: 17, color: colors.text },
   shareProductCard: {
     backgroundColor: colors.surfaceAlt,
     borderRadius: radius.md,
     padding: spacing.md,
   },
   shareProductName: { fontSize: 19, fontWeight: '700', color: colors.heading },
-  shareProductBrand: { fontSize: 16, color: colors.muted, marginTop: 1 },
-  shareProductId: { fontSize: 15, color: colors.placeholder, marginTop: 2 },
+  shareProductBrand: { fontSize: 17, color: colors.muted, marginTop: 1 },
+  shareProductId: { fontSize: 17, color: colors.placeholder, marginTop: 2 },
   content: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -2480,7 +2480,7 @@ const styles = StyleSheet.create({
   },
   brandNameText: {
     marginTop: 8,
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '400',
     color: colors.primary,
     textAlign: 'center',
@@ -2557,7 +2557,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   productIdText: {
-    fontSize: 16,
+    fontSize: 17,
     color: colors.muted,
     marginBottom: 8,
     paddingHorizontal: 20,
@@ -2569,7 +2569,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   careSymbolsLabel: {
-    fontSize: 16,
+    fontSize: 17,
     color: colors.muted,
     marginBottom: 8,
     paddingHorizontal: 20,
@@ -2588,13 +2588,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   careSymbolLabel: {
-    fontSize: 14,
+    fontSize: 16,
     color: colors.primary,
     textAlign: 'center',
     marginTop: 4,
   },
   noDataText: {
-    fontSize: 16,
+    fontSize: 17,
     color: colors.muted,
     fontStyle: 'italic',
     marginBottom: 15,
@@ -2627,7 +2627,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   dppText: {
-    fontSize: 16,
+    fontSize: 17,
     color: colors.text,
     marginBottom: 2,
   },
@@ -2845,7 +2845,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   disposalLabel: {
-    fontSize: 16,
+    fontSize: 17,
     color: colors.muted,
   },
   disposalLink: {
@@ -2869,7 +2869,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   inquiryLabel: {
-    fontSize: 16,
+    fontSize: 17,
     color: colors.muted,
     marginTop: 15,
     marginBottom: 4,
@@ -3004,7 +3004,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   copyRowLabel: {
-    fontSize: 16,
+    fontSize: 17,
     color: colors.muted,
   },
   copyRowValue: {
@@ -3020,7 +3020,7 @@ const styles = StyleSheet.create({
   },
   copyButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '400',
   },
   dialogActionButton: {
@@ -3069,7 +3069,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   ownerInfoLabel: {
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: '400',
     color: colors.muted,
     textTransform: 'uppercase',
@@ -3118,7 +3118,7 @@ const styles = StyleSheet.create({
     borderColor: colors.accent,
   },
   methodChipText: {
-    fontSize: 16,
+    fontSize: 17,
     color: colors.text,
     fontWeight: '400',
   },

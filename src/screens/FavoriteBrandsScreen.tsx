@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     marginBottom: spacing.sm,
   },
-  followingPillText: { fontSize: 15, color: '#fff', fontWeight: '600' },
+  followingPillText: { fontSize: 17, color: '#fff', fontWeight: '600' },
   cardDetail: { fontSize: 18, color: colors.muted, lineHeight: 26, minHeight: 38, marginBottom: spacing.sm },
   viewBtn: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   viewBtnText: { fontSize: 19, color: colors.accent, fontWeight: '600' },

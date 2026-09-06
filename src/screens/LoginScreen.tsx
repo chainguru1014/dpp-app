@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
     marginVertical: spacing.md,
   },
   dividerLine: { flex: 1, height: 1, backgroundColor: colors.borderStrong },
-  dividerText: { fontSize: 16, color: colors.muted },
+  dividerText: { fontSize: 17, color: colors.muted },
   socialRow: {
     flexDirection: 'row',
     gap: spacing.sm,

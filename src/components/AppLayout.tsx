@@ -90,8 +90,8 @@ const EMPLOYEE_BRAND_TITLE = 'Yometel Traceability';
 const STATUS_BAR_PAD = Platform.OS === 'ios' ? 44 : Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
 const TOP_BAR_CONTENT = 56;
 const TOP_BAR_HEIGHT = STATUS_BAR_PAD + TOP_BAR_CONTENT;
-const BOTTOM_BAR_HEIGHT = 68;
-const BOTTOM_TAB_ICON_SIZE = 24;
+const BOTTOM_BAR_HEIGHT = 74;
+const BOTTOM_TAB_ICON_SIZE = 28;
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CONTENT_TOP = SCREEN_HEIGHT / 2;
@@ -591,7 +591,7 @@ const styles = StyleSheet.create({
   topBarRight: { flexDirection: 'row', alignItems: 'center' },
   titleBlock: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   titleText: { color: '#fff', fontSize: 23, fontWeight: '600', letterSpacing: 0.3, textAlign: 'center' },
-  subtitleText: { color: 'rgba(255,255,255,0.85)', fontSize: 16, fontWeight: '400', marginTop: 1, textAlign: 'center' },
+  subtitleText: { color: 'rgba(255,255,255,0.85)', fontSize: 17, fontWeight: '400', marginTop: 1, textAlign: 'center' },
   content: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -631,7 +631,7 @@ const styles = StyleSheet.create({
   bottomTab: { flex: 1, height: '100%', alignItems: 'center', justifyContent: 'center' },
   bottomTabImg: { width: BOTTOM_TAB_ICON_SIZE, height: BOTTOM_TAB_ICON_SIZE, tintColor: '#333333' },
   bottomTabImgSelected: { tintColor: colors.primary },
-  bottomTabLabel: { fontSize: 12, color: '#333333', marginTop: 3 },
+  bottomTabLabel: { fontSize: 17, color: '#333333', marginTop: 3 },
   bottomTabLabelSelected: { color: colors.primary, fontWeight: '600' },
   scanTab: { flex: 1, height: '100%', alignItems: 'center', justifyContent: 'center' },
   scanCircle: {
@@ -647,7 +647,7 @@ const styles = StyleSheet.create({
     ...shadow(2),
   },
   scanCircleActive: { backgroundColor: colors.primaryDark },
-  scanTabLabel: { fontSize: 12, color: colors.primary, marginTop: 2, fontWeight: '600' },
+  scanTabLabel: { fontSize: 17, color: colors.primary, marginTop: 2, fontWeight: '600' },
   productTabShiftRight: { flex: 1, transform: [{ translateX: 16 }] },
   productTabShiftLeft: { flex: 1, transform: [{ translateX: -16 }] },
   modalOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
@@ -664,7 +664,7 @@ const styles = StyleSheet.create({
   sheetSubtitle: { fontSize: 18, color: colors.muted, marginBottom: 14 },
   menuScroll: { maxHeight: SCREEN_HEIGHT - TOP_BAR_HEIGHT - 120 },
   menuSectionLabel: {
-    fontSize: 16,
+    fontSize: 17,
     color: colors.muted,
     letterSpacing: 0.6,
     textTransform: 'uppercase',

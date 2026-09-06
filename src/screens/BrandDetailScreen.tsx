@@ -329,7 +329,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statValue: { fontSize: 24, fontWeight: '700', color: colors.primary, marginTop: 4 },
-  statLabel: { fontSize: 14, color: colors.muted, marginTop: 3, textAlign: 'center' },
+  statLabel: { fontSize: 16, color: colors.muted, marginTop: 3, textAlign: 'center' },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginHorizontal: spacing.lg, marginBottom: spacing.sm },
   sectionTitle: { fontSize: 22, fontWeight: '700', color: colors.primary },
   viewAll: { fontSize: 19, color: colors.accent, fontWeight: '600' },
@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
   },
   brandMiniLogo: { width: 64, height: 46 },
   brandMiniName: { fontSize: 19, fontWeight: '700', color: colors.heading },
-  brandMiniDetail: { fontSize: 16, color: colors.muted, marginTop: 2 },
+  brandMiniDetail: { fontSize: 17, color: colors.muted, marginTop: 2 },
   sheetSend: { marginTop: spacing.lg, backgroundColor: colors.accent, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center' },
   sheetSendText: { color: '#fff', fontSize: 20, fontWeight: '600' },
 });

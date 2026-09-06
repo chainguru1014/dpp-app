@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
   },
   brandLogoImg: { width: 46, height: 46 },
   brandLetter: { fontSize: 32, fontWeight: '800', color: colors.primary },
-  brandName: { fontSize: 15, color: colors.muted, marginTop: 6, textAlign: 'center' },
+  brandName: { fontSize: 17, color: colors.muted, marginTop: 6, textAlign: 'center' },
   sectionFull: { marginHorizontal: 0 },
   trustRow: {
     flexDirection: 'row',
@@ -247,6 +247,6 @@ const styles = StyleSheet.create({
     ...shadow(1),
   },
   trustCol: { flex: 1, alignItems: 'center' },
-  trustTitle: { fontSize: 16, fontWeight: '700', color: colors.heading, marginTop: 6, textAlign: 'center' },
-  trustSub: { fontSize: 14, color: colors.muted, marginTop: 3, textAlign: 'center', lineHeight: 19 },
+  trustTitle: { fontSize: 17, fontWeight: '700', color: colors.heading, marginTop: 6, textAlign: 'center' },
+  trustSub: { fontSize: 16, color: colors.muted, marginTop: 3, textAlign: 'center', lineHeight: 19 },
 });

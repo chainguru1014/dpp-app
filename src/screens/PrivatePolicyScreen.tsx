@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   updated: {
-    fontSize: 16,
+    fontSize: 17,
     color: colors.muted,
     fontWeight: '400',
     letterSpacing: 1,

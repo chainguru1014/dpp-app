@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
   // this content was overflowing the card (and getting clipped) on shorter
   // devices; denser typography fits it without relying on scrolling.
   welcome: {
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: '600',
     color: colors.muted,
     textAlign: 'center',
@@ -383,12 +383,12 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   featureDescription: {
-    fontSize: 16,
+    fontSize: 17,
     lineHeight: 22,
     color: colors.muted,
   },
   consentLabel: {
-    fontSize: 16,
+    fontSize: 17,
     lineHeight: 22,
     color: colors.text,
     marginTop: spacing.xs,

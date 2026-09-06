@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
   productCard: { alignItems: 'center', marginBottom: spacing.lg },
   productImg: { width: 150, height: 180, borderRadius: radius.md, backgroundColor: '#fff' },
   imgPlaceholder: { alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceAlt },
-  placeholderText: { color: colors.muted, fontSize: 16 },
+  placeholderText: { color: colors.muted, fontSize: 17 },
   productName: { fontSize: 22, fontWeight: '400', color: colors.heading, marginTop: spacing.md, textAlign: 'center' },
   productBrand: { fontSize: 18, color: colors.muted, marginTop: 2, textAlign: 'center' },
   amountRow: {

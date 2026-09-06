@@ -1137,7 +1137,7 @@ const styles = StyleSheet.create({
   },
   overlayCornerText: {
     color: '#fff',
-    fontSize: 15,
+    fontSize: 17,
     marginTop: 2,
     textShadowColor: 'rgba(0,0,0,0.6)',
     textShadowOffset: { width: 0, height: 1 },
@@ -1205,7 +1205,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   recentScansHeaderText: { fontSize: 18, fontWeight: '700', color: colors.muted },
-  recentScansCount: { fontSize: 16, color: colors.muted },
+  recentScansCount: { fontSize: 17, color: colors.muted },
   recentScansStrip: {
     height: 64,
     marginBottom: spacing.md,
@@ -1252,16 +1252,16 @@ const styles = StyleSheet.create({
     marginLeft: spacing.sm,
   },
   recentScanId: {
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: '700',
     color: colors.primary,
   },
   recentScanTime: {
-    fontSize: 12,
+    fontSize: 16,
     color: colors.muted,
   },
   recentScanName: {
-    fontSize: 14,
+    fontSize: 16,
     color: colors.text,
     fontWeight: '500',
   },
@@ -1389,7 +1389,7 @@ const styles = StyleSheet.create({
     borderColor: colors.accent,
   },
   manualChipText: {
-    fontSize: 15,
+    fontSize: 17,
     color: colors.text,
   },
   manualChipTextActive: {
@@ -1543,7 +1543,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.lg,
   },
-  focusHintText: { color: '#fff', fontSize: 16, fontWeight: '500' },
+  focusHintText: { color: '#fff', fontSize: 17, fontWeight: '500' },
   // Full-viewport recovery card shown when the camera feed has frozen.
   stalledOverlay: {
     ...StyleSheet.absoluteFillObject,

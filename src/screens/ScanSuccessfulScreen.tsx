@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   title: { fontSize: 23, fontWeight: '700', color: colors.heading },
-  subtitle: { fontSize: 16, color: colors.muted, marginTop: 1 },
+  subtitle: { fontSize: 17, color: colors.muted, marginTop: 1 },
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
@@ -128,12 +128,12 @@ const styles = StyleSheet.create({
     ...shadow(1),
   },
   productName: { fontSize: 20, fontWeight: '700', color: colors.heading, marginTop: spacing.sm, textAlign: 'center' },
-  productModel: { fontSize: 16, color: colors.muted, textAlign: 'center', marginTop: 1 },
-  productId: { fontSize: 15, color: colors.placeholder, textAlign: 'center', marginTop: 2 },
+  productModel: { fontSize: 17, color: colors.muted, textAlign: 'center', marginTop: 1 },
+  productId: { fontSize: 17, color: colors.placeholder, textAlign: 'center', marginTop: 2 },
   hlHeader: { fontSize: 18, fontWeight: '700', color: colors.primary, marginBottom: spacing.xs },
   hlRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center', paddingVertical: 4 },
-  hlTitle: { fontSize: 16, fontWeight: '600', color: colors.text },
-  hlSub: { fontSize: 15, color: colors.muted },
+  hlTitle: { fontSize: 17, fontWeight: '600', color: colors.text },
+  hlSub: { fontSize: 17, color: colors.muted },
   footer: { marginTop: 'auto' },
   primaryButton: {
     backgroundColor: colors.accent,
@@ -154,5 +154,5 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   secondaryButtonText: { color: colors.accent, fontSize: 19, fontWeight: '600' },
-  linkText: { color: colors.accent, fontSize: 16, textDecorationLine: 'underline' },
+  linkText: { color: colors.accent, fontSize: 17, textDecorationLine: 'underline' },
 });
