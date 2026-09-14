@@ -36,7 +36,10 @@ export const colors = {
   heading: '#2f80c8',
   text: '#33415c',
   textBody: '#33415c',
-  muted: '#7a8aa3',
+  // Darkened from the original #7a8aa3 -- that shade sits under 4.5:1 contrast
+  // on white/surfaceAlt, and this color is used for helper text, timestamps,
+  // and other information users actually need to read (not just decoration).
+  muted: '#5c6b84',
   placeholder: '#9aa7bd',
 
   // On dark (hero / header) surfaces
@@ -64,6 +67,15 @@ export const spacing = {
   xl: 20,
   xxl: 24,
   xxxl: 32,
+} as const;
+
+/** Minimum comfortable touch-target side length (logical px) for any tappable control. */
+export const MIN_TOUCH = 48;
+
+/** Primary/secondary CTA button heights. */
+export const buttonHeight = {
+  primary: 54,
+  secondary: 48,
 } as const;
 
 export const radius = {
@@ -135,14 +147,16 @@ export const ui = StyleSheet.create({
     paddingVertical: spacing.lg,
     paddingHorizontal: spacing.xl,
   },
+  // Page title: ~22-26px.
   screenTitle: {
-    fontSize: fontSize.xxl,
-    fontWeight: '400',
+    fontSize: fontSize.xl,
+    fontWeight: '600',
     color: colors.heading,
   },
+  // Card / section title: ~19-21px.
   sectionTitle: {
-    fontSize: fontSize.lg,
-    fontWeight: '400',
+    fontSize: fontSize.md,
+    fontWeight: '600',
     color: colors.primary,
   },
   label: {
@@ -174,27 +188,27 @@ export const ui = StyleSheet.create({
   buttonPrimary: {
     backgroundColor: colors.accent,
     borderRadius: radius.md,
-    height: 44,
+    height: buttonHeight.primary,
     alignItems: 'center',
     justifyContent: 'center',
     ...shadow(1),
   },
   buttonPrimaryText: {
     color: colors.white,
-    fontSize: fontSize.lg,
-    fontWeight: '400',
+    fontSize: fontSize.md,
+    fontWeight: '600',
   },
   buttonGhost: {
     backgroundColor: colors.surfaceAlt,
     borderRadius: radius.md,
-    height: 44,
+    height: buttonHeight.secondary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   buttonGhostText: {
     color: colors.primary,
-    fontSize: fontSize.lg,
-    fontWeight: '400',
+    fontSize: fontSize.md,
+    fontWeight: '600',
   },
   // Selectable pill (gender / user-type toggles, language, etc.)
   chip: {
@@ -254,4 +268,4 @@ export const ui = StyleSheet.create({
   },
 });
 
-export default { colors, spacing, radius, fontSize, shadow, gradients, ui };
+export default { colors, spacing, radius, fontSize, shadow, gradients, ui, MIN_TOUCH, buttonHeight };

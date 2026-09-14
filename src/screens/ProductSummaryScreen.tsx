@@ -6,7 +6,7 @@ import MediaSlider from '../components/MediaSlider';
 import GradientButton from '../components/GradientButton';
 import { useI18n } from '../i18n/I18nContext';
 import { API_BASE_URL } from '../config/api';
-import { colors, radius, spacing, shadow } from '../theme';
+import { colors, radius, spacing, shadow, MIN_TOUCH } from '../theme';
 
 interface ProductSummaryScreenProps {
   navigation: any;
@@ -15,12 +15,12 @@ interface ProductSummaryScreenProps {
   onLogout?: () => void;
 }
 
-const CATEGORY_LABEL: Record<string, string> = {
-  denim: 'Denim',
-  tops: 'Tops',
-  bottoms: 'Bottoms',
-  outerwear: 'Outerwear',
-  others: 'Other',
+const CATEGORY_LABEL_KEY: Record<string, 'categoryDenim' | 'categoryTops' | 'categoryBottoms' | 'categoryOuterwear' | 'categoryOther'> = {
+  denim: 'categoryDenim',
+  tops: 'categoryTops',
+  bottoms: 'categoryBottoms',
+  outerwear: 'categoryOuterwear',
+  others: 'categoryOther',
 };
 
 const fileUrl = (f: string) => {
@@ -56,7 +56,7 @@ export default function ProductSummaryScreen({ navigation, route, user, onLogout
   const facts = product?.detailFacts || {};
   const rows: { label: string; value: string }[] = [
     { label: t('summaryBrand'), value: product?.brandInfo?.name || '' },
-    { label: t('summaryCategory'), value: CATEGORY_LABEL[product?.itemCategory] || '' },
+    { label: t('summaryCategory'), value: CATEGORY_LABEL_KEY[product?.itemCategory] ? t(CATEGORY_LABEL_KEY[product.itemCategory]) : '' },
     { label: t('factProductType'), value: product?.productType || '' },
     { label: t('factColor'), value: product?.color || '' },
     { label: t('factSize'), value: product?.size || '' },
@@ -111,10 +111,22 @@ export default function ProductSummaryScreen({ navigation, route, user, onLogout
         </View>
 
         <View style={styles.footer}>
-          <GradientButton style={styles.primaryButton} onPress={goToDetails} activeOpacity={0.85}>
+          <GradientButton
+            style={styles.primaryButton}
+            onPress={goToDetails}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={t('summaryViewProductDetails')}
+          >
             <Text style={styles.primaryButtonText}>{t('summaryViewProductDetails')}</Text>
           </GradientButton>
-          <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate('Scanner')} activeOpacity={0.8}>
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={() => navigation.navigate('Scanner')}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={t('summaryScanAgain')}
+          >
             <Text style={styles.secondaryButtonText}>{t('summaryScanAgain')}</Text>
           </TouchableOpacity>
         </View>
@@ -170,7 +182,7 @@ const styles = StyleSheet.create({
   footer: { marginTop: 'auto', paddingTop: spacing.md },
   primaryButton: {
     borderRadius: radius.md,
-    height: 44, justifyContent: 'center',
+    height: 54, justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: colors.accent,
     ...shadow(1),
@@ -179,7 +191,7 @@ const styles = StyleSheet.create({
   secondaryButton: {
     marginTop: spacing.sm,
     borderRadius: radius.md,
-    height: 44, justifyContent: 'center',
+    height: MIN_TOUCH, justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.accent,

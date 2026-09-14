@@ -4,7 +4,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import AppLayout from '../components/AppLayout';
 import GradientButton from '../components/GradientButton';
 import { useI18n } from '../i18n/I18nContext';
-import { colors, radius, spacing, shadow } from '../theme';
+import { colors, radius, spacing, shadow, MIN_TOUCH } from '../theme';
 import { resolveScannedCode, ManualCodeType } from '../utils/resolveScannedCode';
 
 interface EnterCodeScreenProps {
@@ -68,6 +68,9 @@ export default function EnterCodeScreen({ navigation, route, user, onLogout }: E
                 style={[styles.typeTile, active && styles.typeTileActive]}
                 onPress={() => setType(opt.value)}
                 activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel={t(opt.labelKey)}
+                accessibilityState={{ selected: active }}
               >
                 <Icon name={opt.icon} size={22} color={active ? colors.primary : colors.muted} />
                 <Text style={[styles.typeLabel, active && styles.typeLabelActive]}>{t(opt.labelKey)}</Text>
@@ -93,7 +96,12 @@ export default function EnterCodeScreen({ navigation, route, user, onLogout }: E
             onSubmitEditing={check}
           />
           {value.length > 0 && (
-            <TouchableOpacity onPress={() => setValue('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <TouchableOpacity
+              style={styles.clearBtn}
+              onPress={() => setValue('')}
+              accessibilityRole="button"
+              accessibilityLabel={t('clearText')}
+            >
               <Icon name="cancel" size={18} color={colors.muted} />
             </TouchableOpacity>
           )}
@@ -105,6 +113,9 @@ export default function EnterCodeScreen({ navigation, route, user, onLogout }: E
           style={[styles.checkButton, (!value.trim() || loading) && styles.checkButtonDisabled]}
           onPress={check}
           disabled={!value.trim() || loading}
+          accessibilityRole="button"
+          accessibilityLabel={t('enterCodeCheck')}
+          accessibilityState={{ disabled: !value.trim() || loading, busy: loading }}
         >
           {loading ? (
             <ActivityIndicator color="#fff" />
@@ -154,12 +165,13 @@ const styles = StyleSheet.create({
     height: 48,
   },
   input: { flex: 1, fontSize: 19, color: colors.text, paddingVertical: 0 },
+  clearBtn: { width: MIN_TOUCH, height: MIN_TOUCH, marginRight: -12, alignItems: 'center', justifyContent: 'center' },
   errorText: { color: colors.danger, fontSize: 18, marginTop: spacing.sm },
   checkButton: {
     marginTop: spacing.lg,
     backgroundColor: colors.accent,
     borderRadius: radius.md,
-    height: 44,
+    height: 54,
     alignItems: 'center',
     justifyContent: 'center',
     ...shadow(1),

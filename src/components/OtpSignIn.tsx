@@ -11,7 +11,15 @@ import {
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { API_BASE_URL } from '../config/api';
 import GradientButton from './GradientButton';
-import { colors, spacing, radius, fontSize, shadow } from '../theme';
+import { useI18n } from '../i18n/I18nContext';
+import { colors, spacing, radius, fontSize, shadow, MIN_TOUCH } from '../theme';
+
+// mm:ss for cooldowns under an hour (always true here — 60s max) — "0:58" not "58s".
+function formatCountdown(totalSeconds: number): string {
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
 
 interface OtpSignInProps {
   // Called with the envelope returned by POST auth/otp/verify: { user, token, profileCompleted, ... }
@@ -24,12 +32,8 @@ interface OtpSignInProps {
   mode: 'signin' | 'signup';
 }
 
-// NOTE: this component's copy is plain English literals rather than the
-// app's t()-based i18n system — see the comment in AppleAuthButton.tsx for
-// why (translations.ts is a large, strictly-typed 5-locale table; adding a
-// dozen-plus new OTP-flow strings to it is left as a follow-up pass rather
-// than a side effect of the passwordless-auth migration).
 export default function OtpSignIn({ onSuccess, onError, mode }: OtpSignInProps) {
+  const { t } = useI18n();
   const [stage, setStage] = useState<'email' | 'code'>('email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -73,12 +77,12 @@ export default function OtpSignIn({ onSuccess, onError, mode }: OtpSignInProps) 
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(data?.message || 'Could not send the code. Please try again.');
+        throw new Error(data?.message || t('otpSendFailed'));
       }
       setResendCooldown(RESEND_COOLDOWN_SECONDS);
       return true;
     } catch (e: any) {
-      reportError(e?.message || 'Network error, please try again.');
+      reportError(e?.message || t('networkErrorRetry'));
       return false;
     }
   };
@@ -87,7 +91,7 @@ export default function OtpSignIn({ onSuccess, onError, mode }: OtpSignInProps) 
     const trimmed = email.trim();
     if (!trimmed || !trimmed.includes('@')) {
       setError('');
-      reportError('Please enter a valid email address.');
+      reportError(t('otpInvalidEmail'));
       return;
     }
     setRequesting(true);
@@ -103,11 +107,11 @@ export default function OtpSignIn({ onSuccess, onError, mode }: OtpSignInProps) 
     setRequesting(false);
   };
 
-  const handleVerifyCode = async () => {
+  const handleVerifyCode = async (codeOverride?: string) => {
     setError('');
-    const trimmedCode = code.trim();
+    const trimmedCode = (codeOverride ?? code).trim();
     if (trimmedCode.length !== 6) {
-      reportError('Enter the 6-digit code we emailed you.');
+      reportError(t('otpEnterFullCode'));
       return;
     }
     setVerifying(true);
@@ -119,11 +123,11 @@ export default function OtpSignIn({ onSuccess, onError, mode }: OtpSignInProps) 
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok || data.status !== 'success') {
-        throw new Error(data?.message || 'That code did not work. Please try again.');
+        throw new Error(data?.message || t('otpVerifyFailed'));
       }
       const userData = data.user || data.data;
       if (!userData) {
-        throw new Error('Invalid response from server.');
+        throw new Error(t('invalidServerResponse'));
       }
       onSuccess({
         user: userData,
@@ -133,7 +137,10 @@ export default function OtpSignIn({ onSuccess, onError, mode }: OtpSignInProps) 
         actorKind: data.actorKind === 'Employee' ? 'Employee' : 'User',
       });
     } catch (e: any) {
-      reportError(e?.message || 'Network error, please try again.');
+      reportError(e?.message || t('networkErrorRetry'));
+      // Auto-submit failed (e.g. wrong code) -- clear the field so the user
+      // can retype rather than staring at 6 digits that didn't work.
+      if (codeOverride) setCode('');
     } finally {
       setVerifying(false);
     }
@@ -153,17 +160,18 @@ export default function OtpSignIn({ onSuccess, onError, mode }: OtpSignInProps) 
             <Icon name="mail-outline" size={18} color={colors.muted} style={styles.inputIcon} />
             <TextInput
               style={styles.inputField}
-              placeholder="Enter your email"
+              placeholder={t('otpEmailPlaceholder')}
               placeholderTextColor={colors.placeholder}
               value={email}
               onChangeText={setEmail}
               autoCapitalize="none"
               keyboardType="email-address"
               editable={!requesting}
+              accessibilityLabel={t('email')}
             />
           </View>
           {!!error && (
-            <View style={styles.errorBox}>
+            <View style={styles.errorBox} accessibilityRole="alert">
               <Text style={styles.errorText}>{error}</Text>
             </View>
           )}
@@ -171,58 +179,85 @@ export default function OtpSignIn({ onSuccess, onError, mode }: OtpSignInProps) 
             style={[styles.button, requesting && styles.buttonDisabled]}
             onPress={handleSendCode}
             disabled={requesting}
+            accessibilityRole="button"
+            accessibilityLabel={mode === 'signup' ? t('createAccount') : t('otpSendCode')}
+            accessibilityState={{ disabled: requesting, busy: requesting }}
           >
             {requesting ? (
               <ActivityIndicator color={colors.white} />
             ) : (
-              <Text style={styles.buttonText}>{mode === 'signup' ? 'Create Account' : 'Send Code'}</Text>
+              <Text style={styles.buttonText}>{mode === 'signup' ? t('createAccount') : t('otpSendCode')}</Text>
             )}
           </GradientButton>
         </>
       ) : (
         <>
-          <Text style={styles.helperText}>Enter the 6-digit code sent to {email.trim()}</Text>
+          <Text style={styles.helperText}>
+            {t('otpCodeSentTo')}{'\n'}
+            <Text style={styles.helperEmail}>{email.trim()}</Text>
+          </Text>
           <TextInput
             style={styles.input}
-            placeholder="6-digit code"
+            placeholder={t('otpCodePlaceholder')}
             placeholderTextColor={colors.placeholder}
             value={code}
-            onChangeText={(v) => setCode(v.replace(/[^0-9]/g, '').slice(0, 6))}
+            onChangeText={(v) => {
+              const digits = v.replace(/[^0-9]/g, '').slice(0, 6);
+              setCode(digits);
+              // Auto-submit once all 6 digits are in — the Verify button below
+              // stays as an explicit fallback for anyone who'd rather tap it.
+              if (digits.length === 6 && !verifying && !requesting) {
+                handleVerifyCode(digits);
+              }
+            }}
             keyboardType="number-pad"
             maxLength={6}
             editable={!verifying && !requesting}
+            accessibilityLabel={t('otpCodePlaceholder')}
           />
           {!!error && (
-            <View style={styles.errorBox}>
+            <View style={styles.errorBox} accessibilityRole="alert">
               <Text style={styles.errorText}>{error}</Text>
             </View>
           )}
           <GradientButton
             style={[styles.button, verifying && styles.buttonDisabled]}
-            onPress={handleVerifyCode}
+            onPress={() => handleVerifyCode()}
             disabled={verifying || requesting}
+            accessibilityRole="button"
+            accessibilityLabel={t('otpVerify')}
+            accessibilityState={{ disabled: verifying, busy: verifying }}
           >
             {verifying ? (
               <ActivityIndicator color={colors.white} />
             ) : (
-              <Text style={styles.buttonText}>Verify</Text>
+              <Text style={styles.buttonText}>{t('otpVerify')}</Text>
             )}
           </GradientButton>
           <TouchableOpacity
             style={styles.linkButton}
             onPress={handleResendCode}
             disabled={verifying || requesting || resendCooldown > 0}
+            accessibilityRole="button"
+            accessibilityLabel={resendCooldown > 0 ? t('otpResendIn').replace('{time}', formatCountdown(resendCooldown)) : t('otpResendCode')}
+            accessibilityState={{ disabled: verifying || requesting || resendCooldown > 0 }}
           >
             {requesting ? (
               <ActivityIndicator color={colors.navy} size="small" />
             ) : (
               <Text style={[styles.linkText, resendCooldown > 0 && styles.linkTextDisabled]}>
-                {resendCooldown > 0 ? `Resend code (${resendCooldown}s)` : 'Resend code'}
+                {resendCooldown > 0 ? t('otpResendIn').replace('{time}', formatCountdown(resendCooldown)) : t('otpResendCode')}
               </Text>
             )}
           </TouchableOpacity>
-          <TouchableOpacity style={styles.linkButton} onPress={handleChangeEmail} disabled={verifying}>
-            <Text style={styles.linkText}>Use a different email</Text>
+          <TouchableOpacity
+            style={styles.linkButton}
+            onPress={handleChangeEmail}
+            disabled={verifying}
+            accessibilityRole="button"
+            accessibilityLabel={t('otpUseDifferentEmail')}
+          >
+            <Text style={styles.linkText}>{t('otpUseDifferentEmail')}</Text>
           </TouchableOpacity>
         </>
       )}
@@ -238,15 +273,18 @@ const styles = StyleSheet.create({
   helperText: {
     fontSize: fontSize.sm,
     color: colors.muted,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
     textAlign: 'center',
+    lineHeight: 22,
   },
-  // Height matches the frontend project's SMALL_CONTROL_HEIGHT (27, see
-  // AuthPage.js) so the two projects' controls line up.
+  helperEmail: {
+    color: colors.text,
+    fontWeight: '600',
+  },
   input: {
     backgroundColor: colors.white,
     borderRadius: radius.md,
-    height: 44,
+    height: MIN_TOUCH,
     paddingVertical: 0,
     paddingHorizontal: 16,
     marginBottom: spacing.md,
@@ -260,7 +298,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.white,
     borderRadius: radius.md,
-    height: 44,
+    height: MIN_TOUCH,
     paddingHorizontal: 14,
     marginBottom: spacing.md,
     borderWidth: 1,
@@ -271,7 +309,7 @@ const styles = StyleSheet.create({
   button: {
     backgroundColor: colors.primary,
     borderRadius: radius.md,
-    height: 44,
+    height: 54,
     paddingVertical: 0,
     alignItems: 'center',
     justifyContent: 'center',
@@ -283,11 +321,13 @@ const styles = StyleSheet.create({
   buttonText: {
     color: colors.white,
     fontSize: 18,
-    fontWeight: '400',
+    fontWeight: '600',
   },
   linkButton: {
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
+    minHeight: MIN_TOUCH,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   linkText: {
     color: colors.navy,

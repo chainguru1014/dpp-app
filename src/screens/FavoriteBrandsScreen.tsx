@@ -4,7 +4,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import AppLayout from '../components/AppLayout';
 import { API_BASE_URL } from '../config/api';
 import { useI18n } from '../i18n/I18nContext';
-import { colors, spacing, radius, shadow } from '../theme';
+import { colors, spacing, radius, shadow, MIN_TOUCH } from '../theme';
 
 interface Props {
   navigation: any;
@@ -95,7 +95,13 @@ export default function FavoriteBrandsScreen({ navigation, user, onLogout }: Pro
 
         <View style={styles.metaRow}>
           <Text style={styles.metaText}>{t('brandsCount').replace('{count}', String(list.length))}</Text>
-          <TouchableOpacity style={styles.sortToggle} onPress={() => setSortAsc((v) => !v)} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={styles.sortToggle}
+            onPress={() => setSortAsc((v) => !v)}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={`${t('brandsSort')}: ${sortAsc ? 'A to Z' : 'Z to A'}`}
+          >
             <Text style={styles.sortToggleText}>{t('brandsSort')}: {sortAsc ? 'A–Z' : 'Z–A'}</Text>
             <Icon name="expand-more" size={18} color={colors.primary} />
           </TouchableOpacity>
@@ -108,7 +114,14 @@ export default function FavoriteBrandsScreen({ navigation, user, onLogout }: Pro
         ) : (
           <ScrollView contentContainerStyle={styles.grid}>
             {list.map((brand) => (
-              <View key={brand.id} style={styles.card}>
+              <TouchableOpacity
+                key={brand.id}
+                style={styles.card}
+                onPress={() => openBrand(brand)}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel={brand.name}
+              >
                 {brand.logoRaw ? (
                   <Image source={{ uri: logoUri(brand.logoRaw) }} style={styles.cardLogo} resizeMode="contain" />
                 ) : (
@@ -120,11 +133,11 @@ export default function FavoriteBrandsScreen({ navigation, user, onLogout }: Pro
                   <Text style={styles.followingPillText}>{t('brandsFollowing')}</Text>
                 </View>
                 <Text style={styles.cardDetail} numberOfLines={2}>{brand.detail || '—'}</Text>
-                <TouchableOpacity style={styles.viewBtn} onPress={() => openBrand(brand)} activeOpacity={0.7}>
+                <View style={styles.viewBtn}>
                   <Text style={styles.viewBtnText}>{t('brandsView')}</Text>
                   <Icon name="arrow-forward" size={16} color={colors.accent} />
-                </TouchableOpacity>
-              </View>
+                </View>
+              </TouchableOpacity>
             ))}
           </ScrollView>
         )}
@@ -150,7 +163,7 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, fontSize: 20, color: colors.text, paddingVertical: 0 },
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
   metaText: { fontSize: 18, color: colors.muted, fontWeight: '600' },
-  sortToggle: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  sortToggle: { flexDirection: 'row', alignItems: 'center', gap: 3, minHeight: MIN_TOUCH, paddingHorizontal: 4 },
   sortToggleText: { fontSize: 18, color: colors.primary, fontWeight: '700' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xxxl },
   emptyText: { fontSize: 22, color: colors.muted, textAlign: 'center' },

@@ -15,11 +15,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import GoogleAuthButton from '../components/GoogleAuthButton';
 import AppleAuthButton from '../components/AppleAuthButton';
 import OtpSignIn from '../components/OtpSignIn';
-import { colors, spacing, radius, shadow } from '../theme';
+import { useI18n } from '../i18n/I18nContext';
+import { colors, spacing, radius, shadow, MIN_TOUCH } from '../theme';
 
 type AuthResult = { user: any; token: string; profileCompleted: boolean; mode?: 'signin' | 'signup'; actorKind?: 'User' | 'Employee' };
 
 export default function LoginScreen({ navigation, onLogin, route }: any) {
+  const { t } = useI18n();
   const [apiError, setApiError] = useState('');
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
 
@@ -117,7 +119,9 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
       </View>
 
       {/* Title floated at the top over the image */}
-      <Text style={styles.pageTitle}>Digital Product Passport</Text>
+      <Text style={styles.pageTitle} accessibilityRole="header">
+        {t('loginHeroTitle')}
+      </Text>
 
       {/* KAV fills the full screen so the card centres against the whole page */}
       <KeyboardAvoidingView
@@ -135,7 +139,7 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
             </View>
 
             {!!apiError && (
-              <View style={styles.apiErrorBox}>
+              <View style={styles.apiErrorBox} accessibilityRole="alert">
                 <Text style={styles.apiErrorText}>{apiError}</Text>
               </View>
             )}
@@ -144,7 +148,7 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
 
             <View style={styles.dividerRow}>
               <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or continue with</Text>
+              <Text style={styles.dividerText}>{t('orContinueWith')}</Text>
               <View style={styles.dividerLine} />
             </View>
 
@@ -156,9 +160,11 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
             <TouchableOpacity
               style={styles.authModeLink}
               onPress={() => setAuthMode(authMode === 'signin' ? 'signup' : 'signin')}
+              accessibilityRole="button"
+              accessibilityLabel={authMode === 'signin' ? `${t('noAccount')} ${t('signUp')}` : `${t('haveAccount')} ${t('signIn')}`}
             >
               <Text style={styles.authModeLinkText}>
-                {authMode === 'signin' ? "Don't have an account? Sign Up" : 'Already have an account? Sign In'}
+                {authMode === 'signin' ? `${t('noAccount')} ${t('signUp')}` : `${t('haveAccount')} ${t('signIn')}`}
               </Text>
             </TouchableOpacity>
 
@@ -169,8 +175,10 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
             <TouchableOpacity
               style={styles.privacyLink}
               onPress={() => navigation.navigate('AiConciergeConsent', { reviewMode: true })}
+              accessibilityRole="button"
+              accessibilityLabel={t('privacyPreferences')}
             >
-              <Text style={styles.privacyLinkText}>Privacy Preferences</Text>
+              <Text style={styles.privacyLinkText}>{t('privacyPreferences')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -275,16 +283,20 @@ const styles = StyleSheet.create({
   },
   authModeLink: {
     marginTop: spacing.md,
+    minHeight: MIN_TOUCH,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   authModeLinkText: {
     fontSize: 19,
-    fontWeight: '400',
+    fontWeight: '600',
     color: colors.primary,
   },
   privacyLink: {
-    marginTop: spacing.lg,
+    marginTop: spacing.sm,
+    minHeight: MIN_TOUCH,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   privacyLinkText: {
     fontSize: 18,

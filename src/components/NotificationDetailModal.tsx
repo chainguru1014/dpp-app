@@ -13,7 +13,8 @@ import {
 import { API_BASE_URL } from '../config/api';
 import { useI18n } from '../i18n/I18nContext';
 import GradientButton from './GradientButton';
-import { colors, spacing, radius, shadow } from '../theme';
+import { humanizeNotificationText } from '../utils/formatNotificationText';
+import { colors, spacing, radius, shadow, MIN_TOUCH } from '../theme';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -113,8 +114,15 @@ export default function NotificationDetailModal({ visible, notification, user, o
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.overlay}>
         <View style={styles.card}>
-          <TouchableOpacity style={styles.closeBtn} onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Text style={styles.closeText}>✕</Text>
+          <TouchableOpacity
+            style={styles.closeBtn}
+            onPress={onClose}
+            accessibilityRole="button"
+            accessibilityLabel={t('close')}
+          >
+            <View style={styles.closeBtnCircle}>
+              <Text style={styles.closeText}>✕</Text>
+            </View>
           </TouchableOpacity>
 
           {isTransfer ? (
@@ -159,6 +167,9 @@ export default function NotificationDetailModal({ visible, notification, user, o
                         style={[styles.btn, styles.declineBtn]}
                         onPress={() => act('reject')}
                         disabled={submitting}
+                        accessibilityRole="button"
+                        accessibilityLabel={t('decline')}
+                        accessibilityState={{ disabled: submitting, busy: submitting }}
                       >
                         <Text style={styles.declineText}>{t('decline')}</Text>
                       </TouchableOpacity>
@@ -166,6 +177,9 @@ export default function NotificationDetailModal({ visible, notification, user, o
                         style={[styles.btn, styles.approveBtn, submitting && { opacity: 0.6 }]}
                         onPress={() => act('confirm')}
                         disabled={submitting}
+                        accessibilityRole="button"
+                        accessibilityLabel={t('approve')}
+                        accessibilityState={{ disabled: submitting, busy: submitting }}
                       >
                         <Text style={styles.approveText}>{submitting ? '…' : t('approve')}</Text>
                       </GradientButton>
@@ -178,7 +192,7 @@ export default function NotificationDetailModal({ visible, notification, user, o
             </ScrollView>
           ) : (
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.body}>
-              <Text style={styles.heading}>{notification.title}</Text>
+              <Text style={styles.heading}>{humanizeNotificationText(notification.title)}</Text>
 
               {images.length > 0 && (
                 <View style={styles.sliderWrap}>
@@ -204,7 +218,7 @@ export default function NotificationDetailModal({ visible, notification, user, o
                 </View>
               )}
 
-              {!!notification.message && <Text style={styles.description}>{notification.message}</Text>}
+              {!!notification.message && <Text style={styles.description}>{humanizeNotificationText(notification.message)}</Text>}
             </ScrollView>
           )}
         </View>
@@ -236,9 +250,15 @@ const styles = StyleSheet.create({
   },
   closeBtn: {
     position: 'absolute',
-    top: spacing.sm,
-    right: spacing.sm,
+    top: 0,
+    right: 0,
     zIndex: 5,
+    width: MIN_TOUCH,
+    height: MIN_TOUCH,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeBtnCircle: {
     width: 30,
     height: 30,
     borderRadius: 15,

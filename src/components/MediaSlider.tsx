@@ -41,6 +41,10 @@ interface MediaSliderProps {
   getFileUrl?: (filename: string) => string;
   watchLabel?: string;
   onPlayVideo?: (videoId: string) => void;
+  /** This slider sits on a dark/blue surface (e.g. the Lifecycle header) --
+   *  use light-on-dark pagination dots instead of the default light-grey/blue
+   *  pair, which is otherwise nearly invisible against a blue background. */
+  onDark?: boolean;
 }
 
 /**
@@ -60,6 +64,7 @@ export default function MediaSlider({
   getFileUrl = defaultGetFileUrl,
   watchLabel,
   onPlayVideo,
+  onDark = false,
 }: MediaSliderProps) {
   const [pageWidth, setPageWidth] = useState(SCREEN_WIDTH);
   const [active, setActive] = useState(0);
@@ -130,6 +135,8 @@ export default function MediaSlider({
                   style={styles.videoSlideTouch}
                   activeOpacity={0.85}
                   onPress={() => onPlayVideo?.(slide.videoId)}
+                  accessibilityRole="button"
+                  accessibilityLabel={slide.description || watchLabel || 'Play video'}
                 >
                   <Image
                     source={{ uri: `https://img.youtube.com/vi/${slide.videoId}/hqdefault.jpg` }}
@@ -167,9 +174,19 @@ export default function MediaSlider({
               key={i}
               onPress={() => goTo(i)}
               activeOpacity={0.7}
-              hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+              style={styles.dotTouch}
+              hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+              accessibilityRole="button"
+              accessibilityLabel={`${i + 1} / ${slides.length}`}
+              accessibilityState={{ selected: active === i }}
             >
-              <View style={[styles.dot, active === i && styles.dotActive]} />
+              <View
+                style={[
+                  styles.dot,
+                  onDark && styles.dotOnDark,
+                  active === i && (onDark ? styles.dotActiveOnDark : styles.dotActive),
+                ]}
+              />
             </TouchableOpacity>
           ))}
         </View>
@@ -226,6 +243,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.55)',
   },
   dots: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 14, marginBottom: 6 },
-  dot: { width: 8, height: 8, borderRadius: 4, marginHorizontal: 4, backgroundColor: '#c7d2e4' },
+  // Vertical-only touch enlargement -- a wide horizontal touch box (e.g. via
+  // MIN_TOUCH + negative margin) blows out the dot row's width past the
+  // narrow flush thumbnail columns this renders in (Product Overview/
+  // Lifecycle headers, ~88-132px wide), overlapping neighbouring text.
+  // Horizontal pitch here matches the original tight dot spacing exactly.
+  dotTouch: { paddingVertical: 12, marginHorizontal: 4 },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#c7d2e4' },
   dotActive: { width: 22, backgroundColor: colors.accent },
+  // Light-on-dark variant (see the `onDark` prop) -- semi-opaque white
+  // inactive dots, solid white active dot, so they read against a blue header.
+  dotOnDark: { backgroundColor: 'rgba(255,255,255,0.45)' },
+  dotActiveOnDark: { width: 22, backgroundColor: '#ffffff' },
 });

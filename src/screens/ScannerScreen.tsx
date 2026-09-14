@@ -21,7 +21,7 @@ import GradientButton from '../components/GradientButton';
 import GradientView from '../components/GradientView';
 import { useI18n } from '../i18n/I18nContext';
 import { useIsFocused } from '@react-navigation/native';
-import { colors, radius, spacing, shadow } from '../theme';
+import { colors, radius, spacing, shadow, MIN_TOUCH } from '../theme';
 import NativeCodeScanner, { isNativeCodeScannerAvailable, requestNativeCameraPermission, ScannedCodeFormat, NativeCodeScannerHandle } from '../components/NativeCodeScanner';
 import { isNfcSupported, readNfcTag } from '../utils/nfc';
 import { BrowserMultiFormatReader } from '@zxing/browser';
@@ -64,6 +64,17 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
   const [recentScans, setRecentScans] = useState<{ id: string; image: string; name: string; time: number; productId?: string; qrcodeId?: string; productData?: any }[]>([]);
   const [torchOn, setTorchOn] = useState(false);
   const [helpVisible, setHelpVisible] = useState(false);
+  // Alert.alert is a no-op on web (react-native-web ships an empty stub) --
+  // several error paths here (photo-scan decode failures, scan-lookup
+  // failures) run on web too, so those need a real in-app dialog instead.
+  const [alertInfo, setAlertInfo] = useState<{ title: string; message: string } | null>(null);
+  const notify = (title: string, message: string) => {
+    if (Platform.OS === 'web') {
+      setAlertInfo({ title, message });
+    } else {
+      Alert.alert(title, message);
+    }
+  };
   // Camera-freeze recovery (autofocus-hardware-failure class of fault — see
   // utils/cameraResilience). cameraKey force-remounts the scanner on retry.
   const [cameraStalled, setCameraStalled] = useState(false);
@@ -296,23 +307,23 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
             handleScannedCode(String(result.getText()), format === BarcodeFormat.QR_CODE ? 'qr' : 'barcode');
           } catch (err) {
             setLoading(false);
-            Alert.alert(t('error'), t('noQrInImage'));
+            notify(t('error'), t('noQrInImage'));
           }
         };
         img.onerror = () => {
           setLoading(false);
-          Alert.alert(t('error'), t('couldNotLoadImage'));
+          notify(t('error'), t('couldNotLoadImage'));
         };
         img.src = reader.result;
       };
       reader.onerror = () => {
         setLoading(false);
-        Alert.alert(t('error'), t('couldNotReadFile'));
+        notify(t('error'), t('couldNotReadFile'));
       };
       reader.readAsDataURL(file);
     } catch (err) {
       setLoading(false);
-      Alert.alert(t('error'), t('photoScanNotSupported'));
+      notify(t('error'), t('photoScanNotSupported'));
     }
   };
 
@@ -330,7 +341,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
       };
       input.click();
     } catch (err) {
-      Alert.alert(t('error'), t('photoScanNotSupported'));
+      notify(t('error'), t('photoScanNotSupported'));
     }
   };
 
@@ -486,7 +497,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         const productData = data.data;
         const securityCheckPassedByApi = data?.securityCheck?.isPassed !== false;
         if (expectedSecurityQrUrl && !securityCheckPassedByApi) {
-          Alert.alert(t('error'), t('qrDoesNotMatch'));
+          notify(t('error'), t('qrDoesNotMatch'));
           if (isMountedRef.current) {
             setLoading(false);
           }
@@ -563,7 +574,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
           securityPassed: true,
         });
       } else {
-        Alert.alert(t('error'), data.message || t('failedToDecryptProduct'));
+        notify(t('error'), data.message || t('scanCodeNotRecognized'));
         if (isMountedRef.current) {
           setLoading(false);
         }
@@ -575,7 +586,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
       const isTimeout = timedOutRef.current;
       const isSilentAbort = abortError && !isTimeout;
       if (!isSilentAbort) {
-        Alert.alert(t('error'), t('networkErrorRetry'));
+        notify(t('error'), t('networkErrorRetry'));
         console.error('Scan error:', error);
       }
       if (isMountedRef.current) {
@@ -622,7 +633,14 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
   const renderManualEntry = (light = false, hideToggle = false) => (
     <View style={styles.manualWrap}>
       {!hideToggle && (
-        <TouchableOpacity onPress={() => setManualOpen((v) => !v)} disabled={loading}>
+        <TouchableOpacity
+          onPress={() => setManualOpen((v) => !v)}
+          disabled={loading}
+          style={styles.scanCaptionLinkTouch}
+          accessibilityRole="button"
+          accessibilityLabel={manualOpen ? t('scanHideManualEntry') : t('scanEnterCodeManually')}
+          accessibilityState={{ expanded: manualOpen }}
+        >
           <Text style={[styles.scanCaptionLink, light && styles.scanCaptionLinkDark]}>
             {manualOpen ? t('scanHideManualEntry') : t('scanEnterCodeManually')}
           </Text>
@@ -636,6 +654,10 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
                 key={opt.value}
                 style={[styles.manualChip, manualType === opt.value && styles.manualChipActive]}
                 onPress={() => setManualType(opt.value)}
+                accessibilityRole="button"
+                accessibilityLabel={t(opt.labelKey)}
+                accessibilityState={{ selected: manualType === opt.value }}
+                hitSlop={{ top: 6, bottom: 6 }}
               >
                 {manualType === opt.value && (
                   <GradientView style={[StyleSheet.absoluteFill, { borderRadius: radius.pill }]} />
@@ -656,11 +678,15 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
             autoCorrect={false}
             editable={!loading}
             onSubmitEditing={submitManualEntry}
+            accessibilityLabel={t('scanManualPlaceholder')}
           />
           <GradientButton
             style={[styles.manualSubmit, (!manualValue.trim() || loading) && styles.manualSubmitDisabled]}
             onPress={submitManualEntry}
             disabled={!manualValue.trim() || loading}
+            accessibilityRole="button"
+            accessibilityLabel={loading ? t('scanManualChecking') : t('scanManualCheck')}
+            accessibilityState={{ disabled: !manualValue.trim() || loading, busy: loading }}
           >
             <Text style={styles.photoScanButtonText}>{loading ? t('scanManualChecking') : t('scanManualCheck')}</Text>
           </GradientButton>
@@ -699,6 +725,8 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
                       productId: scan.productId,
                       qrcodeId: scan.qrcodeId,
                     })}
+                    accessibilityRole="button"
+                    accessibilityLabel={scan.name || t('unnamedProduct')}
                   >
                     {isLatest && (
                       <View style={styles.recentScanCheckBadge}>
@@ -729,22 +757,37 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
           </View>
         ) : (
           <View style={styles.whiteBoardRow}>
-            <TouchableOpacity style={styles.whiteBoardButton} onPress={onUploadPhoto} activeOpacity={0.8}>
+            <TouchableOpacity
+              style={styles.whiteBoardButton}
+              onPress={onUploadPhoto}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel={t('scanUploadImageCta')}
+            >
               <VectorIcon name="image" size={18} color={colors.primary} />
-              <Text style={styles.whiteBoardButtonText}>{t('scanUploadImageCta')}</Text>
+              <Text style={styles.whiteBoardButtonText} numberOfLines={2}>{t('scanUploadImageCta')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.whiteBoardButton}
               onPress={() => navigation.navigate('EnterCode')}
               activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel={t('scanEnterCodeCta')}
             >
               <VectorIcon name="keyboard" size={18} color={colors.primary} />
-              <Text style={styles.whiteBoardButtonText}>{t('scanEnterCodeCta')}</Text>
+              <Text style={styles.whiteBoardButtonText} numberOfLines={2}>{t('scanEnterCodeCta')}</Text>
             </TouchableOpacity>
           </View>
         )}
         {Platform.OS !== 'web' && nfcAvailable && !loading && (
-          <TouchableOpacity style={styles.whiteBoardNfc} onPress={handleNfcScanPress} disabled={nfcReading}>
+          <TouchableOpacity
+            style={styles.whiteBoardNfc}
+            onPress={handleNfcScanPress}
+            disabled={nfcReading}
+            accessibilityRole="button"
+            accessibilityLabel={t('nfcScanButton')}
+            accessibilityState={{ disabled: nfcReading, busy: nfcReading }}
+          >
             {nfcReading ? (
               <ActivityIndicator size="small" color={colors.accent} />
             ) : (
@@ -780,11 +823,22 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
           style={styles.overlayCornerButton}
           onPress={() => setTorchOn((v) => !v)}
           activeOpacity={0.75}
+          accessibilityRole="button"
+          accessibilityLabel={t('scanFlash')}
+          accessibilityState={{ selected: torchOn }}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <VectorIcon name={torchOn ? 'flash-on' : 'flash-off'} size={20} color="#fff" />
           <Text style={styles.overlayCornerText}>{t('scanFlash')}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.overlayCornerButton} onPress={handleHelpPress} activeOpacity={0.75}>
+        <TouchableOpacity
+          style={styles.overlayCornerButton}
+          onPress={handleHelpPress}
+          activeOpacity={0.75}
+          accessibilityRole="button"
+          accessibilityLabel={t('scanHelpLabel')}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
           <VectorIcon name="help-outline" size={20} color="#fff" />
           <Text style={styles.overlayCornerText}>{t('scanHelpLabel')}</Text>
         </TouchableOpacity>
@@ -803,6 +857,8 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
               style={styles.overlayActionBtn}
               onPress={Platform.OS === 'web' ? openPhotoScan : pickNativePhotoAndScan}
               activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel={t('scanUploadImageCta')}
             >
               <VectorIcon name="image" size={18} color={colors.primary} />
               <Text style={styles.overlayActionText}>{t('scanUploadImageCta')}</Text>
@@ -811,17 +867,25 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
               style={styles.overlayActionBtn}
               onPress={() => navigation.navigate('EnterCode')}
               activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel={t('scanEnterCodeCta')}
             >
               <VectorIcon name="keyboard" size={18} color={colors.primary} />
-              <Text style={styles.overlayActionText}>{t('scanEnterCodeCta')}</Text>
+              <Text style={styles.overlayActionText} numberOfLines={2}>{t('scanEnterCodeCta')}</Text>
             </TouchableOpacity>
           </>
         )}
       </View>
 
       <Modal visible={helpVisible} transparent animationType="fade" onRequestClose={() => setHelpVisible(false)}>
-        <TouchableOpacity style={styles.helpOverlay} activeOpacity={1} onPress={() => setHelpVisible(false)}>
-          <View style={styles.helpCard}>
+        <TouchableOpacity
+          style={styles.helpOverlay}
+          activeOpacity={1}
+          onPress={() => setHelpVisible(false)}
+          accessibilityRole="button"
+          accessibilityLabel={t('close')}
+        >
+          <View style={styles.helpCard} accessibilityRole="alert">
             <Text style={styles.helpTitle}>{t('scannerScanHint')}</Text>
             <Text style={styles.helpBody}>{t('scanHelpBody')}</Text>
             <GradientButton style={styles.helpCloseButton} onPress={() => setHelpVisible(false)} activeOpacity={0.8}>
@@ -845,16 +909,28 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
       )}
       {cameraStalled && (
         <View style={styles.stalledOverlay}>
-          <View style={styles.stalledCard}>
+          <View style={styles.stalledCard} accessibilityRole="alert">
             <VectorIcon name="error-outline" size={30} color={colors.danger} />
             <Text style={styles.stalledTitle}>{t('scanCameraStalledTitle')}</Text>
             <Text style={styles.stalledBody}>{t('scanCameraStalledBody')}</Text>
             {Platform.OS !== 'web' && (
-              <GradientButton style={styles.stalledButton} onPress={forceFocusAndRetry} activeOpacity={0.85}>
+              <GradientButton
+                style={styles.stalledButton}
+                onPress={forceFocusAndRetry}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel={t('scanForceFocus')}
+              >
                 <Text style={styles.stalledButtonText}>{t('scanForceFocus')}</Text>
               </GradientButton>
             )}
-            <TouchableOpacity style={styles.stalledSecondary} onPress={retryCamera} activeOpacity={0.8}>
+            <TouchableOpacity
+              style={styles.stalledSecondary}
+              onPress={retryCamera}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel={t('scanRetryCamera')}
+            >
               <VectorIcon name="refresh" size={16} color={colors.primary} />
               <Text style={styles.stalledSecondaryText}>{t('scanRetryCamera')}</Text>
             </TouchableOpacity>
@@ -862,6 +938,8 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
               style={styles.stalledSecondary}
               onPress={Platform.OS === 'web' ? openPhotoScan : pickNativePhotoAndScan}
               activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel={t('scanUploadPhoto')}
             >
               <VectorIcon name="photo-library" size={16} color={colors.primary} />
               <Text style={styles.stalledSecondaryText}>{t('scanUploadPhoto')}</Text>
@@ -870,6 +948,28 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         </View>
       )}
     </>
+  );
+
+  // Rendered inside every return branch below -- see the alertInfo/notify()
+  // comment above for why this exists alongside the (native-only) Alert.alert.
+  const renderAlertModal = () => (
+    <Modal visible={!!alertInfo} transparent animationType="fade" onRequestClose={() => setAlertInfo(null)}>
+      <TouchableOpacity
+        style={styles.helpOverlay}
+        activeOpacity={1}
+        onPress={() => setAlertInfo(null)}
+        accessibilityRole="button"
+        accessibilityLabel={t('close')}
+      >
+        <View style={styles.helpCard} accessibilityRole="alert">
+          <Text style={styles.helpTitle}>{alertInfo?.title}</Text>
+          <Text style={styles.helpBody}>{alertInfo?.message}</Text>
+          <GradientButton style={styles.helpCloseButton} onPress={() => setAlertInfo(null)} activeOpacity={0.8}>
+            <Text style={styles.helpCloseButtonText}>{t('ok')}</Text>
+          </GradientButton>
+        </View>
+      </TouchableOpacity>
+    </Modal>
   );
 
   if (hasPermission === null) {
@@ -888,6 +988,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
             <Text style={styles.stateTitle}>{t('requestingCameraPermission')}</Text>
           </View>
         </View>
+        {renderAlertModal()}
       </AppLayout>
     );
   }
@@ -908,6 +1009,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
             <Text style={styles.stateTitle}>{t('cameraPermissionDenied')}</Text>
           </View>
         </View>
+        {renderAlertModal()}
       </AppLayout>
     );
   }
@@ -930,6 +1032,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
           </View>
           {renderManualEntry(true)}
         </View>
+        {renderAlertModal()}
       </AppLayout>
     );
   }
@@ -961,6 +1064,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
             {renderCameraResilienceOverlay()}
           </View>
         </View>
+        {renderAlertModal()}
       </AppLayout>
     );
   }
@@ -980,6 +1084,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
             </View>
           </View>
         </View>
+        {renderAlertModal()}
       </AppLayout>
     );
   }
@@ -1012,6 +1117,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
             {renderCameraResilienceOverlay()}
           </View>
         </View>
+        {renderAlertModal()}
       </AppLayout>
     );
   }
@@ -1043,6 +1149,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
           )}
         </View>
       </View>
+      {renderAlertModal()}
     </AppLayout>
   );
 }
@@ -1095,7 +1202,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: spacing.lg,
     right: spacing.lg,
-    bottom: 134,
+    bottom: 154,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
@@ -1106,7 +1213,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: spacing.lg,
     right: spacing.lg,
-    bottom: 76,
+    bottom: 96,
     flexDirection: 'row',
     gap: spacing.sm,
   },
@@ -1116,7 +1223,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    height: 44,
+    minHeight: MIN_TOUCH,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
     borderRadius: radius.md,
     backgroundColor: 'rgba(255,255,255,0.95)',
   },
@@ -1134,6 +1243,9 @@ const styles = StyleSheet.create({
   overlayLoadingText: { color: '#fff', fontSize: 18, fontWeight: '600' },
   overlayCornerButton: {
     alignItems: 'center',
+    minWidth: MIN_TOUCH,
+    minHeight: MIN_TOUCH,
+    justifyContent: 'center',
   },
   overlayCornerText: {
     color: '#fff',
@@ -1273,7 +1385,8 @@ const styles = StyleSheet.create({
   },
   whiteBoardButton: {
     flex: 1,
-    height: 42,
+    minHeight: MIN_TOUCH,
+    paddingVertical: spacing.xs,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1287,10 +1400,13 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontSize: 18,
     fontWeight: '700',
+    textAlign: 'center',
   },
   whiteBoardNfc: {
     marginTop: spacing.md,
+    minHeight: MIN_TOUCH,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   whiteBoardNfcText: {
     color: colors.primary,
@@ -1330,14 +1446,21 @@ const styles = StyleSheet.create({
   helpCloseButton: {
     backgroundColor: colors.primary,
     borderRadius: radius.pill,
+    minHeight: MIN_TOUCH,
     paddingVertical: spacing.sm,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   helpCloseButtonText: { color: '#fff', fontSize: 19, fontWeight: '700' },
   scanCaption: {
     color: 'rgba(255,255,255,0.82)',
     fontSize: 18,
     textAlign: 'center',
+  },
+  scanCaptionLinkTouch: {
+    minHeight: MIN_TOUCH,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   scanCaptionLink: {
     marginBottom: 20,
@@ -1377,11 +1500,13 @@ const styles = StyleSheet.create({
   },
   manualChip: {
     flex: 1,
+    minHeight: 44,
+    justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.pill,
-    paddingVertical: 6,
+    paddingVertical: 10,
     paddingHorizontal: 4,
   },
   manualChipActive: {
@@ -1396,7 +1521,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   manualInput: {
-    height: 32,
+    height: MIN_TOUCH,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.md,
@@ -1407,7 +1532,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   manualSubmit: {
-    height: 32,
+    height: MIN_TOUCH,
     backgroundColor: colors.accent,
     borderRadius: radius.md,
     justifyContent: 'center',
@@ -1578,17 +1703,21 @@ const styles = StyleSheet.create({
   },
   stalledButton: {
     alignSelf: 'stretch',
+    minHeight: MIN_TOUCH,
     backgroundColor: colors.primary,
     borderRadius: radius.pill,
     paddingVertical: spacing.sm,
     alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: spacing.sm,
   },
   stalledButtonText: { color: '#fff', fontSize: 19, fontWeight: '700' },
   stalledSecondary: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: spacing.xs,
+    minHeight: MIN_TOUCH,
     paddingVertical: spacing.sm,
   },
   stalledSecondaryText: { color: colors.primary, fontSize: 18, fontWeight: '600' },

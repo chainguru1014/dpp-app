@@ -9,7 +9,7 @@ import { saveTextFile, safeFileBaseName } from '../utils/saveTextFile';
 import { CareSymbol, getCareSymbolLabel } from '../components/CareSymbols';
 import { useI18n } from '../i18n/I18nContext';
 import { API_BASE_URL } from '../config/api';
-import { colors, radius, spacing, shadow } from '../theme';
+import { colors, radius, spacing, shadow, MIN_TOUCH } from '../theme';
 
 interface Props {
   navigation: any;
@@ -37,22 +37,25 @@ const JOURNEY_STAGES: { key: string; icon: string; labelKey: string; descKey: st
 ];
 
 // Care tips are derived from the product's selected wash/care symbols when the
-// brand hasn't supplied its own maintenance.tips list.
-const CARE_TIP_BY_ICON: Record<string, string> = {
-  wash_30: 'Machine wash cold — maximum 30°C.',
-  wash_40: 'Machine wash warm — maximum 40°C.',
-  wash_50: 'Machine wash — maximum 50°C.',
-  wash_60: 'Machine wash hot — maximum 60°C.',
-  wash_70: 'Machine wash — maximum 70°C.',
-  dry_clean_P: 'Professional dry clean only (perchloroethylene).',
-  dry_clean_F: 'Professional dry clean only (hydrocarbon solvent).',
-  iron_low: 'Iron on low heat (max 110°C), avoid steam.',
-  iron_med: 'Iron on medium heat (max 150°C).',
-  iron_high: 'Iron on high heat (max 200°C).',
-  bleach_no: 'Do not bleach.',
-  bleach_any: 'Any bleach may be used when needed.',
-  tumble_dry_low: 'Tumble dry on low heat.',
-  tumble_dry_high: 'Tumble dry on a normal / high setting.',
+// brand hasn't supplied its own maintenance.tips list. `detail` holds the
+// technical/chemical specifics (solvent name, exact max temperature) so the
+// UI can show it as secondary text under the plain-language `primary`
+// instruction instead of burying both in one sentence.
+const CARE_TIP_BY_ICON: Record<string, { primary: string; detail?: string }> = {
+  wash_30: { primary: 'Machine wash cold.', detail: 'Maximum 30°C' },
+  wash_40: { primary: 'Machine wash warm.', detail: 'Maximum 40°C' },
+  wash_50: { primary: 'Machine wash.', detail: 'Maximum 50°C' },
+  wash_60: { primary: 'Machine wash hot.', detail: 'Maximum 60°C' },
+  wash_70: { primary: 'Machine wash.', detail: 'Maximum 70°C' },
+  dry_clean_P: { primary: 'Professional dry clean only.', detail: 'Perchloroethylene solvent' },
+  dry_clean_F: { primary: 'Professional dry clean only.', detail: 'Hydrocarbon solvent' },
+  iron_low: { primary: 'Iron on low heat, avoid steam.', detail: 'Max 110°C' },
+  iron_med: { primary: 'Iron on medium heat.', detail: 'Max 150°C' },
+  iron_high: { primary: 'Iron on high heat.', detail: 'Max 200°C' },
+  bleach_no: { primary: 'Do not bleach.' },
+  bleach_any: { primary: 'Any bleach may be used when needed.' },
+  tumble_dry_low: { primary: 'Tumble dry on low heat.' },
+  tumble_dry_high: { primary: 'Tumble dry on a normal / high setting.' },
 };
 
 const toArray = (v: any): any[] => (v == null ? [] : Array.isArray(v) ? v : typeof v === 'object' ? Object.values(v) : [v]);
@@ -91,12 +94,22 @@ function Row({ label, value, icon, chevron, onPress }: { label: string; value: s
   );
   if (onPress) {
     return (
-      <TouchableOpacity style={styles.itemRow} activeOpacity={0.7} onPress={onPress}>
+      <TouchableOpacity
+        style={styles.itemRow}
+        activeOpacity={0.7}
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={`${label}: ${value}`}
+      >
         {content}
       </TouchableOpacity>
     );
   }
-  return <View style={styles.itemRow}>{content}</View>;
+  return (
+    <View style={styles.itemRow} accessible accessibilityLabel={`${label}: ${value}`}>
+      {content}
+    </View>
+  );
 }
 
 export default function ProductLifecycleScreen({ navigation, route, user, onLogout }: Props) {
@@ -251,9 +264,11 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
   const careIcons = toStrArray(maintenance.iconIds);
   const manualCareTips = toStrArray(maintenance.tips);
   // Prefer the brand's own tips; otherwise generate them from the care symbols.
-  const careTips = manualCareTips.length
-    ? manualCareTips
-    : careIcons.map((id) => CARE_TIP_BY_ICON[id] || `${getCareSymbolLabel(id)}.`);
+  // Each tip is { primary, detail? } -- detail (chemical/temperature specifics)
+  // renders as secondary text so the plain-language instruction stays primary.
+  const careTips: { primary: string; detail?: string }[] = manualCareTips.length
+    ? manualCareTips.map((tip) => ({ primary: tip }))
+    : careIcons.map((id) => CARE_TIP_BY_ICON[id] || { primary: `${getCareSymbolLabel(id)}.` });
   const materialSize = productData?.materialSize || {};
   const materials = toArray(materialSize.materials);
   // certifications: legacy string[] OR {icon,title,content}[].
@@ -385,7 +400,14 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
               <View style={styles.jDot}><Icon name={s.icon} size={24} color="#fff" /></View>
               {i < JOURNEY_STAGES.length - 1 && <View style={styles.jLine} />}
             </View>
-            <TouchableOpacity style={styles.jBody} activeOpacity={0.7} onPress={() => setOpenStage(open ? null : s.key)}>
+            <TouchableOpacity
+              style={styles.jBody}
+              activeOpacity={0.7}
+              onPress={() => setOpenStage(open ? null : s.key)}
+              accessibilityRole="button"
+              accessibilityLabel={`${t(s.labelKey as any)}. ${t(s.descKey as any)}`}
+              accessibilityState={{ expanded: open }}
+            >
               <View style={styles.jTitleRow}>
                 <Text style={styles.jTitle}>{t(s.labelKey as any)}</Text>
                 <Icon name={open ? 'expand-less' : 'expand-more'} size={22} color={colors.muted} />
@@ -448,7 +470,10 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
         {careTips.length > 0 ? careTips.map((tip, i) => (
           <View key={i} style={styles.tipRow}>
             <Icon name="check-circle" size={19} color={colors.primary} />
-            <Text style={styles.tipText}>{tip}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.tipText}>{tip.primary}</Text>
+              {!!tip.detail && <Text style={styles.tipDetailText}>{tip.detail}</Text>}
+            </View>
           </View>
         )) : <Text style={styles.emptyText}>{maintenance.description || t('lifecycleNoData')}</Text>}
         {!!maintenance.description && careTips.length > 0 && <Text style={styles.paragraph}>{maintenance.description}</Text>}
@@ -484,7 +509,14 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
               const open = openOrigin === key;
               return (
                 <View key={i}>
-                  <TouchableOpacity style={styles.originRow} activeOpacity={0.7} onPress={() => setOpenOrigin(open ? null : key)}>
+                  <TouchableOpacity
+                    style={styles.originRow}
+                    activeOpacity={0.7}
+                    onPress={() => setOpenOrigin(open ? null : key)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${o.material || '—'}. ${[o.country || o.origin, o.companyName].filter(Boolean).join(', ')}`}
+                    accessibilityState={{ expanded: open }}
+                  >
                     <View style={styles.originIcon}>
                       {o.icon ? (
                         <Image source={{ uri: fileUrl(o.icon) }} style={styles.originImg} resizeMode="contain" />
@@ -548,6 +580,9 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
             onPress={() => openUrl(l.url)}
             activeOpacity={l.url ? 0.7 : 1}
             disabled={!l.url}
+            accessibilityRole="button"
+            accessibilityLabel={`${t(l.labelKey as any)}. ${t(l.subKey as any)}`}
+            accessibilityState={{ disabled: !l.url }}
           >
             <View style={styles.disposeIcon}><Icon name={l.icon} size={22} color={colors.primary} /></View>
             <View style={{ flex: 1 }}>
@@ -606,9 +641,12 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
             style={styles.itemRow}
             activeOpacity={0.7}
             onPress={() => setOpenOrigin(traceOriginsOpen ? null : traceOriginsKey)}
+            accessibilityRole="button"
+            accessibilityLabel={`${t('lifecycleMaterialsSourcedFrom')} ${originCountries.length} ${t('lifecycleCountries')}`}
+            accessibilityState={{ expanded: traceOriginsOpen }}
           >
             <View style={styles.itemIcon}><Icon name="hub" size={19} color={colors.primary} /></View>
-            <Text style={styles.itemLabel}>{t('lifecycleMaterialOrigins')}</Text>
+            <Text style={styles.itemLabel}>{t('lifecycleMaterialsSourcedFrom')}</Text>
             <Text style={styles.itemValue} numberOfLines={1}>{originCountries.length ? `${originCountries.length} ${t('lifecycleCountries')}` : ''}</Text>
             <Icon name={traceOriginsOpen ? 'expand-less' : 'expand-more'} size={20} color={colors.muted} />
           </TouchableOpacity>
@@ -636,7 +674,14 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
           const jOpen = openOrigin === 'trace-journey';
           return (
             <>
-              <TouchableOpacity style={styles.itemRow} activeOpacity={0.7} onPress={() => setOpenOrigin(jOpen ? null : 'trace-journey')}>
+              <TouchableOpacity
+                style={styles.itemRow}
+                activeOpacity={0.7}
+                onPress={() => setOpenOrigin(jOpen ? null : 'trace-journey')}
+                accessibilityRole="button"
+                accessibilityLabel={t('lifecycleShippingRoute')}
+                accessibilityState={{ expanded: jOpen }}
+              >
                 <View style={styles.itemIcon}><Icon name="local-shipping" size={19} color={colors.primary} /></View>
                 <Text style={styles.itemLabel}>{t('lifecycleShippingRoute')}</Text>
                 <Icon name={jOpen ? 'expand-less' : 'expand-more'} size={22} color={colors.muted} />
@@ -718,24 +763,31 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
                 videos={sliderVideos}
                 hideHeader
                 flush
-                maxHeight={112}
+                onDark
+                maxHeight={88}
                 getFileUrl={fileUrl}
                 watchLabel={t('watchVideo')}
                 onPlayVideo={setPlayingVideoId}
               />
             ) : (
               <View style={[styles.headerThumb, styles.headerThumbPlaceholder]}>
-                <Icon name="inventory-2" size={26} color="rgba(255,255,255,0.6)" />
+                <Icon name="inventory-2" size={24} color="rgba(255,255,255,0.6)" />
               </View>
             )}
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.headerName} numberOfLines={2}>{productData?.name || '—'}</Text>
-            {!!productData?.model && <Text style={styles.headerMeta} numberOfLines={1}>Model: {productData.model}</Text>}
-            {(productData?.pmc_code || productData?.token_id != null) && (
-              <Text style={styles.headerMeta} numberOfLines={1}>ID: {productData?.pmc_code || productData?.token_id}</Text>
+            <Text style={styles.headerName} numberOfLines={2} accessibilityRole="header">{productData?.name || '—'}</Text>
+            {/* Model + ID combined into one line -- less-important identity info,
+                kept but compacted per the accessibility/simplification pass. */}
+            {(!!productData?.model || productData?.pmc_code || productData?.token_id != null) && (
+              <Text style={styles.headerMeta} numberOfLines={1}>
+                {[
+                  productData?.model,
+                  (productData?.pmc_code || productData?.token_id != null) ? `ID: ${productData?.pmc_code || productData?.token_id}` : null,
+                ].filter(Boolean).join('  ·  ')}
+              </Text>
             )}
-            <View style={styles.authCard}>
+            <View style={styles.authCard} accessible accessibilityLabel={`${t('overviewAuthenticated')}. ${t('lifecycleVerifiedByBrand')}`}>
               <View style={styles.authCheck}><Icon name="check" size={12} color={colors.primary} /></View>
               <View>
                 <Text style={styles.authTitle}>{t('overviewAuthenticated')}</Text>
@@ -747,14 +799,27 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
 
         {/* Rounded sheet: underline tab row + tab content. */}
         <View style={styles.sheet}>
-          <View style={styles.tabRow}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.tabScrollRow}
+            contentContainerStyle={styles.tabRow}
+          >
             {TABS.map((tb) => (
-              <TouchableOpacity key={tb.key} style={styles.tabBtn} onPress={() => setTab(tb.key)} activeOpacity={0.7}>
-                <Text style={[styles.tabText, tab === tb.key && styles.tabTextActive]} numberOfLines={1}>{t(tb.labelKey as any)}</Text>
+              <TouchableOpacity
+                key={tb.key}
+                style={[styles.tabBtn, tab === tb.key && styles.tabBtnActive]}
+                onPress={() => setTab(tb.key)}
+                activeOpacity={0.7}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: tab === tb.key }}
+                accessibilityLabel={t(tb.labelKey as any)}
+              >
+                <Text style={[styles.tabText, tab === tb.key && styles.tabTextActive]} numberOfLines={2}>{t(tb.labelKey as any)}</Text>
                 {tab === tb.key && <View style={styles.tabUnderline} />}
               </TouchableOpacity>
             ))}
-          </View>
+          </ScrollView>
           <ScrollView style={styles.tabScroll} contentContainerStyle={styles.tabScrollContent} showsVerticalScrollIndicator={false}>
             {renderTab()}
           </ScrollView>
@@ -786,14 +851,14 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.primary },
   header: {
     flexDirection: 'row',
-    gap: spacing.lg,
-    alignItems: 'flex-start',
+    gap: spacing.md,
+    alignItems: 'center',
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
-    paddingBottom: spacing.lg,
+    paddingBottom: spacing.md,
   },
-  headerMedia: { width: 120 },
-  headerThumb: { width: 120, height: 112, borderRadius: radius.md, backgroundColor: 'rgba(255,255,255,0.15)' },
+  headerMedia: { width: 88 },
+  headerThumb: { width: 88, height: 88, borderRadius: radius.md, backgroundColor: 'rgba(255,255,255,0.15)' },
   headerThumbPlaceholder: { alignItems: 'center', justifyContent: 'center' },
   headerName: { fontSize: 23, fontWeight: '700', color: '#fff', marginBottom: 4 },
   headerMeta: { fontSize: 17, color: 'rgba(255,255,255,0.9)', marginTop: 3, lineHeight: 22 },
@@ -821,23 +886,37 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 22,
     overflow: 'hidden',
   },
-  tabRow: {
-    flexDirection: 'row',
+  tabScrollRow: {
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    flexGrow: 0,
+  },
+  tabRow: {
+    flexDirection: 'row',
     paddingHorizontal: spacing.xs,
   },
-  tabBtn: { flex: 1, alignItems: 'center', paddingVertical: 14, paddingHorizontal: 2 },
-  tabText: { fontSize: 15, fontWeight: '700', color: colors.muted, textAlign: 'center' },
+  tabBtn: {
+    minWidth: 84,
+    minHeight: MIN_TOUCH,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: spacing.md,
+  },
+  // Selected state is shown two ways (background tint + underline), not
+  // colour alone, so it still reads for low-vision / colour-blind users.
+  tabBtnActive: { backgroundColor: colors.surfaceAlt },
+  tabText: { fontSize: 16, fontWeight: '700', color: colors.muted, textAlign: 'center' },
   tabTextActive: { color: colors.primary },
   tabUnderline: {
     position: 'absolute',
     bottom: 0,
-    height: 2,
-    width: '70%',
+    left: '10%',
+    height: 3,
+    width: '80%',
     backgroundColor: colors.primary,
-    borderRadius: 1,
+    borderRadius: 1.5,
   },
   tabScroll: { flex: 1 },
   tabScrollContent: { padding: spacing.lg, paddingBottom: spacing.xxxl },
@@ -873,7 +952,7 @@ const styles = StyleSheet.create({
   jDetailEmpty: { fontSize: 17, color: colors.muted },
   jLink: { fontSize: 18, color: colors.accent, fontWeight: '600', paddingVertical: 3 },
   // rows
-  itemRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border },
+  itemRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: MIN_TOUCH, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border },
   itemIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
   itemLabel: { flex: 1, fontSize: 19, color: colors.muted },
   itemValue: { fontSize: 19, color: colors.text, fontWeight: '600', textAlign: 'right' },
@@ -890,14 +969,15 @@ const styles = StyleSheet.create({
   careIconScale: { transform: [{ scale: 1.05 }], marginVertical: 4 },
   careLabel: { fontSize: 14, color: colors.text, textAlign: 'center', marginTop: 6, lineHeight: 18 },
   tipRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, paddingVertical: 6 },
-  tipText: { flex: 1, fontSize: 19, color: colors.text, lineHeight: 27 },
+  tipText: { fontSize: 19, color: colors.text, lineHeight: 27 },
+  tipDetailText: { fontSize: 16, color: colors.muted, marginTop: 1 },
   // materials
   barRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 6 },
   barLabel: { width: 150, fontSize: 18, color: colors.text },
   barTrack: { flex: 1, height: 9, borderRadius: 5, backgroundColor: colors.surfaceAlt, overflow: 'hidden' },
   barFill: { height: '100%', borderRadius: 5, backgroundColor: colors.primary },
   barValue: { width: 44, fontSize: 18, color: colors.muted, textAlign: 'right' },
-  originRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border },
+  originRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center', minHeight: MIN_TOUCH, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border },
   originIcon: { width: 36, height: 36, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
   originImg: { width: 24, height: 24 },
   originDetailImg: { width: 40, height: 40 },
@@ -926,7 +1006,7 @@ const styles = StyleSheet.create({
   chip: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: colors.border, borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: 4 },
   chipText: { fontSize: 17, color: colors.text },
   // dispose
-  disposeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border },
+  disposeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: MIN_TOUCH, paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border },
   disposeIcon: { width: 36, height: 36, borderRadius: radius.md, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
   disposeTitle: { fontSize: 20, fontWeight: '600', color: colors.heading },
   disposeSub: { fontSize: 19, color: colors.muted, marginTop: 1 },

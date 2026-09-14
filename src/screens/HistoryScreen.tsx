@@ -5,7 +5,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import AppLayout from '../components/AppLayout';
 import { API_BASE_URL } from '../config/api';
 import { useI18n } from '../i18n/I18nContext';
-import { colors, spacing, radius, shadow } from '../theme';
+import { colors, spacing, radius, shadow, MIN_TOUCH } from '../theme';
 
 interface Props {
   navigation: any;
@@ -129,6 +129,9 @@ export default function HistoryScreen({ navigation, user, onLogout }: Props) {
               style={[styles.tab, tab === tb.key && styles.tabActive]}
               onPress={() => setTab(tb.key)}
               activeOpacity={0.8}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: tab === tb.key }}
+              accessibilityLabel={tb.label}
             >
               <Text style={[styles.tabText, tab === tb.key && styles.tabTextActive]}>{tb.label}</Text>
             </TouchableOpacity>
@@ -142,7 +145,14 @@ export default function HistoryScreen({ navigation, user, onLogout }: Props) {
         ) : (
           <ScrollView contentContainerStyle={styles.list}>
             {rows.map((row) => (
-              <TouchableOpacity key={row.key} style={styles.row} activeOpacity={0.7} onPress={() => openRow(row)}>
+              <TouchableOpacity
+                key={row.key}
+                style={styles.row}
+                activeOpacity={0.7}
+                onPress={() => openRow(row)}
+                accessibilityRole="button"
+                accessibilityLabel={[row.name, row.sub].filter(Boolean).join(', ')}
+              >
                 {row.image ? (
                   <Image source={{ uri: row.image }} style={styles.thumb} resizeMode="cover" />
                 ) : (
@@ -172,7 +182,7 @@ const styles = StyleSheet.create({
     padding: 4,
     marginBottom: spacing.md,
   },
-  tab: { flex: 1, paddingVertical: 10, borderRadius: radius.sm, alignItems: 'center' },
+  tab: { flex: 1, minHeight: MIN_TOUCH, justifyContent: 'center', paddingVertical: 10, borderRadius: radius.sm, alignItems: 'center' },
   tabActive: { backgroundColor: colors.primary },
   tabText: { fontSize: 19, fontWeight: '600', color: colors.muted },
   tabTextActive: { color: '#fff' },
@@ -196,5 +206,5 @@ const styles = StyleSheet.create({
   info: { flex: 1 },
   name: { fontSize: 20, fontWeight: '600', color: colors.heading },
   sub: { fontSize: 18, color: colors.muted, marginTop: 2 },
-  time: { fontSize: 17, color: colors.placeholder, marginTop: 4 },
+  time: { fontSize: 17, color: colors.muted, marginTop: 4 },
 });

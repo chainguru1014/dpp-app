@@ -5,7 +5,8 @@ import AppLayout from '../components/AppLayout';
 import NotificationDetailModal from '../components/NotificationDetailModal';
 import { API_BASE_URL } from '../config/api';
 import { useI18n } from '../i18n/I18nContext';
-import { colors, spacing, radius, shadow } from '../theme';
+import { humanizeNotificationText } from '../utils/formatNotificationText';
+import { colors, spacing, radius, shadow, MIN_TOUCH } from '../theme';
 
 interface Props {
   navigation: any;
@@ -112,7 +113,13 @@ export default function NotificationsScreen({ navigation, user, onLogout }: Prop
     <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton onBackPress={() => navigation.navigate(user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Home')} flatContent={user?.actorKind === 'Employee'}>
       <View style={styles.screen}>
         {hasUnread && (
-          <TouchableOpacity style={styles.markAll} onPress={markAllRead} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={styles.markAll}
+            onPress={markAllRead}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={t('markAllRead')}
+          >
             <Text style={styles.markAllText}>{t('markAllRead')}</Text>
           </TouchableOpacity>
         )}
@@ -124,19 +131,26 @@ export default function NotificationsScreen({ navigation, user, onLogout }: Prop
           <ScrollView contentContainerStyle={styles.list}>
             {items.map((item, idx) => {
               const color = LEVEL_COLOR[item.level] || colors.accent;
+              const title = humanizeNotificationText(item.title);
+              const message = humanizeNotificationText(item.message);
               return (
                 <TouchableOpacity
                   key={item._id || idx}
                   style={[styles.row, !item.read && styles.rowUnread]}
                   activeOpacity={0.8}
                   onPress={() => onPressItem(item)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${!item.read ? 'Unread. ' : ''}${title}. ${message}. ${relativeTime(item.createdAt)}`}
                 >
                   <View style={[styles.iconBubble, { backgroundColor: `${color}22` }]}>
                     <Icon name={TYPE_ICON[item.type] || 'notifications'} size={28} color={color} />
                   </View>
                   <View style={styles.info}>
-                    <Text style={[styles.title, !item.read && styles.titleUnread]} numberOfLines={1}>{item.title}</Text>
-                    {!!item.message && <Text style={styles.message} numberOfLines={2}>{item.message}</Text>}
+                    <View style={styles.titleRow}>
+                      {!item.read && <View style={styles.unreadDot} />}
+                      <Text style={[styles.title, !item.read && styles.titleUnread]} numberOfLines={1}>{title}</Text>
+                    </View>
+                    {!!message && <Text style={styles.message} numberOfLines={2}>{message}</Text>}
                   </View>
                   <View style={styles.metaCol}>
                     <Text style={styles.time}>{relativeTime(item.createdAt)}</Text>
@@ -161,7 +175,7 @@ export default function NotificationsScreen({ navigation, user, onLogout }: Prop
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg, padding: spacing.lg },
-  markAll: { alignSelf: 'flex-end', marginBottom: spacing.sm },
+  markAll: { alignSelf: 'flex-end', minHeight: MIN_TOUCH, justifyContent: 'center', paddingHorizontal: 4, marginBottom: spacing.sm },
   markAllText: { fontSize: 17, color: colors.accent, fontWeight: '600' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xxxl },
   emptyText: { fontSize: 20, color: colors.muted },
@@ -181,9 +195,11 @@ const styles = StyleSheet.create({
   rowUnread: { borderColor: colors.accent, backgroundColor: '#f4f8ff' },
   iconBubble: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
   info: { flex: 1 },
-  title: { fontSize: 22, color: colors.heading },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent },
+  title: { flexShrink: 1, fontSize: 22, color: colors.heading },
   titleUnread: { fontWeight: '700' },
   message: { fontSize: 19, color: colors.muted, marginTop: 3, lineHeight: 26 },
   metaCol: { alignItems: 'flex-end', gap: 5 },
-  time: { fontSize: 17, color: colors.placeholder },
+  time: { fontSize: 17, color: colors.muted },
 });

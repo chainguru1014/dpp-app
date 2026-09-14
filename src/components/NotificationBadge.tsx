@@ -8,12 +8,21 @@ import { API_BASE_URL } from '../config/api';
  * would otherwise churn its Modals and dismiss any open dialog.
  */
 const POLL_MS = 5000;
-export default function NotificationBadge({ userId }: { userId?: string }) {
+export default function NotificationBadge({
+  userId,
+  onCountChange,
+}: {
+  userId?: string;
+  // Lets a parent (e.g. the header bell button) mirror the count into its own
+  // accessibilityLabel without standing up a second poller.
+  onCountChange?: (count: number) => void;
+}) {
   const [count, setCount] = useState(0);
 
   useEffect(() => {
     if (!userId) {
       setCount(0);
+      onCountChange?.(0);
       return;
     }
     let active = true;
@@ -26,6 +35,7 @@ export default function NotificationBadge({ userId }: { userId?: string }) {
         if (active && res.ok && data?.status === 'success') {
           const next = Number(data.count) || 0;
           setCount((prev) => (prev === next ? prev : next));
+          onCountChange?.(next);
         }
       } catch (e) {
         /* transient — keep last value */

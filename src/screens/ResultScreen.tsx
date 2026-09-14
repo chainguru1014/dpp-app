@@ -1585,13 +1585,21 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
                 {LIFECYCLE_STAGES.map((s, i) => (
                   <React.Fragment key={s.key}>
                     <View style={styles.ovLcStage}>
-                      <View style={styles.ovLcDot}><Icon name={s.icon} size={27} color={BRAND_COLOR} /></View>
+                      <View style={styles.ovLcDot} accessibilityLabel={t(s.labelKey as any)}>
+                        <Icon name={s.icon} size={27} color={BRAND_COLOR} />
+                      </View>
                     </View>
                     {i < LIFECYCLE_STAGES.length - 1 && <View style={styles.ovLcConn} />}
                   </React.Fragment>
                 ))}
               </View>
-              <TouchableOpacity style={styles.ovViewLc} onPress={goToLifecycle} activeOpacity={0.7}>
+              <TouchableOpacity
+                style={styles.ovViewLc}
+                onPress={goToLifecycle}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={t('overviewViewFullLifecycle')}
+              >
                 <Text style={styles.ovViewLcText}>{t('overviewViewFullLifecycle')}</Text>
                 <Icon name="chevron-right" size={16} color={colors.accent} />
               </TouchableOpacity>
@@ -1605,6 +1613,9 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
                 style={[styles.ovIconBtn, selectedFeedback === 'like' && styles.ovIconBtnActive]}
                 onPress={handleLike}
                 activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel={t('like')}
+                accessibilityState={{ selected: selectedFeedback === 'like' }}
               >
                 <Icon name="thumb-up" size={20} color={selectedFeedback === 'like' ? '#fff' : colors.primary} />
               </TouchableOpacity>
@@ -1612,10 +1623,19 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
                 style={[styles.ovIconBtn, selectedFeedback === 'dislike' && styles.ovIconBtnActive]}
                 onPress={handleDislike}
                 activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel={t('dislike')}
+                accessibilityState={{ selected: selectedFeedback === 'dislike' }}
               >
                 <Icon name="thumb-down" size={20} color={selectedFeedback === 'dislike' ? '#fff' : colors.primary} />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.ovIconBtn} onPress={openShareSheet} activeOpacity={0.8}>
+              <TouchableOpacity
+                style={styles.ovIconBtn}
+                onPress={openShareSheet}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel={t('share')}
+              >
                 <Icon name="share" size={20} color={colors.primary} />
               </TouchableOpacity>
             </View>
@@ -1635,10 +1655,19 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
                     onPress={isOwnedMode ? openOwnerTransfer : handleBuy}
                     activeOpacity={0.85}
                     disabled={locked}
+                    accessibilityRole="button"
+                    accessibilityLabel={label}
+                    accessibilityState={{ disabled: locked }}
                   >
                     <Text style={styles.ovPrimaryCtaText} numberOfLines={1}>{label}</Text>
                   </GradientButton>
-                  <TouchableOpacity style={styles.ovSecondaryCta} onPress={() => navigation.navigate('Scanner')} activeOpacity={0.8}>
+                  <TouchableOpacity
+                    style={styles.ovSecondaryCta}
+                    onPress={() => navigation.navigate('Scanner')}
+                    activeOpacity={0.8}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('overviewScanProduct')}
+                  >
                     <Text style={styles.ovSecondaryCtaText} numberOfLines={1}>{t('overviewScanProduct')}</Text>
                   </TouchableOpacity>
                 </View>

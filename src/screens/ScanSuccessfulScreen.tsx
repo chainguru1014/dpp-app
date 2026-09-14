@@ -6,7 +6,7 @@ import MediaSlider from '../components/MediaSlider';
 import VideoPlayerModal from '../components/VideoPlayerModal';
 import GradientButton from '../components/GradientButton';
 import { useI18n } from '../i18n/I18nContext';
-import { colors, spacing, radius, shadow } from '../theme';
+import { colors, spacing, radius, shadow, MIN_TOUCH } from '../theme';
 
 interface ScanSuccessfulScreenProps {
   navigation: any;
@@ -46,10 +46,10 @@ export default function ScanSuccessfulScreen({ navigation, route, user, onLogout
     <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton onBackPress={() => navigation.goBack()}>
       <View style={styles.screen}>
         <View style={styles.checkWrap}>
-          <View style={styles.checkCircle}>
+          <View style={styles.checkCircle} accessible={false}>
             <Icon name="check" size={22} color="#fff" />
           </View>
-          <Text style={styles.title}>{t('detectedTitle')}</Text>
+          <Text style={styles.title} accessibilityRole="header">{t('detectedTitle')}</Text>
           <Text style={styles.subtitle}>{t('detectedSubtitle')}</Text>
         </View>
 
@@ -79,16 +79,30 @@ export default function ScanSuccessfulScreen({ navigation, route, user, onLogout
         </View>
 
         <View style={styles.footer}>
-          <GradientButton style={styles.primaryButton} onPress={goToProductDetail} activeOpacity={0.85}>
+          <GradientButton
+            style={styles.primaryButton}
+            onPress={goToProductDetail}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={t('detectedViewProduct')}
+          >
             <Text style={styles.primaryButtonText} numberOfLines={1}>{t('detectedViewProduct')}</Text>
           </GradientButton>
-          <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.replace('Scanner')} activeOpacity={0.8}>
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={() => navigation.replace('Scanner')}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={t('detectedScanAnother')}
+          >
             <Text style={styles.secondaryButtonText} numberOfLines={1}>{t('detectedScanAnother')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.privacyLink}
             onPress={() => navigation.navigate('PrivatePolicy', { productData, securityPassed, productId, qrcodeId })}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={t('privatePolicy')}
           >
             <Text style={styles.linkText}>{t('privatePolicy')}</Text>
           </TouchableOpacity>
@@ -134,17 +148,17 @@ const styles = StyleSheet.create({
   primaryButton: {
     backgroundColor: colors.accent,
     borderRadius: radius.md,
-    height: 44,
+    height: 54,
     alignItems: 'center',
     justifyContent: 'center',
     ...shadow(1),
   },
   primaryButtonText: { color: '#fff', fontSize: 20, fontWeight: '600' },
-  privacyLink: { alignSelf: 'center', paddingVertical: spacing.sm, marginTop: spacing.md },
+  privacyLink: { alignSelf: 'center', minHeight: MIN_TOUCH, justifyContent: 'center', paddingVertical: spacing.sm, marginTop: spacing.md },
   secondaryButton: {
     marginTop: spacing.sm,
     borderRadius: radius.md,
-    height: 44,
+    height: MIN_TOUCH,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,

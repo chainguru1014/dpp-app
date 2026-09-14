@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useI18n } from '../i18n/I18nContext';
 import { API_BASE_URL } from '../config/api';
-import { colors, radius, spacing, shadow } from '../theme';
+import { colors, radius, spacing, shadow, MIN_TOUCH } from '../theme';
 
 const fileUrl = (filename: string) => {
   if (!filename) return '';
@@ -19,7 +19,13 @@ const firstImage = (p: any) => {
 export function ProductRow({ product, caption, onPress }: { product: any; caption: string; onPress: () => void }) {
   const img = firstImage(product);
   return (
-    <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={onPress}>
+    <TouchableOpacity
+      style={styles.row}
+      activeOpacity={0.7}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={[product?.name, caption].filter(Boolean).join(', ')}
+    >
       {img ? (
         <Image source={{ uri: img }} style={styles.rowImage} resizeMode="cover" />
       ) : (
@@ -58,7 +64,12 @@ export function SectionCard({
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>{title}</Text>
         {onViewAll && (
-          <TouchableOpacity onPress={onViewAll}>
+          <TouchableOpacity
+            style={styles.viewAllTouch}
+            onPress={onViewAll}
+            accessibilityRole="button"
+            accessibilityLabel={t('viewAll')}
+          >
             <Text style={styles.viewAll}>{t('viewAll')}</Text>
           </TouchableOpacity>
         )}
@@ -86,13 +97,14 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   sectionTitle: { fontSize: 22, fontWeight: '700', color: colors.primary },
+  viewAllTouch: { minHeight: MIN_TOUCH, justifyContent: 'center' },
   viewAll: { fontSize: 19, color: colors.accent, fontWeight: '600' },
   emptyText: { fontSize: 19, color: colors.muted, paddingVertical: spacing.sm },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm + 2, gap: spacing.md },
+  row: { flexDirection: 'row', alignItems: 'center', minHeight: MIN_TOUCH, paddingVertical: spacing.sm + 2, gap: spacing.md },
   rowImage: { width: 54, height: 54, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt },
   rowImagePlaceholder: { alignItems: 'center', justifyContent: 'center' },
   rowBody: { flex: 1 },
   rowName: { fontSize: 20, fontWeight: '600', color: colors.heading },
   rowSub: { fontSize: 18, color: colors.muted, marginTop: 2 },
-  rowCaption: { fontSize: 17, color: colors.placeholder, marginTop: 3 },
+  rowCaption: { fontSize: 17, color: colors.muted, marginTop: 3 },
 });

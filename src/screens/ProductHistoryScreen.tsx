@@ -4,7 +4,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import AppLayout from '../components/AppLayout';
 import { API_BASE_URL } from '../config/api';
 import { useI18n } from '../i18n/I18nContext';
-import { colors, spacing, radius, shadow } from '../theme';
+import { colors, spacing, radius, shadow, MIN_TOUCH } from '../theme';
 
 interface Props {
   navigation: any;
@@ -92,6 +92,9 @@ export default function ProductHistoryScreen({ navigation, route, user, onLogout
               style={[styles.tab, tab === tb.key && styles.tabActive]}
               onPress={() => setTab(tb.key)}
               activeOpacity={0.8}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: tab === tb.key }}
+              accessibilityLabel={tb.label}
             >
               <Text style={[styles.tabText, tab === tb.key && styles.tabTextActive]}>{tb.label}</Text>
             </TouchableOpacity>
@@ -113,7 +116,16 @@ export default function ProductHistoryScreen({ navigation, route, user, onLogout
                   const loc = locationLine(e.location);
                   const last = idx === group.items.length - 1;
                   return (
-                    <View key={e._id} style={styles.row}>
+                    <View
+                      key={e._id}
+                      style={styles.row}
+                      accessible
+                      accessibilityLabel={[
+                        isScan ? t('productHistoryScanned') : t('productHistoryVisited'),
+                        d.toLocaleDateString(),
+                        loc,
+                      ].filter(Boolean).join(', ')}
+                    >
                       <View style={styles.railCol}>
                         {!last && <View style={styles.rail} />}
                         <View style={[styles.iconBubble, { backgroundColor: isScan ? '#e7f0fb' : '#e6f4ea' }]}>
@@ -148,7 +160,7 @@ export default function ProductHistoryScreen({ navigation, route, user, onLogout
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg, padding: spacing.lg },
   tabRow: { flexDirection: 'row', backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: 4, marginBottom: spacing.md },
-  tab: { flex: 1, paddingVertical: 10, borderRadius: radius.sm, alignItems: 'center' },
+  tab: { flex: 1, minHeight: MIN_TOUCH, justifyContent: 'center', paddingVertical: 10, borderRadius: radius.sm, alignItems: 'center' },
   tabActive: { backgroundColor: colors.primary },
   tabText: { fontSize: 19, fontWeight: '600', color: colors.muted },
   tabTextActive: { color: '#fff' },
@@ -175,5 +187,5 @@ const styles = StyleSheet.create({
   },
   eventTitle: { fontSize: 20, fontWeight: '600', color: colors.heading },
   eventMeta: { fontSize: 18, color: colors.muted, marginTop: 3 },
-  eventLoc: { fontSize: 18, color: colors.placeholder, marginTop: 2 },
+  eventLoc: { fontSize: 18, color: colors.muted, marginTop: 2 },
 });

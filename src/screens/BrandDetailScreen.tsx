@@ -5,7 +5,7 @@ import AppLayout from '../components/AppLayout';
 import GradientButton from '../components/GradientButton';
 import { API_BASE_URL } from '../config/api';
 import { useI18n } from '../i18n/I18nContext';
-import { colors, spacing, radius, shadow } from '../theme';
+import { colors, spacing, radius, shadow, MIN_TOUCH } from '../theme';
 
 interface Props {
   navigation: any;
@@ -169,13 +169,22 @@ export default function BrandDetailScreen({ navigation, route, user, onLogout }:
               style={[styles.followBtn, following && styles.followBtnActive]}
               onPress={toggleFollow}
               activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel={following ? t('unfollowBrand') : t('followBrand')}
+              accessibilityState={{ selected: following }}
             >
               <Text style={[styles.followBtnText, following && styles.followBtnTextActive]}>
                 {following ? t('brandsFollowing') : t('brandFollow')}
               </Text>
             </TouchableOpacity>
             {!!website && (
-              <TouchableOpacity style={styles.websiteBtn} onPress={openWebsite} activeOpacity={0.7}>
+              <TouchableOpacity
+                style={styles.websiteBtn}
+                onPress={openWebsite}
+                activeOpacity={0.7}
+                accessibilityRole="link"
+                accessibilityLabel={website.replace(/^https?:\/\//, '')}
+              >
                 <Icon name="open-in-new" size={18} color={colors.accent} />
                 <Text style={styles.websiteText} numberOfLines={1}>{website.replace(/^https?:\/\//, '')}</Text>
               </TouchableOpacity>
@@ -186,11 +195,13 @@ export default function BrandDetailScreen({ navigation, route, user, onLogout }:
         <View style={styles.statRow}>
           {[
             { icon: 'inventory-2', value: String(products.length), label: t('brandStatProducts') },
-            { icon: 'star-border', value: '—', label: t('brandStatRating') },
-            { icon: 'group', value: String(stats.followerCount), label: t('brandStatCustomers') },
-            { icon: 'public', value: String(stats.countryCount), label: t('brandStatCountries') },
-          ].map((s) => (
-            <View key={s.label} style={styles.statTile}>
+            // Rating has no real data source anywhere in the app yet -- showing a
+            // permanent "—" reads as broken, not "unavailable", so it's omitted
+            // entirely rather than displayed as a dead placeholder.
+            stats.followerCount > 0 && { icon: 'group', value: String(stats.followerCount), label: t('brandStatCustomers') },
+            stats.countryCount > 0 && { icon: 'public', value: String(stats.countryCount), label: t('brandStatCountries') },
+          ].filter(Boolean).map((s: any) => (
+            <View key={s.label} style={styles.statTile} accessible accessibilityLabel={`${s.value} ${s.label}`}>
               <Icon name={s.icon} size={19} color={colors.primary} />
               <Text style={styles.statValue}>{s.value}</Text>
               <Text style={styles.statLabel}>{s.label}</Text>
@@ -201,7 +212,12 @@ export default function BrandDetailScreen({ navigation, route, user, onLogout }:
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>{t('brandFeaturedProducts')}</Text>
           {products.length > 3 && (
-            <TouchableOpacity onPress={() => setShowAll((v) => !v)}>
+            <TouchableOpacity
+              style={styles.viewAllTouch}
+              onPress={() => setShowAll((v) => !v)}
+              accessibilityRole="button"
+              accessibilityLabel={showAll ? t('brandShowLess') : t('viewAll')}
+            >
               <Text style={styles.viewAll}>{showAll ? t('brandShowLess') : t('viewAll')}</Text>
             </TouchableOpacity>
           )}
@@ -218,6 +234,8 @@ export default function BrandDetailScreen({ navigation, route, user, onLogout }:
                 style={styles.productRow}
                 activeOpacity={0.7}
                 onPress={() => navigation.navigate('ProductSummary', { product: p, owned: false })}
+                accessibilityRole="button"
+                accessibilityLabel={p?.name || t('unnamedProduct')}
               >
                 {img ? (
                   <Image source={{ uri: img }} style={styles.productImage} resizeMode="cover" />
@@ -236,7 +254,13 @@ export default function BrandDetailScreen({ navigation, route, user, onLogout }:
           })
         )}
 
-        <TouchableOpacity style={styles.introBtn} onPress={() => setIntroVisible(true)} activeOpacity={0.8}>
+        <TouchableOpacity
+          style={styles.introBtn}
+          onPress={() => setIntroVisible(true)}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel={t('brandIntroduceToFriend')}
+        >
           <Icon name="share" size={18} color={colors.primary} />
           <Text style={styles.introBtnText}>{t('brandIntroduceToFriend')}</Text>
         </TouchableOpacity>
@@ -247,7 +271,12 @@ export default function BrandDetailScreen({ navigation, route, user, onLogout }:
           <View style={styles.sheet}>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>{t('brandIntroduceTitle')}</Text>
-              <TouchableOpacity onPress={() => setIntroVisible(false)}>
+              <TouchableOpacity
+                style={styles.sheetCloseBtn}
+                onPress={() => setIntroVisible(false)}
+                accessibilityRole="button"
+                accessibilityLabel={t('close')}
+              >
                 <Icon name="close" size={22} color={colors.muted} />
               </TouchableOpacity>
             </View>
@@ -279,7 +308,13 @@ export default function BrandDetailScreen({ navigation, route, user, onLogout }:
               placeholderTextColor={colors.placeholder}
               multiline
             />
-            <GradientButton style={styles.sheetSend} onPress={sendIntroduction} activeOpacity={0.85}>
+            <GradientButton
+              style={styles.sheetSend}
+              onPress={sendIntroduction}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel={t('brandIntroSend')}
+            >
               <Text style={styles.sheetSendText}>{t('brandIntroSend')}</Text>
             </GradientButton>
           </View>
@@ -312,11 +347,11 @@ const styles = StyleSheet.create({
   brandName: { fontSize: 26, fontWeight: '700', color: colors.heading },
   brandDetail: { fontSize: 18, color: colors.muted, marginTop: 3, lineHeight: 24 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.md },
-  followBtn: { borderWidth: 1, borderColor: colors.primary, borderRadius: radius.pill, paddingHorizontal: spacing.lg, paddingVertical: 7 },
+  followBtn: { borderWidth: 1, borderColor: colors.primary, borderRadius: radius.pill, minHeight: MIN_TOUCH, justifyContent: 'center', paddingHorizontal: spacing.lg, paddingVertical: 7 },
   followBtnActive: { backgroundColor: colors.primary },
   followBtnText: { fontSize: 18, fontWeight: '700', color: colors.primary },
   followBtnTextActive: { color: '#fff' },
-  websiteBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, flexShrink: 1 },
+  websiteBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, flexShrink: 1, minHeight: MIN_TOUCH },
   websiteText: { fontSize: 18, color: colors.accent, flexShrink: 1 },
   statRow: { flexDirection: 'row', gap: spacing.sm, marginHorizontal: spacing.lg, marginBottom: spacing.lg },
   statTile: {
@@ -332,6 +367,7 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 16, color: colors.muted, marginTop: 3, textAlign: 'center' },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginHorizontal: spacing.lg, marginBottom: spacing.sm },
   sectionTitle: { fontSize: 22, fontWeight: '700', color: colors.primary },
+  viewAllTouch: { minHeight: MIN_TOUCH, justifyContent: 'center' },
   viewAll: { fontSize: 19, color: colors.accent, fontWeight: '600' },
   emptyText: { fontSize: 19, color: colors.muted, marginHorizontal: spacing.lg, paddingVertical: spacing.lg },
   productRow: {
@@ -367,6 +403,7 @@ const styles = StyleSheet.create({
   sheetOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
   sheet: { backgroundColor: colors.surface, borderTopLeftRadius: radius.xxl, borderTopRightRadius: radius.xxl, padding: spacing.lg, paddingBottom: spacing.xxl },
   sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md },
+  sheetCloseBtn: { width: MIN_TOUCH, height: MIN_TOUCH, alignItems: 'center', justifyContent: 'center', marginRight: -12 },
   sheetTitle: { fontSize: 24, fontWeight: '700', color: colors.heading },
   sheetLabel: { fontSize: 18, color: colors.muted, marginTop: spacing.sm, marginBottom: spacing.xs },
   input: {
@@ -392,6 +429,6 @@ const styles = StyleSheet.create({
   brandMiniLogo: { width: 64, height: 46 },
   brandMiniName: { fontSize: 19, fontWeight: '700', color: colors.heading },
   brandMiniDetail: { fontSize: 17, color: colors.muted, marginTop: 2 },
-  sheetSend: { marginTop: spacing.lg, backgroundColor: colors.accent, borderRadius: radius.md, height: 44, justifyContent: 'center', alignItems: 'center' },
+  sheetSend: { marginTop: spacing.lg, backgroundColor: colors.accent, borderRadius: radius.md, height: MIN_TOUCH, justifyContent: 'center', alignItems: 'center' },
   sheetSendText: { color: '#fff', fontSize: 20, fontWeight: '600' },
 });

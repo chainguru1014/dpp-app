@@ -11,11 +11,14 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import AppLayout from '../components/AppLayout';
 import { ProductRow, SectionCard } from '../components/ProductListParts';
 import { useI18n } from '../i18n/I18nContext';
 import { API_BASE_URL } from '../config/api';
-import { colors, radius, spacing, shadow } from '../theme';
+import { colors, radius, spacing, shadow, MIN_TOUCH } from '../theme';
+
+const SEEN_SCAN_HELP_KEY = 'seenHomeScanHelp';
 
 interface HomeScreenProps {
   navigation: any;
@@ -35,6 +38,21 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
   const [recentScans, setRecentScans] = useState<any[]>([]);
   const [myProducts, setMyProducts] = useState<any[]>([]);
   const [brands, setBrands] = useState<any[]>([]);
+  // First-time-user helper: a lightweight "how it works" card shown once
+  // (per device), not a full onboarding carousel -- dismissed permanently
+  // via the existing AsyncStorage-backed local-state pattern used elsewhere.
+  const [showScanHelp, setShowScanHelp] = useState(false);
+
+  React.useEffect(() => {
+    AsyncStorage.getItem(SEEN_SCAN_HELP_KEY)
+      .then((v) => setShowScanHelp(!v))
+      .catch(() => {});
+  }, []);
+
+  const dismissScanHelp = () => {
+    setShowScanHelp(false);
+    AsyncStorage.setItem(SEEN_SCAN_HELP_KEY, '1').catch(() => {});
+  };
 
   const load = useCallback(async () => {
     if (!user?._id) {
@@ -103,7 +121,13 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
     <AppLayout navigation={navigation} user={user} onLogout={onLogout} logoLeft>
       <ScrollView style={styles.screen} contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         {/* The one and only way to start a scan from Home — the whole card taps. */}
-        <TouchableOpacity activeOpacity={0.9} onPress={() => openScanner()}>
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={() => openScanner()}
+          accessibilityRole="button"
+          accessibilityLabel={t('scanTitle')}
+          accessibilityHint={t('homeScanHeroSub')}
+        >
           <ImageBackground
             source={require('../assets/scan-product.png')}
             style={styles.hero}
@@ -118,6 +142,27 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
             </View>
           </ImageBackground>
         </TouchableOpacity>
+
+        {showScanHelp && (
+          <View style={styles.helpCard} accessible accessibilityLabel={t('homeHelpTitle')}>
+            <Text style={styles.helpTitle}>{t('homeHelpTitle')}</Text>
+            {[t('homeHelpStep1'), t('homeHelpStep2'), t('homeHelpStep3')].map((step, i) => (
+              <View key={i} style={styles.helpStepRow}>
+                <View style={styles.helpStepNum}><Text style={styles.helpStepNumText}>{i + 1}</Text></View>
+                <Text style={styles.helpStepText}>{step}</Text>
+              </View>
+            ))}
+            <TouchableOpacity
+              style={styles.helpGotIt}
+              onPress={dismissScanHelp}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel={t('gotIt')}
+            >
+              <Text style={styles.helpGotItText}>{t('gotIt')}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {loading ? (
           <ActivityIndicator size="large" color={colors.accent} style={{ marginTop: spacing.xl }} />
@@ -145,7 +190,14 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
               >
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.brandStrip}>
                   {brands.map((b) => (
-                    <TouchableOpacity key={b.id} style={styles.brandTile} activeOpacity={0.8} onPress={() => openBrand(b)}>
+                    <TouchableOpacity
+                      key={b.id}
+                      style={styles.brandTile}
+                      activeOpacity={0.8}
+                      onPress={() => openBrand(b)}
+                      accessibilityRole="button"
+                      accessibilityLabel={b.name}
+                    >
                       <View style={styles.brandLogoBox}>
                         {b.logo ? (
                           <Image source={{ uri: b.logo }} style={styles.brandLogoImg} resizeMode="contain" />
@@ -202,7 +254,7 @@ const styles = StyleSheet.create({
   },
   heroImage: { borderRadius: radius.xl },
   heroTitle: { fontSize: 25, fontWeight: '800', color: colors.heading },
-  heroSub: { fontSize: 15, color: colors.text, marginTop: 6, lineHeight: 20, maxWidth: '52%' },
+  heroSub: { fontSize: 16, color: colors.text, marginTop: 6, lineHeight: 21, maxWidth: '58%' },
   heroBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -216,6 +268,35 @@ const styles = StyleSheet.create({
     ...shadow(1),
   },
   heroBtnText: { color: '#fff', fontSize: 19, fontWeight: '700' },
+  helpCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
+    marginTop: spacing.md,
+    ...shadow(1),
+  },
+  helpTitle: { fontSize: 20, fontWeight: '700', color: colors.heading, marginBottom: spacing.sm },
+  helpStepRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 6 },
+  helpStepNum: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  helpStepNumText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  helpStepText: { flex: 1, fontSize: 18, color: colors.text },
+  helpGotIt: {
+    alignSelf: 'flex-end',
+    minHeight: MIN_TOUCH,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.sm,
+  },
+  helpGotItText: { fontSize: 18, fontWeight: '700', color: colors.primary },
   brandStrip: { gap: spacing.md, paddingVertical: spacing.xs },
   brandTile: { width: 72, alignItems: 'center' },
   brandLogoBox: {

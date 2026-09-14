@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AppNavigator from './src/navigation/AppNavigator';
 import { I18nProvider } from './src/i18n/I18nContext';
 
@@ -116,21 +117,23 @@ export default function App() {
 
   return (
     <AppErrorBoundary>
-      <I18nProvider>
-        <NavigationContainer
-          ref={navigationRef}
-          linking={linking}
-          initialState={initialState}
-          onStateChange={(state) => {
-            if (Platform.OS === 'web') {
-              AsyncStorage.setItem(NAV_STATE_KEY, JSON.stringify(state)).catch(() => {});
-            }
-          }}
-          documentTitle={{ formatter: () => 'Yometel DPP' }}
-        >
-          <AppNavigator navigationRef={navigationRef} />
-        </NavigationContainer>
-      </I18nProvider>
+      <SafeAreaProvider>
+        <I18nProvider>
+          <NavigationContainer
+            ref={navigationRef}
+            linking={linking}
+            initialState={initialState}
+            onStateChange={(state) => {
+              if (Platform.OS === 'web') {
+                AsyncStorage.setItem(NAV_STATE_KEY, JSON.stringify(state)).catch(() => {});
+              }
+            }}
+            documentTitle={{ formatter: () => 'Yometel DPP' }}
+          >
+            <AppNavigator navigationRef={navigationRef} />
+          </NavigationContainer>
+        </I18nProvider>
+      </SafeAreaProvider>
     </AppErrorBoundary>
   );
 }
