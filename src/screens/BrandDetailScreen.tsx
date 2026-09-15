@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Linking, Platform, Modal, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Linking, Platform, Modal, TextInput, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import AppLayout from '../components/AppLayout';
+import BottomSafeScrollView from '../components/BottomSafeScrollView';
 import GradientButton from '../components/GradientButton';
 import { API_BASE_URL } from '../config/api';
 import { useI18n } from '../i18n/I18nContext';
@@ -143,7 +144,7 @@ export default function BrandDetailScreen({ navigation, route, user, onLogout }:
       rightIcon="share"
       onShare={() => setIntroVisible(true)}
     >
-      <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
+      <BottomSafeScrollView style={styles.screen} contentContainerStyle={styles.container}>
         {/* No large placeholder hero when there's no cover image -- that just
             reserves 210px of blank space for nothing. Skip straight to a
             compact header instead. */}
@@ -263,7 +264,7 @@ export default function BrandDetailScreen({ navigation, route, user, onLogout }:
           <Icon name="share" size={18} color={colors.primary} />
           <Text style={styles.introBtnText}>{t('brandIntroduceToFriend')}</Text>
         </TouchableOpacity>
-      </ScrollView>
+      </BottomSafeScrollView>
 
       <Modal visible={introVisible} transparent animationType="slide" onRequestClose={() => setIntroVisible(false)}>
         <View style={styles.sheetOverlay}>
@@ -325,7 +326,8 @@ export default function BrandDetailScreen({ navigation, route, user, onLogout }:
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  container: { paddingBottom: spacing.xxxl },
+  // paddingBottom comes from BottomSafeScrollView (real bottom-bar clearance).
+  container: {},
   cover: { width: '100%', height: 210, backgroundColor: colors.surfaceAlt },
   headerCard: {
     backgroundColor: colors.surface,

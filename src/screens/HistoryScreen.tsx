@@ -1,8 +1,9 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useFocusEffect } from '@react-navigation/native';
-import AppLayout, { useBottomBarSpace } from '../components/AppLayout';
+import AppLayout from '../components/AppLayout';
+import BottomSafeScrollView from '../components/BottomSafeScrollView';
 import { API_BASE_URL } from '../config/api';
 import { useI18n } from '../i18n/I18nContext';
 import { colors, spacing, radius, shadow, MIN_TOUCH } from '../theme';
@@ -34,7 +35,6 @@ interface Row {
 
 export default function HistoryScreen({ navigation, user, onLogout }: Props) {
   const { t } = useI18n();
-  const bottomBarSpace = useBottomBarSpace();
   const [tab, setTab] = useState<TabKey>('scanned');
   const [loading, setLoading] = useState(true);
   const [scanned, setScanned] = useState<Row[]>([]);
@@ -144,7 +144,7 @@ export default function HistoryScreen({ navigation, user, onLogout }: Props) {
         ) : rows.length === 0 ? (
           <View style={styles.empty}><Text style={styles.emptyText}>{t('noHistoryYet')}</Text></View>
         ) : (
-          <ScrollView contentContainerStyle={[styles.list, { paddingBottom: spacing.lg + bottomBarSpace }]}>
+          <BottomSafeScrollView contentContainerStyle={styles.list}>
             {rows.map((row) => (
               <TouchableOpacity
                 key={row.key}
@@ -157,7 +157,7 @@ export default function HistoryScreen({ navigation, user, onLogout }: Props) {
                 {row.image ? (
                   <Image source={{ uri: row.image }} style={styles.thumb} resizeMode="cover" />
                 ) : (
-                  <View style={[styles.thumb, styles.thumbPlaceholder]}><Icon name="inventory-2" size={22} color={colors.placeholder} /></View>
+                  <View style={[styles.thumb, styles.thumbPlaceholder]}><Icon name="image" size={22} color={colors.muted} /></View>
                 )}
                 <View style={styles.info}>
                   <Text style={styles.name} numberOfLines={1}>{row.name}</Text>
@@ -167,7 +167,7 @@ export default function HistoryScreen({ navigation, user, onLogout }: Props) {
                 <Icon name="chevron-right" size={22} color={colors.muted} />
               </TouchableOpacity>
             ))}
-          </ScrollView>
+          </BottomSafeScrollView>
         )}
       </View>
     </AppLayout>
@@ -189,7 +189,8 @@ const styles = StyleSheet.create({
   tabTextActive: { color: '#fff' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xxxl },
   emptyText: { fontSize: 22, color: colors.muted },
-  list: { paddingBottom: spacing.xxxl },
+  // paddingBottom comes from BottomSafeScrollView (real bottom-bar clearance).
+  list: {},
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -203,7 +204,7 @@ const styles = StyleSheet.create({
     ...shadow(1),
   },
   thumb: { width: 56, height: 64, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt },
-  thumbPlaceholder: { alignItems: 'center', justifyContent: 'center' },
+  thumbPlaceholder: { alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border },
   info: { flex: 1 },
   name: { fontSize: 20, fontWeight: '600', color: colors.heading },
   sub: { fontSize: 18, color: colors.muted, marginTop: 2 },

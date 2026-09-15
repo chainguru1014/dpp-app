@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import AppLayout, { useBottomBarSpace } from '../components/AppLayout';
+import AppLayout from '../components/AppLayout';
+import BottomSafeScrollView from '../components/BottomSafeScrollView';
 import { API_BASE_URL } from '../config/api';
 import { useI18n } from '../i18n/I18nContext';
 import { colors, spacing, radius, shadow, MIN_TOUCH } from '../theme';
@@ -29,7 +30,6 @@ const locationLine = (loc?: Event['location']) => {
 
 export default function ProductHistoryScreen({ navigation, route, user, onLogout }: Props) {
   const { t } = useI18n();
-  const bottomBarSpace = useBottomBarSpace();
   const productId = route?.params?.productId;
   const name = route?.params?.name || route?.params?.product?.name || t('homeProduct');
   const [tab, setTab] = useState<TabKey>('all');
@@ -118,7 +118,7 @@ export default function ProductHistoryScreen({ navigation, route, user, onLogout
         ) : grouped.length === 0 ? (
           <View style={styles.empty}><Text style={styles.emptyText}>{t('noHistoryYet')}</Text></View>
         ) : (
-          <ScrollView contentContainerStyle={[styles.list, { paddingBottom: spacing.lg + bottomBarSpace }]}>
+          <BottomSafeScrollView contentContainerStyle={styles.list}>
             {grouped.map((group) => (
               <View key={group.label}>
                 <Text style={styles.groupLabel}>{group.label}</Text>
@@ -206,7 +206,7 @@ export default function ProductHistoryScreen({ navigation, route, user, onLogout
                 })}
               </View>
             ))}
-          </ScrollView>
+          </BottomSafeScrollView>
         )}
       </View>
     </AppLayout>
@@ -222,7 +222,8 @@ const styles = StyleSheet.create({
   tabTextActive: { color: '#fff' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xxxl },
   emptyText: { fontSize: 22, color: colors.muted },
-  list: { paddingBottom: spacing.xxxl },
+  // paddingBottom comes from BottomSafeScrollView (real bottom-bar clearance).
+  list: {},
   groupLabel: { fontSize: 18, fontWeight: '700', color: colors.muted, marginTop: spacing.md, marginBottom: spacing.sm, textTransform: 'uppercase', letterSpacing: 0.5 },
   row: {
     flexDirection: 'row',

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Image, Platform, Alert, Modal } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import Clipboard from '@react-native-clipboard/clipboard';
@@ -19,6 +19,10 @@ interface Props {
 }
 
 type TabKey = 'journey' | 'care' | 'materials' | 'dispose' | 'traceability';
+
+// Fixed empty space reserved at each end of the scrollable tab row so a
+// scroll-arrow chip never renders on top of a tab's text -- see Priority 2.
+const TAB_EDGE_GUTTER = 40;
 
 const TABS: { key: TabKey; labelKey: string }[] = [
   { key: 'journey', labelKey: 'lifecycleTabJourney' },
@@ -134,13 +138,20 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
   const [infoDialog, setInfoDialog] = useState<{ title: string; body: string } | null>(null);
   const [isInAlbum, setIsInAlbum] = useState(false);
   const [isBrandFollowed, setIsBrandFollowed] = useState(false);
-  // Drives the left/right scroll-edge hints on the tab row (see Priority 2:
-  // a plain horizontal ScrollView gives no clue more tabs are off-screen).
+  // Drives the left/right scroll-edge arrows on the tab row (see Priority 2:
+  // a plain horizontal ScrollView gives no clue more tabs are off-screen,
+  // nor an obvious way to reach them without knowing to swipe).
+  const tabScrollRef = useRef<ScrollView>(null);
   const [tabViewportWidth, setTabViewportWidth] = useState(0);
   const [tabContentWidth, setTabContentWidth] = useState(0);
   const [tabScrollX, setTabScrollX] = useState(0);
   const canScrollTabsRight = tabContentWidth - tabViewportWidth - tabScrollX > 4;
   const canScrollTabsLeft = tabScrollX > 4;
+  const scrollTabsBy = (dir: 1 | -1) => {
+    const step = Math.max(120, tabViewportWidth * 0.7);
+    const next = Math.max(0, Math.min(tabContentWidth - tabViewportWidth, tabScrollX + dir * step));
+    tabScrollRef.current?.scrollTo({ x: next, animated: true });
+  };
 
   const productId = route?.params?.productId ?? productData?._id;
   const qrcodeId = route?.params?.qrcodeId ?? productData?.token_id;
@@ -793,14 +804,15 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.headerName} numberOfLines={2} accessibilityRole="header">{productData?.name || '—'}</Text>
-            {/* Model + ID combined into one line -- less-important identity info,
-                kept but compacted per the accessibility/simplification pass. */}
-            {(!!productData?.model || productData?.pmc_code || productData?.token_id != null) && (
-              <Text style={styles.headerMeta} numberOfLines={1}>
-                {[
-                  productData?.model,
-                  (productData?.pmc_code || productData?.token_id != null) ? `ID: ${productData?.pmc_code || productData?.token_id}` : null,
-                ].filter(Boolean).join('  ·  ')}
+            {/* Model and ID on separate lines -- combining them on one line with
+                numberOfLines={1} truncated the ID (the more identity-critical of
+                the two) whenever a model name was also present. */}
+            {!!productData?.model && (
+              <Text style={styles.headerMeta} numberOfLines={1}>{productData.model}</Text>
+            )}
+            {(productData?.pmc_code || productData?.token_id != null) && (
+              <Text style={styles.headerMetaId} numberOfLines={1}>
+                {`ID: ${productData?.pmc_code || productData?.token_id}`}
               </Text>
             )}
             <View style={styles.authCard} accessible accessibilityLabel={`${t('overviewAuthenticated')}. ${t('lifecycleVerifiedByBrand')}`}>
@@ -817,10 +829,14 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
         <View style={styles.sheet}>
           <View style={styles.tabRowWrap}>
             <ScrollView
+              ref={tabScrollRef}
               horizontal
               showsHorizontalScrollIndicator={false}
               style={styles.tabScrollRow}
-              contentContainerStyle={styles.tabRow}
+              // Fixed gutter on both edges (not conditional on arrow
+              // visibility) -- a tab button never renders under where an
+              // arrow sits, so the chevron can't crowd/overlap tab text.
+              contentContainerStyle={[styles.tabRow, { paddingLeft: TAB_EDGE_GUTTER, paddingRight: TAB_EDGE_GUTTER }]}
               onLayout={(e) => setTabViewportWidth(e.nativeEvent.layout.width)}
               onContentSizeChange={(w) => setTabContentWidth(w)}
               onScroll={(e) => setTabScrollX(e.nativeEvent.contentOffset.x)}
@@ -841,18 +857,36 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
                 </TouchableOpacity>
               ))}
             </ScrollView>
-            {/* Scroll-edge hints -- five tabs rarely fit on one screen at a
-                readable text size, and a plain horizontal ScrollView gives no
-                clue that "Origin & Impact" is still off to the right. */}
+            {/* Tappable scroll arrows -- five tabs rarely fit on one screen at
+                a readable text size, and a bare horizontal ScrollView gives
+                no clue "Origin & Impact" is still off to the right, nor an
+                obvious way to get there for someone who doesn't think to
+                swipe. Each sits in its own reserved edge gutter (see
+                TAB_EDGE_GUTTER above), never on top of a tab, with a real
+                44px+ touch target even though the visible chip is small. */}
             {canScrollTabsLeft && (
-              <View style={[styles.tabEdgeHint, styles.tabEdgeHintLeft]} pointerEvents="none">
-                <Icon name="chevron-left" size={16} color={colors.primary} />
-              </View>
+              <TouchableOpacity
+                style={[styles.tabEdgeHintTouch, styles.tabEdgeHintTouchLeft]}
+                onPress={() => scrollTabsBy(-1)}
+                accessibilityRole="button"
+                accessibilityLabel={t('lifecyclePrevTabs')}
+              >
+                <View style={styles.tabEdgeHint}>
+                  <Icon name="chevron-left" size={16} color={colors.primary} />
+                </View>
+              </TouchableOpacity>
             )}
             {canScrollTabsRight && (
-              <View style={[styles.tabEdgeHint, styles.tabEdgeHintRight]} pointerEvents="none">
-                <Icon name="chevron-right" size={16} color={colors.primary} />
-              </View>
+              <TouchableOpacity
+                style={[styles.tabEdgeHintTouch, styles.tabEdgeHintTouchRight]}
+                onPress={() => scrollTabsBy(1)}
+                accessibilityRole="button"
+                accessibilityLabel={t('lifecycleNextTabs')}
+              >
+                <View style={styles.tabEdgeHint}>
+                  <Icon name="chevron-right" size={16} color={colors.primary} />
+                </View>
+              </TouchableOpacity>
             )}
           </View>
           <ScrollView
@@ -901,6 +935,7 @@ const styles = StyleSheet.create({
   headerThumbPlaceholder: { alignItems: 'center', justifyContent: 'center' },
   headerName: { fontSize: 23, fontWeight: '700', color: '#fff', marginBottom: 4 },
   headerMeta: { fontSize: 17, color: 'rgba(255,255,255,0.9)', marginTop: 3, lineHeight: 22 },
+  headerMetaId: { fontSize: 14, color: 'rgba(255,255,255,0.7)', marginTop: 2, lineHeight: 18 },
   authCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -932,15 +967,22 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
     flexGrow: 0,
   },
-  // Small round chevron chips floating over the scrollable tab row's edges --
-  // shown only while there's actually more content that way (see
-  // canScrollTabsLeft/Right). A subtle centred chip rather than a full-height
-  // mask, so it reads as "more this way" rather than a hard visual cut.
-  // pointerEvents: 'none' so it never blocks a tap on the tab underneath.
-  tabEdgeHint: {
+  // Each arrow's real touch target: its own reserved edge gutter (see
+  // TAB_EDGE_GUTTER), full tab-row height, at least 44px wide -- well clear
+  // of any tab button, which only ever starts after the gutter.
+  tabEdgeHintTouch: {
     position: 'absolute',
-    top: '50%',
-    marginTop: -12,
+    top: 0,
+    bottom: 0,
+    width: MIN_TOUCH,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabEdgeHintTouchLeft: { left: 0 },
+  tabEdgeHintTouchRight: { right: 0 },
+  // The small round chip is just the visible affordance inside that touch
+  // area -- it can stay smaller than the 44px+ hit target around it.
+  tabEdgeHint: {
     width: 24,
     height: 24,
     borderRadius: 12,
@@ -951,8 +993,6 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     ...shadow(1),
   },
-  tabEdgeHintLeft: { left: 2 },
-  tabEdgeHintRight: { right: 2 },
   tabRow: {
     flexDirection: 'row',
     paddingHorizontal: spacing.xs,

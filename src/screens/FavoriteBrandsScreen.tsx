@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, TextInput } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import AppLayout from '../components/AppLayout';
+import BottomSafeScrollView from '../components/BottomSafeScrollView';
 import { API_BASE_URL } from '../config/api';
 import { useI18n } from '../i18n/I18nContext';
 import { colors, spacing, radius, shadow, MIN_TOUCH } from '../theme';
@@ -112,7 +113,7 @@ export default function FavoriteBrandsScreen({ navigation, user, onLogout }: Pro
         ) : list.length === 0 ? (
           <View style={styles.empty}><Text style={styles.emptyText}>{t('noFollowedBrands')}</Text></View>
         ) : (
-          <ScrollView contentContainerStyle={styles.grid}>
+          <BottomSafeScrollView contentContainerStyle={styles.grid}>
             {list.map((brand) => (
               <TouchableOpacity
                 key={brand.id}
@@ -139,7 +140,7 @@ export default function FavoriteBrandsScreen({ navigation, user, onLogout }: Pro
                 </View>
               </TouchableOpacity>
             ))}
-          </ScrollView>
+          </BottomSafeScrollView>
         )}
       </View>
     </AppLayout>
@@ -167,7 +168,8 @@ const styles = StyleSheet.create({
   sortToggleText: { fontSize: 18, color: colors.primary, fontWeight: '700' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xxxl },
   emptyText: { fontSize: 22, color: colors.muted, textAlign: 'center' },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', paddingBottom: spacing.xxxl },
+  // paddingBottom comes from BottomSafeScrollView (real bottom-bar clearance).
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   card: {
     width: '48%',
     backgroundColor: colors.surface,

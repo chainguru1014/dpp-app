@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import AppLayout, { useBottomBarSpace } from '../components/AppLayout';
+import AppLayout from '../components/AppLayout';
+import BottomSafeScrollView from '../components/BottomSafeScrollView';
 import NotificationDetailModal from '../components/NotificationDetailModal';
 import { API_BASE_URL } from '../config/api';
 import { useI18n } from '../i18n/I18nContext';
@@ -48,7 +49,6 @@ const relativeTime = (iso: string) => {
 
 export default function NotificationsScreen({ navigation, user, onLogout }: Props) {
   const { t } = useI18n();
-  const bottomBarSpace = useBottomBarSpace();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<any>(null);
@@ -110,6 +110,24 @@ export default function NotificationsScreen({ navigation, user, onLogout }: Prop
 
   const hasUnread = items.some((n) => !n.read);
 
+  // Consecutive notifications of the same type+title (e.g. several
+  // "Product authenticated" rows back to back) collapse into one summary
+  // row -- same run-grouping convention used on the product history screen.
+  // Every underlying notification is still in `items` and still individually
+  // tappable once expanded; nothing here changes read/unread tracking.
+  type Run = { key: string; groupKey: string; items: any[] };
+  const runs: Run[] = [];
+  items.forEach((item, idx) => {
+    const groupKey = `${item.type || ''}|${humanizeNotificationText(item.title)}`;
+    const last = runs[runs.length - 1];
+    if (last && last.groupKey === groupKey) {
+      last.items.push(item);
+    } else {
+      runs.push({ key: `${groupKey}-${idx}`, groupKey, items: [item] });
+    }
+  });
+  const [openRunKey, setOpenRunKey] = useState<string | null>(null);
+
   return (
     <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton onBackPress={() => navigation.navigate(user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Home')} flatContent={user?.actorKind === 'Employee'}>
       <View style={styles.screen}>
@@ -129,38 +147,105 @@ export default function NotificationsScreen({ navigation, user, onLogout }: Prop
         ) : items.length === 0 ? (
           <View style={styles.empty}><Text style={styles.emptyText}>{t('noNotifications')}</Text></View>
         ) : (
-          <ScrollView contentContainerStyle={[styles.list, { paddingBottom: spacing.lg + bottomBarSpace }]}>
-            {items.map((item, idx) => {
-              const color = LEVEL_COLOR[item.level] || colors.accent;
-              const title = humanizeNotificationText(item.title);
-              const message = humanizeNotificationText(item.message);
+          <BottomSafeScrollView contentContainerStyle={styles.list}>
+            {runs.map((run) => {
+              const isCollapsedRun = run.items.length >= 3;
+              if (!isCollapsedRun) {
+                return run.items.map((item, idx) => {
+                  const color = LEVEL_COLOR[item.level] || colors.accent;
+                  const title = humanizeNotificationText(item.title);
+                  const message = humanizeNotificationText(item.message);
+                  return (
+                    <TouchableOpacity
+                      key={item._id || `${run.key}-${idx}`}
+                      style={[styles.row, !item.read && styles.rowUnread]}
+                      activeOpacity={0.8}
+                      onPress={() => onPressItem(item)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${!item.read ? 'Unread. ' : ''}${title}. ${message}. ${relativeTime(item.createdAt)}`}
+                    >
+                      <View style={[styles.iconBubble, { backgroundColor: `${color}22` }]}>
+                        <Icon name={TYPE_ICON[item.type] || 'notifications'} size={28} color={color} />
+                      </View>
+                      <View style={styles.info}>
+                        <View style={styles.titleRow}>
+                          {!item.read && <View style={styles.unreadDot} />}
+                          <Text style={[styles.title, !item.read && styles.titleUnread]} numberOfLines={1}>{title}</Text>
+                        </View>
+                        {!!message && <Text style={styles.message} numberOfLines={2}>{message}</Text>}
+                      </View>
+                      <View style={styles.metaCol}>
+                        <Text style={styles.time}>{relativeTime(item.createdAt)}</Text>
+                        <Icon name="chevron-right" size={20} color={colors.muted} />
+                      </View>
+                    </TouchableOpacity>
+                  );
+                });
+              }
+
+              // Collapsed run: 3+ of the same type+title back to back.
+              const head = run.items[0];
+              const color = LEVEL_COLOR[head.level] || colors.accent;
+              const title = humanizeNotificationText(head.title);
+              const anyUnread = run.items.some((n) => !n.read);
+              const isOpen = openRunKey === run.key;
+              const summaryLabel = `${title} (${run.items.length})`;
               return (
-                <TouchableOpacity
-                  key={item._id || idx}
-                  style={[styles.row, !item.read && styles.rowUnread]}
-                  activeOpacity={0.8}
-                  onPress={() => onPressItem(item)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${!item.read ? 'Unread. ' : ''}${title}. ${message}. ${relativeTime(item.createdAt)}`}
-                >
-                  <View style={[styles.iconBubble, { backgroundColor: `${color}22` }]}>
-                    <Icon name={TYPE_ICON[item.type] || 'notifications'} size={28} color={color} />
-                  </View>
-                  <View style={styles.info}>
-                    <View style={styles.titleRow}>
-                      {!item.read && <View style={styles.unreadDot} />}
-                      <Text style={[styles.title, !item.read && styles.titleUnread]} numberOfLines={1}>{title}</Text>
+                <View key={run.key}>
+                  <TouchableOpacity
+                    style={[styles.row, anyUnread && styles.rowUnread]}
+                    activeOpacity={0.8}
+                    onPress={() => setOpenRunKey(isOpen ? null : run.key)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${anyUnread ? 'Unread. ' : ''}${summaryLabel}`}
+                    accessibilityState={{ expanded: isOpen }}
+                  >
+                    <View style={[styles.iconBubble, { backgroundColor: `${color}22` }]}>
+                      <Icon name={TYPE_ICON[head.type] || 'notifications'} size={28} color={color} />
                     </View>
-                    {!!message && <Text style={styles.message} numberOfLines={2}>{message}</Text>}
-                  </View>
-                  <View style={styles.metaCol}>
-                    <Text style={styles.time}>{relativeTime(item.createdAt)}</Text>
-                    <Icon name="chevron-right" size={20} color={colors.muted} />
-                  </View>
-                </TouchableOpacity>
+                    <View style={styles.info}>
+                      <View style={styles.titleRow}>
+                        {anyUnread && <View style={styles.unreadDot} />}
+                        <Text style={[styles.title, anyUnread && styles.titleUnread]} numberOfLines={1}>{summaryLabel}</Text>
+                      </View>
+                      <Text style={styles.message} numberOfLines={1}>{relativeTime(head.createdAt)}</Text>
+                    </View>
+                    <Icon name={isOpen ? 'expand-less' : 'expand-more'} size={22} color={colors.muted} />
+                  </TouchableOpacity>
+                  {isOpen && run.items.map((item, idx) => {
+                    const iColor = LEVEL_COLOR[item.level] || colors.accent;
+                    const iTitle = humanizeNotificationText(item.title);
+                    const message = humanizeNotificationText(item.message);
+                    return (
+                      <TouchableOpacity
+                        key={item._id || `${run.key}-item-${idx}`}
+                        style={[styles.row, styles.runDetailRow, !item.read && styles.rowUnread]}
+                        activeOpacity={0.8}
+                        onPress={() => onPressItem(item)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${!item.read ? 'Unread. ' : ''}${iTitle}. ${message}. ${relativeTime(item.createdAt)}`}
+                      >
+                        <View style={[styles.iconBubble, { backgroundColor: `${iColor}22` }]}>
+                          <Icon name={TYPE_ICON[item.type] || 'notifications'} size={28} color={iColor} />
+                        </View>
+                        <View style={styles.info}>
+                          <View style={styles.titleRow}>
+                            {!item.read && <View style={styles.unreadDot} />}
+                            <Text style={[styles.title, !item.read && styles.titleUnread]} numberOfLines={1}>{iTitle}</Text>
+                          </View>
+                          {!!message && <Text style={styles.message} numberOfLines={2}>{message}</Text>}
+                        </View>
+                        <View style={styles.metaCol}>
+                          <Text style={styles.time}>{relativeTime(item.createdAt)}</Text>
+                          <Icon name="chevron-right" size={20} color={colors.muted} />
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
               );
             })}
-          </ScrollView>
+          </BottomSafeScrollView>
         )}
       </View>
       <NotificationDetailModal
@@ -180,7 +265,8 @@ const styles = StyleSheet.create({
   markAllText: { fontSize: 17, color: colors.accent, fontWeight: '600' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xxxl },
   emptyText: { fontSize: 20, color: colors.muted },
-  list: { paddingBottom: spacing.xxxl },
+  // paddingBottom comes from BottomSafeScrollView (real bottom-bar clearance).
+  list: {},
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -197,6 +283,7 @@ const styles = StyleSheet.create({
   // or urgent regardless of what it actually was. Unread state now reads
   // from the dot + bold title + this subtle tint alone, not a heavy border.
   rowUnread: { backgroundColor: '#f4f8ff' },
+  runDetailRow: { marginLeft: spacing.lg },
   iconBubble: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
   info: { flex: 1 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },

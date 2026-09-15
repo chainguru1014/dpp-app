@@ -30,7 +30,7 @@ export function ProductRow({ product, caption, onPress }: { product: any; captio
         <Image source={{ uri: img }} style={styles.rowImage} resizeMode="cover" />
       ) : (
         <View style={[styles.rowImage, styles.rowImagePlaceholder]}>
-          <Icon name="inventory-2" size={22} color={colors.placeholder} />
+          <Icon name="image" size={22} color={colors.muted} />
         </View>
       )}
       <View style={styles.rowBody}>
@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 19, color: colors.muted, paddingVertical: spacing.sm },
   row: { flexDirection: 'row', alignItems: 'center', minHeight: MIN_TOUCH, paddingVertical: spacing.sm + 2, gap: spacing.md },
   rowImage: { width: 54, height: 54, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt },
-  rowImagePlaceholder: { alignItems: 'center', justifyContent: 'center' },
+  rowImagePlaceholder: { alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border },
   rowBody: { flex: 1 },
   rowName: { fontSize: 20, fontWeight: '600', color: colors.heading },
   rowSub: { fontSize: 18, color: colors.muted, marginTop: 2 },

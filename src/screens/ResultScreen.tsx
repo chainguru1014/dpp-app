@@ -21,7 +21,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Clipboard from '@react-native-clipboard/clipboard';
 import { API_BASE_URL } from '../config/api';
 import { CareSymbol, getCareSymbolLabel } from '../components/CareSymbols';
-import AppLayout, { useBottomBarSpace } from '../components/AppLayout';
+import AppLayout from '../components/AppLayout';
+import BottomSafeScrollView from '../components/BottomSafeScrollView';
 import VideoPlayerModal from '../components/VideoPlayerModal';
 import GradientButton from '../components/GradientButton';
 import GradientView from '../components/GradientView';
@@ -89,7 +90,6 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
   const FALLBACK_BRAND_DETAIL = 'Developing innovative "real-time and automatic" digital twins IoT /RFID technologies';
   const FALLBACK_BRAND_WEBSITE = 'https://www.yometel.jp/';
   const { t } = useI18n();
-  const bottomBarSpace = useBottomBarSpace();
   const { height: windowHeight } = useWindowDimensions();
   const [productData, setProductData] = useState<any>(route?.params?.productData || {});
   const [expandedSections, setExpandedSections] = useState<{ [key: number]: boolean }>({});
@@ -1444,11 +1444,10 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
       isInAlbum={isInAlbum}
       isProductDetailPage={true}
     >
-      <ScrollView
+      <BottomSafeScrollView
         style={[styles.content, Platform.OS === 'web' && { minHeight: availableContentMinHeight }]}
         contentContainerStyle={[
           styles.contentContainer,
-          { paddingBottom: spacing.lg + bottomBarSpace },
           Platform.OS === 'web' && { minHeight: availableContentMinHeight },
         ]}
         showsVerticalScrollIndicator={false}
@@ -1715,7 +1714,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
             </View>
           </>
         )}
-      </ScrollView>
+      </BottomSafeScrollView>
       {/* Keep modal outside ScrollView to avoid RN web content-layer paint issues */}
       <Modal
         visible={showCamera}
@@ -2401,9 +2400,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg,
   },
+  // paddingBottom comes from BottomSafeScrollView (real bottom-bar clearance).
   contentContainer: {
     flexGrow: 1,
-    paddingBottom: 16,
   },
   topImageSliderContainer: {
     paddingTop: 12,

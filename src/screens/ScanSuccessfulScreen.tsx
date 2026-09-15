@@ -62,7 +62,9 @@ export default function ScanSuccessfulScreen({ navigation, route, user, onLogout
             watchLabel={t('watchVideo')}
             onPlayVideo={setPlayingVideoId}
           />
-          <Text style={styles.productName} numberOfLines={1}>{productData?.name || '—'}</Text>
+          {!!productData?.name && (
+            <Text style={styles.productName} numberOfLines={1}>{productData.name}</Text>
+          )}
         </View>
 
         <View style={styles.card}>

@@ -77,7 +77,12 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
   };
   // Camera-freeze recovery (autofocus-hardware-failure class of fault — see
   // utils/cameraResilience). cameraKey force-remounts the scanner on retry.
+  // cameraStalled = the preview froze / lost focus but the camera itself is
+  // still reachable ("having trouble scanning"). cameraUnavailable = the
+  // camera hardware/permission call itself failed (a distinct, rarer state
+  // that needs different wording since "try moving the phone" won't help).
   const [cameraStalled, setCameraStalled] = useState(false);
+  const [cameraUnavailable, setCameraUnavailable] = useState(false);
   const [focusHintVisible, setFocusHintVisible] = useState(false);
   const [cameraKey, setCameraKey] = useState(0);
   const nativeScannerRef = useRef<NativeCodeScannerHandle>(null);
@@ -109,12 +114,16 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
 
   const handleCameraInitialized = () => {
     cameraInitializedRef.current = true;
-    if (isMountedRef.current) setCameraStalled(false);
+    if (isMountedRef.current) {
+      setCameraStalled(false);
+      setCameraUnavailable(false);
+    }
   };
 
   const retryCamera = () => {
     cameraInitializedRef.current = false;
     setCameraStalled(false);
+    setCameraUnavailable(false);
     setFocusHintVisible(false);
     setCameraKey((k) => k + 1);
   };
@@ -900,11 +909,15 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
     </>
   );
 
-  // Shown over the camera viewport when the feed has frozen (autofocus
-  // hardware fault) or while the watchdog is switching to a fixed focus.
+  // Shown over the camera viewport in two distinct cases that need different
+  // wording: (1) the preview froze / lost focus but the camera is still
+  // reachable ("having trouble scanning" — moving the phone or retrying
+  // usually fixes it), and (2) the camera hardware/permission call itself
+  // failed ("camera unavailable" — retrying the scan won't help, only
+  // retrying the camera connection or switching to photo upload will).
   const renderCameraResilienceOverlay = () => (
     <>
-      {focusHintVisible && !cameraStalled && (
+      {focusHintVisible && !cameraStalled && !cameraUnavailable && (
         <View pointerEvents="none" style={styles.focusHintPill}>
           <ActivityIndicator size="small" color="#fff" />
           <Text style={styles.focusHintText}>{t('scanFocusAdjustedHint')}</Text>
@@ -913,30 +926,46 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
       {cameraStalled && (
         <View style={styles.stalledOverlay}>
           <View style={styles.stalledCard} accessibilityRole="alert">
-            <VectorIcon name="error-outline" size={30} color={colors.danger} />
-            <Text style={styles.stalledTitle}>{t('scanCameraStalledTitle')}</Text>
-            <Text style={styles.stalledBody}>{t('scanCameraStalledBody')}</Text>
-            {Platform.OS !== 'web' && (
-              <GradientButton
-                style={styles.stalledButton}
-                onPress={forceFocusAndRetry}
-                activeOpacity={0.85}
-                accessibilityRole="button"
-                accessibilityLabel={t('scanForceFocus')}
-              >
-                <Text style={styles.stalledButtonText}>{t('scanForceFocus')}</Text>
-              </GradientButton>
-            )}
+            <VectorIcon name="center-focus-weak" size={30} color={colors.danger} />
+            <Text style={styles.stalledTitle}>{t('scanTroubleTitle')}</Text>
+            <Text style={styles.stalledBody}>{t('scanTroubleBody')}</Text>
+            <GradientButton
+              style={styles.stalledButton}
+              onPress={Platform.OS === 'web' ? retryCamera : forceFocusAndRetry}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel={t('scanTryAgain')}
+            >
+              <Text style={styles.stalledButtonText}>{t('scanTryAgain')}</Text>
+            </GradientButton>
             <TouchableOpacity
               style={styles.stalledSecondary}
-              onPress={retryCamera}
+              onPress={Platform.OS === 'web' ? openPhotoScan : pickNativePhotoAndScan}
               activeOpacity={0.8}
               accessibilityRole="button"
-              accessibilityLabel={t('scanRetryCamera')}
+              accessibilityLabel={t('scanUploadPhoto')}
             >
-              <VectorIcon name="refresh" size={16} color={colors.primary} />
-              <Text style={styles.stalledSecondaryText}>{t('scanRetryCamera')}</Text>
+              <VectorIcon name="photo-library" size={16} color={colors.primary} />
+              <Text style={styles.stalledSecondaryText}>{t('scanUploadPhoto')}</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      )}
+      {cameraUnavailable && (
+        <View style={styles.stalledOverlay}>
+          <View style={styles.stalledCard} accessibilityRole="alert">
+            <VectorIcon name="videocam-off" size={30} color={colors.danger} />
+            <Text style={styles.stalledTitle}>{t('scanUnavailableTitle')}</Text>
+            <Text style={styles.stalledBody}>{t('scanUnavailableBody')}</Text>
+            <GradientButton
+              style={styles.stalledButton}
+              onPress={retryCamera}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel={t('scanTryCameraAgain')}
+            >
+              <Text style={styles.stalledButtonText}>{t('scanTryCameraAgain')}</Text>
+            </GradientButton>
             <TouchableOpacity
               style={styles.stalledSecondary}
               onPress={Platform.OS === 'web' ? openPhotoScan : pickNativePhotoAndScan}
@@ -1111,7 +1140,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
               onScan={handleScannedCode}
               torch={torchOn}
               onInitialized={handleCameraInitialized}
-              onError={() => setCameraStalled(true)}
+              onError={() => setCameraUnavailable(true)}
             />
             <View pointerEvents="none" style={styles.frameOverlay}>
               <ScanFrameCorners size={240} />
