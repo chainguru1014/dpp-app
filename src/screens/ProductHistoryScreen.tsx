@@ -180,11 +180,17 @@ export default function ProductHistoryScreen({ navigation, route, user, onLogout
                             <Icon name={isScan ? 'qr-code-scanner' : 'visibility'} size={26} color={isScan ? colors.primary : colors.success} />
                           </View>
                         </View>
-                        <View style={styles.info}>
-                          <Text style={styles.eventTitle}>{summaryLabel}</Text>
-                          <Text style={styles.eventMeta}>{newest.toLocaleDateString()}</Text>
+                        {/* Chevron lives inside the card, trailing next to the
+                            text -- same placement as the Notifications group
+                            row -- instead of floating in the rail gutter
+                            above it. */}
+                        <View style={[styles.info, styles.infoRow]}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.eventTitle}>{summaryLabel}</Text>
+                            <Text style={styles.eventMeta}>{newest.toLocaleDateString()}</Text>
+                          </View>
+                          <Icon name={isOpen ? 'expand-less' : 'expand-more'} size={22} color={colors.muted} />
                         </View>
-                        <Icon name={isOpen ? 'expand-less' : 'expand-more'} size={22} color={colors.muted} />
                       </TouchableOpacity>
                       {isOpen && (
                         <View style={styles.runDetail}>
@@ -230,6 +236,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.md,
   },
+  infoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   railCol: { alignItems: 'center', justifyContent: 'center', width: 52, position: 'relative' },
   rail: { position: 'absolute', top: 0, bottom: -8, width: 2, backgroundColor: colors.border },
   iconBubble: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
