@@ -17,7 +17,6 @@ import FeatherIcon from 'react-native-vector-icons/Feather';
 import { useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useI18n } from '../i18n/I18nContext';
-import { SEEN_SCAN_HELP_KEY } from '../constants/storageKeys';
 import NotificationBadge from './NotificationBadge';
 import GradientView from './GradientView';
 import { colors, radius, shadow, spacing, MIN_TOUCH } from '../theme';
@@ -204,15 +203,6 @@ export default function AppLayout({
     setProfileSheetVisible(false);
     if (!isAuthenticated) return;
     navigation.navigate('EditProfile');
-  };
-
-  // Re-shows the Home "How to check a product" card -- the one place a
-  // consumer can revisit it after dismissing it once. Not a new onboarding
-  // framework, just clearing the flag Home already checks on focus.
-  const handleShowScanHelp = async () => {
-    setProfileSheetVisible(false);
-    await AsyncStorage.removeItem(SEEN_SCAN_HELP_KEY).catch(() => {});
-    navigation.navigate(homeBaseRoute);
   };
 
   const handleLogout = async () => {
@@ -532,21 +522,6 @@ export default function AppLayout({
               <Image source={require('../assets/world.png')} style={styles.menuItemIcon} resizeMode="contain" />
               <Text style={styles.menuItemText}>{t('language')}</Text>
             </TouchableOpacity>
-            {!isEmployeeActor && (
-              <>
-                <View style={styles.menuDivider} />
-                <TouchableOpacity
-                  style={styles.menuItem}
-                  onPress={handleShowScanHelp}
-                  activeOpacity={0.7}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('howToCheckProduct')}
-                >
-                  <Icon name="help-outline" size={24} color={colors.primary} />
-                  <Text style={styles.menuItemText}>{t('howToCheckProduct')}</Text>
-                </TouchableOpacity>
-              </>
-            )}
             <View style={styles.menuDivider} />
             <TouchableOpacity style={styles.menuItem} onPress={handleLogout} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={t('logout')}>
               <Image source={require('../assets/logout (1).png')} style={styles.menuItemIcon} resizeMode="contain" />

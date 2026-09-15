@@ -123,7 +123,7 @@ export default function HistoryScreen({ navigation, user, onLogout }: Props) {
           {([
             { key: 'scanned' as const, label: t('historyTabScanned') },
             { key: 'purchased' as const, label: t('historyTabPurchased') },
-            { key: 'cancelled' as const, label: t('historyTabCancelledRequests') },
+            { key: 'cancelled' as const, label: t('historyTabCancelled') },
           ]).map((tb) => (
             <TouchableOpacity
               key={tb.key}
@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
   },
   tab: { flex: 1, minHeight: MIN_TOUCH, justifyContent: 'center', paddingVertical: 10, borderRadius: radius.sm, alignItems: 'center' },
   tabActive: { backgroundColor: colors.primary },
-  tabText: { fontSize: 19, fontWeight: '600', color: colors.muted },
+  tabText: { fontSize: 19, fontWeight: '600', color: colors.muted, textAlign: 'center' },
   tabTextActive: { color: '#fff' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xxxl },
   emptyText: { fontSize: 22, color: colors.muted },
