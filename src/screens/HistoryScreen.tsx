@@ -152,7 +152,7 @@ export default function HistoryScreen({ navigation, user, onLogout }: Props) {
                 activeOpacity={0.7}
                 onPress={() => openRow(row)}
                 accessibilityRole="button"
-                accessibilityLabel={[row.name, row.sub].filter(Boolean).join(', ')}
+                accessibilityLabel={[row.name, row.sub, row.when ? new Date(row.when).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }) : ''].filter(Boolean).join(', ')}
               >
                 {row.image ? (
                   <Image source={{ uri: row.image }} style={styles.thumb} resizeMode="cover" />

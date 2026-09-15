@@ -20,10 +20,6 @@ interface Props {
 
 type TabKey = 'journey' | 'care' | 'materials' | 'dispose' | 'traceability';
 
-// Fixed empty space reserved at each end of the scrollable tab row so a
-// scroll-arrow chip never renders on top of a tab's text -- see Priority 2.
-const TAB_EDGE_GUTTER = 40;
-
 const TABS: { key: TabKey; labelKey: string }[] = [
   { key: 'journey', labelKey: 'lifecycleTabJourney' },
   { key: 'care', labelKey: 'lifecycleTabCare' },
@@ -138,9 +134,11 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
   const [infoDialog, setInfoDialog] = useState<{ title: string; body: string } | null>(null);
   const [isInAlbum, setIsInAlbum] = useState(false);
   const [isBrandFollowed, setIsBrandFollowed] = useState(false);
-  // Drives the left/right scroll-edge arrows on the tab row (see Priority 2:
+  // Drives the left/right scroll arrows on the tab row (see Priority 2:
   // a plain horizontal ScrollView gives no clue more tabs are off-screen,
-  // nor an obvious way to reach them without knowing to swipe).
+  // nor an obvious way to reach them without knowing to swipe). The arrows
+  // are real flex siblings of the ScrollView (not absolutely positioned over
+  // it), so a tab label can never render underneath one.
   const tabScrollRef = useRef<ScrollView>(null);
   const [tabViewportWidth, setTabViewportWidth] = useState(0);
   const [tabContentWidth, setTabContentWidth] = useState(0);
@@ -151,6 +149,28 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
     const step = Math.max(120, tabViewportWidth * 0.7);
     const next = Math.max(0, Math.min(tabContentWidth - tabViewportWidth, tabScrollX + dir * step));
     tabScrollRef.current?.scrollTo({ x: next, animated: true });
+  };
+  // Per-tab x/width captured on layout so selecting an off-screen tab (e.g.
+  // via accessibility navigation, not just the arrows) scrolls it fully
+  // into view instead of leaving it clipped at the edge.
+  const tabLayoutsRef = useRef<Record<string, { x: number; width: number }>>({});
+  const scrollTabIntoView = (key: string) => {
+    const layout = tabLayoutsRef.current[key];
+    if (!layout || !tabViewportWidth) return;
+    const margin = 12;
+    if (layout.x < tabScrollX + margin) {
+      tabScrollRef.current?.scrollTo({ x: Math.max(0, layout.x - margin), animated: true });
+    } else if (layout.x + layout.width > tabScrollX + tabViewportWidth - margin) {
+      const next = Math.min(
+        tabContentWidth - tabViewportWidth,
+        layout.x + layout.width - tabViewportWidth + margin
+      );
+      tabScrollRef.current?.scrollTo({ x: Math.max(0, next), animated: true });
+    }
+  };
+  const selectTab = (key: TabKey) => {
+    setTab(key);
+    requestAnimationFrame(() => scrollTabIntoView(key));
   };
 
   const productId = route?.params?.productId ?? productData?._id;
@@ -828,15 +848,33 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
         {/* Rounded sheet: underline tab row + tab content. */}
         <View style={styles.sheet}>
           <View style={styles.tabRowWrap}>
+            {/* Left/right arrows are real flex siblings of the scrollable tab
+                row, each with their own permanently reserved 48px-wide area --
+                not overlaid on top of the tabs, so a chevron can never crowd
+                or sit over a tab label. Both slots stay mounted at all times
+                (disabled + dimmed at the respective edge, rather than
+                unmounted) so the ScrollView's own viewport width never shifts
+                as the user scrolls -- letting it come and go would move the
+                target the moment scrollTabIntoView finishes computing against
+                it, clipping the very tab that was just selected. */}
+            <TouchableOpacity
+              style={styles.tabArrowBtn}
+              onPress={() => scrollTabsBy(-1)}
+              disabled={!canScrollTabsLeft}
+              accessibilityRole="button"
+              accessibilityLabel={t('lifecyclePrevTabs')}
+              accessibilityState={{ disabled: !canScrollTabsLeft }}
+            >
+              <View style={[styles.tabEdgeHint, !canScrollTabsLeft && styles.tabEdgeHintDisabled]}>
+                <Icon name="chevron-left" size={16} color={canScrollTabsLeft ? colors.primary : colors.placeholder} />
+              </View>
+            </TouchableOpacity>
             <ScrollView
               ref={tabScrollRef}
               horizontal
               showsHorizontalScrollIndicator={false}
               style={styles.tabScrollRow}
-              // Fixed gutter on both edges (not conditional on arrow
-              // visibility) -- a tab button never renders under where an
-              // arrow sits, so the chevron can't crowd/overlap tab text.
-              contentContainerStyle={[styles.tabRow, { paddingLeft: TAB_EDGE_GUTTER, paddingRight: TAB_EDGE_GUTTER }]}
+              contentContainerStyle={styles.tabRow}
               onLayout={(e) => setTabViewportWidth(e.nativeEvent.layout.width)}
               onContentSizeChange={(w) => setTabContentWidth(w)}
               onScroll={(e) => setTabScrollX(e.nativeEvent.contentOffset.x)}
@@ -846,7 +884,10 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
                 <TouchableOpacity
                   key={tb.key}
                   style={[styles.tabBtn, tab === tb.key && styles.tabBtnActive]}
-                  onPress={() => setTab(tb.key)}
+                  onPress={() => selectTab(tb.key)}
+                  onLayout={(e) => {
+                    tabLayoutsRef.current[tb.key] = { x: e.nativeEvent.layout.x, width: e.nativeEvent.layout.width };
+                  }}
                   activeOpacity={0.7}
                   accessibilityRole="tab"
                   accessibilityState={{ selected: tab === tb.key }}
@@ -857,37 +898,18 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
                 </TouchableOpacity>
               ))}
             </ScrollView>
-            {/* Tappable scroll arrows -- five tabs rarely fit on one screen at
-                a readable text size, and a bare horizontal ScrollView gives
-                no clue "Origin & Impact" is still off to the right, nor an
-                obvious way to get there for someone who doesn't think to
-                swipe. Each sits in its own reserved edge gutter (see
-                TAB_EDGE_GUTTER above), never on top of a tab, with a real
-                44px+ touch target even though the visible chip is small. */}
-            {canScrollTabsLeft && (
-              <TouchableOpacity
-                style={[styles.tabEdgeHintTouch, styles.tabEdgeHintTouchLeft]}
-                onPress={() => scrollTabsBy(-1)}
-                accessibilityRole="button"
-                accessibilityLabel={t('lifecyclePrevTabs')}
-              >
-                <View style={styles.tabEdgeHint}>
-                  <Icon name="chevron-left" size={16} color={colors.primary} />
-                </View>
-              </TouchableOpacity>
-            )}
-            {canScrollTabsRight && (
-              <TouchableOpacity
-                style={[styles.tabEdgeHintTouch, styles.tabEdgeHintTouchRight]}
-                onPress={() => scrollTabsBy(1)}
-                accessibilityRole="button"
-                accessibilityLabel={t('lifecycleNextTabs')}
-              >
-                <View style={styles.tabEdgeHint}>
-                  <Icon name="chevron-right" size={16} color={colors.primary} />
-                </View>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+              style={styles.tabArrowBtn}
+              onPress={() => scrollTabsBy(1)}
+              disabled={!canScrollTabsRight}
+              accessibilityRole="button"
+              accessibilityLabel={t('lifecycleNextTabs')}
+              accessibilityState={{ disabled: !canScrollTabsRight }}
+            >
+              <View style={[styles.tabEdgeHint, !canScrollTabsRight && styles.tabEdgeHintDisabled]}>
+                <Icon name="chevron-right" size={16} color={canScrollTabsRight ? colors.primary : colors.placeholder} />
+              </View>
+            </TouchableOpacity>
           </View>
           <ScrollView
             style={styles.tabScroll}
@@ -960,39 +982,35 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 22,
     overflow: 'hidden',
   },
-  tabRowWrap: { position: 'relative' },
-  tabScrollRow: {
+  // A real flex row: [optional left arrow] [scrollable tabs, flex: 1]
+  // [optional right arrow] -- each arrow is a normal layout sibling with its
+  // own reserved width, never an overlay on top of the tab row.
+  tabRowWrap: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    flexGrow: 0,
   },
-  // Each arrow's real touch target: its own reserved edge gutter (see
-  // TAB_EDGE_GUTTER), full tab-row height, at least 44px wide -- well clear
-  // of any tab button, which only ever starts after the gutter.
-  tabEdgeHintTouch: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
+  tabScrollRow: { flex: 1 },
+  // Full-height, >=48px-wide touch target; the round chip inside is just the
+  // visible affordance and can stay smaller than the hit target around it.
+  tabArrowBtn: {
     width: MIN_TOUCH,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  tabEdgeHintTouchLeft: { left: 0 },
-  tabEdgeHintTouchRight: { right: 0 },
-  // The small round chip is just the visible affordance inside that touch
-  // area -- it can stay smaller than the 44px+ hit target around it.
   tabEdgeHint: {
     width: 24,
     height: 24,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceAlt,
     borderWidth: 1,
     borderColor: colors.border,
-    ...shadow(1),
   },
+  tabEdgeHintDisabled: { opacity: 0.35 },
   tabRow: {
     flexDirection: 'row',
     paddingHorizontal: spacing.xs,

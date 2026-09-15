@@ -1550,7 +1550,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
                   {(productData?.pmc_code || productData?.token_id != null) && (
                     <Text style={styles.ovId} numberOfLines={1}>ID: {productData?.pmc_code || productData?.token_id}</Text>
                   )}
-                  <View style={styles.ovAuthBadge}>
+                  <View style={styles.ovAuthBadge} accessible accessibilityLabel={`${t('overviewAuthenticated')}. ${t('lifecycleVerifiedByBrand')}`}>
                     <View style={styles.ovAuthBadgeCheck}><Icon name="check" size={11} color="#fff" /></View>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.ovAuthBadgeTitle}>{t('overviewAuthenticated')}</Text>

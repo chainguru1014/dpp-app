@@ -33,6 +33,24 @@ const TYPE_ICON: Record<string, string> = {
   system: 'star',
 };
 
+// Generic, data-safe description of what a grouped run represents -- kept
+// deliberately vague per type rather than inventing specifics (e.g. no device
+// info) since only the notification's `type` is known at grouping time.
+const TYPE_GROUP_DESCRIPTOR: Record<string, string> = {
+  login_alert: 'sign-ins',
+  lifecycle_updated: 'lifecycle changes',
+  transfer_request: 'ownership requests',
+  transfer_confirmed: 'ownership updates',
+  transfer_rejected: 'ownership updates',
+  transfer_received: 'ownership updates',
+  product_authenticated: 'authentication checks',
+  system: 'updates',
+};
+
+// "Security Alert" -> "Security Alerts" -- naive pluralization is safe here
+// since these are short, admin-authored notification titles.
+const pluralizeGroupTitle = (title: string) => (/s$/i.test(title) ? title : `${title}s`);
+
 const relativeTime = (iso: string) => {
   const d = new Date(iso).getTime();
   if (!d) return '';
@@ -183,13 +201,20 @@ export default function NotificationsScreen({ navigation, user, onLogout }: Prop
                 });
               }
 
-              // Collapsed run: 3+ of the same type+title back to back.
+              // Collapsed run: 3+ of the same type+title back to back. The
+              // group title is pluralized ("Security Alert" -> "Security
+              // Alerts") and paired with a plain-language count subtitle
+              // ("7 recent sign-ins") instead of a bare "(7)" suffix, so the
+              // row explains what was grouped rather than just how many.
               const head = run.items[0];
               const color = LEVEL_COLOR[head.level] || colors.accent;
               const title = humanizeNotificationText(head.title);
+              const pluralTitle = pluralizeGroupTitle(title);
+              const descriptor = TYPE_GROUP_DESCRIPTOR[head.type] || 'updates';
               const anyUnread = run.items.some((n) => !n.read);
               const isOpen = openRunKey === run.key;
-              const summaryLabel = `${title} (${run.items.length})`;
+              const summarySubtitle = `${run.items.length} recent ${descriptor}`;
+              const summaryA11yLabel = `${pluralTitle}, ${run.items.length} notifications${anyUnread ? ', unread' : ''}`;
               return (
                 <View key={run.key}>
                   <TouchableOpacity
@@ -197,7 +222,7 @@ export default function NotificationsScreen({ navigation, user, onLogout }: Prop
                     activeOpacity={0.8}
                     onPress={() => setOpenRunKey(isOpen ? null : run.key)}
                     accessibilityRole="button"
-                    accessibilityLabel={`${anyUnread ? 'Unread. ' : ''}${summaryLabel}`}
+                    accessibilityLabel={summaryA11yLabel}
                     accessibilityState={{ expanded: isOpen }}
                   >
                     <View style={[styles.iconBubble, { backgroundColor: `${color}22` }]}>
@@ -206,9 +231,9 @@ export default function NotificationsScreen({ navigation, user, onLogout }: Prop
                     <View style={styles.info}>
                       <View style={styles.titleRow}>
                         {anyUnread && <View style={styles.unreadDot} />}
-                        <Text style={[styles.title, anyUnread && styles.titleUnread]} numberOfLines={1}>{summaryLabel}</Text>
+                        <Text style={[styles.title, anyUnread && styles.titleUnread]} numberOfLines={1}>{pluralTitle}</Text>
                       </View>
-                      <Text style={styles.message} numberOfLines={1}>{relativeTime(head.createdAt)}</Text>
+                      <Text style={styles.message} numberOfLines={1}>{summarySubtitle}</Text>
                     </View>
                     <Icon name={isOpen ? 'expand-less' : 'expand-more'} size={22} color={colors.muted} />
                   </TouchableOpacity>

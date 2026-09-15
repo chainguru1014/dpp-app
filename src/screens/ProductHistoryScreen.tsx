@@ -163,6 +163,7 @@ export default function ProductHistoryScreen({ navigation, route, user, onLogout
                   // it's displayed.
                   const newest = new Date(run.items[0].scanned_at);
                   const summaryLabel = `${title} ${t('timesSuffix').replace('{count}', String(run.items.length))}`;
+                  const summaryA11yLabel = `${summaryLabel}, ${newest.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}`;
                   return (
                     <View key={run.key}>
                       <TouchableOpacity
@@ -170,7 +171,7 @@ export default function ProductHistoryScreen({ navigation, route, user, onLogout
                         activeOpacity={0.7}
                         onPress={() => setOpenRunKey(isOpen ? null : run.key)}
                         accessibilityRole="button"
-                        accessibilityLabel={summaryLabel}
+                        accessibilityLabel={summaryA11yLabel}
                         accessibilityState={{ expanded: isOpen }}
                       >
                         <View style={styles.railCol}>
