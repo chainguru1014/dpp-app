@@ -147,11 +147,11 @@ function TumbleDryIcon({ dots, selected, colorOverride }: TumbleDryIconProps) {
 }
 
 const MAINTENANCE_ICON_CONFIG = [
-  { id: 'wash_30', label: 'Wash 30', render: (s: boolean, c?: string) => <WashIcon temp={30} selected={s} colorOverride={c} /> },
-  { id: 'wash_40', label: 'Wash 40', render: (s: boolean, c?: string) => <WashIcon temp={40} selected={s} colorOverride={c} /> },
-  { id: 'wash_50', label: 'Wash 50', render: (s: boolean, c?: string) => <WashIcon temp={50} selected={s} colorOverride={c} /> },
-  { id: 'wash_60', label: 'Wash 60', render: (s: boolean, c?: string) => <WashIcon temp={60} selected={s} colorOverride={c} /> },
-  { id: 'wash_70', label: 'Wash 70', render: (s: boolean, c?: string) => <WashIcon temp={70} selected={s} colorOverride={c} /> },
+  { id: 'wash_30', label: 'Wash up to 30°C', render: (s: boolean, c?: string) => <WashIcon temp={30} selected={s} colorOverride={c} /> },
+  { id: 'wash_40', label: 'Wash up to 40°C', render: (s: boolean, c?: string) => <WashIcon temp={40} selected={s} colorOverride={c} /> },
+  { id: 'wash_50', label: 'Wash up to 50°C', render: (s: boolean, c?: string) => <WashIcon temp={50} selected={s} colorOverride={c} /> },
+  { id: 'wash_60', label: 'Wash up to 60°C', render: (s: boolean, c?: string) => <WashIcon temp={60} selected={s} colorOverride={c} /> },
+  { id: 'wash_70', label: 'Wash up to 70°C', render: (s: boolean, c?: string) => <WashIcon temp={70} selected={s} colorOverride={c} /> },
   { id: 'dry_clean_P', label: 'Dry clean P', render: (s: boolean, c?: string) => <DryCleanIcon letter="P" selected={s} colorOverride={c} /> },
   { id: 'dry_clean_F', label: 'Dry clean F', render: (s: boolean, c?: string) => <DryCleanIcon letter="F" selected={s} colorOverride={c} /> },
   { id: 'iron_low', label: 'Iron low', render: (s: boolean, c?: string) => <IronIcon dots={1} selected={s} colorOverride={c} /> },

@@ -184,7 +184,10 @@ export default function OtpSignIn({ onSuccess, onError, mode }: OtpSignInProps) 
             accessibilityState={{ disabled: requesting, busy: requesting }}
           >
             {requesting ? (
-              <ActivityIndicator color={colors.white} />
+              <View style={styles.buttonLoadingRow}>
+                <ActivityIndicator color={colors.white} size="small" />
+                <Text style={styles.buttonText}>{t('otpSendingCode')}</Text>
+              </View>
             ) : (
               <Text style={styles.buttonText}>{mode === 'signup' ? t('createAccount') : t('otpSendCode')}</Text>
             )}
@@ -229,7 +232,10 @@ export default function OtpSignIn({ onSuccess, onError, mode }: OtpSignInProps) 
             accessibilityState={{ disabled: verifying, busy: verifying }}
           >
             {verifying ? (
-              <ActivityIndicator color={colors.white} />
+              <View style={styles.buttonLoadingRow}>
+                <ActivityIndicator color={colors.white} size="small" />
+                <Text style={styles.buttonText}>{t('otpVerifyingCode')}</Text>
+              </View>
             ) : (
               <Text style={styles.buttonText}>{t('otpVerify')}</Text>
             )}
@@ -318,6 +324,7 @@ const styles = StyleSheet.create({
   buttonDisabled: {
     opacity: 0.6,
   },
+  buttonLoadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   buttonText: {
     color: colors.white,
     fontSize: 18,

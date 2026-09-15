@@ -574,7 +574,10 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
           securityPassed: true,
         });
       } else {
-        notify(t('error'), data.message || t('scanCodeNotRecognized'));
+        // Not the raw backend `data.message` -- it can carry technical
+        // wording (e.g. "identifier not registered"). This failure only
+        // ever means one thing to the user either way.
+        notify(t('error'), t('scanCodeNotRecognized'));
         if (isMountedRef.current) {
           setLoading(false);
         }

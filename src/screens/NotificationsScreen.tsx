@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import AppLayout from '../components/AppLayout';
+import AppLayout, { useBottomBarSpace } from '../components/AppLayout';
 import NotificationDetailModal from '../components/NotificationDetailModal';
 import { API_BASE_URL } from '../config/api';
 import { useI18n } from '../i18n/I18nContext';
@@ -48,6 +48,7 @@ const relativeTime = (iso: string) => {
 
 export default function NotificationsScreen({ navigation, user, onLogout }: Props) {
   const { t } = useI18n();
+  const bottomBarSpace = useBottomBarSpace();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<any>(null);
@@ -128,7 +129,7 @@ export default function NotificationsScreen({ navigation, user, onLogout }: Prop
         ) : items.length === 0 ? (
           <View style={styles.empty}><Text style={styles.emptyText}>{t('noNotifications')}</Text></View>
         ) : (
-          <ScrollView contentContainerStyle={styles.list}>
+          <ScrollView contentContainerStyle={[styles.list, { paddingBottom: spacing.lg + bottomBarSpace }]}>
             {items.map((item, idx) => {
               const color = LEVEL_COLOR[item.level] || colors.accent;
               const title = humanizeNotificationText(item.title);
@@ -192,7 +193,10 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     ...shadow(1),
   },
-  rowUnread: { borderColor: colors.accent, backgroundColor: '#f4f8ff' },
+  // Was a strong accent-coloured border -- made every card look "selected"
+  // or urgent regardless of what it actually was. Unread state now reads
+  // from the dot + bold title + this subtle tint alone, not a heavy border.
+  rowUnread: { backgroundColor: '#f4f8ff' },
   iconBubble: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
   info: { flex: 1 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },

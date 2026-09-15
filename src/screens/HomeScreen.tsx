@@ -17,8 +17,7 @@ import { ProductRow, SectionCard } from '../components/ProductListParts';
 import { useI18n } from '../i18n/I18nContext';
 import { API_BASE_URL } from '../config/api';
 import { colors, radius, spacing, shadow, MIN_TOUCH } from '../theme';
-
-const SEEN_SCAN_HELP_KEY = 'seenHomeScanHelp';
+import { SEEN_SCAN_HELP_KEY } from '../constants/storageKeys';
 
 interface HomeScreenProps {
   navigation: any;
@@ -43,11 +42,13 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
   // via the existing AsyncStorage-backed local-state pattern used elsewhere.
   const [showScanHelp, setShowScanHelp] = useState(false);
 
-  React.useEffect(() => {
-    AsyncStorage.getItem(SEEN_SCAN_HELP_KEY)
-      .then((v) => setShowScanHelp(!v))
-      .catch(() => {});
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      AsyncStorage.getItem(SEEN_SCAN_HELP_KEY)
+        .then((v) => setShowScanHelp(!v))
+        .catch(() => {});
+    }, [])
+  );
 
   const dismissScanHelp = () => {
     setShowScanHelp(false);
@@ -165,7 +166,10 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
         )}
 
         {loading ? (
-          <ActivityIndicator size="large" color={colors.accent} style={{ marginTop: spacing.xl }} />
+          <View style={styles.loadingRow} accessible accessibilityLabel={t('loadingActivity')}>
+            <ActivityIndicator size="small" color={colors.accent} />
+            <Text style={styles.loadingRowText}>{t('loadingActivity')}</Text>
+          </View>
         ) : (
           <>
             <SectionCard
@@ -268,6 +272,8 @@ const styles = StyleSheet.create({
     ...shadow(1),
   },
   heroBtnText: { color: '#fff', fontSize: 19, fontWeight: '700' },
+  loadingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xl, paddingVertical: spacing.md, justifyContent: 'center' },
+  loadingRowText: { fontSize: 17, color: colors.muted },
   helpCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,

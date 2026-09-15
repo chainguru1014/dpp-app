@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useFocusEffect } from '@react-navigation/native';
-import AppLayout from '../components/AppLayout';
+import AppLayout, { useBottomBarSpace } from '../components/AppLayout';
 import { API_BASE_URL } from '../config/api';
 import { useI18n } from '../i18n/I18nContext';
 import { colors, spacing, radius, shadow, MIN_TOUCH } from '../theme';
@@ -34,6 +34,7 @@ interface Row {
 
 export default function HistoryScreen({ navigation, user, onLogout }: Props) {
   const { t } = useI18n();
+  const bottomBarSpace = useBottomBarSpace();
   const [tab, setTab] = useState<TabKey>('scanned');
   const [loading, setLoading] = useState(true);
   const [scanned, setScanned] = useState<Row[]>([]);
@@ -122,7 +123,7 @@ export default function HistoryScreen({ navigation, user, onLogout }: Props) {
           {([
             { key: 'scanned' as const, label: t('historyTabScanned') },
             { key: 'purchased' as const, label: t('historyTabPurchased') },
-            { key: 'cancelled' as const, label: t('historyTabCancelled') },
+            { key: 'cancelled' as const, label: t('historyTabCancelledRequests') },
           ]).map((tb) => (
             <TouchableOpacity
               key={tb.key}
@@ -143,7 +144,7 @@ export default function HistoryScreen({ navigation, user, onLogout }: Props) {
         ) : rows.length === 0 ? (
           <View style={styles.empty}><Text style={styles.emptyText}>{t('noHistoryYet')}</Text></View>
         ) : (
-          <ScrollView contentContainerStyle={styles.list}>
+          <ScrollView contentContainerStyle={[styles.list, { paddingBottom: spacing.lg + bottomBarSpace }]}>
             {rows.map((row) => (
               <TouchableOpacity
                 key={row.key}

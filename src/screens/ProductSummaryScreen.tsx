@@ -86,9 +86,15 @@ export default function ProductSummaryScreen({ navigation, route, user, onLogout
           </View>
           <View style={styles.headerInfo}>
             <Text style={styles.name} numberOfLines={2}>{product?.name || '—'}</Text>
-            <View style={styles.verifiedRow}>
-              <Icon name="verified" size={15} color={colors.primary} />
-              <Text style={styles.verifiedText}>{t('summaryVerified')}</Text>
+            {/* Same "Genuine product / Verified by Yometel" pairing used on
+                Product Overview and the Lifecycle header -- one consistent
+                authenticity badge across the app. */}
+            <View style={styles.verifiedBadge}>
+              <View style={styles.verifiedCheck}><Icon name="check" size={11} color="#fff" /></View>
+              <View>
+                <Text style={styles.verifiedTitle}>{t('overviewAuthenticated')}</Text>
+                <Text style={styles.verifiedSub}>{t('lifecycleVerifiedByBrand')}</Text>
+              </View>
             </View>
             {owned && !!addedDate && (
               <Text style={styles.metaLine} numberOfLines={1}>{t('summaryOwnedSince')} {fmt(addedDate)}</Text>
@@ -154,8 +160,17 @@ const styles = StyleSheet.create({
   thumb: { width: 140, height: 140, borderRadius: radius.md, backgroundColor: colors.surfaceAlt },
   thumbPlaceholder: { alignItems: 'center', justifyContent: 'center' },
   name: { fontSize: 26, fontWeight: '700', color: colors.heading },
-  verifiedRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 5 },
-  verifiedText: { fontSize: 18, fontWeight: '600', color: colors.primary },
+  verifiedBadge: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 6 },
+  verifiedCheck: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  verifiedTitle: { fontSize: 17, fontWeight: '700', color: colors.heading },
+  verifiedSub: { fontSize: 16, color: colors.muted, marginTop: 1 },
   metaLine: { fontSize: 18, color: colors.muted, marginTop: 4, lineHeight: 24 },
   card: {
     backgroundColor: colors.surface,

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Image, Platform, Alert, Modal } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import Clipboard from '@react-native-clipboard/clipboard';
-import AppLayout from '../components/AppLayout';
+import AppLayout, { useBottomBarSpace } from '../components/AppLayout';
 import MediaSlider from '../components/MediaSlider';
 import VideoPlayerModal from '../components/VideoPlayerModal';
 import { saveTextFile, safeFileBaseName } from '../utils/saveTextFile';
@@ -56,6 +56,14 @@ const CARE_TIP_BY_ICON: Record<string, { primary: string; detail?: string }> = {
   bleach_any: { primary: 'Any bleach may be used when needed.' },
   tumble_dry_low: { primary: 'Tumble dry on low heat.' },
   tumble_dry_high: { primary: 'Tumble dry on a normal / high setting.' },
+};
+
+// "25kg" -> "25 kg". Purely a spacing fix -- the backend value's unit is
+// whatever it is (kg, %, etc.); this never invents or changes the unit
+// itself, just inserts the space a number-glued-to-letters string is missing.
+const formatUnitSpacing = (raw: string): string => {
+  if (!raw) return raw;
+  return raw.replace(/^(\s*[\d.,]+)\s*([a-zA-Zµ].*)$/, '$1 $2').trim();
 };
 
 const toArray = (v: any): any[] => (v == null ? [] : Array.isArray(v) ? v : typeof v === 'object' ? Object.values(v) : [v]);
@@ -114,6 +122,7 @@ function Row({ label, value, icon, chevron, onPress }: { label: string; value: s
 
 export default function ProductLifecycleScreen({ navigation, route, user, onLogout }: Props) {
   const { t } = useI18n();
+  const bottomBarSpace = useBottomBarSpace();
   const [productData, setProductData] = useState<any>(route?.params?.productData || {});
   const [tab, setTab] = useState<TabKey>('journey');
   // Journey stages are all collapsed by default — a down-chevron invites the tap.
@@ -125,6 +134,13 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
   const [infoDialog, setInfoDialog] = useState<{ title: string; body: string } | null>(null);
   const [isInAlbum, setIsInAlbum] = useState(false);
   const [isBrandFollowed, setIsBrandFollowed] = useState(false);
+  // Drives the left/right scroll-edge hints on the tab row (see Priority 2:
+  // a plain horizontal ScrollView gives no clue more tabs are off-screen).
+  const [tabViewportWidth, setTabViewportWidth] = useState(0);
+  const [tabContentWidth, setTabContentWidth] = useState(0);
+  const [tabScrollX, setTabScrollX] = useState(0);
+  const canScrollTabsRight = tabContentWidth - tabViewportWidth - tabScrollX > 4;
+  const canScrollTabsLeft = tabScrollX > 4;
 
   const productId = route?.params?.productId ?? productData?._id;
   const qrcodeId = route?.params?.qrcodeId ?? productData?.token_id;
@@ -327,7 +343,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
         [t('lifecycleCountryOfManufacture'), originCountry],
         [t('factManufactureDate'), productData?.manufactureDate || ''],
         [t('summaryBrand'), productData?.brandInfo?.name || ''],
-        [t('co2Production'), esg.co2Production || ''],
+        [t('co2Production'), formatUnitSpacing(esg.co2Production || '')],
       ].filter(([, v]) => !!v) as [string, string][];
       if (!rows.length) return null;
       return (
@@ -345,7 +361,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
           <Row label={t('lifecycleShippingDistance')} value={esg.distance || ''} />
           <Row label={t('lifecycleRoute')} value={route} />
           <Row label={t('lifecycleTransportMode')} value={routeInfo.mode || ''} />
-          <Row label={t('lifecycleEstEmissions')} value={routeInfo.emissions || esg.co2Transportation || ''} />
+          <Row label={t('lifecycleEstEmissions')} value={formatUnitSpacing(routeInfo.emissions || esg.co2Transportation || '')} />
         </View>
       );
     }
@@ -690,7 +706,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
                 <View style={styles.jDetail}>
                   <Row label={t('lifecycleShippingLogLabel')} value={esg.shippingLog || ''} />
                   <Row label={t('lifecycleShippingDistance')} value={esg.distance || ''} />
-                  <Row label={t('lifecycleEstEmissions')} value={routeInfo.emissions || esg.co2Transportation || ''} />
+                  <Row label={t('lifecycleEstEmissions')} value={formatUnitSpacing(routeInfo.emissions || esg.co2Transportation || '')} />
                 </View>
               )}
             </>
@@ -699,8 +715,8 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
       </View>
       <View style={styles.card}>
         <Text style={styles.cardTitle}>{t('lifecycleEnvImpact')}</Text>
-        <Row icon="cloud" label={t('co2Production')} value={esg.co2Production || ''} />
-        <Row icon="local-shipping" label={t('co2Transportation')} value={routeInfo.emissions || esg.co2Transportation || ''} />
+        <Row icon="cloud" label={t('co2Production')} value={formatUnitSpacing(esg.co2Production || '')} />
+        <Row icon="local-shipping" label={t('co2Transportation')} value={formatUnitSpacing(routeInfo.emissions || esg.co2Transportation || '')} />
       </View>
       <TouchableOpacity
         style={styles.leafCard}
@@ -799,28 +815,51 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
 
         {/* Rounded sheet: underline tab row + tab content. */}
         <View style={styles.sheet}>
+          <View style={styles.tabRowWrap}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.tabScrollRow}
+              contentContainerStyle={styles.tabRow}
+              onLayout={(e) => setTabViewportWidth(e.nativeEvent.layout.width)}
+              onContentSizeChange={(w) => setTabContentWidth(w)}
+              onScroll={(e) => setTabScrollX(e.nativeEvent.contentOffset.x)}
+              scrollEventThrottle={32}
+            >
+              {TABS.map((tb) => (
+                <TouchableOpacity
+                  key={tb.key}
+                  style={[styles.tabBtn, tab === tb.key && styles.tabBtnActive]}
+                  onPress={() => setTab(tb.key)}
+                  activeOpacity={0.7}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: tab === tb.key }}
+                  accessibilityLabel={t(tb.labelKey as any)}
+                >
+                  <Text style={[styles.tabText, tab === tb.key && styles.tabTextActive]} numberOfLines={2}>{t(tb.labelKey as any)}</Text>
+                  {tab === tb.key && <View style={styles.tabUnderline} />}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            {/* Scroll-edge hints -- five tabs rarely fit on one screen at a
+                readable text size, and a plain horizontal ScrollView gives no
+                clue that "Origin & Impact" is still off to the right. */}
+            {canScrollTabsLeft && (
+              <View style={[styles.tabEdgeHint, styles.tabEdgeHintLeft]} pointerEvents="none">
+                <Icon name="chevron-left" size={16} color={colors.primary} />
+              </View>
+            )}
+            {canScrollTabsRight && (
+              <View style={[styles.tabEdgeHint, styles.tabEdgeHintRight]} pointerEvents="none">
+                <Icon name="chevron-right" size={16} color={colors.primary} />
+              </View>
+            )}
+          </View>
           <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.tabScrollRow}
-            contentContainerStyle={styles.tabRow}
+            style={styles.tabScroll}
+            contentContainerStyle={[styles.tabScrollContent, { paddingBottom: spacing.lg + bottomBarSpace }]}
+            showsVerticalScrollIndicator={false}
           >
-            {TABS.map((tb) => (
-              <TouchableOpacity
-                key={tb.key}
-                style={[styles.tabBtn, tab === tb.key && styles.tabBtnActive]}
-                onPress={() => setTab(tb.key)}
-                activeOpacity={0.7}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: tab === tb.key }}
-                accessibilityLabel={t(tb.labelKey as any)}
-              >
-                <Text style={[styles.tabText, tab === tb.key && styles.tabTextActive]} numberOfLines={2}>{t(tb.labelKey as any)}</Text>
-                {tab === tb.key && <View style={styles.tabUnderline} />}
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-          <ScrollView style={styles.tabScroll} contentContainerStyle={styles.tabScrollContent} showsVerticalScrollIndicator={false}>
             {renderTab()}
           </ScrollView>
         </View>
@@ -886,12 +925,34 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 22,
     overflow: 'hidden',
   },
+  tabRowWrap: { position: 'relative' },
   tabScrollRow: {
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     flexGrow: 0,
   },
+  // Small round chevron chips floating over the scrollable tab row's edges --
+  // shown only while there's actually more content that way (see
+  // canScrollTabsLeft/Right). A subtle centred chip rather than a full-height
+  // mask, so it reads as "more this way" rather than a hard visual cut.
+  // pointerEvents: 'none' so it never blocks a tap on the tab underneath.
+  tabEdgeHint: {
+    position: 'absolute',
+    top: '50%',
+    marginTop: -12,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadow(1),
+  },
+  tabEdgeHintLeft: { left: 2 },
+  tabEdgeHintRight: { right: 2 },
   tabRow: {
     flexDirection: 'row',
     paddingHorizontal: spacing.xs,
@@ -919,7 +980,9 @@ const styles = StyleSheet.create({
     borderRadius: 1.5,
   },
   tabScroll: { flex: 1 },
-  tabScrollContent: { padding: spacing.lg, paddingBottom: spacing.xxxl },
+  // paddingBottom is overridden inline per-render with the real bottom-bar
+  // height (see useBottomBarSpace) so the last card always clears it.
+  tabScrollContent: { padding: spacing.lg },
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,

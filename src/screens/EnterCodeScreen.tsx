@@ -48,7 +48,11 @@ export default function EnterCodeScreen({ navigation, route, user, onLogout }: E
         securityPassed: true,
       });
     } catch (err: any) {
-      setError(err?.message || t('failedToDecryptProduct'));
+      // Not `err?.message` -- that can be a raw backend string (e.g. "This
+      // identifier has not been registered to a product yet") or a network
+      // error's technical message. This failure only ever means one thing to
+      // the user: no product was found for what they typed.
+      setError(t('enterCodeNotFound'));
     } finally {
       setLoading(false);
     }

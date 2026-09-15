@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Dimensions } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { useI18n } from '../i18n/I18nContext';
 import { colors, shadow } from '../theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -66,6 +67,8 @@ export default function MediaSlider({
   onPlayVideo,
   onDark = false,
 }: MediaSliderProps) {
+  const { t } = useI18n();
+  const noImageLabel = t('noImage');
   const [pageWidth, setPageWidth] = useState(SCREEN_WIDTH);
   const [active, setActive] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
@@ -96,7 +99,31 @@ export default function MediaSlider({
     setActive(i);
   };
 
-  if (slides.length === 0) return null;
+  // Never leave a bare empty card behind -- an intentional placeholder reads
+  // as "no photo for this product" instead of "something didn't load".
+  if (slides.length === 0) {
+    return (
+      <View style={[styles.container, flush && styles.containerFlush]}>
+        {!hideHeader && (name || model || pmcCode) ? (
+          <View style={styles.textHeader}>
+            {!!name && <Text style={styles.productName}>{name}</Text>}
+            {!!model && <Text style={styles.productModel}>{model}</Text>}
+            {!!pmcCode && <Text style={styles.pmcBadge}>ID: {pmcCode}</Text>}
+          </View>
+        ) : null}
+        <View style={[styles.slidePage, { paddingHorizontal: pad }]}>
+          <View
+            style={[styles.imageCard, flush && styles.imageCardFlush, styles.emptyImageCard, { height: Math.min(imageHeight, 180) }]}
+            accessible
+            accessibilityLabel={noImageLabel}
+          >
+            <Icon name="image" size={36} color={colors.placeholder} />
+            <Text style={styles.emptyImageText}>{noImageLabel}</Text>
+          </View>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View
@@ -199,6 +226,8 @@ const styles = StyleSheet.create({
   container: { paddingTop: 12 },
   containerFlush: { paddingTop: 0 },
   imageCardFlush: { borderWidth: 0, shadowOpacity: 0, elevation: 0 },
+  emptyImageCard: { alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceAlt, gap: 6 },
+  emptyImageText: { fontSize: 16, color: colors.muted },
   textHeader: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12, alignItems: 'center' },
   productName: { fontSize: 27, fontWeight: '400', color: colors.primary, marginBottom: 5, textAlign: 'center' },
   productModel: { fontSize: 22, color: colors.muted, textAlign: 'center' },

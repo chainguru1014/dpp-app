@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import AppLayout from '../components/AppLayout';
+import AppLayout, { useBottomBarSpace } from '../components/AppLayout';
 import { API_BASE_URL } from '../config/api';
 import { useI18n } from '../i18n/I18nContext';
 import { colors, spacing, radius, shadow, MIN_TOUCH } from '../theme';
@@ -29,6 +29,7 @@ const locationLine = (loc?: Event['location']) => {
 
 export default function ProductHistoryScreen({ navigation, route, user, onLogout }: Props) {
   const { t } = useI18n();
+  const bottomBarSpace = useBottomBarSpace();
   const productId = route?.params?.productId;
   const name = route?.params?.name || route?.params?.product?.name || t('homeProduct');
   const [tab, setTab] = useState<TabKey>('all');
@@ -55,18 +56,29 @@ export default function ProductHistoryScreen({ navigation, route, user, onLogout
     })();
   }, [user?._id, productId]);
 
+  // Consecutive events of the same kind (e.g. three "Viewed product" in a
+  // row) collapse into one summary row -- purely a display grouping, every
+  // underlying event is still in `events` and shown individually on expand.
+  const [openRunKey, setOpenRunKey] = useState<string | null>(null);
+  type Run = { key: string; source: Event['source']; items: Event[] };
+
   const grouped = useMemo(() => {
     const filtered = tab === 'all' ? events : events.filter((e) => e.source === (tab === 'scanned' ? 'scan' : 'visit'));
-    const groups: { label: string; items: Event[] }[] = [];
-    filtered.forEach((e) => {
+    const groups: { label: string; runs: Run[] }[] = [];
+    filtered.forEach((e, idx) => {
       const d = new Date(e.scanned_at);
       const label = d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
       let g = groups.find((x) => x.label === label);
       if (!g) {
-        g = { label, items: [] };
+        g = { label, runs: [] };
         groups.push(g);
       }
-      g.items.push(e);
+      const lastRun = g.runs[g.runs.length - 1];
+      if (lastRun && lastRun.source === e.source) {
+        lastRun.items.push(e);
+      } else {
+        g.runs.push({ key: `${label}-${idx}`, source: e.source, items: [e] });
+      }
     });
     return groups;
   }, [events, tab]);
@@ -106,45 +118,89 @@ export default function ProductHistoryScreen({ navigation, route, user, onLogout
         ) : grouped.length === 0 ? (
           <View style={styles.empty}><Text style={styles.emptyText}>{t('noHistoryYet')}</Text></View>
         ) : (
-          <ScrollView contentContainerStyle={styles.list}>
+          <ScrollView contentContainerStyle={[styles.list, { paddingBottom: spacing.lg + bottomBarSpace }]}>
             {grouped.map((group) => (
               <View key={group.label}>
                 <Text style={styles.groupLabel}>{group.label}</Text>
-                {group.items.map((e, idx) => {
-                  const isScan = e.source === 'scan';
-                  const d = new Date(e.scanned_at);
-                  const loc = locationLine(e.location);
-                  const last = idx === group.items.length - 1;
-                  return (
-                    <View
-                      key={e._id}
-                      style={styles.row}
-                      accessible
-                      accessibilityLabel={[
-                        isScan ? t('productHistoryScanned') : t('productHistoryVisited'),
-                        d.toLocaleDateString(),
-                        loc,
-                      ].filter(Boolean).join(', ')}
-                    >
-                      <View style={styles.railCol}>
-                        {!last && <View style={styles.rail} />}
-                        <View style={[styles.iconBubble, { backgroundColor: isScan ? '#e7f0fb' : '#e6f4ea' }]}>
-                          <Icon
-                            name={isScan ? 'qr-code-scanner' : 'place'}
-                            size={26}
-                            color={isScan ? colors.primary : colors.success}
-                          />
+                {group.runs.map((run, runIdx) => {
+                  const isScan = run.source === 'scan';
+                  const title = isScan ? t('productHistoryScanned') : t('productHistoryVisited');
+                  const lastRun = runIdx === group.runs.length - 1;
+                  const isCollapsedRun = run.items.length > 1;
+                  const isOpen = openRunKey === run.key;
+
+                  if (!isCollapsedRun) {
+                    const e = run.items[0];
+                    const d = new Date(e.scanned_at);
+                    const loc = locationLine(e.location);
+                    return (
+                      <View
+                        key={e._id}
+                        style={styles.row}
+                        accessible
+                        accessibilityLabel={[title, d.toLocaleDateString(), loc].filter(Boolean).join(', ')}
+                      >
+                        <View style={styles.railCol}>
+                          {!lastRun && <View style={styles.rail} />}
+                          <View style={[styles.iconBubble, { backgroundColor: isScan ? '#e7f0fb' : '#e6f4ea' }]}>
+                            <Icon name={isScan ? 'qr-code-scanner' : 'visibility'} size={26} color={isScan ? colors.primary : colors.success} />
+                          </View>
+                        </View>
+                        <View style={styles.info}>
+                          <Text style={styles.eventTitle}>{title}</Text>
+                          <Text style={styles.eventMeta}>
+                            {d.toLocaleDateString()} · {d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </Text>
+                          {!!loc && <Text style={styles.eventLoc}>{loc}</Text>}
                         </View>
                       </View>
-                      <View style={styles.info}>
-                        <Text style={styles.eventTitle}>
-                          {isScan ? t('productHistoryScanned') : t('productHistoryVisited')}
-                        </Text>
-                        <Text style={styles.eventMeta}>
-                          {d.toLocaleDateString()} · {d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </Text>
-                        {!!loc && <Text style={styles.eventLoc}>{loc}</Text>}
-                      </View>
+                    );
+                  }
+
+                  // Collapsed run: several of the same kind back to back --
+                  // one summary row, expandable to the individual timestamps.
+                  // Nothing is deleted from `events`; this only changes how
+                  // it's displayed.
+                  const newest = new Date(run.items[0].scanned_at);
+                  const summaryLabel = `${title} ${t('timesSuffix').replace('{count}', String(run.items.length))}`;
+                  return (
+                    <View key={run.key}>
+                      <TouchableOpacity
+                        style={styles.row}
+                        activeOpacity={0.7}
+                        onPress={() => setOpenRunKey(isOpen ? null : run.key)}
+                        accessibilityRole="button"
+                        accessibilityLabel={summaryLabel}
+                        accessibilityState={{ expanded: isOpen }}
+                      >
+                        <View style={styles.railCol}>
+                          {!lastRun && <View style={styles.rail} />}
+                          <View style={[styles.iconBubble, { backgroundColor: isScan ? '#e7f0fb' : '#e6f4ea' }]}>
+                            <Icon name={isScan ? 'qr-code-scanner' : 'visibility'} size={26} color={isScan ? colors.primary : colors.success} />
+                          </View>
+                        </View>
+                        <View style={styles.info}>
+                          <Text style={styles.eventTitle}>{summaryLabel}</Text>
+                          <Text style={styles.eventMeta}>{newest.toLocaleDateString()}</Text>
+                        </View>
+                        <Icon name={isOpen ? 'expand-less' : 'expand-more'} size={22} color={colors.muted} />
+                      </TouchableOpacity>
+                      {isOpen && (
+                        <View style={styles.runDetail}>
+                          {run.items.map((e) => {
+                            const d = new Date(e.scanned_at);
+                            const loc = locationLine(e.location);
+                            return (
+                              <View key={e._id} style={styles.runDetailRow}>
+                                <Text style={styles.runDetailTime}>
+                                  {d.toLocaleDateString()} · {d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </Text>
+                                {!!loc && <Text style={styles.runDetailLoc}>{loc}</Text>}
+                              </View>
+                            );
+                          })}
+                        </View>
+                      )}
                     </View>
                   );
                 })}
@@ -188,4 +244,14 @@ const styles = StyleSheet.create({
   eventTitle: { fontSize: 20, fontWeight: '600', color: colors.heading },
   eventMeta: { fontSize: 18, color: colors.muted, marginTop: 3 },
   eventLoc: { fontSize: 18, color: colors.muted, marginTop: 2 },
+  runDetail: {
+    marginLeft: 52 + spacing.md,
+    marginBottom: spacing.sm,
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.md,
+    padding: spacing.md,
+  },
+  runDetailRow: { paddingVertical: 4 },
+  runDetailTime: { fontSize: 17, color: colors.text },
+  runDetailLoc: { fontSize: 16, color: colors.muted, marginTop: 1 },
 });

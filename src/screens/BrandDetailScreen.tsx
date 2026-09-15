@@ -144,15 +144,14 @@ export default function BrandDetailScreen({ navigation, route, user, onLogout }:
       onShare={() => setIntroVisible(true)}
     >
       <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
-        {coverUrl ? (
+        {/* No large placeholder hero when there's no cover image -- that just
+            reserves 210px of blank space for nothing. Skip straight to a
+            compact header instead. */}
+        {!!coverUrl && (
           <Image source={{ uri: fileUrl(coverUrl) }} style={styles.cover} resizeMode="cover" />
-        ) : (
-          <View style={[styles.cover, styles.coverPlaceholder]}>
-            <Icon name="image" size={30} color="rgba(255,255,255,0.7)" />
-          </View>
         )}
 
-        <View style={styles.headerCard}>
+        <View style={[styles.headerCard, !coverUrl && styles.headerCardNoCover]}>
           <View style={styles.headerTop}>
             {logoUrl ? (
               <Image source={{ uri: fileUrl(logoUrl) }} style={styles.logo} resizeMode="contain" />
@@ -170,7 +169,7 @@ export default function BrandDetailScreen({ navigation, route, user, onLogout }:
               onPress={toggleFollow}
               activeOpacity={0.8}
               accessibilityRole="button"
-              accessibilityLabel={following ? t('unfollowBrand') : t('followBrand')}
+              accessibilityLabel={`${following ? t('unfollowBrand') : t('followBrand')} ${brand.name || ''}`.trim()}
               accessibilityState={{ selected: following }}
             >
               <Text style={[styles.followBtnText, following && styles.followBtnTextActive]}>
@@ -328,7 +327,6 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   container: { paddingBottom: spacing.xxxl },
   cover: { width: '100%', height: 210, backgroundColor: colors.surfaceAlt },
-  coverPlaceholder: { backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   headerCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
@@ -341,6 +339,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     ...shadow(2),
   },
+  headerCardNoCover: { marginTop: spacing.lg },
   headerTop: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' },
   logo: { width: 56, height: 56, borderRadius: radius.md },
   logoPlaceholder: { backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },

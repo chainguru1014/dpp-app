@@ -13,35 +13,49 @@
 // These notification messages never have real trailing content after the UA.
 const UA_PATTERN = /Mozilla\/[\s\S]*/i;
 
-function describeDevice(ua: string): string {
-  const isIPhone = /iPhone/i.test(ua);
-  const isIPad = /iPad/i.test(ua);
-  const isAndroid = /Android/i.test(ua);
-  const isMac = /Macintosh/i.test(ua);
-  const isWindows = /Windows/i.test(ua);
-  const isLinux = /Linux/i.test(ua) && !isAndroid;
-
-  let device = 'a device';
-  if (isIPhone) device = 'an iPhone';
-  else if (isIPad) device = 'an iPad';
-  else if (isAndroid) device = 'an Android device';
-  else if (isMac) device = 'a Mac';
-  else if (isWindows) device = 'a Windows PC';
-  else if (isLinux) device = 'a Linux device';
-
-  let browser = '';
-  if (/Edg\//i.test(ua)) browser = 'Edge';
-  else if (/CriOS/i.test(ua)) browser = 'Chrome';
-  else if (/Chrome\//i.test(ua) && !/Chromium/i.test(ua)) browser = 'Chrome';
-  else if (/Firefox\//i.test(ua)) browser = 'Firefox';
-  else if (/Safari\//i.test(ua) && !/Chrome/i.test(ua)) browser = 'Safari';
-
-  return browser ? `${browser} on ${device}` : device;
+// Short device noun (no article) -- "Windows", not "a Windows PC" -- for the
+// compact canonical sign-in phrasing below. Long form used only as a
+// fallback for messages that embed a UA but aren't a sign-in alert.
+function describeDeviceShort(ua: string): string {
+  if (/iPhone/i.test(ua)) return 'iPhone';
+  if (/iPad/i.test(ua)) return 'iPad';
+  if (/Android/i.test(ua)) return 'Android';
+  if (/Macintosh/i.test(ua)) return 'Mac';
+  if (/Windows/i.test(ua)) return 'Windows';
+  if (/Linux/i.test(ua)) return 'Linux';
+  return 'your device';
 }
 
-/** Replaces any raw User-Agent substring in `text` with a short, readable device description. */
+function describeBrowser(ua: string): string {
+  if (/Edg\//i.test(ua)) return 'Edge';
+  if (/CriOS/i.test(ua)) return 'Chrome';
+  if (/Chrome\//i.test(ua) && !/Chromium/i.test(ua)) return 'Chrome';
+  if (/Firefox\//i.test(ua)) return 'Firefox';
+  if (/Safari\//i.test(ua) && !/Chrome/i.test(ua)) return 'Safari';
+  return '';
+}
+
+const SIGN_IN_PATTERN = /sign[- ]?in/i;
+
+/**
+ * Replaces any raw User-Agent substring in `text` with short, readable
+ * device/browser wording. For a sign-in alert specifically, this rewrites
+ * the *whole* message into one compact canonical phrase ("New sign-in on
+ * Chrome on Windows") instead of splicing a description into whatever
+ * sentence the backend wrote around the UA -- that backend wording plus even
+ * the long device form was still long enough to truncate on a 2-line
+ * message. Any other message shape that happens to embed a UA falls back to
+ * a plain substring swap.
+ */
 export function humanizeNotificationText(text?: string | null): string {
   const value = text || '';
   if (!UA_PATTERN.test(value)) return value;
-  return value.replace(UA_PATTERN, (match) => describeDevice(match));
+  const match = value.match(UA_PATTERN)![0];
+  const device = describeDeviceShort(match);
+  const browser = describeBrowser(match);
+
+  if (SIGN_IN_PATTERN.test(value)) {
+    return browser ? `New sign-in on ${browser} on ${device}` : `New sign-in from ${device}`;
+  }
+  return value.replace(UA_PATTERN, browser ? `${browser} on ${device}` : device);
 }

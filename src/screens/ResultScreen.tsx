@@ -21,14 +21,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Clipboard from '@react-native-clipboard/clipboard';
 import { API_BASE_URL } from '../config/api';
 import { CareSymbol, getCareSymbolLabel } from '../components/CareSymbols';
-import AppLayout from '../components/AppLayout';
+import AppLayout, { useBottomBarSpace } from '../components/AppLayout';
 import VideoPlayerModal from '../components/VideoPlayerModal';
 import GradientButton from '../components/GradientButton';
 import GradientView from '../components/GradientView';
 import { useI18n } from '../i18n/I18nContext';
 import MediaSlider from '../components/MediaSlider';
 import { saveTextFile, safeFileBaseName } from '../utils/saveTextFile';
-import { colors, radius, spacing, shadow } from '../theme';
+import { colors, radius, spacing, shadow, MIN_TOUCH } from '../theme';
 
 // Web QR Scanner
 let QRCodeScanner: any = null;
@@ -89,6 +89,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
   const FALLBACK_BRAND_DETAIL = 'Developing innovative "real-time and automatic" digital twins IoT /RFID technologies';
   const FALLBACK_BRAND_WEBSITE = 'https://www.yometel.jp/';
   const { t } = useI18n();
+  const bottomBarSpace = useBottomBarSpace();
   const { height: windowHeight } = useWindowDimensions();
   const [productData, setProductData] = useState<any>(route?.params?.productData || {});
   const [expandedSections, setExpandedSections] = useState<{ [key: number]: boolean }>({});
@@ -1445,7 +1446,11 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
     >
       <ScrollView
         style={[styles.content, Platform.OS === 'web' && { minHeight: availableContentMinHeight }]}
-        contentContainerStyle={[styles.contentContainer, Platform.OS === 'web' && { minHeight: availableContentMinHeight }]}
+        contentContainerStyle={[
+          styles.contentContainer,
+          { paddingBottom: spacing.lg + bottomBarSpace },
+          Platform.OS === 'web' && { minHeight: availableContentMinHeight },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         {!productData || Object.keys(productData).length === 0 ? (
@@ -1581,11 +1586,15 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
             {/* Lifecycle Preview strip. */}
             <View style={styles.ovCard}>
               <Text style={[styles.ovCardTitle, { marginBottom: 14 }]}>{t('overviewLifecyclePreview')}</Text>
-              <View style={styles.ovLcStrip}>
+              {/* Decorative -- the icons alone don't explain each stage, and
+                  the "View product journey" CTA right below is the actual
+                  meaningful content, so screen readers skip this strip
+                  entirely rather than announcing five unlabelled icon names. */}
+              <View style={styles.ovLcStrip} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
                 {LIFECYCLE_STAGES.map((s, i) => (
                   <React.Fragment key={s.key}>
                     <View style={styles.ovLcStage}>
-                      <View style={styles.ovLcDot} accessibilityLabel={t(s.labelKey as any)}>
+                      <View style={styles.ovLcDot}>
                         <Icon name={s.icon} size={27} color={BRAND_COLOR} />
                       </View>
                     </View>
@@ -1607,40 +1616,52 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
 
             {/* Bottom-anchored action group — pushed to the foot of the content layer. */}
             <View style={styles.ovBottomGroup}>
-            {/* Like / Dislike / Share — icon only, one row. */}
+            {/* Helpful / Not helpful / Share — labelled, not icon-only. Share
+                is visually the most prominent of the three since it's the one
+                most consumers actually use. */}
             <View style={styles.ovIconRow}>
               <TouchableOpacity
                 style={[styles.ovIconBtn, selectedFeedback === 'like' && styles.ovIconBtnActive]}
                 onPress={handleLike}
                 activeOpacity={0.8}
                 accessibilityRole="button"
-                accessibilityLabel={t('like')}
+                accessibilityLabel={t('helpfulAction')}
                 accessibilityState={{ selected: selectedFeedback === 'like' }}
               >
-                <Icon name="thumb-up" size={20} color={selectedFeedback === 'like' ? '#fff' : colors.primary} />
+                <Icon name="thumb-up" size={16} color={selectedFeedback === 'like' ? '#fff' : colors.primary} />
+                <Text style={[styles.ovIconBtnText, selectedFeedback === 'like' && styles.ovIconBtnTextActive]} numberOfLines={1}>
+                  {t('helpfulAction')}
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.ovIconBtn, selectedFeedback === 'dislike' && styles.ovIconBtnActive]}
                 onPress={handleDislike}
                 activeOpacity={0.8}
                 accessibilityRole="button"
-                accessibilityLabel={t('dislike')}
+                accessibilityLabel={t('notHelpfulAction')}
                 accessibilityState={{ selected: selectedFeedback === 'dislike' }}
               >
-                <Icon name="thumb-down" size={20} color={selectedFeedback === 'dislike' ? '#fff' : colors.primary} />
+                <Icon name="thumb-down" size={16} color={selectedFeedback === 'dislike' ? '#fff' : colors.primary} />
+                <Text style={[styles.ovIconBtnText, selectedFeedback === 'dislike' && styles.ovIconBtnTextActive]} numberOfLines={1}>
+                  {t('notHelpfulAction')}
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.ovIconBtn}
+                style={[styles.ovIconBtn, styles.ovShareBtn]}
                 onPress={openShareSheet}
                 activeOpacity={0.8}
                 accessibilityRole="button"
                 accessibilityLabel={t('share')}
               >
-                <Icon name="share" size={20} color={colors.primary} />
+                <Icon name="share" size={16} color={colors.primary} />
+                <Text style={styles.ovIconBtnText} numberOfLines={1}>{t('share')}</Text>
               </TouchableOpacity>
             </View>
 
-            {/* Contact Owner | Scan Another Product — one row, equal width. */}
+            {/* Scan Product | Request ownership — Scan is the action nearly
+                every consumer wants; ownership transfer is a secondary,
+                situational feature, so it takes the outlined/lower-emphasis
+                treatment instead of the filled one. */}
             {(() => {
               const isPending = !isOwnedMode && transferStatus === 'pending' && transferRequestSent;
               const isOwned = !isOwnedMode && transferStatus === 'confirmed';
@@ -1651,24 +1672,24 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
               return (
                 <View style={styles.ovCtaRow}>
                   <GradientButton
-                    style={[styles.ovPrimaryCta, locked && { opacity: 0.6 }]}
-                    onPress={isOwnedMode ? openOwnerTransfer : handleBuy}
+                    style={styles.ovPrimaryCta}
+                    onPress={() => navigation.navigate('Scanner')}
                     activeOpacity={0.85}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('overviewScanProduct')}
+                  >
+                    <Text style={styles.ovPrimaryCtaText}>{t('overviewScanProduct')}</Text>
+                  </GradientButton>
+                  <TouchableOpacity
+                    style={[styles.ovSecondaryCta, locked && { opacity: 0.6 }]}
+                    onPress={isOwnedMode ? openOwnerTransfer : handleBuy}
+                    activeOpacity={0.8}
                     disabled={locked}
                     accessibilityRole="button"
                     accessibilityLabel={label}
                     accessibilityState={{ disabled: locked }}
                   >
-                    <Text style={styles.ovPrimaryCtaText} numberOfLines={1}>{label}</Text>
-                  </GradientButton>
-                  <TouchableOpacity
-                    style={styles.ovSecondaryCta}
-                    onPress={() => navigation.navigate('Scanner')}
-                    activeOpacity={0.8}
-                    accessibilityRole="button"
-                    accessibilityLabel={t('overviewScanProduct')}
-                  >
-                    <Text style={styles.ovSecondaryCtaText} numberOfLines={1}>{t('overviewScanProduct')}</Text>
+                    <Text style={styles.ovSecondaryCtaText}>{label}</Text>
                   </TouchableOpacity>
                 </View>
               );
@@ -2218,33 +2239,48 @@ const styles = StyleSheet.create({
   ovViewLcText: { fontSize: 17, fontWeight: '600', color: colors.accent },
   // Anchored to the foot of the scroll content (contentContainer has flexGrow:1),
   // so the Like/Share + CTA rows sit at the bottom of the content layer.
-  ovBottomGroup: { marginTop: 'auto', paddingTop: spacing.lg, paddingBottom: spacing.sm },
+  // Was `marginTop: 'auto'` -- pushed this whole group to the bottom of the
+  // flex column regardless of how much (or little) content sat above it,
+  // leaving a large dead gap under Lifecycle Preview on most products.
+  ovBottomGroup: { marginTop: spacing.lg, paddingBottom: spacing.sm },
   ovIconRow: { flexDirection: 'row', gap: spacing.sm, marginHorizontal: spacing.lg, marginTop: spacing.sm },
   ovIconBtn: {
     flex: 1,
-    height: 48,
+    minHeight: MIN_TOUCH,
+    flexDirection: 'row',
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 4,
   },
   ovIconBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  ovIconBtnText: { fontSize: 15, fontWeight: '600', color: colors.primary },
+  ovIconBtnTextActive: { color: '#fff' },
+  // Share is the action most consumers actually reach for -- a light tint
+  // (not the same solid fill as the like/dislike "active" state, which is
+  // reserved for the feedback that's currently selected) sets it apart
+  // without competing with the primary Scan/Request-ownership row below.
+  ovShareBtn: { backgroundColor: colors.surfaceAlt, borderColor: colors.primary },
   ovCtaRow: { flexDirection: 'row', gap: spacing.sm, marginHorizontal: spacing.lg, marginTop: spacing.sm },
   ovPrimaryCta: {
     flex: 1,
-    height: 48,
+    minHeight: 48,
+    paddingVertical: 6,
     borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.accent,
     ...shadow(1),
   },
-  ovPrimaryCtaText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  ovPrimaryCtaText: { color: '#fff', fontSize: 17, fontWeight: '700', textAlign: 'center' },
   ovSecondaryCta: {
     flex: 1,
-    height: 48,
+    minHeight: 48,
+    paddingVertical: 6,
     borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
@@ -2252,7 +2288,7 @@ const styles = StyleSheet.create({
     borderColor: colors.accent,
     backgroundColor: colors.surface,
   },
-  ovSecondaryCtaText: { color: colors.accent, fontSize: 17, fontWeight: '600' },
+  ovSecondaryCtaText: { color: colors.accent, fontSize: 17, fontWeight: '600', textAlign: 'center' },
   // --- Product Overview redesign (Phase 3) ---
   overviewCard: {
     backgroundColor: colors.surface,
