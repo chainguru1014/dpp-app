@@ -4,7 +4,14 @@
 // in scope here, so this is a defensive client-side pass: detect a UA-shaped
 // substring and swap it for a short human description before it's ever
 // rendered. Safe no-op on any text that doesn't contain one.
-const UA_PATTERN = /Mozilla\/[\d.]+\s*\([^)]*\)[^,;\n]*/i;
+//
+// Matches from "Mozilla/" through to the end of the string rather than
+// stopping at the first ")" or "," -- a real UA string is a chain of several
+// parenthetical groups (e.g. "...like Mac OS X) AppleWebKit/605.1.15 (KHTML,
+// like Gecko) Version/17.0 ..."), each containing its own commas, so a
+// narrower pattern leaves a dangling fragment like ", like Gecko) ..." behind.
+// These notification messages never have real trailing content after the UA.
+const UA_PATTERN = /Mozilla\/[\s\S]*/i;
 
 function describeDevice(ua: string): string {
   const isIPhone = /iPhone/i.test(ua);
