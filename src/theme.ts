@@ -15,13 +15,18 @@ import { Platform, StyleSheet } from 'react-native';
 
 export const colors = {
   // Main brand blue — dark navy, used across all UI (icons, headings, fills).
-  navy: '#2f80c8',
-  primary: '#2f80c8',
-  primaryDark: '#2568a8',
-  accent: '#2f80c8',
+  // Matches the frontend admin project's official palette (src/theme.js:
+  // navy #1b4f72 / navyDark #123a56) — the app had drifted to a brighter,
+  // more saturated blue during a UI pass, which read as a different "brand"
+  // next to the frontend. headerLight was already correct (same azure both
+  // projects use as the gradient's light stop / accent).
+  navy: '#1b4f72',
+  primary: '#1b4f72',
+  primaryDark: '#123a56',
+  accent: '#1b4f72',
 
   // Top bar / header surface (dark navy, gradients to headerLight)
-  header: '#2f80c8',
+  header: '#1b4f72',
   headerLight: '#4a96dd',
 
   // Surfaces
@@ -33,7 +38,7 @@ export const colors = {
   borderStrong: '#d3dbe8',
 
   // Text
-  heading: '#2f80c8',
+  heading: '#1b4f72',
   text: '#33415c',
   textBody: '#33415c',
   // Darkened from the original #7a8aa3 -- that shade sits under 4.5:1 contrast
