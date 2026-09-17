@@ -339,7 +339,7 @@ export default function AppLayout({
   return (
     <View style={isWide ? styles.wideBackdrop : styles.fill}>
     <View style={[styles.container, isWide && styles.wideColumn]}>
-      <GradientView style={[styles.topBar, { height: topBarHeight }]} angle="vertical">
+      <GradientView style={[styles.topBar, { height: topBarHeight }]} angle="diagonal">
         <View style={styles.topBarRow}>
           {logoLeft ? (
             <Image
@@ -629,7 +629,8 @@ function ScanCenterTab({ label, selected, onPress }: { label: string; selected: 
       accessibilityState={{ selected }}
       accessibilityLabel={label}
     >
-      <View style={[styles.scanCircle, selected && styles.scanCircleActive]}>
+      <View style={styles.scanCircle}>
+        <GradientView style={[StyleSheet.absoluteFill, { borderRadius: 27 }]} angle="diagonal" to={selected ? colors.primaryDark : colors.primary} />
         <Icon name="crop-free" size={26} color={colors.white} />
       </View>
       <Text style={[styles.scanTabLabel, selected && styles.bottomTabLabelSelected]} numberOfLines={1}>
@@ -775,7 +776,6 @@ const styles = StyleSheet.create({
     borderColor: colors.surface,
     ...shadow(2),
   },
-  scanCircleActive: { backgroundColor: colors.primaryDark },
   scanTabLabel: { fontSize: 17, color: colors.primary, marginTop: 2, fontWeight: '600' },
   productTabShiftRight: { flex: 1, transform: [{ translateX: 16 }] },
   productTabShiftLeft: { flex: 1, transform: [{ translateX: -16 }] },

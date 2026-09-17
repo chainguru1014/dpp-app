@@ -10,9 +10,11 @@ type Props = TouchableOpacityProps & {
 
 /**
  * Drop-in TouchableOpacity replacement that paints the brand gradient
- * (light azure -> dark navy) behind its children instead of a flat fill.
- * RN has no CSS gradient support, so this draws it via react-native-svg
- * (already a dependency, same technique as AppLayout's top bar).
+ * (light azure -> dark navy, top-left to bottom-right) behind its children
+ * instead of a flat fill. RN has no CSS gradient support, so this draws it
+ * via react-native-svg (already a dependency, same technique as AppLayout's
+ * top bar). The diagonal direction matches the frontend admin project's
+ * button/header gradient (linear-gradient(135deg, #4a96dd, #1b4f72)).
  *
  * The gradient lives in its own absolutely-filled inner layer that clips via
  * `overflow: hidden` + `borderRadius` — the OUTER TouchableOpacity keeps the
@@ -37,7 +39,7 @@ export default function GradientButton({ style, children, from = colors.headerLi
         <View style={[StyleSheet.absoluteFill, { borderRadius: flat.borderRadius, overflow: 'hidden' }]} pointerEvents="none">
           <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
             <Defs>
-              <LinearGradient id={id} x1="0%" y1="0%" x2="0%" y2="100%">
+              <LinearGradient id={id} x1="0%" y1="0%" x2="100%" y2="100%">
                 <Stop offset="0%" stopColor={from} stopOpacity={1} />
                 <Stop offset="100%" stopColor={to} stopOpacity={1} />
               </LinearGradient>

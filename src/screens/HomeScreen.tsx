@@ -13,6 +13,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AppLayout from '../components/AppLayout';
+import GradientView from '../components/GradientView';
 import { ProductRow, SectionCard } from '../components/ProductListParts';
 import { useI18n } from '../i18n/I18nContext';
 import { API_BASE_URL } from '../config/api';
@@ -138,6 +139,7 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
             <Text style={styles.heroTitle}>{t('scanTitle')}</Text>
             <Text style={styles.heroSub}>{t('homeScanHeroSub')}</Text>
             <View style={styles.heroBtn}>
+              <GradientView style={[StyleSheet.absoluteFill, { borderRadius: radius.pill }]} angle="diagonal" />
               <Icon name="crop-free" size={20} color="#fff" />
               <Text style={styles.heroBtnText}>{t('homeScanNow')}</Text>
             </View>
