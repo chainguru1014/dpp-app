@@ -4,6 +4,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useFocusEffect } from '@react-navigation/native';
 import AppLayout from '../components/AppLayout';
 import BottomSafeScrollView from '../components/BottomSafeScrollView';
+import GradientView from '../components/GradientView';
 import { API_BASE_URL } from '../config/api';
 import { useI18n } from '../i18n/I18nContext';
 import { colors, spacing, radius, shadow, MIN_TOUCH } from '../theme';
@@ -127,13 +128,14 @@ export default function HistoryScreen({ navigation, user, onLogout }: Props) {
           ]).map((tb) => (
             <TouchableOpacity
               key={tb.key}
-              style={[styles.tab, tab === tb.key && styles.tabActive]}
+              style={styles.tab}
               onPress={() => setTab(tb.key)}
               activeOpacity={0.8}
               accessibilityRole="tab"
               accessibilityState={{ selected: tab === tb.key }}
               accessibilityLabel={tb.label}
             >
+              {tab === tb.key && <GradientView style={[StyleSheet.absoluteFill, { borderRadius: radius.sm }]} angle="diagonal" />}
               <Text style={[styles.tabText, tab === tb.key && styles.tabTextActive]}>{tb.label}</Text>
             </TouchableOpacity>
           ))}
@@ -184,7 +186,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   tab: { flex: 1, minHeight: MIN_TOUCH, justifyContent: 'center', paddingVertical: 10, borderRadius: radius.sm, alignItems: 'center' },
-  tabActive: { backgroundColor: colors.primary },
   tabText: { fontSize: 19, fontWeight: '600', color: colors.muted, textAlign: 'center' },
   tabTextActive: { color: '#fff' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xxxl },

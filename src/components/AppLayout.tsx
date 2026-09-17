@@ -62,6 +62,13 @@ interface AppLayoutProps {
   logoLeft?: boolean;
   title?: string;
   subtitle?: string;
+  // Height (px) of a colored header block the screen renders itself directly
+  // below the top bar (e.g. Product Lifecycle's product-image/name/ID card).
+  // When set, the top bar's gradient continues into that block as one
+  // shared ramp via GradientView's `frame` prop, instead of each restarting
+  // its own — see useTopBarHeight() for getting the matching offset on the
+  // screen's own header gradient.
+  headerBleedHeight?: number;
 }
 
 const ROUTE_TITLE_KEYS: Record<string, string> = {
@@ -104,6 +111,18 @@ export function useBottomBarSpace(): number {
   return BOTTOM_BAR_CONTENT + insets.bottom;
 }
 
+/**
+ * The real, current height of the fixed top bar -- for screens that render
+ * their own colored header block directly below it (e.g. Product Lifecycle)
+ * and need to continue the top bar's gradient into it seamlessly via
+ * GradientView's `frame` prop instead of restarting a second, visibly
+ * separate gradient at the seam.
+ */
+export function useTopBarHeight(): number {
+  const insets = useSafeAreaInsets();
+  return TOP_BAR_CONTENT + insets.top;
+}
+
 export default function AppLayout({
   children,
   navigation,
@@ -129,6 +148,7 @@ export default function AppLayout({
   product,
   title,
   subtitle,
+  headerBleedHeight,
 }: AppLayoutProps) {
   const { t, locale, setLocale, languages } = useI18n();
   const route = useRoute();
@@ -339,7 +359,30 @@ export default function AppLayout({
   return (
     <View style={isWide ? styles.wideBackdrop : styles.fill}>
     <View style={[styles.container, isWide && styles.wideColumn]}>
-      <GradientView style={[styles.topBar, { height: topBarHeight }]} angle="diagonal">
+      {/* content's rounded top corners cut a small notch out of its own
+          silhouette right where it meets the top bar, revealing whatever
+          sits behind it at those exact pixels. That used to be `container`'s
+          flat navy fill, which didn't match the gradient's own (lighter,
+          blended) color at the bottom of the top bar -- a visible seam at
+          all four corners. This backing layer renders the identical
+          gradient a little past topBarHeight so the notch reveals more
+          gradient instead of a flat-color mismatch. It must stay BELOW
+          `content` in the stacking order (unlike the real top bar) or it
+          would paint a hard rectangular edge on top of content's rounded
+          corners instead of only showing through the notch -- no zIndex/
+          elevation override here, so plain declaration order (before
+          `content`) puts it behind. */}
+      <GradientView
+        style={[styles.topBar, { height: topBarHeight + radius.xl, zIndex: 0, elevation: 0 }]}
+        angle="diagonal"
+        pointerEvents="none"
+        frame={headerBleedHeight ? { totalHeight: topBarHeight + headerBleedHeight, offsetY: 0 } : undefined}
+      />
+      <GradientView
+        style={[styles.topBar, { height: topBarHeight }]}
+        angle="diagonal"
+        frame={headerBleedHeight ? { totalHeight: topBarHeight + headerBleedHeight, offsetY: 0 } : undefined}
+      >
         <View style={styles.topBarRow}>
           {logoLeft ? (
             <Image

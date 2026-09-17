@@ -4,6 +4,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import AppLayout from '../components/AppLayout';
 import BottomSafeScrollView from '../components/BottomSafeScrollView';
 import GradientButton from '../components/GradientButton';
+import GradientView from '../components/GradientView';
 import { API_BASE_URL } from '../config/api';
 import { useI18n } from '../i18n/I18nContext';
 import { colors, spacing, radius, shadow, MIN_TOUCH } from '../theme';
@@ -173,6 +174,7 @@ export default function BrandDetailScreen({ navigation, route, user, onLogout }:
               accessibilityLabel={`${following ? t('unfollowBrand') : t('followBrand')} ${brand.name || ''}`.trim()}
               accessibilityState={{ selected: following }}
             >
+              {following && <GradientView style={[StyleSheet.absoluteFill, { borderRadius: radius.pill }]} angle="diagonal" />}
               <Text style={[styles.followBtnText, following && styles.followBtnTextActive]}>
                 {following ? t('brandsFollowing') : t('brandFollow')}
               </Text>

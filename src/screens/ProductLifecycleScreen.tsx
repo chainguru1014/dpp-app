@@ -2,7 +2,9 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Image, Platform, Alert, Modal } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import Clipboard from '@react-native-clipboard/clipboard';
-import AppLayout, { useBottomBarSpace } from '../components/AppLayout';
+import AppLayout, { useBottomBarSpace, useTopBarHeight } from '../components/AppLayout';
+import GradientButton from '../components/GradientButton';
+import GradientView from '../components/GradientView';
 import MediaSlider from '../components/MediaSlider';
 import VideoPlayerModal from '../components/VideoPlayerModal';
 import { saveTextFile, safeFileBaseName } from '../utils/saveTextFile';
@@ -123,6 +125,11 @@ function Row({ label, value, icon, chevron, onPress }: { label: string; value: s
 export default function ProductLifecycleScreen({ navigation, route, user, onLogout }: Props) {
   const { t } = useI18n();
   const bottomBarSpace = useBottomBarSpace();
+  const topBarHeight = useTopBarHeight();
+  // Measured so the top bar's gradient (rendered by AppLayout) and this
+  // screen's own header gradient can be continued as one shared ramp
+  // instead of each restarting independently at the seam between them.
+  const [headerHeight, setHeaderHeight] = useState(0);
   const [productData, setProductData] = useState<any>(route?.params?.productData || {});
   const [tab, setTab] = useState<TabKey>('journey');
   // Journey stages are all collapsed by default — a down-chevron invites the tap.
@@ -790,6 +797,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
       onBackPress={() => navigation.navigate(user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Home')}
       title={t('titleProductLifecycle')}
       flatContent
+      headerBleedHeight={headerHeight || undefined}
       bottomBar={user && user.actorKind !== 'Employee' ? 'product' : 'auto'}
       rightIcon="menu"
       isFavorite={isInAlbum}
@@ -800,9 +808,13 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
       isBrandFollowed={isBrandFollowed}
       onActionMenuPress={onActionMenuPress}
     >
-      <View style={styles.screen}>
+      <GradientView
+        style={styles.screen}
+        angle="diagonal"
+        frame={headerHeight > 0 ? { totalHeight: topBarHeight + headerHeight, offsetY: topBarHeight } : undefined}
+      >
         {/* Blue header — product image slider + name / model / id + Authenticated card. */}
-        <View style={styles.header}>
+        <View style={styles.header} onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}>
           <View style={styles.headerMedia}>
             {hasMedia ? (
               <MediaSlider
@@ -919,7 +931,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
             {renderTab()}
           </ScrollView>
         </View>
-      </View>
+      </GradientView>
 
       <VideoPlayerModal
         visible={!!playingVideoId}
@@ -932,9 +944,9 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
           <TouchableOpacity style={styles.dialogCard} activeOpacity={1}>
             <Text style={styles.dialogTitle}>{infoDialog?.title}</Text>
             <Text style={styles.dialogBody}>{infoDialog?.body}</Text>
-            <TouchableOpacity style={styles.dialogClose} onPress={() => setInfoDialog(null)} activeOpacity={0.85}>
+            <GradientButton style={styles.dialogClose} onPress={() => setInfoDialog(null)} activeOpacity={0.85}>
               <Text style={styles.dialogCloseText}>{t('close')}</Text>
-            </TouchableOpacity>
+            </GradientButton>
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
