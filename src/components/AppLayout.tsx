@@ -98,6 +98,11 @@ const EMPLOYEE_BRAND_TITLE = 'Yometel Traceability';
 const TOP_BAR_CONTENT = 56;
 const BOTTOM_BAR_CONTENT = 74;
 const BOTTOM_TAB_ICON_SIZE = 28;
+// Slightly larger than the consumer/product bars' BOTTOM_TAB_ICON_SIZE —
+// the employee/staff bottom bar (below) skews toward older and younger
+// warehouse/retail staff who need bigger icons/labels, scoped to just that
+// bar so the consumer-facing bars are unaffected.
+const EMPLOYEE_TAB_ICON_SIZE = 32;
 
 /**
  * The real, current height of the fixed bottom tab bar (design height + this
@@ -493,10 +498,10 @@ export default function AppLayout({
             >
               <Image
                 source={require('../assets/home.png')}
-                style={[styles.bottomTabImg, isHomeSelected && styles.bottomTabImgSelected]}
+                style={[styles.bottomTabImg, { width: EMPLOYEE_TAB_ICON_SIZE, height: EMPLOYEE_TAB_ICON_SIZE }, isHomeSelected && styles.bottomTabImgSelected]}
                 resizeMode="contain"
               />
-              <Text style={[styles.bottomTabLabel, isHomeSelected && styles.bottomTabLabelSelected]}>{t('bottomHome')}</Text>
+              <Text style={[styles.bottomTabLabel, styles.employeeBottomTabLabel, isHomeSelected && styles.bottomTabLabelSelected]}>{t('bottomHome')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.bottomTab}
@@ -506,8 +511,8 @@ export default function AppLayout({
               accessibilityState={{ selected: isScanSelected }}
               accessibilityLabel={t('bottomCapture')}
             >
-              <Icon name="crop-free" size={BOTTOM_TAB_ICON_SIZE} color={isScanSelected ? colors.primary : '#4a5468'} />
-              <Text style={[styles.bottomTabLabel, isScanSelected && styles.bottomTabLabelSelected]}>{t('bottomCapture')}</Text>
+              <Icon name="crop-free" size={EMPLOYEE_TAB_ICON_SIZE} color={isScanSelected ? colors.primary : '#4a5468'} />
+              <Text style={[styles.bottomTabLabel, styles.employeeBottomTabLabel, isScanSelected && styles.bottomTabLabelSelected]}>{t('bottomCapture')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.bottomTab}
@@ -517,8 +522,8 @@ export default function AppLayout({
               accessibilityState={{ selected: isProductsSelected }}
               accessibilityLabel={t('bottomReview')}
             >
-              <FeatherIcon name="file-text" size={BOTTOM_TAB_ICON_SIZE} color={isProductsSelected ? colors.primary : '#4a5468'} />
-              <Text style={[styles.bottomTabLabel, isProductsSelected && styles.bottomTabLabelSelected]}>{t('bottomReview')}</Text>
+              <FeatherIcon name="file-text" size={EMPLOYEE_TAB_ICON_SIZE} color={isProductsSelected ? colors.primary : '#4a5468'} />
+              <Text style={[styles.bottomTabLabel, styles.employeeBottomTabLabel, isProductsSelected && styles.bottomTabLabelSelected]}>{t('bottomReview')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.bottomTab}
@@ -528,8 +533,8 @@ export default function AppLayout({
               accessibilityState={{ selected: isProfileSelected }}
               accessibilityLabel={t('bottomProfile')}
             >
-              <Icon name="person" size={BOTTOM_TAB_ICON_SIZE} color={isProfileSelected ? colors.primary : '#4a5468'} />
-              <Text style={[styles.bottomTabLabel, isProfileSelected && styles.bottomTabLabelSelected]}>{t('bottomProfile')}</Text>
+              <Icon name="person" size={EMPLOYEE_TAB_ICON_SIZE} color={isProfileSelected ? colors.primary : '#4a5468'} />
+              <Text style={[styles.bottomTabLabel, styles.employeeBottomTabLabel, isProfileSelected && styles.bottomTabLabelSelected]}>{t('bottomProfile')}</Text>
             </TouchableOpacity>
           </View>
         );
@@ -806,6 +811,9 @@ const styles = StyleSheet.create({
   // Bottom-nav labels: ~14-16px.
   bottomTabLabel: { fontSize: 15, color: '#333333', marginTop: 3, fontWeight: '500' },
   bottomTabLabelSelected: { color: colors.primary, fontWeight: '700' },
+  // Employee/staff bar only (see EMPLOYEE_TAB_ICON_SIZE) — bumped up from the
+  // shared bottomTabLabel size.
+  employeeBottomTabLabel: { fontSize: 17 },
   scanTab: { flex: 1, height: '100%', alignItems: 'center', justifyContent: 'center' },
   scanCircle: {
     width: 54,

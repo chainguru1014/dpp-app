@@ -92,6 +92,7 @@ export default function ProductHistoryScreen({ navigation, route, user, onLogout
       showBackButton
       onBackPress={() => navigation.goBack()}
       title={name}
+      flushBottom
     >
       <View style={styles.screen}>
         <View style={styles.tabRow}>

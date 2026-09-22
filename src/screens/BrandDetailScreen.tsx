@@ -144,6 +144,7 @@ export default function BrandDetailScreen({ navigation, route, user, onLogout }:
       title={brand.name || t('titleBrandDetail')}
       rightIcon="share"
       onShare={() => setIntroVisible(true)}
+      flushBottom
     >
       <BottomSafeScrollView style={styles.screen} contentContainerStyle={styles.container}>
         {/* No large placeholder hero when there's no cover image -- that just

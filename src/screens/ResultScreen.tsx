@@ -1434,6 +1434,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
       }
       bottomBar={isAuthenticatedUser && !isEmployeeActor ? 'product' : 'auto'}
       flatContent={isEmployeeActor}
+      flushBottom
       rightIcon="menu"
       isFavorite={isInAlbum}
       onToggleFavorite={() => handleActionMenuPress('toggleAlbum')}

@@ -147,7 +147,7 @@ export default function NotificationsScreen({ navigation, user, onLogout }: Prop
   const [openRunKey, setOpenRunKey] = useState<string | null>(null);
 
   return (
-    <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton onBackPress={() => navigation.navigate(user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Home')} flatContent={user?.actorKind === 'Employee'}>
+    <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton onBackPress={() => navigation.navigate(user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Home')} flatContent={user?.actorKind === 'Employee'} flushBottom>
       <View style={styles.screen}>
         {hasUnread && (
           <TouchableOpacity

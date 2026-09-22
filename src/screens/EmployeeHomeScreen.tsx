@@ -33,8 +33,10 @@ const TYPE_LABEL_KEYS: Record<string, string> = {
 
 const SELECTED_STEP_STORAGE_KEY = 'employeeSelectedStepIndex';
 
-// Shared height for the tile so left/right sides align.
-const TILE_HEIGHT = 58;
+// Shared height for the tile so left/right sides align. Larger than the
+// consumer flow's equivalent — the staff/worker flow skews toward older and
+// younger warehouse/retail staff who need bigger text and tap targets.
+const TILE_HEIGHT = 68;
 
 // "Worker Operations" home screen for corporate/employee sessions — a numbered
 // grid of the company's process step labels (managed by a Supervisor from the
@@ -124,8 +126,8 @@ export default function EmployeeHomeScreen({ navigation, user, onLogout }: any) 
 
 const styles = StyleSheet.create({
   container: { padding: spacing.xl, paddingBottom: spacing.xxxl },
-  title: { fontSize: 22, fontWeight: '600', color: '#000', marginBottom: spacing.xs },
-  subtitle: { fontSize: 14, color: colors.muted, marginBottom: spacing.xl },
+  title: { fontSize: 26, fontWeight: '600', color: '#000', marginBottom: spacing.xs },
+  subtitle: { fontSize: 17, color: colors.muted, marginBottom: spacing.xl },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
   // Same two-part left/right split as the consumer HomeScreen's location
   // tiles: full-height number chip on the left, Entity(bold)/Type stacked
@@ -149,7 +151,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   tileNumberPart: {
-    width: 44,
+    width: 52,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.surfaceAlt,
@@ -157,17 +159,17 @@ const styles = StyleSheet.create({
   tileNumberPartSelected: {
     backgroundColor: '#4A8DEB',
   },
-  tileNumber: { fontSize: 15, fontWeight: '700', color: '#4A8DEB' },
+  tileNumber: { fontSize: 19, fontWeight: '700', color: '#4A8DEB' },
   tileNumberSelected: { color: '#fff' },
   tileTextPart: {
     flex: 1,
     justifyContent: 'center',
     backgroundColor: colors.surface,
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.md,
   },
   tileTextPartSelected: {
     backgroundColor: colors.surfaceAlt,
   },
-  tileEntity: { fontSize: 13, fontWeight: '700', color: colors.text },
-  tileType: { fontSize: 13, fontWeight: '400', color: colors.muted, marginTop: 1 },
+  tileEntity: { fontSize: 17, fontWeight: '700', color: colors.text },
+  tileType: { fontSize: 15, fontWeight: '400', color: colors.muted, marginTop: 1 },
 });

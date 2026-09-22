@@ -203,22 +203,22 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
       <View style={styles.container}>
         <View style={styles.statsRow}>
           <View style={styles.statCell}>
-            <VectorIcon name="event" size={13} color={colors.primary} />
+            <VectorIcon name="event" size={16} color={colors.primary} />
             <Text style={styles.statLabel}>{t('corpDateLabel')}</Text>
             <Text style={styles.statValue}>{new Date().toLocaleDateString()}</Text>
           </View>
           <View style={styles.statCell}>
-            <FeatherIcon name="file-text" size={13} color={colors.primary} />
+            <FeatherIcon name="file-text" size={16} color={colors.primary} />
             <Text style={styles.statLabel}>{t('corpRecordsLabel')}</Text>
             <Text style={styles.statValue}>{filteredDocs.length}</Text>
           </View>
           <View style={styles.statCell}>
-            <VectorIcon name="filter-list" size={13} color={colors.primary} />
+            <VectorIcon name="filter-list" size={16} color={colors.primary} />
             <Text style={styles.statLabel}>{t('corpPeriodLabel')}</Text>
             <TouchableOpacity onPress={openPeriodMenu} activeOpacity={0.7}>
               <View ref={periodButtonRef} style={styles.periodButton}>
                 <Text style={styles.periodButtonText}>{periodOptions.find((o) => o.key === period)?.label}</Text>
-                <VectorIcon name="arrow-drop-down" size={18} color={colors.primary} />
+                <VectorIcon name="arrow-drop-down" size={22} color={colors.primary} />
               </View>
             </TouchableOpacity>
           </View>
@@ -260,7 +260,7 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
               )}
               <VectorIcon
                 name={opt.icon}
-                size={13}
+                size={16}
                 color={filter === opt.key ? '#fff' : colors.muted}
                 style={styles.tabIcon}
               />
@@ -301,7 +301,7 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
                   <TouchableOpacity onPress={() => toggleFlag(doc._id)} style={styles.flagButton}>
                     <VectorIcon
                       name={doc.flagged ? 'star' : 'star-border'}
-                      size={18}
+                      size={22}
                       color={doc.flagged ? colors.warning : colors.muted}
                     />
                   </TouchableOpacity>
@@ -310,7 +310,7 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
             ))}
             {hasMore && (
               <TouchableOpacity style={styles.moreButton} onPress={() => setVisibleCount((c) => c + PAGE_SIZE)} activeOpacity={0.7}>
-                <VectorIcon name="expand-more" size={16} color={colors.primary} />
+                <VectorIcon name="expand-more" size={19} color={colors.primary} />
                 <Text style={styles.moreButtonText}>{t('corpMoreRecordsBelow')}</Text>
               </TouchableOpacity>
             )}
@@ -352,7 +352,7 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
 const DetailRow = ({ icon, label, value }: { icon: string; label: string; value: string }) => (
   <View style={styles.detailRow}>
     <View style={styles.detailLabelWrap}>
-      <VectorIcon name={icon} size={14} color={colors.muted} style={styles.detailIcon} />
+      <VectorIcon name={icon} size={16} color={colors.muted} style={styles.detailIcon} />
       <Text style={styles.detailLabel}>{label}</Text>
     </View>
     <Text style={styles.detailValue} numberOfLines={1}>{value}</Text>
@@ -374,19 +374,19 @@ const styles = StyleSheet.create({
     ...shadow(1),
   },
   statCell: { flex: 1, alignItems: 'center', gap: 2 },
-  statLabel: { fontSize: 11, color: colors.muted },
-  statValue: { fontSize: 14, fontWeight: '600', color: colors.text },
+  statLabel: { fontSize: 13, color: colors.muted },
+  statValue: { fontSize: 17, fontWeight: '600', color: colors.text },
   periodButton: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.pill,
-    paddingVertical: 3,
-    paddingLeft: 10,
-    paddingRight: 4,
+    paddingVertical: 6,
+    paddingLeft: 12,
+    paddingRight: 6,
   },
-  periodButtonText: { fontSize: 12, fontWeight: '600', color: colors.primary },
+  periodButtonText: { fontSize: 15, fontWeight: '600', color: colors.primary },
   periodOverlay: { flex: 1 },
   periodPopover: {
     backgroundColor: colors.surface,
@@ -394,19 +394,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     paddingVertical: 4,
-    minWidth: 140,
+    minWidth: 160,
     ...shadow(3),
   },
-  periodPopoverItem: { paddingVertical: 10, paddingHorizontal: spacing.md },
+  periodPopoverItem: { paddingVertical: 13, paddingHorizontal: spacing.md, minHeight: 44 },
   periodPopoverItemActive: { backgroundColor: colors.surfaceAlt },
-  periodPopoverText: { fontSize: 13, color: colors.text },
+  periodPopoverText: { fontSize: 16, color: colors.text },
   periodPopoverTextActive: { color: colors.primary, fontWeight: '700' },
   tabRow: { flexDirection: 'row', marginBottom: spacing.md, gap: spacing.xs },
   // Selected tab: gray background + dark-blue border (not a solid fill).
   tab: {
     flex: 1,
     flexDirection: 'row',
-    height: 30,
+    height: 40,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: 'transparent',
@@ -418,9 +418,9 @@ const styles = StyleSheet.create({
   // GradientView paints the active fill — this just clears the neutral
   // border/background so it doesn't show through underneath.
   tabActive: { backgroundColor: 'transparent', borderColor: 'transparent' },
-  tabText: { fontSize: 12, color: colors.muted, fontWeight: '600' },
+  tabText: { fontSize: 15, color: colors.muted, fontWeight: '600' },
   tabTextActive: { color: '#fff' },
-  emptyText: { textAlign: 'center', color: colors.muted, marginTop: spacing.xxl },
+  emptyText: { textAlign: 'center', color: colors.muted, marginTop: spacing.xxl, fontSize: 16 },
   row: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
@@ -429,11 +429,11 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     overflow: 'hidden',
   },
-  rowHeader: { flexDirection: 'row', alignItems: 'center', padding: spacing.md },
-  rowImage: { width: 44, height: 44, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt, marginRight: spacing.md },
+  rowHeader: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, minHeight: 56 },
+  rowImage: { width: 52, height: 52, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt, marginRight: spacing.md },
   rowTagIconBox: {
-    width: 44,
-    height: 44,
+    width: 52,
+    height: 52,
     borderRadius: radius.sm,
     backgroundColor: colors.surfaceAlt,
     alignItems: 'center',
@@ -441,21 +441,21 @@ const styles = StyleSheet.create({
     marginRight: spacing.md,
   },
   rowInfo: { flex: 1 },
-  rowRef: { fontSize: 14, fontWeight: '600', color: colors.text },
-  rowTime: { fontSize: 12, color: colors.muted },
-  badge: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, marginRight: spacing.sm, borderWidth: 1, borderColor: 'transparent' },
+  rowRef: { fontSize: 17, fontWeight: '600', color: colors.text },
+  rowTime: { fontSize: 14, color: colors.muted },
+  badge: { paddingVertical: 5, paddingHorizontal: 11, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, marginRight: spacing.sm, borderWidth: 1, borderColor: 'transparent' },
   // Latest: outlined (not filled) so it reads distinct from the filled-green Saved badge.
   badgeLatest: { backgroundColor: colors.surface, borderColor: colors.primary },
-  badgeLatestText: { fontSize: 11, color: colors.primary, fontWeight: '600' },
+  badgeLatestText: { fontSize: 13, color: colors.primary, fontWeight: '600' },
   badgeSaved: { backgroundColor: colors.success },
-  badgeText: { fontSize: 11, color: colors.muted, fontWeight: '600' },
-  badgeTextOnColor: { fontSize: 11, color: '#fff', fontWeight: '600' },
-  flagButton: { padding: 4 },
+  badgeText: { fontSize: 13, color: colors.muted, fontWeight: '600' },
+  badgeTextOnColor: { fontSize: 13, color: '#fff', fontWeight: '600' },
+  flagButton: { padding: 8, minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   // Floating popup (not inline) — anchored near the tap point, same
   // overlay/dismiss pattern as periodOverlay/periodPopover above.
   detailOverlay: { flex: 1 },
   detailPopover: {
-    width: 240,
+    width: 260,
     backgroundColor: colors.surface,
     borderRadius: radius.md,
     borderWidth: 1,
@@ -463,17 +463,18 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     ...shadow(3),
   },
-  detailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },
+  detailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6 },
   detailLabelWrap: { flexDirection: 'row', alignItems: 'center' },
   detailIcon: { marginRight: 6 },
-  detailLabel: { fontSize: 12, color: colors.muted },
-  detailValue: { fontSize: 12, color: colors.text, fontWeight: '600', flexShrink: 1, textAlign: 'right', marginLeft: spacing.md },
+  detailLabel: { fontSize: 14, color: colors.muted },
+  detailValue: { fontSize: 14, color: colors.text, fontWeight: '600', flexShrink: 1, textAlign: 'right', marginLeft: spacing.md },
   moreButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
     paddingVertical: spacing.md,
+    minHeight: 44,
   },
-  moreButtonText: { fontSize: 13, color: colors.primary, fontWeight: '600' },
+  moreButtonText: { fontSize: 15, color: colors.primary, fontWeight: '600' },
 });

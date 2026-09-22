@@ -797,6 +797,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
       onBackPress={() => navigation.navigate(user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Home')}
       title={t('titleProductLifecycle')}
       flatContent
+      flushBottom
       headerBleedHeight={headerHeight || undefined}
       bottomBar={user && user.actorKind !== 'Employee' ? 'product' : 'auto'}
       rightIcon="menu"

@@ -593,22 +593,22 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
       <View style={styles.container}>
         <View style={styles.infoStrip}>
           <View style={styles.infoCell}>
-            <VectorIcon name="event" size={14} color={colors.primary} />
+            <VectorIcon name="event" size={17} color={colors.primary} />
             <Text style={styles.infoLabel}>{t('corpDateLabel')}</Text>
             <Text style={styles.infoValue} numberOfLines={1}>{dateLabel}</Text>
           </View>
           <View style={styles.infoCell}>
-            <VectorIcon name="show-chart" size={14} color={colors.primary} />
+            <VectorIcon name="show-chart" size={17} color={colors.primary} />
             <Text style={styles.infoLabel}>{t('corpTodayScans')}</Text>
             <Text style={styles.infoValue} numberOfLines={1}>{captures.length}</Text>
           </View>
           <View style={styles.infoCell}>
-            <VectorIcon name="description" size={14} color={colors.primary} />
+            <VectorIcon name="description" size={17} color={colors.primary} />
             <Text style={styles.infoLabel}>{t('corpCurrentRef')}</Text>
             <Text style={styles.infoValue} numberOfLines={1}>{currentRef}</Text>
           </View>
           <View style={styles.infoCell}>
-            <VectorIcon name="person" size={14} color={colors.primary} />
+            <VectorIcon name="person" size={17} color={colors.primary} />
             <Text style={styles.infoLabel}>{t('corpTerminal')}</Text>
             <Text style={styles.infoValue} numberOfLines={1}>Terminal {user?.terminalId || '—'}</Text>
           </View>
@@ -629,7 +629,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
             >
               <VectorIcon
                 name={opt.icon}
-                size={14}
+                size={17}
                 color={captureType === opt.key ? '#fff' : colors.muted}
                 style={styles.typeChipIcon}
               />
@@ -663,16 +663,16 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                 <ScanFrameCorners size={240} active={!!liveCode} activeColor={colors.primary} />
               </View>
               <View pointerEvents="none" style={styles.overlayHintWrap}>
-                <VectorIcon name="qr-code" size={16} color="#fff" style={styles.overlayHintIcon} />
+                <VectorIcon name="qr-code" size={19} color="#fff" style={styles.overlayHintIcon} />
                 <Text style={styles.overlayHintText}>{t('corpScanHint')}</Text>
               </View>
               <View style={styles.overlayCornerRow}>
                 <TouchableOpacity style={styles.overlayCornerButton} onPress={() => setTorchOn((v) => !v)} activeOpacity={0.75}>
-                  <VectorIcon name={torchOn ? 'flash-on' : 'flash-off'} size={20} color="#fff" />
+                  <VectorIcon name={torchOn ? 'flash-on' : 'flash-off'} size={23} color="#fff" />
                   <Text style={styles.overlayCornerText}>{torchOn ? t('scanTorchOn') : t('scanTorchOff')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.overlayCornerButton} onPress={() => setHelpVisible(true)} activeOpacity={0.75}>
-                  <VectorIcon name="help-outline" size={20} color="#fff" />
+                  <VectorIcon name="help-outline" size={23} color="#fff" />
                   <Text style={styles.overlayCornerText}>{t('scanHelpLabel')}</Text>
                 </TouchableOpacity>
               </View>
@@ -681,7 +681,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
           {isCameraType && cameraStalled && (
             <View style={styles.stalledOverlay}>
               <View style={styles.stalledCard}>
-                <VectorIcon name="error-outline" size={28} color={colors.danger} />
+                <VectorIcon name="error-outline" size={32} color={colors.danger} />
                 <Text style={styles.stalledTitle}>{t('scanCameraStalledTitle')}</Text>
                 <Text style={styles.stalledBody}>{t('scanCameraStalledBody')}</Text>
                 {Platform.OS !== 'web' && (
@@ -690,7 +690,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                   </GradientButton>
                 )}
                 <TouchableOpacity style={styles.stalledSecondary} onPress={retryCamera} activeOpacity={0.8}>
-                  <VectorIcon name="refresh" size={16} color={colors.primary} />
+                  <VectorIcon name="refresh" size={19} color={colors.primary} />
                   <Text style={styles.stalledSecondaryText}>{t('scanRetryCamera')}</Text>
                 </TouchableOpacity>
               </View>
@@ -717,7 +717,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                     <Image source={{ uri: `${API_BASE_URL.replace(/\/$/, '')}${doc.imagePath}` }} style={styles.thumbImage} />
                   ) : (doc.identifierType === 'rfid' || doc.identifierType === 'nfc') && (
                     <View style={styles.thumbTagIconBox}>
-                      <VectorIcon name={doc.identifierType === 'rfid' ? 'wifi-tethering' : 'nfc'} size={20} color={colors.primary} />
+                      <VectorIcon name={doc.identifierType === 'rfid' ? 'wifi-tethering' : 'nfc'} size={24} color={colors.primary} />
                     </View>
                   )}
                   <View style={styles.thumbDetail}>
@@ -749,7 +749,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
               <>
                 <VectorIcon
                   name={captureType === 'rfid' ? 'wifi-tethering' : captureType === 'nfc' ? 'nfc' : 'photo-camera'}
-                  size={25}
+                  size={28}
                   color="#fff"
                 />
                 <Text style={styles.captureButtonText}>{t('corpCaptureButton')}</Text>
@@ -803,23 +803,23 @@ const styles = StyleSheet.create({
     ...shadow(1),
   },
   infoCell: { flex: 1, alignItems: 'center', gap: 2 },
-  infoLabel: { fontSize: 11, color: colors.muted },
-  infoValue: { fontSize: 13, fontWeight: '600', color: colors.text },
+  infoLabel: { fontSize: 13, color: colors.muted },
+  infoValue: { fontSize: 16, fontWeight: '600', color: colors.text },
   typeSelectorScroll: { flexGrow: 0, marginBottom: spacing.sm },
   typeSelectorRow: { flexDirection: 'row', gap: spacing.xs },
   typeChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 30,
+    height: 40,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.md,
   },
   typeChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   typeChipIcon: { marginRight: 4 },
-  typeChipText: { fontSize: 12, color: colors.muted, fontWeight: '600' },
+  typeChipText: { fontSize: 15, color: colors.muted, fontWeight: '600' },
   typeChipTextActive: { color: '#fff' },
   // Camera viewport + overlay — deliberately the same visual treatment as
   // the consumer ScannerScreen's camera (frame size/color, hint pill,
@@ -839,7 +839,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   stateBox: { flex: 1, width: '100%', justifyContent: 'center', alignItems: 'center' },
-  stateText: { color: '#fff', fontSize: 13, textAlign: 'center', paddingHorizontal: spacing.lg },
+  stateText: { color: '#fff', fontSize: 16, textAlign: 'center', paddingHorizontal: spacing.lg },
   frameOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center' },
   overlayHintWrap: {
     position: 'absolute',
@@ -858,7 +858,7 @@ const styles = StyleSheet.create({
   },
   overlayHintText: {
     color: '#fff',
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: '400',
     textAlign: 'center',
     textShadowColor: 'rgba(0,0,0,0.6)',
@@ -874,30 +874,30 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-end',
   },
-  overlayCornerButton: { alignItems: 'center' },
+  overlayCornerButton: { alignItems: 'center', minWidth: 48, minHeight: 48, justifyContent: 'center' },
   overlayCornerText: {
     color: '#fff',
-    fontSize: 11,
+    fontSize: 14,
     marginTop: 2,
     textShadowColor: 'rgba(0,0,0,0.6)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
   thumbRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.md, marginBottom: spacing.sm },
-  thumbHeading: { fontSize: 14, fontWeight: '600', color: colors.muted },
-  seeAllLink: { fontSize: 12, color: colors.muted },
+  thumbHeading: { fontSize: 17, fontWeight: '600', color: colors.muted },
+  seeAllLink: { fontSize: 15, color: colors.muted },
   // Explicit height — without it a horizontal ScrollView with no flex:1
   // sibling can stretch its single-row content to fill leftover vertical
   // space, ballooning card height when there's only one capture to show.
   // Only rendered at all when there's at least one capture (see JSX) so an
   // empty step doesn't reserve this space between the header and Capture.
-  thumbStrip: { height: 70, marginBottom: spacing.md },
+  thumbStrip: { height: 82, marginBottom: spacing.md },
   // Horizontal: image on the left, index (dark blue)/ref (gray)/time (gray)
   // stacked on the right.
   thumbCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    width: 150,
+    width: 175,
     marginRight: spacing.sm,
     backgroundColor: colors.surface,
     borderRadius: radius.md,
@@ -905,22 +905,22 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     padding: spacing.xs,
   },
-  thumbImage: { width: 44, height: 44, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt },
+  thumbImage: { width: 52, height: 52, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt },
   thumbTagIconBox: {
-    width: 44,
-    height: 44,
+    width: 52,
+    height: 52,
     borderRadius: radius.sm,
     backgroundColor: colors.surfaceAlt,
     alignItems: 'center',
     justifyContent: 'center',
   },
   thumbDetail: { flex: 1, marginLeft: spacing.sm },
-  thumbIndex: { fontSize: 13, fontWeight: '700', color: colors.primary },
-  thumbRef: { fontSize: 10, fontWeight: '600', color: colors.muted, marginTop: 2 },
-  thumbTime: { fontSize: 9, color: colors.muted },
-  unrecognizedText: { color: colors.danger, fontSize: 12, textAlign: 'center', marginBottom: spacing.sm },
+  thumbIndex: { fontSize: 16, fontWeight: '700', color: colors.primary },
+  thumbRef: { fontSize: 13, fontWeight: '600', color: colors.muted, marginTop: 2 },
+  thumbTime: { fontSize: 12, color: colors.muted },
+  unrecognizedText: { color: colors.danger, fontSize: 15, textAlign: 'center', marginBottom: spacing.sm },
   captureButton: {
-    height: 50,
+    height: 58,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -932,7 +932,7 @@ const styles = StyleSheet.create({
   captureButtonDisabled: {
     backgroundColor: colors.borderStrong,
   },
-  captureButtonText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  captureButtonText: { color: '#fff', fontSize: 18, fontWeight: '600' },
   helpOverlay: {
     flex: 1,
     backgroundColor: 'rgba(11,18,32,0.55)',
@@ -948,15 +948,15 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     ...shadow(3),
   },
-  helpTitle: { fontSize: 17, fontWeight: '700', color: colors.heading, marginBottom: spacing.sm },
-  helpBody: { fontSize: 14, color: colors.text, lineHeight: 20, marginBottom: spacing.lg },
+  helpTitle: { fontSize: 20, fontWeight: '700', color: colors.heading, marginBottom: spacing.sm },
+  helpBody: { fontSize: 17, color: colors.text, lineHeight: 24, marginBottom: spacing.lg },
   helpCloseButton: {
     backgroundColor: colors.primary,
     borderRadius: radius.pill,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.md,
     alignItems: 'center',
   },
-  helpCloseButtonText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  helpCloseButtonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
   stalledOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(11,18,32,0.82)',
@@ -974,7 +974,7 @@ const styles = StyleSheet.create({
     ...shadow(3),
   },
   stalledTitle: {
-    fontSize: 15,
+    fontSize: 18,
     fontWeight: '700',
     color: colors.heading,
     textAlign: 'center',
@@ -982,26 +982,28 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   stalledBody: {
-    fontSize: 12,
+    fontSize: 15,
     color: colors.text,
     textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: 21,
     marginBottom: spacing.lg,
   },
   stalledButton: {
     alignSelf: 'stretch',
     backgroundColor: colors.primary,
     borderRadius: radius.pill,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.md,
     alignItems: 'center',
     marginBottom: spacing.sm,
   },
-  stalledButtonText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  stalledButtonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
   stalledSecondary: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.md,
+    minHeight: 44,
+    justifyContent: 'center',
   },
-  stalledSecondaryText: { color: colors.primary, fontSize: 13, fontWeight: '600' },
+  stalledSecondaryText: { color: colors.primary, fontSize: 16, fontWeight: '600' },
 });

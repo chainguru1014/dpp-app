@@ -1186,13 +1186,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
   );
 }
 
-const DARK = '#0b1220';
-
 const styles = StyleSheet.create({
-  // Light (not DARK) — scanViewport below has its own dark background scoped
-  // to just the camera area; leaving this light means any leftover space
-  // below the (dynamically sized) white board reads as part of the page,
-  // not a jarring dark gap above the bottom nav.
   container: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -1299,7 +1293,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
-    backgroundColor: DARK,
+    backgroundColor: colors.white,
     overflow: 'hidden',
   },
   webScannerContainer: {
@@ -1307,7 +1301,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#000',
+    backgroundColor: colors.white,
   },
   // Light frame over the camera viewport (replaces the library's coral default).
   frameOverlay: {
