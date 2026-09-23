@@ -1699,10 +1699,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   focusHintText: { color: '#fff', fontSize: 17, fontWeight: '500' },
-  // Full-viewport recovery card shown when the camera feed has frozen.
+  // Full-viewport recovery card shown when the camera feed has frozen —
+  // near-white (matches scanViewport's own base), not the dark navy scrim
+  // this used to be, per explicit "camera UI background should be brighter"
+  // feedback (this overlay was what was actually visible in that state,
+  // independent of scanViewport's own background).
   stalledOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(11,18,32,0.82)',
+    backgroundColor: 'rgba(238,242,248,0.94)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.xl,

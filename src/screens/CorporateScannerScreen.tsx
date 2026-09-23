@@ -920,7 +920,8 @@ const styles = StyleSheet.create({
   thumbTime: { fontSize: 14, color: colors.muted },
   unrecognizedText: { color: colors.danger, fontSize: 18, textAlign: 'center', marginBottom: spacing.sm },
   captureButton: {
-    height: 75,
+    // 1.3x smaller than the earlier 75 (75 / 1.3 ≈ 58) per explicit feedback.
+    height: 58,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

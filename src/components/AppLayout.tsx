@@ -98,15 +98,13 @@ const EMPLOYEE_BRAND_TITLE = 'Yometel Traceability';
 const TOP_BAR_CONTENT = 56;
 const BOTTOM_BAR_CONTENT = 74;
 const BOTTOM_TAB_ICON_SIZE = 28;
-// 1.5x the consumer/product bars' BOTTOM_TAB_ICON_SIZE — the employee/staff
-// bottom bar (below) skews toward older and younger warehouse/retail staff
-// who need bigger icons/labels, scoped to just that bar so the
-// consumer-facing bars are unaffected.
-const EMPLOYEE_TAB_ICON_SIZE = 42;
-// 1.5x BOTTOM_BAR_CONTENT — the bar's own chrome height needs to grow in
-// step with EMPLOYEE_TAB_ICON_SIZE/employeeBottomTabLabel or the bigger
-// icon+label would crowd/clip inside the shorter consumer/product bar height.
-const EMPLOYEE_BOTTOM_BAR_CONTENT = 111;
+// Scaled back down 1.5x smaller from an earlier 1.5x-larger pass (42 -> 28,
+// landing back at the consumer/product bars' own BOTTOM_TAB_ICON_SIZE) per
+// explicit "bottom bar icons 1.5x smaller" feedback.
+const EMPLOYEE_TAB_ICON_SIZE = 28;
+// 1.3x smaller than the earlier 111 (111 / 1.3 ≈ 85) per explicit "bottom
+// bar height 1.3x smaller" feedback.
+const EMPLOYEE_BOTTOM_BAR_CONTENT = 85;
 
 /**
  * The real, current height of the fixed bottom tab bar (design height + this
@@ -821,9 +819,8 @@ const styles = StyleSheet.create({
   // Bottom-nav labels: ~14-16px.
   bottomTabLabel: { fontSize: 15, color: '#333333', marginTop: 3, fontWeight: '500' },
   bottomTabLabelSelected: { color: colors.primary, fontWeight: '700' },
-  // Employee/staff bar only (see EMPLOYEE_TAB_ICON_SIZE) — 1.5x the shared
-  // bottomTabLabel size.
-  employeeBottomTabLabel: { fontSize: 23 },
+  // Employee/staff bar only (see EMPLOYEE_TAB_ICON_SIZE) — explicit 20px per feedback.
+  employeeBottomTabLabel: { fontSize: 20 },
   scanTab: { flex: 1, height: '100%', alignItems: 'center', justifyContent: 'center' },
   scanCircle: {
     width: 54,

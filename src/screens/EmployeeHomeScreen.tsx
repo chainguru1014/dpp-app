@@ -126,7 +126,9 @@ export default function EmployeeHomeScreen({ navigation, user, onLogout }: any) 
 
 const styles = StyleSheet.create({
   container: { padding: spacing.xl, paddingBottom: spacing.xxxl },
-  title: { fontSize: 33, fontWeight: '600', color: '#000', marginBottom: spacing.xs },
+  // 1.5x smaller than the earlier 1.5x-bigger pass (33 -> 22), back to the
+  // original design size, per explicit "Worker Operations" title feedback.
+  title: { fontSize: 22, fontWeight: '600', color: '#000', marginBottom: spacing.xs },
   subtitle: { fontSize: 21, color: colors.muted, marginBottom: spacing.xl },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
   // Same two-part left/right split as the consumer HomeScreen's location
@@ -150,8 +152,10 @@ const styles = StyleSheet.create({
     borderColor: '#4A8DEB',
     borderWidth: 2,
   },
+  // 1:3 left/right split (explicit flex ratio, not a fixed px width) per
+  // "item card's left and right side ratio into 1:3" feedback.
   tileNumberPart: {
-    width: 66,
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.surfaceAlt,
@@ -162,7 +166,7 @@ const styles = StyleSheet.create({
   tileNumber: { fontSize: 23, fontWeight: '700', color: '#4A8DEB' },
   tileNumberSelected: { color: '#fff' },
   tileTextPart: {
-    flex: 1,
+    flex: 3,
     justifyContent: 'center',
     backgroundColor: colors.surface,
     paddingHorizontal: spacing.md,
