@@ -277,11 +277,11 @@ const styles = StyleSheet.create({
     marginVertical: spacing.sm,
   },
   helperText: {
-    fontSize: fontSize.sm,
+    fontSize: fontSize.md,
     color: colors.muted,
     marginBottom: spacing.md,
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 24,
   },
   helperEmail: {
     color: colors.text,
@@ -338,7 +338,7 @@ const styles = StyleSheet.create({
   },
   linkText: {
     color: colors.navy,
-    fontSize: 19,
+    fontSize: 21,
     fontWeight: '400',
   },
   linkTextDisabled: {

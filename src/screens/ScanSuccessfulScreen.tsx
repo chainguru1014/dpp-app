@@ -67,7 +67,7 @@ export default function ScanSuccessfulScreen({ navigation, route, user, onLogout
           )}
         </View>
 
-        <View style={styles.card}>
+        <View style={[styles.card, styles.highlightsCard]}>
           <Text style={styles.hlHeader}>{t('detectedQuickHighlights')}</Text>
           {highlights.map((h) => (
             <View key={h.title} style={styles.hlRow}>
@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   title: { fontSize: 20, fontWeight: '700', color: colors.heading },
-  subtitle: { fontSize: 17, color: colors.muted, marginTop: 1 },
+  subtitle: { fontSize: 19, color: colors.muted, marginTop: 1 },
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
@@ -139,6 +139,10 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     ...shadow(1),
   },
+  // Extra left breathing room specifically for the Quick Highlights card —
+  // its icon+text rows read as cramped against the card's left edge at the
+  // shared `card` style's default padding.
+  highlightsCard: { paddingLeft: spacing.lg },
   productName: { fontSize: 20, fontWeight: '700', color: colors.heading, marginTop: spacing.sm, textAlign: 'center' },
   productModel: { fontSize: 17, color: colors.muted, textAlign: 'center', marginTop: 1 },
   productId: { fontSize: 17, color: colors.placeholder, textAlign: 'center', marginTop: 2 },

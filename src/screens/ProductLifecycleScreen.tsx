@@ -424,8 +424,13 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
       return (
         <View style={styles.jDetail}>
           {links.map((l) => (
-            <TouchableOpacity key={l.key} onPress={() => openUrl(l.url)}>
+            <TouchableOpacity key={l.key} style={styles.jLinkRow} onPress={() => openUrl(l.url)}>
               <Text style={styles.jLink}>{t(l.labelKey as any)}</Text>
+              {/* Plain-colored text with no underline/icon read as static
+                  labels, not links a tap opens a URL from — this pairs the
+                  text with the same open-in-new cue as the Reuse & Recycle
+                  tab's equivalent rows. */}
+              <Icon name="open-in-new" size={15} color={colors.accent} />
             </TouchableOpacity>
           ))}
           {impactItems.map((it, i) => (
@@ -643,7 +648,10 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
               <Text style={styles.disposeTitle}>{t(l.labelKey as any)}</Text>
               <Text style={styles.disposeSub}>{t(l.subKey as any)}</Text>
             </View>
-            <Icon name="chevron-right" size={18} color={colors.muted} />
+            {/* "open-in-new" (not chevron-right) — every row here opens an
+                external URL (see openUrl), not a deeper in-app screen, so the
+                trailing icon should say that instead of implying in-app nav. */}
+            <Icon name="open-in-new" size={18} color={colors.muted} />
           </TouchableOpacity>
         ))}
       </View>
@@ -879,7 +887,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
               accessibilityState={{ disabled: !canScrollTabsLeft }}
             >
               <View style={[styles.tabEdgeHint, !canScrollTabsLeft && styles.tabEdgeHintDisabled]}>
-                <Icon name="chevron-left" size={16} color={canScrollTabsLeft ? colors.primary : colors.placeholder} />
+                <Icon name="chevron-left" size={22} color={canScrollTabsLeft ? colors.primary : colors.placeholder} />
               </View>
             </TouchableOpacity>
             <ScrollView
@@ -920,7 +928,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
               accessibilityState={{ disabled: !canScrollTabsRight }}
             >
               <View style={[styles.tabEdgeHint, !canScrollTabsRight && styles.tabEdgeHintDisabled]}>
-                <Icon name="chevron-right" size={16} color={canScrollTabsRight ? colors.primary : colors.placeholder} />
+                <Icon name="chevron-right" size={22} color={canScrollTabsRight ? colors.primary : colors.placeholder} />
               </View>
             </TouchableOpacity>
           </View>
@@ -959,9 +967,10 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.primary },
   header: {
     flexDirection: 'row',
-    gap: spacing.md,
+    gap: spacing.lg,
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
+    paddingLeft: spacing.xl,
+    paddingRight: spacing.lg,
     paddingTop: spacing.sm,
     paddingBottom: spacing.md,
   },
@@ -1014,9 +1023,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   tabEdgeHint: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.surfaceAlt,
@@ -1084,7 +1093,8 @@ const styles = StyleSheet.create({
   jDesc: { fontSize: 18, color: colors.muted, marginTop: 3, lineHeight: 24 },
   jDetail: { marginTop: spacing.md, backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: spacing.md },
   jDetailEmpty: { fontSize: 17, color: colors.muted },
-  jLink: { fontSize: 18, color: colors.accent, fontWeight: '600', paddingVertical: 3 },
+  jLinkRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingVertical: 3 },
+  jLink: { fontSize: 18, color: colors.accent, fontWeight: '600', textDecorationLine: 'underline' },
   // rows
   itemRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: MIN_TOUCH, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border },
   itemIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
@@ -1101,7 +1111,7 @@ const styles = StyleSheet.create({
   // Exactly four symbols per line.
   careItem: { width: '25%', alignItems: 'center', justifyContent: 'flex-start', paddingHorizontal: 2 },
   careIconScale: { transform: [{ scale: 1.05 }], marginVertical: 4 },
-  careLabel: { fontSize: 14, color: colors.text, textAlign: 'center', marginTop: 6, lineHeight: 18 },
+  careLabel: { fontSize: 17, color: colors.text, textAlign: 'center', marginTop: 6, lineHeight: 21 },
   tipRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, paddingVertical: 6 },
   tipText: { fontSize: 19, color: colors.text, lineHeight: 27 },
   tipDetailText: { fontSize: 16, color: colors.muted, marginTop: 1 },

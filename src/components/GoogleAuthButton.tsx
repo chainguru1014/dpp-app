@@ -249,7 +249,7 @@ export default function GoogleAuthButton({ onSuccess, onError }: GoogleAuthButto
         ) : (
           <>
             <View style={styles.googleIcon}>
-              <GoogleLogo />
+              <GoogleLogo color={colors.primary} />
             </View>
             <Text style={styles.buttonText}>Google</Text>
           </>
@@ -283,7 +283,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   buttonText: {
-    color: '#000000',
+    color: colors.primary,
     fontSize: 18,
     fontWeight: '400',
   },

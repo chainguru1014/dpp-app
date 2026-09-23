@@ -134,7 +134,14 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
             source={require('../assets/scan-product.png')}
             style={styles.hero}
             imageStyle={styles.heroImage}
-            resizeMode="cover"
+            // "contain" (not "cover") — the source art is already
+            // high-resolution; "cover" was cropping/downscaling it to fit
+            // this shorter, narrower-aspect box, shrinking the small
+            // "Yometel" tag logo below legibility. The hero's own
+            // background color (#e6effb) closely matches the image's own
+            // light-blue background, so any letterbox gap from "contain" is
+            // effectively invisible.
+            resizeMode="contain"
           >
             <Text style={styles.heroTitle}>{t('scanTitle')}</Text>
             <Text style={styles.heroSub}>{t('homeScanHeroSub')}</Text>
@@ -255,7 +262,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     padding: spacing.lg,
     backgroundColor: '#e6effb',
-    minHeight: 230,
+    // Matches scan-product.png's own 1659x948 aspect ratio exactly (not a
+    // fixed minHeight, which left a mismatched aspect gap around the
+    // "contain"-fitted image) — the box's height now always exactly matches
+    // the rendered image's height at any screen width, so there's no
+    // letterboxed strip left over for a different-colored layer underneath
+    // to show through at the corners.
+    aspectRatio: 1659 / 948,
     justifyContent: 'center',
   },
   heroImage: { borderRadius: radius.xl },

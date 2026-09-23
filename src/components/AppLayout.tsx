@@ -14,6 +14,11 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import FeatherIcon from 'react-native-vector-icons/Feather';
+// Only family bundled here with genuine outline/filled pairs for
+// home/tag/clock/account — MaterialIcons' classic set has just one
+// (already-solid) style for each of those. See index.web.js for the web
+// font-face registration.
+import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useI18n } from '../i18n/I18nContext';
@@ -504,11 +509,13 @@ export default function AppLayout({
               accessibilityState={{ selected: isHomeSelected }}
               accessibilityLabel={t('bottomHome')}
             >
-              <Image
-                source={require('../assets/home.png')}
-                style={[styles.bottomTabImg, { width: EMPLOYEE_TAB_ICON_SIZE, height: EMPLOYEE_TAB_ICON_SIZE }, isHomeSelected && styles.bottomTabImgSelected]}
-                resizeMode="contain"
-              />
+              {/* MaterialCommunityIcons throughout this bar (not the PNG
+                  home.png / MaterialIcons "crop-free" / Feather "file-text"
+                  this used to be) — same outline-before/filled-after-select
+                  pattern as the consumer bar, using MCI's real -outline
+                  pairs since neither the old image asset, MaterialIcons'
+                  classic set, nor Feather can do that. */}
+              <MaterialCommunityIcon name={isHomeSelected ? 'home' : 'home-outline'} size={EMPLOYEE_TAB_ICON_SIZE} color={isHomeSelected ? colors.primary : '#4a5468'} />
               <Text style={[styles.bottomTabLabel, styles.employeeBottomTabLabel, isHomeSelected && styles.bottomTabLabelSelected]}>{t('bottomHome')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -519,7 +526,7 @@ export default function AppLayout({
               accessibilityState={{ selected: isScanSelected }}
               accessibilityLabel={t('bottomCapture')}
             >
-              <Icon name="crop-free" size={EMPLOYEE_TAB_ICON_SIZE} color={isScanSelected ? colors.primary : '#4a5468'} />
+              <MaterialCommunityIcon name={isScanSelected ? 'camera' : 'camera-outline'} size={EMPLOYEE_TAB_ICON_SIZE} color={isScanSelected ? colors.primary : '#4a5468'} />
               <Text style={[styles.bottomTabLabel, styles.employeeBottomTabLabel, isScanSelected && styles.bottomTabLabelSelected]}>{t('bottomCapture')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -530,7 +537,7 @@ export default function AppLayout({
               accessibilityState={{ selected: isProductsSelected }}
               accessibilityLabel={t('bottomReview')}
             >
-              <FeatherIcon name="file-text" size={EMPLOYEE_TAB_ICON_SIZE} color={isProductsSelected ? colors.primary : '#4a5468'} />
+              <MaterialCommunityIcon name={isProductsSelected ? 'file-document' : 'file-document-outline'} size={EMPLOYEE_TAB_ICON_SIZE} color={isProductsSelected ? colors.primary : '#4a5468'} />
               <Text style={[styles.bottomTabLabel, styles.employeeBottomTabLabel, isProductsSelected && styles.bottomTabLabelSelected]}>{t('bottomReview')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -541,7 +548,7 @@ export default function AppLayout({
               accessibilityState={{ selected: isProfileSelected }}
               accessibilityLabel={t('bottomProfile')}
             >
-              <Icon name="person" size={EMPLOYEE_TAB_ICON_SIZE} color={isProfileSelected ? colors.primary : '#4a5468'} />
+              <MaterialCommunityIcon name={isProfileSelected ? 'account' : 'account-outline'} size={EMPLOYEE_TAB_ICON_SIZE} color={isProfileSelected ? colors.primary : '#4a5468'} />
               <Text style={[styles.bottomTabLabel, styles.employeeBottomTabLabel, isProfileSelected && styles.bottomTabLabelSelected]}>{t('bottomProfile')}</Text>
             </TouchableOpacity>
           </View>
@@ -644,18 +651,25 @@ export default function AppLayout({
 
 function BottomTab({
   icon,
+  iconActive,
   mi,
+  mci,
   label,
   selected,
   onPress,
 }: {
   icon: string;
+  // Swapped in for `icon` while selected — e.g. an outline glyph normally,
+  // filled once the tab is active.
+  iconActive?: string;
   mi?: boolean; // use MaterialIcons instead of Feather (outline default)
+  mci?: boolean; // use MaterialCommunityIcons — the only family bundled here with real outline/filled pairs
   label: string;
   selected: boolean;
   onPress: () => void;
 }) {
-  const Glyph: any = mi ? Icon : FeatherIcon;
+  const Glyph: any = mci ? MaterialCommunityIcon : mi ? Icon : FeatherIcon;
+  const glyphName = selected && iconActive ? iconActive : icon;
   return (
     <TouchableOpacity
       style={styles.bottomTab}
@@ -665,7 +679,7 @@ function BottomTab({
       accessibilityState={{ selected }}
       accessibilityLabel={label}
     >
-      <Glyph name={icon} size={BOTTOM_TAB_ICON_SIZE} color={selected ? colors.primary : colors.muted} />
+      <Glyph name={glyphName} size={BOTTOM_TAB_ICON_SIZE} color={selected ? colors.primary : colors.muted} />
       <Text style={[styles.bottomTabLabel, selected && styles.bottomTabLabelSelected]} numberOfLines={1}>
         {label}
       </Text>
@@ -710,11 +724,16 @@ function ConsumerBottomBar({
 }: any) {
   return (
     <View style={[styles.bottomBar, { height: barHeight, paddingBottom: bottomInset }]}>
-      <BottomTab icon="home" label={t('bottomHome')} selected={routeName === 'Home' || routeName === 'ScannedProducts' || routeName === 'ProductSummary'} onPress={onHome} />
-      <BottomTab icon="tag" label={t('bottomBrands')} selected={routeName === 'FavoriteBrands' || routeName === 'BrandDetail'} onPress={onBrands} />
+      {/* MaterialCommunityIcons (not MaterialIcons/Feather) — the classic
+          MaterialIcons "home"/"access-time"/"person" names each have just
+          one already-solid style (no real outline), and Feather has no
+          filled variants at all. MaterialCommunityIcons' -outline suffix
+          gives every one of these a genuine outline glyph to start from. */}
+      <BottomTab mci icon="home-outline" iconActive="home" label={t('bottomHome')} selected={routeName === 'Home' || routeName === 'ScannedProducts' || routeName === 'ProductSummary'} onPress={onHome} />
+      <BottomTab mci icon="tag-outline" iconActive="tag" label={t('bottomBrands')} selected={routeName === 'FavoriteBrands' || routeName === 'BrandDetail'} onPress={onBrands} />
       <ScanCenterTab label={t('bottomScan')} selected={routeName === 'Scanner' || routeName === 'EnterCode'} onPress={onScan} />
-      <BottomTab icon="clock" label={t('bottomHistory')} selected={routeName === 'History' || routeName === 'ProductHistory' || routeName === 'PurchaseHistory'} onPress={onHistory} />
-      <BottomTab mi icon="account-circle" label={t('bottomProfile')} selected={profileActive || routeName === 'EditProfile'} onPress={onProfile} />
+      <BottomTab mci icon="clock-outline" iconActive="clock" label={t('bottomHistory')} selected={routeName === 'History' || routeName === 'ProductHistory' || routeName === 'PurchaseHistory'} onPress={onHistory} />
+      <BottomTab mci icon="account-outline" iconActive="account" label={t('bottomProfile')} selected={profileActive || routeName === 'EditProfile'} onPress={onProfile} />
     </View>
   );
 }
@@ -814,8 +833,6 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
   },
   bottomTab: { flex: 1, minHeight: MIN_TOUCH, height: '100%', alignItems: 'center', justifyContent: 'center' },
-  bottomTabImg: { width: BOTTOM_TAB_ICON_SIZE, height: BOTTOM_TAB_ICON_SIZE, tintColor: '#333333' },
-  bottomTabImgSelected: { tintColor: colors.primary },
   // Bottom-nav labels: ~14-16px.
   bottomTabLabel: { fontSize: 15, color: '#333333', marginTop: 3, fontWeight: '500' },
   bottomTabLabelSelected: { color: colors.primary, fontWeight: '700' },

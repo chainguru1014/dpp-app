@@ -207,6 +207,13 @@ export default function AiConciergeConsentScreen({ navigation, route, onLogin }:
                 I agree to let the AI Concierge of this app learn from my scans, favorites, and browsing
                 history to personalize my experience.
               </Text>
+            </ScrollView>
+
+            <View style={styles.cardFooter}>
+              {/* I Agree/I Disagree pinned here alongside Continue (not
+                  inside the ScrollView above) — both button rows should
+                  always be reachable without scrolling on any device; only
+                  the explanatory content above scrolls. */}
               <View style={styles.consentButtonRow}>
                 <TouchableOpacity
                   style={[styles.consentButton, consent === true && styles.consentButtonAgreeActive]}
@@ -230,10 +237,6 @@ export default function AiConciergeConsentScreen({ navigation, route, onLogin }:
                   </Text>
                 </TouchableOpacity>
               </View>
-
-            </ScrollView>
-
-            <View style={styles.cardFooter}>
               <GradientButton
                 style={[styles.button, (saving || consent === null) && styles.buttonDisabled]}
                 onPress={handleSubmit}

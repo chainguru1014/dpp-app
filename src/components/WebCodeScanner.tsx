@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { BrowserMultiFormatReader } from '@zxing/browser';
 import { BarcodeFormat, NotFoundException } from '@zxing/library';
+import { colors } from '../theme';
 import {
   applyDigitalZoom,
   applyFixedFocusFallback,
@@ -260,7 +261,14 @@ function WebCodeScanner(
         ref={videoRef}
         playsInline
         muted
-        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+        // Explicit backgroundColor — browsers paint a <video> with no active
+        // frame/stream (e.g. right after a successful scan, when `active`
+        // goes false and the stream is stopped while product info loads)
+        // black by default, regardless of the parent's own background. This
+        // element sits full-bleed over that parent, so its own default was
+        // what was actually showing as "black camera background", not
+        // scanViewport (already near-white).
+        style={{ width: '100%', height: '100%', objectFit: 'cover', backgroundColor: colors.surfaceAlt }}
       />
       <canvas ref={canvasRef} style={{ display: 'none' }} />
     </>

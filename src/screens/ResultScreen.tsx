@@ -2210,7 +2210,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     padding: spacing.md,
-    marginHorizontal: spacing.lg,
+    marginHorizontal: spacing.xl,
     marginTop: spacing.sm,
     ...shadow(1),
   },
@@ -2258,7 +2258,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   ovIconBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  ovIconBtnText: { fontSize: 15, fontWeight: '600', color: colors.primary },
+  ovIconBtnText: { fontSize: 17, fontWeight: '600', color: colors.primary },
   ovIconBtnTextActive: { color: '#fff' },
   // Share is the action most consumers actually reach for -- a light tint
   // (not the same solid fill as the like/dislike "active" state, which is
