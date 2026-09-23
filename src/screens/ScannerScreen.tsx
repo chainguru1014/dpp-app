@@ -1293,7 +1293,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
-    backgroundColor: colors.white,
+    // Near-white, not colors.white/surface — the bottom nav bar below is
+    // pure white (colors.surface), so this is deliberately a hair off from
+    // it (colors.surfaceAlt) to stay visually distinct instead of blending
+    // into one solid white block.
+    backgroundColor: colors.surfaceAlt,
     overflow: 'hidden',
   },
   webScannerContainer: {
@@ -1301,7 +1305,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.surfaceAlt,
   },
   // Light frame over the camera viewport (replaces the library's coral default).
   frameOverlay: {

@@ -33,10 +33,10 @@ const TYPE_LABEL_KEYS: Record<string, string> = {
 
 const SELECTED_STEP_STORAGE_KEY = 'employeeSelectedStepIndex';
 
-// Shared height for the tile so left/right sides align. Larger than the
-// consumer flow's equivalent — the staff/worker flow skews toward older and
-// younger warehouse/retail staff who need bigger text and tap targets.
-const TILE_HEIGHT = 68;
+// Shared height for the tile so left/right sides align. 1.5x the consumer
+// flow's equivalent — the staff/worker flow skews toward older and younger
+// warehouse/retail staff who need bigger text and tap targets.
+const TILE_HEIGHT = 87;
 
 // "Worker Operations" home screen for corporate/employee sessions — a numbered
 // grid of the company's process step labels (managed by a Supervisor from the
@@ -126,8 +126,8 @@ export default function EmployeeHomeScreen({ navigation, user, onLogout }: any) 
 
 const styles = StyleSheet.create({
   container: { padding: spacing.xl, paddingBottom: spacing.xxxl },
-  title: { fontSize: 26, fontWeight: '600', color: '#000', marginBottom: spacing.xs },
-  subtitle: { fontSize: 17, color: colors.muted, marginBottom: spacing.xl },
+  title: { fontSize: 33, fontWeight: '600', color: '#000', marginBottom: spacing.xs },
+  subtitle: { fontSize: 21, color: colors.muted, marginBottom: spacing.xl },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
   // Same two-part left/right split as the consumer HomeScreen's location
   // tiles: full-height number chip on the left, Entity(bold)/Type stacked
@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   tileNumberPart: {
-    width: 52,
+    width: 66,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.surfaceAlt,
@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
   tileNumberPartSelected: {
     backgroundColor: '#4A8DEB',
   },
-  tileNumber: { fontSize: 19, fontWeight: '700', color: '#4A8DEB' },
+  tileNumber: { fontSize: 23, fontWeight: '700', color: '#4A8DEB' },
   tileNumberSelected: { color: '#fff' },
   tileTextPart: {
     flex: 1,
@@ -170,6 +170,6 @@ const styles = StyleSheet.create({
   tileTextPartSelected: {
     backgroundColor: colors.surfaceAlt,
   },
-  tileEntity: { fontSize: 17, fontWeight: '700', color: colors.text },
-  tileType: { fontSize: 15, fontWeight: '400', color: colors.muted, marginTop: 1 },
+  tileEntity: { fontSize: 20, fontWeight: '700', color: colors.text },
+  tileType: { fontSize: 20, fontWeight: '400', color: colors.muted, marginTop: 1 },
 });

@@ -98,11 +98,15 @@ const EMPLOYEE_BRAND_TITLE = 'Yometel Traceability';
 const TOP_BAR_CONTENT = 56;
 const BOTTOM_BAR_CONTENT = 74;
 const BOTTOM_TAB_ICON_SIZE = 28;
-// Slightly larger than the consumer/product bars' BOTTOM_TAB_ICON_SIZE —
-// the employee/staff bottom bar (below) skews toward older and younger
-// warehouse/retail staff who need bigger icons/labels, scoped to just that
-// bar so the consumer-facing bars are unaffected.
-const EMPLOYEE_TAB_ICON_SIZE = 32;
+// 1.5x the consumer/product bars' BOTTOM_TAB_ICON_SIZE — the employee/staff
+// bottom bar (below) skews toward older and younger warehouse/retail staff
+// who need bigger icons/labels, scoped to just that bar so the
+// consumer-facing bars are unaffected.
+const EMPLOYEE_TAB_ICON_SIZE = 42;
+// 1.5x BOTTOM_BAR_CONTENT — the bar's own chrome height needs to grow in
+// step with EMPLOYEE_TAB_ICON_SIZE/employeeBottomTabLabel or the bigger
+// icon+label would crowd/clip inside the shorter consumer/product bar height.
+const EMPLOYEE_BOTTOM_BAR_CONTENT = 111;
 
 /**
  * The real, current height of the fixed bottom tab bar (design height + this
@@ -166,7 +170,6 @@ export default function AppLayout({
   // constants, so the header/tab bar never sit under system chrome.
   const insets = useSafeAreaInsets();
   const topBarHeight = insets.top + TOP_BAR_CONTENT;
-  const bottomBarHeight = BOTTOM_BAR_CONTENT + insets.bottom;
   // Bottom-anchored sheet modals (profile sheet) need their own safe-area pad
   // so their last row doesn't sit under the home indicator.
   const spacingBottomForSheet = spacing.xl + insets.bottom;
@@ -197,6 +200,13 @@ export default function AppLayout({
     if (isAuthenticated) return 'consumer';
     return 'none';
   })();
+
+  // The employee bar's icon/label are scaled 1.5x (see EMPLOYEE_TAB_ICON_SIZE)
+  // for staff-flow readability, so its chrome needs proportionally more
+  // height too, or the bigger icon+label would crowd/clip inside the
+  // consumer/product bars' shorter BOTTOM_BAR_CONTENT. Only affects the
+  // employee bar — content padding and the other bars stay unchanged.
+  const bottomBarHeight = (effectiveBar === 'employee' ? EMPLOYEE_BOTTOM_BAR_CONTENT : BOTTOM_BAR_CONTENT) + insets.bottom;
 
   const productsTarget = isEmployeeActor ? 'CorporateReview' : 'ScannedProducts';
   const homeBaseRoute = isEmployeeActor ? 'EmployeeHome' : 'Home';
@@ -811,9 +821,9 @@ const styles = StyleSheet.create({
   // Bottom-nav labels: ~14-16px.
   bottomTabLabel: { fontSize: 15, color: '#333333', marginTop: 3, fontWeight: '500' },
   bottomTabLabelSelected: { color: colors.primary, fontWeight: '700' },
-  // Employee/staff bar only (see EMPLOYEE_TAB_ICON_SIZE) — bumped up from the
-  // shared bottomTabLabel size.
-  employeeBottomTabLabel: { fontSize: 17 },
+  // Employee/staff bar only (see EMPLOYEE_TAB_ICON_SIZE) — 1.5x the shared
+  // bottomTabLabel size.
+  employeeBottomTabLabel: { fontSize: 23 },
   scanTab: { flex: 1, height: '100%', alignItems: 'center', justifyContent: 'center' },
   scanCircle: {
     width: 54,

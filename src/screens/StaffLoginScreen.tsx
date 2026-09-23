@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     color: '#ffffff',
-    fontSize: 24,
+    fontSize: 33,
     fontWeight: '600',
     textAlign: 'center',
     paddingTop: 56,
@@ -225,18 +225,18 @@ const styles = StyleSheet.create({
   centerWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: spacing.xl, paddingBottom: spacing.xxxl, width: '100%' },
   card: { backgroundColor: '#f3f4f6', borderRadius: radius.xl, padding: spacing.xxxl, width: '100%', maxWidth: 380, ...shadow(3) },
   logoContainer: { alignItems: 'center', marginBottom: spacing.lg },
-  logoImage: { width: 180, height: 54 },
-  // Larger than the consumer login's equivalent text — this flow skews toward
-  // older/less tech-fluent corporate staff, so every size here is bumped up.
-  subtitle: { fontSize: 18, fontWeight: '400', color: colors.muted, textAlign: 'center', marginBottom: spacing.xl },
-  helperText: { fontSize: 16, color: colors.muted, marginBottom: spacing.sm, textAlign: 'center' },
-  input: { backgroundColor: colors.white, borderRadius: radius.pill, paddingVertical: 16, paddingHorizontal: 20, marginBottom: spacing.md, fontSize: 19, minHeight: MIN_TOUCH, color: colors.text, borderWidth: 1, borderColor: colors.borderStrong },
-  button: { backgroundColor: colors.primary, borderRadius: radius.pill, paddingVertical: 17, minHeight: MIN_TOUCH, alignItems: 'center', justifyContent: 'center', ...shadow(1) },
+  logoImage: { width: 240, height: 72 },
+  // 1.5x the consumer login's equivalent text — this flow skews toward
+  // older/less tech-fluent corporate staff, so every size here is scaled up.
+  subtitle: { fontSize: 23, fontWeight: '400', color: colors.muted, textAlign: 'center', marginBottom: spacing.xl },
+  helperText: { fontSize: 20, color: colors.muted, marginBottom: spacing.sm, textAlign: 'center' },
+  input: { backgroundColor: colors.white, borderRadius: radius.pill, paddingVertical: 20, paddingHorizontal: 27, marginBottom: spacing.md, fontSize: 24, minHeight: MIN_TOUCH, color: colors.text, borderWidth: 1, borderColor: colors.borderStrong },
+  button: { backgroundColor: colors.primary, borderRadius: radius.pill, paddingVertical: 21, minHeight: MIN_TOUCH, alignItems: 'center', justifyContent: 'center', ...shadow(1) },
   buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: colors.white, fontSize: 19, fontWeight: '400' },
+  buttonText: { color: colors.white, fontSize: 24, fontWeight: '400' },
   linkButton: { marginTop: spacing.md, alignItems: 'center', minHeight: MIN_TOUCH, justifyContent: 'center', paddingHorizontal: spacing.md },
-  linkText: { color: colors.navy, fontSize: 17, fontWeight: '400' },
+  linkText: { color: colors.navy, fontSize: 21, fontWeight: '400' },
   linkTextDisabled: { color: colors.muted },
   errorBox: { backgroundColor: colors.dangerSoft, borderRadius: radius.md, paddingVertical: spacing.md, paddingHorizontal: spacing.md, marginBottom: spacing.md },
-  errorText: { color: colors.danger, fontSize: 16, textAlign: 'left' },
+  errorText: { color: colors.danger, fontSize: 20, textAlign: 'left' },
 });
