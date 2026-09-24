@@ -39,7 +39,7 @@ if (Platform.OS === 'android' || Platform.OS === 'ios') {
 
 interface GoogleAuthButtonProps {
   // Called with the envelope returned by POST auth/google: { user, token, profileCompleted, ... }
-  onSuccess: (result: { user: any; token: string; profileCompleted: boolean }) => void;
+  onSuccess: (result: { user: any; token: string; profileCompleted: boolean; actorKind?: 'User' | 'Employee' }) => void;
   onError?: (error: string) => void;
   navigation?: any;
 }
@@ -155,6 +155,8 @@ export default function GoogleAuthButton({ onSuccess, onError }: GoogleAuthButto
             user: userData,
             token: data.token || '',
             profileCompleted: userData.profileCompleted !== false,
+            // A staff employee's email signs in as that employee.
+            actorKind: data.actorKind === 'Employee' ? 'Employee' : 'User',
           });
         } else {
           throw new Error('Invalid response from server');

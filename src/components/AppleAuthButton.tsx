@@ -50,7 +50,7 @@ const APPLE_JS_SDK_SCRIPT_ID = 'appleid-auth-client';
 
 interface AppleAuthButtonProps {
   // Called with the envelope returned by POST auth/apple: { user, token, profileCompleted, ... }
-  onSuccess: (result: { user: any; token: string; profileCompleted: boolean }) => void;
+  onSuccess: (result: { user: any; token: string; profileCompleted: boolean; actorKind?: 'User' | 'Employee' }) => void;
   onError?: (error: string) => void;
 }
 
@@ -120,6 +120,8 @@ export default function AppleAuthButton({ onSuccess, onError }: AppleAuthButtonP
         user: userData,
         token: data.token || '',
         profileCompleted: userData.profileCompleted !== false,
+        // A staff employee's email signs in as that employee.
+        actorKind: data.actorKind === 'Employee' ? 'Employee' : 'User',
       });
     } else {
       throw new Error(data.message || 'Apple login failed');
