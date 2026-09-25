@@ -1,6 +1,33 @@
+const fs = require('fs');
 const path = require('path');
 const webpack = require('webpack');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+
+// Emits a handful of static files from public/ (the PWA manifest + its icon)
+// as build assets, so they land in web-build/ on a prod build AND are served
+// correctly by `webpack serve` (which doesn't touch disk by default) --
+// without pulling in copy-webpack-plugin for just two files. Add filenames
+// here as more static PWA assets show up.
+class CopyPublicFilesPlugin {
+  constructor(files) {
+    this.files = files;
+  }
+  apply(compiler) {
+    compiler.hooks.thisCompilation.tap('CopyPublicFilesPlugin', (compilation) => {
+      compilation.hooks.processAssets.tap(
+        { name: 'CopyPublicFilesPlugin', stage: webpack.Compilation.PROCESS_ASSETS_STAGE_ADDITIONAL },
+        () => {
+          this.files.forEach((file) => {
+            const filePath = path.resolve(__dirname, 'public', file);
+            if (fs.existsSync(filePath)) {
+              compilation.emitAsset(file, new webpack.sources.RawSource(fs.readFileSync(filePath)));
+            }
+          });
+        }
+      );
+    });
+  }
+}
 
 // Mode-aware config. `webpack serve` runs development (fast rebuilds, HMR);
 // `webpack --mode production` (npm run web:build) produces a minified,
@@ -130,6 +157,7 @@ module.exports = (env, argv) => {
           minifyCSS: true,
         },
       }),
+      new CopyPublicFilesPlugin(['manifest.json', 'icon-512.png']),
     ],
     devServer: {
       static: {

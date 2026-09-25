@@ -1,0 +1,17 @@
+{
+  "short_name": "Yometel DPP",
+  "name": "Yometel Digital Product Passport",
+  "icons": [
+    {
+      "src": "/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#1b4f72",
+  "background_color": "#1b4f72"
+}
