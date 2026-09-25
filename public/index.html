@@ -14,10 +14,17 @@
     <!-- iOS "Add to Home Screen" standalone mode: capable+status-bar-style
          are what actually let content extend under the status bar on iOS
          (the Web App Manifest's display/theme_color are not enough there).
-         black-translucent overlays the status bar instead of reserving an
-         opaque strip for it. -->
+         "black-translucent" is the usual choice for edge-to-edge content,
+         but on current iOS it sizes the layout viewport as if a status bar
+         were still reserved while env(safe-area-inset-bottom) resolves to 0
+         -- content can land shifted from the top AND our bottom bar's
+         `bottom: 0` lands short of the true screen edge, leaving an
+         unreachable band below it (both gaps this pass is fixing). "default"
+         reserves an ordinary opaque status bar instead of overlaying a
+         translucent one, but reports safe-area insets correctly, which is
+         the actual requirement here -- our own bars sit flush against it. -->
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Yometel DPP">
     <link rel="manifest" href="/manifest.json">
     <link rel="apple-touch-icon" href="/icon-512.png">
