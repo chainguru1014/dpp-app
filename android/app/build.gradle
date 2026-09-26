@@ -1,4 +1,10 @@
 apply plugin: "com.android.application"
+// Needed for the app module's own Kotlin sources (android/app/src/main/java/
+// com/yometel/dpp/rfid/*.kt, the Yometel RFID native module) — every other
+// Kotlin file in this build lives in an autolinked react-native-* library
+// module that applies this plugin itself; the app module was pure Java
+// until now, so it never needed it before.
+apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 apply from: "../../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"; applyNativeModulesAppBuildGradle(project)
 

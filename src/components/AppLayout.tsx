@@ -103,13 +103,8 @@ const EMPLOYEE_BRAND_TITLE = 'Yometel Traceability';
 const TOP_BAR_CONTENT = 56;
 const BOTTOM_BAR_CONTENT = 74;
 const BOTTOM_TAB_ICON_SIZE = 28;
-// Scaled back down 1.5x smaller from an earlier 1.5x-larger pass (42 -> 28,
-// landing back at the consumer/product bars' own BOTTOM_TAB_ICON_SIZE) per
-// explicit "bottom bar icons 1.5x smaller" feedback.
-const EMPLOYEE_TAB_ICON_SIZE = 28;
-// 1.3x smaller than the earlier 111 (111 / 1.3 ≈ 85) per explicit "bottom
-// bar height 1.3x smaller" feedback.
-const EMPLOYEE_BOTTOM_BAR_CONTENT = 85;
+// Staff bar now matches the consumer bar's height exactly (was 85).
+const EMPLOYEE_BOTTOM_BAR_CONTENT = BOTTOM_BAR_CONTENT;
 
 /**
  * The real, current height of the fixed bottom tab bar (design height + this
@@ -204,11 +199,8 @@ export default function AppLayout({
     return 'none';
   })();
 
-  // The employee bar's icon/label are scaled 1.5x (see EMPLOYEE_TAB_ICON_SIZE)
-  // for staff-flow readability, so its chrome needs proportionally more
-  // height too, or the bigger icon+label would crowd/clip inside the
-  // consumer/product bars' shorter BOTTOM_BAR_CONTENT. Only affects the
-  // employee bar — content padding and the other bars stay unchanged.
+  // Kept as a separate constant so the staff bar can diverge again, but it
+  // currently equals BOTTOM_BAR_CONTENT (same tabs as the consumer bar).
   const bottomBarHeight = (effectiveBar === 'employee' ? EMPLOYEE_BOTTOM_BAR_CONTENT : BOTTOM_BAR_CONTENT) + insets.bottom;
 
   const productsTarget = isEmployeeActor ? 'CorporateReview' : 'ScannedProducts';
@@ -499,58 +491,14 @@ export default function AppLayout({
         const isProfileSelected = profileSheetVisible || route.name === 'EditProfile';
         const isHomeSelected = route.name === 'EmployeeHome';
         const isProductsSelected = route.name === productsTarget;
+        // Same BottomTab (icon size, label style, colors) and bar height as
+        // the consumer bar, so both flows' tabs look identical.
         return (
           <View style={[styles.bottomBar, { height: bottomBarHeight, paddingBottom: insets.bottom }]}>
-            <TouchableOpacity
-              style={styles.bottomTab}
-              onPress={handleHome}
-              activeOpacity={0.7}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: isHomeSelected }}
-              accessibilityLabel={t('bottomHome')}
-            >
-              {/* MaterialCommunityIcons throughout this bar (not the PNG
-                  home.png / MaterialIcons "crop-free" / Feather "file-text"
-                  this used to be) — same outline-before/filled-after-select
-                  pattern as the consumer bar, using MCI's real -outline
-                  pairs since neither the old image asset, MaterialIcons'
-                  classic set, nor Feather can do that. */}
-              <MaterialCommunityIcon name={isHomeSelected ? 'home' : 'home-outline'} size={EMPLOYEE_TAB_ICON_SIZE} color={isHomeSelected ? colors.primary : '#4a5468'} />
-              <Text style={[styles.bottomTabLabel, styles.employeeBottomTabLabel, isHomeSelected && styles.bottomTabLabelSelected]}>{t('bottomHome')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.bottomTab}
-              onPress={handleScan}
-              activeOpacity={0.7}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: isScanSelected }}
-              accessibilityLabel={t('bottomCapture')}
-            >
-              <MaterialCommunityIcon name={isScanSelected ? 'camera' : 'camera-outline'} size={EMPLOYEE_TAB_ICON_SIZE} color={isScanSelected ? colors.primary : '#4a5468'} />
-              <Text style={[styles.bottomTabLabel, styles.employeeBottomTabLabel, isScanSelected && styles.bottomTabLabelSelected]}>{t('bottomCapture')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.bottomTab}
-              onPress={handleProducts}
-              activeOpacity={0.7}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: isProductsSelected }}
-              accessibilityLabel={t('bottomReview')}
-            >
-              <MaterialCommunityIcon name={isProductsSelected ? 'file-document' : 'file-document-outline'} size={EMPLOYEE_TAB_ICON_SIZE} color={isProductsSelected ? colors.primary : '#4a5468'} />
-              <Text style={[styles.bottomTabLabel, styles.employeeBottomTabLabel, isProductsSelected && styles.bottomTabLabelSelected]}>{t('bottomReview')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.bottomTab}
-              onPress={openProfileSheet}
-              activeOpacity={0.7}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: isProfileSelected }}
-              accessibilityLabel={t('bottomProfile')}
-            >
-              <MaterialCommunityIcon name={isProfileSelected ? 'account' : 'account-outline'} size={EMPLOYEE_TAB_ICON_SIZE} color={isProfileSelected ? colors.primary : '#4a5468'} />
-              <Text style={[styles.bottomTabLabel, styles.employeeBottomTabLabel, isProfileSelected && styles.bottomTabLabelSelected]}>{t('bottomProfile')}</Text>
-            </TouchableOpacity>
+            <BottomTab mci icon="home-outline" iconActive="home" label={t('bottomHome')} selected={isHomeSelected} onPress={handleHome} />
+            <BottomTab mci icon="camera-outline" iconActive="camera" label={t('bottomCapture')} selected={isScanSelected} onPress={handleScan} />
+            <BottomTab mci icon="file-document-outline" iconActive="file-document" label={t('bottomReview')} selected={isProductsSelected} onPress={handleProducts} />
+            <BottomTab mci icon="account-outline" iconActive="account" label={t('bottomProfile')} selected={isProfileSelected} onPress={openProfileSheet} />
           </View>
         );
       })()}
@@ -836,10 +784,6 @@ const styles = StyleSheet.create({
   // Bottom-nav labels: ~14-16px.
   bottomTabLabel: { fontSize: 15, color: '#333333', marginTop: 3, fontWeight: '500' },
   bottomTabLabelSelected: { color: colors.primary, fontWeight: '700' },
-  // Employee/staff bar only (see EMPLOYEE_TAB_ICON_SIZE) — explicit 20px per feedback.
-  // Tight lineHeight + small negative margin: at 20px the default line box
-  // adds visible padding above the glyphs, which read as a big icon/label gap.
-  employeeBottomTabLabel: { fontSize: 20, lineHeight: 22, marginTop: -2 },
   scanTab: { flex: 1, height: '100%', alignItems: 'center', justifyContent: 'center' },
   scanCircle: {
     width: 54,

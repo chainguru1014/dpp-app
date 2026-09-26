@@ -28,6 +28,7 @@ import { getCurrentLocation, getDeviceInfo } from '../utils/deviceCapture';
 import { uploadCaptureImage } from '../utils/uploadCapture';
 import { isNfcSupported, readNfcTag } from '../utils/nfc';
 import DUMMY_RFID_TAGS from '../data/dummyRfidTags.json';
+import { connectYometelReader, disconnectYometelReader, scanOnceYometel } from '../native/yometelRfid';
 
 const LIVENESS_TIMEOUT_MS = 700;
 // How often to poll for recent RFID tag detections while RFID mode is
@@ -44,6 +45,12 @@ const RFID_WINDOW_SECONDS = 5;
 // reader/gateway is posting to /rfid/ingest, to restore live polling.
 const RFID_SIMULATION_MODE = true;
 const RFID_SIMULATION_DELAY_MS = 4000;
+// Real vs Simulate is picked per session with the radio pair next to the
+// reader chips. Only Yometel has a real transport (Android BLE, see
+// android/app/src/main/java/com/yometel/dpp/rfid); Impinj/Zebra are pending
+// hardware confirmation, so they're always Simulate. Real on a non-Android
+// build fails at Connect with connectYometelReader's "Android-only" error.
+type RfidMode = 'real' | 'simulate';
 
 // pmc/lookup returns product images as bare upload filenames — same
 // resolution every other product-image screen uses.
@@ -138,6 +145,13 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
     impinj: false,
     zebra: false,
   });
+  // Only meaningful for the Yometel branch (real BLE connect can take a few
+  // seconds) — Impinj/Zebra's mocked Connect is instant, no loading state.
+  // Yometel's own choice; Impinj/Zebra ignore it (always simulate).
+  const [rfidMode, setRfidMode] = useState<RfidMode>('real');
+  const isRealYometel = rfidReaderType === 'yometel' && rfidMode === 'real';
+  const [rfidConnecting, setRfidConnecting] = useState(false);
+  const [rfidConnectError, setRfidConnectError] = useState('');
   const [nfcAvailable, setNfcAvailable] = useState(false);
   const [nfcReading, setNfcReading] = useState(false);
   // Camera-freeze recovery (autofocus-hardware fault — see utils/cameraResilience).
@@ -335,6 +349,24 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
       return;
     }
 
+    if (isRealYometel) {
+      let cancelled = false;
+      const poll = async () => {
+        try {
+          const tags = await scanOnceYometel();
+          if (!cancelled) setRfidTags(tags);
+        } catch (err) {
+          if (!cancelled) setRfidTags([]);
+        }
+      };
+      poll();
+      rfidPollIntervalRef.current = setInterval(poll, RFID_POLL_MS);
+      return () => {
+        cancelled = true;
+        clearInterval(rfidPollIntervalRef.current);
+      };
+    }
+
     if (RFID_SIMULATION_MODE) {
       let cancelled = false;
       const revealNext = () => {
@@ -379,7 +411,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
       cancelled = true;
       clearInterval(rfidPollIntervalRef.current);
     };
-  }, [rfidReady]);
+  }, [rfidReady, rfidReaderType, isRealYometel]);
 
   // Only a code that resolves to one of our own registered products (a valid
   // security/encrypted QR, a GS1 Digital Link, or a barcode already mapped
@@ -513,6 +545,82 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
       setCodeUnrecognized(!recognized);
       setLiveCode(recognized ? { value, format, manual, productId, qrcodeId } : null);
     });
+  };
+
+  // Android 12+ requires runtime grant for BLUETOOTH_CONNECT even though
+  // it's a normal (not dangerous-at-install-time) permission pre-31 — same
+  // PermissionsAndroid.request pattern already used above for CAMERA.
+  const ensureBluetoothConnectPermission = async (): Promise<boolean> => {
+    if (Platform.OS !== 'android' || Platform.Version < 31) return true;
+    try {
+      const granted = await PermissionsAndroid.request(
+        'android.permission.BLUETOOTH_CONNECT' as any,
+        {
+          title: t('rfidBluetoothPermissionTitle'),
+          message: t('rfidBluetoothPermissionMessage'),
+          buttonNeutral: t('askMeLater'),
+          buttonNegative: t('cancel'),
+          buttonPositive: t('ok'),
+        }
+      );
+      return granted === PermissionsAndroid.RESULTS.GRANTED;
+    } catch (err) {
+      console.warn('BLUETOOTH_CONNECT permission request failed:', err);
+      return false;
+    }
+  };
+
+  const handleConnectPress = async () => {
+    if (!isRealYometel) {
+      // Simulate (and Impinj/Zebra, always simulated) — virtual connection.
+      setRfidConnectedByType((prev) => ({ ...prev, [rfidReaderType]: true }));
+      return;
+    }
+    const readerId = user?.rfidReaderIds?.yometel;
+    if (!readerId) return;
+    setRfidConnectError('');
+    setRfidConnecting(true);
+    try {
+      const allowed = await ensureBluetoothConnectPermission();
+      if (!allowed) {
+        setRfidConnectError(t('rfidBluetoothPermissionDenied'));
+        return;
+      }
+      await connectYometelReader(readerId);
+      setRfidConnectedByType((prev) => ({ ...prev, yometel: true }));
+    } catch (err: any) {
+      console.error('Yometel connect failed:', err);
+      setRfidConnectError(err?.message || t('rfidConnectFailed'));
+    } finally {
+      setRfidConnecting(false);
+    }
+  };
+
+  const handleDisconnectPress = async () => {
+    if (isRealYometel) {
+      try {
+        await disconnectYometelReader();
+      } catch (err) {
+        console.warn('Yometel disconnect failed:', err);
+      }
+    }
+    setRfidConnectedByType((prev) => ({ ...prev, [rfidReaderType]: false }));
+  };
+
+  // Switching Real <-> Simulate drops the current connection (a real BLE link
+  // is closed) so the next Connect uses the newly selected mode.
+  const handleRfidModeChange = async (mode: RfidMode) => {
+    if (mode === rfidMode) return;
+    if (isRealYometel && rfidConnectedByType.yometel) {
+      try {
+        await disconnectYometelReader();
+      } catch (err) {
+        console.warn('Yometel disconnect failed:', err);
+      }
+    }
+    setRfidConnectedByType((prev) => ({ ...prev, yometel: false }));
+    setRfidConnectError('');
+    setRfidMode(mode);
   };
 
   // Logs one detected RFID tag — called automatically by the auto-capture
@@ -806,7 +914,10 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                   <TouchableOpacity
                     key={opt.key}
                     style={[styles.rfidReaderChip, rfidReaderType === opt.key && styles.rfidReaderChipActive]}
-                    onPress={() => setRfidReaderType(opt.key)}
+                    onPress={() => {
+                      setRfidReaderType(opt.key);
+                      setRfidConnectError('');
+                    }}
                     activeOpacity={0.75}
                   >
                     <Text style={[styles.rfidReaderChipText, rfidReaderType === opt.key && styles.rfidReaderChipTextActive]}>
@@ -814,6 +925,31 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                     </Text>
                   </TouchableOpacity>
                 ))}
+                {/* Real/Simulate: both for Yometel; Impinj/Zebra only offer Simulate. */}
+                <View style={styles.rfidModeColumn}>
+                  {(rfidReaderType === 'yometel' ? (['real', 'simulate'] as RfidMode[]) : (['simulate'] as RfidMode[])).map((mode) => {
+                    const selected = rfidReaderType === 'yometel' ? rfidMode === mode : true;
+                    return (
+                      <TouchableOpacity
+                        key={mode}
+                        style={styles.rfidModeOption}
+                        onPress={() => rfidReaderType === 'yometel' && handleRfidModeChange(mode)}
+                        activeOpacity={0.7}
+                        accessibilityRole="radio"
+                        accessibilityState={{ selected }}
+                      >
+                        <VectorIcon
+                          name={selected ? 'radio-button-checked' : 'radio-button-unchecked'}
+                          size={18}
+                          color={selected ? colors.primary : colors.muted}
+                        />
+                        <Text style={[styles.rfidModeText, selected && styles.rfidModeTextActive]} numberOfLines={1}>
+                          {t(mode === 'real' ? 'rfidModeReal' : 'rfidModeSimulate')}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
               </View>
 
               {(() => {
@@ -842,7 +978,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                           the screen (see dummyRevealIndexRef reset above). */}
                       {connected && (
                         <TouchableOpacity
-                          onPress={() => setRfidConnectedByType((prev) => ({ ...prev, [rfidReaderType]: false }))}
+                          onPress={handleDisconnectPress}
                           activeOpacity={0.7}
                           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                         >
@@ -852,13 +988,23 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                     </View>
                     {!connected && (
                       <TouchableOpacity
-                        style={styles.rfidConnectButton}
-                        onPress={() => setRfidConnectedByType((prev) => ({ ...prev, [rfidReaderType]: true }))}
+                        style={[styles.rfidConnectButton, rfidConnecting && styles.rfidConnectButtonDisabled]}
+                        onPress={handleConnectPress}
+                        disabled={rfidConnecting}
                         activeOpacity={0.85}
                       >
-                        <VectorIcon name="bluetooth" size={20} color="#fff" />
-                        <Text style={styles.rfidConnectButtonText}>{t('rfidConnectButton')}</Text>
+                        {rfidConnecting ? (
+                          <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                          <>
+                            <VectorIcon name="bluetooth" size={20} color="#fff" />
+                            <Text style={styles.rfidConnectButtonText}>{t('rfidConnectButton')}</Text>
+                          </>
+                        )}
                       </TouchableOpacity>
+                    )}
+                    {!!rfidConnectError && !connected && (
+                      <Text style={styles.rfidConnectErrorText}>{rfidConnectError}</Text>
                     )}
                   </>
                 );
@@ -1187,7 +1333,11 @@ const styles = StyleSheet.create({
   // Top-aligned (not centered) so the reader selector/status pack toward the
   // top and the passing-tags card below gets the rest of the height.
   rfidPanel: { flex: 1, width: '100%', justifyContent: 'flex-start', alignItems: 'stretch', padding: spacing.lg, backgroundColor: colors.surface },
-  rfidReaderTypeRow: { flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.md, alignSelf: 'center' },
+  rfidReaderTypeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.md, alignSelf: 'center' },
+  rfidModeColumn: { marginLeft: spacing.xs, justifyContent: 'center', gap: 2 },
+  rfidModeOption: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  rfidModeText: { fontSize: 14, color: colors.muted, fontWeight: '500' },
+  rfidModeTextActive: { color: colors.primary, fontWeight: '700' },
   rfidReaderChip: {
     height: 40,
     justifyContent: 'center',
@@ -1195,10 +1345,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surfaceAlt,
-    paddingHorizontal: spacing.md,
+    // Slightly tighter than before so three chips + the Real/Simulate
+    // column fit on one row at phone width.
+    paddingHorizontal: spacing.sm + 2,
   },
   rfidReaderChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  rfidReaderChipText: { fontSize: 17, color: colors.muted, fontWeight: '600' },
+  rfidReaderChipText: { fontSize: 16, color: colors.muted, fontWeight: '600' },
   rfidReaderChipTextActive: { color: '#fff' },
   rfidStatusRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
   rfidStatusDot: { width: 10, height: 10, borderRadius: 5 },
@@ -1222,6 +1374,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   rfidConnectButtonText: { color: '#fff', fontSize: 18, fontWeight: '600' },
+  rfidConnectButtonDisabled: { opacity: 0.7 },
+  rfidConnectErrorText: { color: colors.danger, fontSize: 15, marginBottom: spacing.md },
   // Live "tags passing near the reader" card — fills the rest of the RFID
   // panel's height below the reader selector/status, distinct from the
   // Recent Captures card further down (this shows detections, that shows

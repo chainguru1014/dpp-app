@@ -10,6 +10,16 @@
          capturing, see app/src/utils/deviceCapture.ts. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Yometel RFID reader (BLE) — see android/app/src/main/java/com/yometel/dpp/rfid.
+         We connect directly to a known MAC address (stored per-employee via the
+         admin Staff Roster), never scan for nearby devices, so BLUETOOTH_SCAN is
+         deliberately not requested. Legacy BLUETOOTH/BLUETOOTH_ADMIN cover
+         API <=30; BLUETOOTH_CONNECT is the API 31+ runtime permission actually
+         needed for connectGatt()/read/write on this app's targetSdk (34). -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
     <!-- Not all target devices have NFC hardware — keep the app installable on those. -->
