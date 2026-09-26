@@ -43,6 +43,10 @@ class FdcBleTransport(private val context: Context) {
         fun onDisconnected()
         fun onConnectFailed(reason: String)
         fun onLineReceived(line: String)
+        // Intermediate BLE-handshake steps (MTU negotiated, services found,
+        // notifications enabled, ...) — purely informational, for the
+        // in-app connect-debug dialog. Not required for correctness.
+        fun onProgress(step: String)
     }
 
     var listener: Listener? = null
@@ -97,6 +101,7 @@ class FdcBleTransport(private val context: Context) {
         }
 
         resetSessionState()
+        progress("Connecting to $macAddress")
         connectTimeoutRunnable = Runnable {
             listener?.onConnectFailed("Connect timed out")
             disconnect()
@@ -108,6 +113,7 @@ class FdcBleTransport(private val context: Context) {
 
     fun disconnect() {
         clearConnectTimeout()
+        if (gatt != null) progress("Disconnecting…")
         val g = gatt
         if (g != null) {
             try {
@@ -134,6 +140,10 @@ class FdcBleTransport(private val context: Context) {
         val bytes = text.toByteArray(StandardCharsets.US_ASCII)
         pendingWrites.addLast(bytes)
         pumpWriteQueue()
+    }
+
+    private fun progress(step: String) {
+        handler.post { listener?.onProgress(step) }
     }
 
     private fun resetSessionState() {
@@ -165,6 +175,7 @@ class FdcBleTransport(private val context: Context) {
         override fun onConnectionStateChange(g: BluetoothGatt, status: Int, newState: Int) {
             if (newState == BluetoothProfile.STATE_CONNECTED) {
                 isBleConnected = true
+                progress("BLE link established, requesting MTU $REQUEST_MTU_SIZE")
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                     g.requestMtu(REQUEST_MTU_SIZE)
                 } else {
@@ -185,6 +196,7 @@ class FdcBleTransport(private val context: Context) {
 
         override fun onMtuChanged(g: BluetoothGatt, mtu: Int, status: Int) {
             mtuNegotiated = mtu - 3
+            progress("MTU negotiated: $mtuNegotiated, discovering services")
             g.discoverServices()
         }
 
@@ -212,6 +224,7 @@ class FdcBleTransport(private val context: Context) {
                 handler.post { listener?.onConnectFailed("Reader is missing the version/config characteristic") }
                 return
             }
+            progress("Services discovered, reading reader version/config")
             g.readCharacteristic(serverChar)
         }
 
@@ -272,6 +285,7 @@ class FdcBleTransport(private val context: Context) {
                 handler.post { listener?.onConnectFailed("Reader has no usable RX characteristic") }
                 return
             }
+            progress("Reader config read (txConfig=$fdcTxConfig rxConfig=$fdcRxConfig) — enabling notifications")
             enableCharacteristicNotification(g, notifyChar, indication = useIndication)
         }
 
@@ -358,6 +372,7 @@ class FdcBleTransport(private val context: Context) {
             handler.post { listener?.onConnectFailed("Reader is missing the version/config client characteristic") }
             return
         }
+        progress("Notifications enabled — sending session handshake")
         // Version(1.1) + reserved bytes, matching FCLBluetoothLE's
         // versionConfigClient default — remote/legacy-mode bits left off,
         // this app never requests "remote mode".

@@ -24,23 +24,31 @@ class YometelRfidModule(reactContext: ReactApplicationContext) : ReactContextBas
     init {
         transport.listener = object : FdcBleTransport.Listener {
             override fun onConnected() {
+                emitDebug("Connected — FDC session established")
                 emit(EVENT_CONNECTED, null)
             }
 
             override fun onDisconnected() {
+                emitDebug("Disconnected")
                 emit(EVENT_DISCONNECTED, null)
             }
 
             override fun onConnectFailed(reason: String) {
+                emitDebug("Failed: $reason")
                 val params = Arguments.createMap()
                 params.putString("message", reason)
                 emit(EVENT_ERROR, params)
             }
 
             override fun onLineReceived(line: String) {
+                emitDebug("RX (BLE): $line")
                 val params = Arguments.createMap()
                 params.putString("line", line)
                 emit(EVENT_LINE, params)
+            }
+
+            override fun onProgress(step: String) {
+                emitDebug(step)
             }
         }
     }
@@ -94,10 +102,21 @@ class YometelRfidModule(reactContext: ReactApplicationContext) : ReactContextBas
             .emit(eventName, params)
     }
 
+    // Free-text timeline for the in-app connect-debug dialog — every
+    // connection-lifecycle/BLE-handshake event also lands here, in addition
+    // to its normal typed event, so the dialog shows one ordered log instead
+    // of the app having to interleave several event streams itself.
+    private fun emitDebug(message: String) {
+        val params = Arguments.createMap()
+        params.putString("message", message)
+        emit(EVENT_DEBUG, params)
+    }
+
     companion object {
         const val EVENT_CONNECTED = "YometelRfidConnected"
         const val EVENT_DISCONNECTED = "YometelRfidDisconnected"
         const val EVENT_ERROR = "YometelRfidError"
         const val EVENT_LINE = "YometelRfidLine"
+        const val EVENT_DEBUG = "YometelRfidDebug"
     }
 }

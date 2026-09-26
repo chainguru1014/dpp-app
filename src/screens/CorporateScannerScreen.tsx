@@ -28,7 +28,7 @@ import { getCurrentLocation, getDeviceInfo } from '../utils/deviceCapture';
 import { uploadCaptureImage } from '../utils/uploadCapture';
 import { isNfcSupported, readNfcTag } from '../utils/nfc';
 import DUMMY_RFID_TAGS from '../data/dummyRfidTags.json';
-import { connectYometelReader, disconnectYometelReader, scanOnceYometel } from '../native/yometelRfid';
+import { connectYometelReader, disconnectYometelReader, scanOnceYometel, subscribeYometelDebug } from '../native/yometelRfid';
 
 const LIVENESS_TIMEOUT_MS = 700;
 // How often to poll for recent RFID tag detections while RFID mode is
@@ -150,6 +150,15 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   const isRealYometel = rfidReaderType === 'yometel' && RFID_REAL_DEVICE_PLATFORM;
   const [rfidConnecting, setRfidConnecting] = useState(false);
   const [rfidConnectError, setRfidConnectError] = useState('');
+  // Debug timeline for the Yometel BLE handshake + TX/RX traffic — see
+  // native/yometelRfid.ts's subscribeYometelDebug. Purely for the incoming
+  // dev's hardware bring-up; capped so a long scanning session doesn't grow
+  // this unbounded.
+  const [debugLogVisible, setDebugLogVisible] = useState(false);
+  const [debugLogLines, setDebugLogLines] = useState<{ id: number; time: string; text: string }[]>([]);
+  const debugLogScrollRef = useRef<ScrollView>(null);
+  const debugLogIdRef = useRef(0);
+  const DEBUG_LOG_MAX_LINES = 300;
   const [nfcAvailable, setNfcAvailable] = useState(false);
   const [nfcReading, setNfcReading] = useState(false);
   // Camera-freeze recovery (autofocus-hardware fault — see utils/cameraResilience).
@@ -186,6 +195,19 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   };
 
   const isCameraType = captureType === 'qr' || captureType === 'barcode';
+
+  // Always listening (not gated on captureType/rfidReaderType) so switching
+  // tabs mid-connect or mid-scan doesn't drop any lines from the timeline.
+  useEffect(() => {
+    const unsubscribe = subscribeYometelDebug((text) => {
+      setDebugLogLines((prev) => {
+        debugLogIdRef.current += 1;
+        const next = [...prev, { id: debugLogIdRef.current, time: new Date().toLocaleTimeString(), text }];
+        return next.length > DEBUG_LOG_MAX_LINES ? next.slice(next.length - DEBUG_LOG_MAX_LINES) : next;
+      });
+    });
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -583,6 +605,8 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
     if (!readerId) return;
     setRfidConnectError('');
     setRfidConnecting(true);
+    setDebugLogLines([]);
+    setDebugLogVisible(true);
     try {
       const allowed = await ensureBluetoothConnectPermission();
       if (!allowed) {
@@ -947,6 +971,20 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                           <VectorIcon name="bluetooth-disabled" size={20} color={colors.muted} />
                         </TouchableOpacity>
                       )}
+                      {/* Reopen the connect/communicate debug timeline at any
+                          point — not just right after tapping Connect — so a
+                          dev can check what's happening mid-scan too. Only
+                          meaningful on the real-Yometel path (nothing native
+                          is happening for simulated readers). */}
+                      {isRealYometel && (
+                        <TouchableOpacity
+                          onPress={() => setDebugLogVisible(true)}
+                          activeOpacity={0.7}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <VectorIcon name="bug-report" size={20} color={colors.muted} />
+                        </TouchableOpacity>
+                      )}
                     </View>
                     {!connected && (
                       <TouchableOpacity
@@ -1200,6 +1238,51 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
             </View>
           </TouchableOpacity>
         </TouchableOpacity>
+      </Modal>
+
+      {/* Connect/communicate debug timeline — every step of the Yometel BLE
+          handshake plus every TX/RX line, for hardware bring-up. Not
+          user-facing polish; this is a developer tool, so it stays plain
+          (monospace-ish list, no illustrations). */}
+      <Modal visible={debugLogVisible} transparent animationType="slide" onRequestClose={() => setDebugLogVisible(false)}>
+        <View style={styles.debugOverlay}>
+          <View style={styles.debugCard}>
+            <View style={styles.debugHeaderRow}>
+              <Text style={styles.debugTitle}>RFID Debug Log</Text>
+              <TouchableOpacity
+                onPress={() => setDebugLogVisible(false)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityRole="button"
+                accessibilityLabel={t('close')}
+              >
+                <VectorIcon name="close" size={24} color={colors.muted} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView
+              ref={debugLogScrollRef}
+              style={styles.debugScroll}
+              onContentSizeChange={() => debugLogScrollRef.current?.scrollToEnd({ animated: true })}
+            >
+              {debugLogLines.length === 0 ? (
+                <Text style={styles.debugEmptyText}>No activity yet — tap Connect to start the timeline.</Text>
+              ) : (
+                debugLogLines.map((entry) => (
+                  <Text key={entry.id} style={styles.debugLine}>
+                    <Text style={styles.debugLineTime}>{entry.time}  </Text>
+                    {entry.text}
+                  </Text>
+                ))
+              )}
+            </ScrollView>
+            <TouchableOpacity
+              style={styles.debugClearButton}
+              onPress={() => setDebugLogLines([])}
+              activeOpacity={0.75}
+            >
+              <Text style={styles.debugClearButtonText}>Clear</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
     </AppLayout>
   );
@@ -1568,4 +1651,36 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   stalledSecondaryText: { color: colors.primary, fontSize: 20, fontWeight: '600' },
+  debugOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(11,18,32,0.55)',
+    justifyContent: 'flex-end',
+  },
+  debugCard: {
+    width: '100%',
+    height: '65%',
+    backgroundColor: '#111827',
+    borderTopLeftRadius: radius.lg,
+    borderTopRightRadius: radius.lg,
+    padding: spacing.lg,
+    ...shadow(3),
+  },
+  debugHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
+  debugTitle: { fontSize: 20, fontWeight: '700', color: '#fff' },
+  debugScroll: { flex: 1 },
+  debugEmptyText: { fontSize: 15, color: '#8a94a6', marginTop: spacing.md },
+  debugLine: { fontSize: 13, color: '#d1d5db', fontFamily: Platform.OS === 'android' ? 'monospace' : 'Menlo', marginBottom: 4 },
+  debugLineTime: { color: '#6b7280' },
+  debugClearButton: {
+    alignSelf: 'flex-end',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    marginTop: spacing.sm,
+  },
+  debugClearButtonText: { color: '#8a94a6', fontSize: 15, fontWeight: '600' },
 });

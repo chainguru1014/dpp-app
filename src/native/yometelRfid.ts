@@ -28,6 +28,26 @@ let scanInFlight = false;
 
 let lineSubscription: any = null;
 let errorSubscription: any = null;
+let debugSubscription: any = null;
+
+// Debug/timeline feed for the in-app "Connect" debug dialog
+// (CorporateScannerScreen.tsx) — every native BLE-handshake step arrives
+// here via YometelRfidDebug, alongside the JS-layer's own protocol-level
+// TX/RX lines, so the dialog can show one ordered log of "what's actually
+// happening" without the UI needing to know about the native event names.
+type DebugListener = (message: string) => void;
+const debugListeners = new Set<DebugListener>();
+
+export function subscribeYometelDebug(callback: DebugListener): () => void {
+  debugListeners.add(callback);
+  return () => {
+    debugListeners.delete(callback);
+  };
+}
+
+function debugLog(message: string) {
+  debugListeners.forEach((listener) => listener(message));
+}
 
 function ensureListening() {
   if (lineSubscription) return;
@@ -41,6 +61,9 @@ function ensureListening() {
     pendingLine = null;
     waiter?.reject(new Error(e?.message || 'RFID reader error'));
   });
+  debugSubscription = DeviceEventEmitter.addListener('YometelRfidDebug', (e: { message?: string }) => {
+    if (e?.message) debugLog(e.message);
+  });
 }
 
 function sendAndAwaitLine(command: string, timeoutMs = COMMAND_TIMEOUT_MS): Promise<string> {
@@ -49,12 +72,14 @@ function sendAndAwaitLine(command: string, timeoutMs = COMMAND_TIMEOUT_MS): Prom
     const timer = setTimeout(() => {
       if (pendingLine === entry) {
         pendingLine = null;
+        debugLog(`Timed out waiting for response to "${command}"`);
         reject(new Error(`Timed out waiting for reader response to "${command}"`));
       }
     }, timeoutMs);
     const entry = {
       resolve: (line: string) => {
         clearTimeout(timer);
+        debugLog(`RX: ${line}`);
         resolve(line);
       },
       reject: (err: Error) => {
@@ -63,12 +88,14 @@ function sendAndAwaitLine(command: string, timeoutMs = COMMAND_TIMEOUT_MS): Prom
       },
     };
     pendingLine = entry;
+    debugLog(`TX: ${command}`);
     nativeModule()
       .sendCommand(command)
       .catch((err: Error) => {
         if (pendingLine === entry) {
           pendingLine = null;
           clearTimeout(timer);
+          debugLog(`Failed to send "${command}": ${err?.message || err}`);
           reject(err);
         }
       });
@@ -80,10 +107,12 @@ export async function connectYometelReader(macAddress: string): Promise<void> {
     throw new Error('Yometel RFID reader support is Android-only for now.');
   }
   ensureListening();
+  debugLog(`Requesting connect to ${macAddress}`);
   await new Promise<void>((resolve, reject) => {
     const timer = setTimeout(() => {
       connectedSub.remove();
       failedSub.remove();
+      debugLog(`Timed out waiting for connect (${CONNECT_TIMEOUT_MS}ms)`);
       reject(new Error('Timed out connecting to the RFID reader'));
     }, CONNECT_TIMEOUT_MS);
     const connectedSub = DeviceEventEmitter.addListener('YometelRfidConnected', () => {
@@ -114,13 +143,15 @@ export async function connectYometelReader(macAddress: string): Promise<void> {
   // from having succeeded at the BLE level.
   try {
     await sendAndAwaitLine('C1GEN2I 1,10');
-  } catch (err) {
+  } catch (err: any) {
+    debugLog(`C1GEN2I init did not respond as expected: ${err?.message || err}`);
     console.warn('Yometel C1GEN2I init did not respond as expected:', err);
   }
 }
 
 export async function disconnectYometelReader(): Promise<void> {
   if (!isAndroid || !nativeModule()) return;
+  debugLog('Requesting disconnect');
   pendingLine?.reject(new Error('Disconnected'));
   pendingLine = null;
   await nativeModule().disconnect();

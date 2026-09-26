@@ -61,7 +61,7 @@ class YometelRfidModule: RCTEventEmitter {
   override func supportedEvents() -> [String]! {
     // Same event names as the Android module (YometelRfidModule.kt), so
     // src/native/yometelRfid.ts needs no changes once this is implemented.
-    return ["YometelRfidConnected", "YometelRfidDisconnected", "YometelRfidError", "YometelRfidLine"]
+    return ["YometelRfidConnected", "YometelRfidDisconnected", "YometelRfidError", "YometelRfidLine", "YometelRfidDebug"]
   }
 
   // MARK: - RN bridge methods (same signatures as the Android module)
