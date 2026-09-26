@@ -45,12 +45,12 @@ const RFID_WINDOW_SECONDS = 5;
 // reader/gateway is posting to /rfid/ingest, to restore live polling.
 const RFID_SIMULATION_MODE = true;
 const RFID_SIMULATION_DELAY_MS = 4000;
-// Real vs Simulate is picked per session with the radio pair next to the
-// reader chips. Only Yometel has a real transport (Android BLE, see
+// Real vs Simulate follows the platform: the web build always simulates
+// (virtual connection + dummy tags); the installed Android/iOS app talks to
+// the real reader. Only Yometel has a real transport (native module under
 // android/app/src/main/java/com/yometel/dpp/rfid); Impinj/Zebra are pending
-// hardware confirmation, so they're always Simulate. Real on a non-Android
-// build fails at Connect with connectYometelReader's "Android-only" error.
-type RfidMode = 'real' | 'simulate';
+// hardware confirmation, so they simulate everywhere.
+const RFID_REAL_DEVICE_PLATFORM = Platform.OS !== 'web';
 
 // pmc/lookup returns product images as bare upload filenames — same
 // resolution every other product-image screen uses.
@@ -147,9 +147,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   });
   // Only meaningful for the Yometel branch (real BLE connect can take a few
   // seconds) — Impinj/Zebra's mocked Connect is instant, no loading state.
-  // Yometel's own choice; Impinj/Zebra ignore it (always simulate).
-  const [rfidMode, setRfidMode] = useState<RfidMode>('real');
-  const isRealYometel = rfidReaderType === 'yometel' && rfidMode === 'real';
+  const isRealYometel = rfidReaderType === 'yometel' && RFID_REAL_DEVICE_PLATFORM;
   const [rfidConnecting, setRfidConnecting] = useState(false);
   const [rfidConnectError, setRfidConnectError] = useState('');
   const [nfcAvailable, setNfcAvailable] = useState(false);
@@ -607,22 +605,6 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
     setRfidConnectedByType((prev) => ({ ...prev, [rfidReaderType]: false }));
   };
 
-  // Switching Real <-> Simulate drops the current connection (a real BLE link
-  // is closed) so the next Connect uses the newly selected mode.
-  const handleRfidModeChange = async (mode: RfidMode) => {
-    if (mode === rfidMode) return;
-    if (isRealYometel && rfidConnectedByType.yometel) {
-      try {
-        await disconnectYometelReader();
-      } catch (err) {
-        console.warn('Yometel disconnect failed:', err);
-      }
-    }
-    setRfidConnectedByType((prev) => ({ ...prev, yometel: false }));
-    setRfidConnectError('');
-    setRfidMode(mode);
-  };
-
   // Logs one detected RFID tag — called automatically by the auto-capture
   // effect below (RFID mode has no manual Capture button; a tag passing near
   // a connected reader is captured on its own). Every detected tag is
@@ -925,31 +907,6 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                     </Text>
                   </TouchableOpacity>
                 ))}
-                {/* Real/Simulate: both for Yometel; Impinj/Zebra only offer Simulate. */}
-                <View style={styles.rfidModeColumn}>
-                  {(rfidReaderType === 'yometel' ? (['real', 'simulate'] as RfidMode[]) : (['simulate'] as RfidMode[])).map((mode) => {
-                    const selected = rfidReaderType === 'yometel' ? rfidMode === mode : true;
-                    return (
-                      <TouchableOpacity
-                        key={mode}
-                        style={styles.rfidModeOption}
-                        onPress={() => rfidReaderType === 'yometel' && handleRfidModeChange(mode)}
-                        activeOpacity={0.7}
-                        accessibilityRole="radio"
-                        accessibilityState={{ selected }}
-                      >
-                        <VectorIcon
-                          name={selected ? 'radio-button-checked' : 'radio-button-unchecked'}
-                          size={18}
-                          color={selected ? colors.primary : colors.muted}
-                        />
-                        <Text style={[styles.rfidModeText, selected && styles.rfidModeTextActive]} numberOfLines={1}>
-                          {t(mode === 'real' ? 'rfidModeReal' : 'rfidModeSimulate')}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
               </View>
 
               {(() => {
@@ -1333,11 +1290,7 @@ const styles = StyleSheet.create({
   // Top-aligned (not centered) so the reader selector/status pack toward the
   // top and the passing-tags card below gets the rest of the height.
   rfidPanel: { flex: 1, width: '100%', justifyContent: 'flex-start', alignItems: 'stretch', padding: spacing.lg, backgroundColor: colors.surface },
-  rfidReaderTypeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.md, alignSelf: 'center' },
-  rfidModeColumn: { marginLeft: spacing.xs, justifyContent: 'center', gap: 2 },
-  rfidModeOption: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  rfidModeText: { fontSize: 14, color: colors.muted, fontWeight: '500' },
-  rfidModeTextActive: { color: colors.primary, fontWeight: '700' },
+  rfidReaderTypeRow: { flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.md, alignSelf: 'center' },
   rfidReaderChip: {
     height: 40,
     justifyContent: 'center',
@@ -1345,12 +1298,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surfaceAlt,
-    // Slightly tighter than before so three chips + the Real/Simulate
-    // column fit on one row at phone width.
-    paddingHorizontal: spacing.sm + 2,
+    paddingHorizontal: spacing.md,
   },
   rfidReaderChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  rfidReaderChipText: { fontSize: 16, color: colors.muted, fontWeight: '600' },
+  rfidReaderChipText: { fontSize: 17, color: colors.muted, fontWeight: '600' },
   rfidReaderChipTextActive: { color: '#fff' },
   rfidStatusRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
   rfidStatusDot: { width: 10, height: 10, borderRadius: 5 },
