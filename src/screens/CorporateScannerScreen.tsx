@@ -35,6 +35,13 @@ const RFID_POLL_MS = 1500;
 const RFID_WINDOW_SECONDS = 5;
 
 type CaptureType = 'qr' | 'barcode' | 'rfid' | 'nfc';
+type RfidReaderType = 'yometel' | 'impinj' | 'zebra';
+
+const RFID_READER_TYPES: { key: RfidReaderType; labelKey: any }[] = [
+  { key: 'yometel', labelKey: 'rfidReaderYometel' },
+  { key: 'impinj', labelKey: 'rfidReaderImpinj' },
+  { key: 'zebra', labelKey: 'rfidReaderZebra' },
+];
 
 const CAPTURE_TYPES: { key: CaptureType; labelKey: any; icon: string }[] = [
   { key: 'qr', labelKey: 'captureTypeQr', icon: 'qr-code' },
@@ -61,6 +68,7 @@ interface CaptureDoc {
   rawValue: string;
   identifierType: string;
   imagePath: string;
+  productImage?: string;
   capturedAt: string;
   productId?: string;
   qrcodeId?: string;
@@ -77,6 +85,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   const { t } = useI18n();
   const isFocused = useIsFocused();
   const stepIndex: number = route?.params?.stepIndex ?? 0;
+  const initialCaptureType: CaptureType = route?.params?.captureType === 'rfid' ? 'rfid' : 'qr';
 
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [step, setStep] = useState<ProcessStep | null>(null);
@@ -87,8 +96,19 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   const [codeUnrecognized, setCodeUnrecognized] = useState(false);
   const [torchOn, setTorchOn] = useState(false);
   const [helpVisible, setHelpVisible] = useState(false);
-  const [captureType, setCaptureType] = useState<CaptureType>('qr');
+  const [captureType, setCaptureType] = useState<CaptureType>(initialCaptureType);
   const [rfidTags, setRfidTags] = useState<RfidTag[]>([]);
+  const [rfidReaderType, setRfidReaderType] = useState<RfidReaderType>('yometel');
+  // Mocked connection state, per reader type — no real BLE/LLRP hardware is
+  // wired up yet (see project notes). Connect just flips this locally; the
+  // actual tag data still comes from the real /rfid/recent polling endpoint,
+  // so swapping in real hardware later only needs to replace this flip with
+  // an actual connect call, not the polling/capture pipeline below it.
+  const [rfidConnectedByType, setRfidConnectedByType] = useState<Record<RfidReaderType, boolean>>({
+    yometel: false,
+    impinj: false,
+    zebra: false,
+  });
   const [nfcAvailable, setNfcAvailable] = useState(false);
   const [nfcReading, setNfcReading] = useState(false);
   // Camera-freeze recovery (autofocus-hardware fault — see utils/cameraResilience).
@@ -101,6 +121,10 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   const lastCheckedValueRef = useRef<string>('');
   const livenessIntervalRef = useRef<any>(null);
   const rfidPollIntervalRef = useRef<any>(null);
+  // Guards the auto-capture effect against re-logging the same tag on every
+  // poll tick while it just sits in range — only a genuinely new freshest
+  // EPC (or reconnecting) triggers another capture+log call.
+  const lastAutoCapturedEpcRef = useRef<string>('');
   const nativeCameraRef = useRef<CaptureCameraHandle>(null);
   const webScannerRef = useRef<WebCodeScannerHandle>(null);
 
@@ -245,16 +269,21 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
     setCodeUnrecognized(false);
     lastCheckedValueRef.current = '';
     setRfidTags([]);
+    lastAutoCapturedEpcRef.current = '';
   }, [captureType]);
 
-  // Polls for recent RFID tag detections while RFID mode is selected and
-  // the screen is focused — this is what enables the Capture button (at
-  // least one tag detected in the last RFID_WINDOW_SECONDS) and what
-  // supplies the tag Capture will use. Stops polling immediately when
-  // leaving RFID mode or the screen.
+  // Polls for recent RFID tag detections while RFID mode is selected, the
+  // screen is focused, and the selected reader type is (mock-)connected —
+  // this is what feeds the auto-capture effect below and the recent-captures
+  // card. Stops polling immediately when leaving RFID mode, the screen, or
+  // disconnecting.
+  const rfidReady = captureType === 'rfid' && isFocused && rfidConnectedByType[rfidReaderType];
+
   useEffect(() => {
-    if (captureType !== 'rfid' || !isFocused) {
+    if (!rfidReady) {
       if (rfidPollIntervalRef.current) clearInterval(rfidPollIntervalRef.current);
+      setRfidTags([]);
+      lastAutoCapturedEpcRef.current = '';
       return;
     }
 
@@ -284,7 +313,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
       cancelled = true;
       clearInterval(rfidPollIntervalRef.current);
     };
-  }, [captureType, isFocused]);
+  }, [rfidReady]);
 
   // Only a code that resolves to one of our own registered products (a valid
   // security/encrypted QR, a GS1 Digital Link, or a barcode already mapped
@@ -357,7 +386,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   // NFC tag id/UID) — same resolution path verifyScannedCode's barcode
   // branch uses, just parameterized by source_type instead of hardcoded to
   // 'barcode'.
-  const lookupBySourceType = async (sourceType: 'rfid' | 'nfc', value: string): Promise<{ recognized: boolean; productId?: string; qrcodeId?: string }> => {
+  const lookupBySourceType = async (sourceType: 'rfid' | 'nfc', value: string): Promise<{ recognized: boolean; productId?: string; qrcodeId?: string; productImage?: string }> => {
     try {
       const res = await fetch(`${API_BASE_URL}pmc/lookup`, {
         method: 'POST',
@@ -370,6 +399,11 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
           recognized: true,
           productId: data.data?._id ? String(data.data._id) : undefined,
           qrcodeId: data.data?.token_id != null ? String(data.data.token_id) : undefined,
+          // pmc/lookup returns normalizeProductMedia(product) — images is
+          // always a plain string array there, first entry is the product's
+          // primary image. Used by the RFID recent-captures card, which has
+          // no photo of its own to show (unlike qr/barcode).
+          productImage: Array.isArray(data.data?.images) && data.data.images.length > 0 ? String(data.data.images[0]) : undefined,
         };
       }
       return { recognized: false };
@@ -379,7 +413,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
     }
   };
 
-  const postCapture = async (payload: { rawValue: string; identifierType: string; imagePath: string; productId?: string; qrcodeId?: string; location: any; device: any }) => {
+  const postCapture = async (payload: { rawValue: string; identifierType: string; imagePath: string; productId?: string; qrcodeId?: string; productImage?: string; location: any; device: any }) => {
     await fetch(`${API_BASE_URL}captures`, {
       method: 'POST',
       headers: {
@@ -411,39 +445,54 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
     });
   };
 
+  // Logs one detected RFID tag — called automatically by the auto-capture
+  // effect below (RFID mode has no manual Capture button; a tag passing near
+  // a connected reader is captured on its own). Every detected tag is
+  // logged for the audit trail regardless of whether it resolves to a
+  // product; only the on-screen recent-captures card filters unregistered
+  // ones out (see the bottomBoard render below).
+  const captureRfidTag = async (tag: RfidTag) => {
+    try {
+      const [{ recognized, productId, qrcodeId, productImage }, location, device] = await Promise.all([
+        lookupBySourceType('rfid', tag.epc),
+        getCurrentLocation(),
+        getDeviceInfo(),
+      ]);
+      await postCapture({
+        rawValue: tag.epc,
+        identifierType: 'rfid',
+        imagePath: '',
+        productId,
+        qrcodeId,
+        productImage,
+        location: location || undefined,
+        device,
+      });
+      if (!recognized) {
+        console.log('RFID tag captured but not registered to a product:', tag.epc);
+      }
+      await loadCaptures();
+    } catch (err) {
+      console.error('RFID auto-capture failed:', err);
+    }
+  };
+
+  // Fires whenever the freshest polled tag (rfidTags is newest-first) is a
+  // different EPC than the last one this screen already logged — that's
+  // what "a new tag just started passing near the reader" means here, since
+  // rfidTags refreshes on every poll tick even while the same tag stays in
+  // range.
+  useEffect(() => {
+    if (!rfidReady || rfidTags.length === 0) return;
+    const latest = rfidTags[0];
+    if (latest.epc === lastAutoCapturedEpcRef.current) return;
+    lastAutoCapturedEpcRef.current = latest.epc;
+    captureRfidTag(latest);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rfidReady, rfidTags]);
+
   const handleCapture = async () => {
     if (capturing) return;
-
-    if (captureType === 'rfid') {
-      if (rfidTags.length === 0) return;
-      setCapturing(true);
-      try {
-        // rfidTags is newest-first (see the polling effect) — the latest
-        // detected tag is what gets captured, per the RFID capture flow.
-        const latest = rfidTags[0];
-        const [{ recognized, productId, qrcodeId }, location, device] = await Promise.all([
-          lookupBySourceType('rfid', latest.epc),
-          getCurrentLocation(),
-          getDeviceInfo(),
-        ]);
-        setCodeUnrecognized(!recognized);
-        await postCapture({
-          rawValue: latest.epc,
-          identifierType: 'rfid',
-          imagePath: '',
-          productId,
-          qrcodeId,
-          location: location || undefined,
-          device,
-        });
-        await loadCaptures();
-      } catch (err) {
-        console.error('RFID capture failed:', err);
-      } finally {
-        setCapturing(false);
-      }
-      return;
-    }
 
     if (captureType === 'nfc') {
       if (nfcReading) return;
@@ -532,6 +581,14 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   const dateLabel = today.toLocaleDateString();
   const currentRef = captures[0]?.refNumber || '—';
   const subtitle = step ? `${step.entity} / ${step.type}` : undefined;
+  // RFID's recent-captures card only ever shows tags that resolved to a
+  // registered product — an unrecognized tag is still logged (captureRfidTag
+  // always posts) but never rendered here, unlike qr/barcode/nfc which show
+  // an unrecognized capture too. Other capture types render the full list
+  // unchanged.
+  const displayedCaptures = captureType === 'rfid'
+    ? captures.filter((doc) => doc.identifierType === 'rfid' && !!doc.productId)
+    : captures;
 
   const renderCamera = () => {
     if (hasPermission === null) {
@@ -641,19 +698,73 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
         </ScrollView>
 
         <View style={styles.scanViewport}>
-          {isCameraType ? renderCamera() : (
-            <View style={styles.stateBox}>
-              <VectorIcon
-                name={captureType === 'nfc' ? 'nfc' : 'wifi-tethering'}
-                size={72}
-                color="#fff"
-              />
-              <Text style={[styles.stateText, { marginTop: spacing.md }]}>
-                {captureType === 'nfc'
-                  ? (nfcAvailable ? t('corpNfcHint') : t('corpNfcUnavailable'))
-                  : (rfidTags.length > 0
+          {isCameraType ? renderCamera() : captureType === 'rfid' ? (
+            <View style={styles.rfidPanel}>
+              <View style={styles.rfidReaderTypeRow}>
+                {RFID_READER_TYPES.map((opt) => (
+                  <TouchableOpacity
+                    key={opt.key}
+                    style={[styles.rfidReaderChip, rfidReaderType === opt.key && styles.rfidReaderChipActive]}
+                    onPress={() => setRfidReaderType(opt.key)}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={[styles.rfidReaderChipText, rfidReaderType === opt.key && styles.rfidReaderChipTextActive]}>
+                      {t(opt.labelKey)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {(() => {
+                const readerId = user?.rfidReaderIds?.[rfidReaderType];
+                const connected = rfidConnectedByType[rfidReaderType];
+                if (!readerId) {
+                  return (
+                    <View style={styles.rfidStatusRow}>
+                      <VectorIcon name="error-outline" size={22} color="#fbb" />
+                      <Text style={styles.rfidStatusText}>{t('rfidNoReaderAssigned')}</Text>
+                    </View>
+                  );
+                }
+                return (
+                  <>
+                    <View style={styles.rfidStatusRow}>
+                      <View style={[styles.rfidStatusDot, connected ? styles.rfidStatusDotConnected : styles.rfidStatusDotDisconnected]} />
+                      <Text style={styles.rfidStatusText} numberOfLines={1}>
+                        {t('rfidReaderIdLabel')}: {readerId}
+                      </Text>
+                      <Text style={[styles.rfidStatusText, connected ? styles.rfidStatusTextConnected : undefined]}>
+                        {connected ? t('rfidConnectedLabel') : t('rfidDisconnectedLabel')}
+                      </Text>
+                    </View>
+                    {!connected && (
+                      <TouchableOpacity
+                        style={styles.rfidConnectButton}
+                        onPress={() => setRfidConnectedByType((prev) => ({ ...prev, [rfidReaderType]: true }))}
+                        activeOpacity={0.85}
+                      >
+                        <VectorIcon name="bluetooth" size={22} color="#fff" />
+                        <Text style={styles.rfidConnectButtonText}>{t('rfidConnectButton')}</Text>
+                      </TouchableOpacity>
+                    )}
+                  </>
+                );
+              })()}
+
+              <VectorIcon name="wifi-tethering" size={56} color="#fff" style={{ marginTop: spacing.lg }} />
+              <Text style={[styles.stateText, { marginTop: spacing.sm }]}>
+                {rfidReady
+                  ? (rfidTags.length > 0
                     ? t('corpRfidTagsDetected').replace('{count}', String(rfidTags.length))
-                    : t('corpRfidHint'))}
+                    : t('corpRfidHint'))
+                  : t('rfidConnectHint')}
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.stateBox}>
+              <VectorIcon name="nfc" size={72} color="#fff" />
+              <Text style={[styles.stateText, { marginTop: spacing.md }]}>
+                {nfcAvailable ? t('corpNfcHint') : t('corpNfcUnavailable')}
               </Text>
             </View>
           )}
@@ -701,11 +812,11 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
         <View style={styles.bottomBoard}>
           <View style={styles.thumbRow}>
             <Text style={styles.thumbHeading}>{t('corpRecentCaptures')}</Text>
-            <Text style={styles.seeAllLink}>{t('scanTodayCountLabel').replace('{count}', String(captures.length))}</Text>
+            <Text style={styles.seeAllLink}>{t('scanTodayCountLabel').replace('{count}', String(displayedCaptures.length))}</Text>
           </View>
-          {captures.length > 0 && (
+          {displayedCaptures.length > 0 && (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.thumbStrip}>
-              {captures.map((doc, index) => (
+              {displayedCaptures.map((doc, index) => (
                 <TouchableOpacity
                   key={doc._id}
                   style={styles.thumbCard}
@@ -715,6 +826,8 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                 >
                   {doc.imagePath ? (
                     <Image source={{ uri: `${API_BASE_URL.replace(/\/$/, '')}${doc.imagePath}` }} style={styles.thumbImage} />
+                  ) : doc.identifierType === 'rfid' && doc.productImage ? (
+                    <Image source={{ uri: doc.productImage }} style={styles.thumbImage} />
                   ) : (doc.identifierType === 'rfid' || doc.identifierType === 'nfc') && (
                     <View style={styles.thumbTagIconBox}>
                       <VectorIcon name={doc.identifierType === 'rfid' ? 'wifi-tethering' : 'nfc'} size={30} color={colors.primary} />
@@ -734,28 +847,32 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
             </ScrollView>
           )}
 
-          {!!codeUnrecognized && !liveCode && (
-            <Text style={styles.unrecognizedText}>{t('corpCodeUnrecognized')}</Text>
-          )}
+          {captureType !== 'rfid' && (
+            <>
+              {!!codeUnrecognized && !liveCode && (
+                <Text style={styles.unrecognizedText}>{t('corpCodeUnrecognized')}</Text>
+              )}
 
-          <GradientButton
-            style={[styles.captureButton, (!captureEnabled || capturing) && styles.captureButtonDisabled]}
-            onPress={handleCapture}
-            disabled={!captureEnabled || capturing}
-          >
-            {capturing || verifying ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <>
-                <VectorIcon
-                  name={captureType === 'rfid' ? 'wifi-tethering' : captureType === 'nfc' ? 'nfc' : 'photo-camera'}
-                  size={38}
-                  color="#fff"
-                />
-                <Text style={styles.captureButtonText}>{t('corpCaptureButton')}</Text>
-              </>
-            )}
-          </GradientButton>
+              <GradientButton
+                style={[styles.captureButton, (!captureEnabled || capturing) && styles.captureButtonDisabled]}
+                onPress={handleCapture}
+                disabled={!captureEnabled || capturing}
+              >
+                {capturing || verifying ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <VectorIcon
+                      name={captureType === 'nfc' ? 'nfc' : 'photo-camera'}
+                      size={38}
+                      color="#fff"
+                    />
+                    <Text style={styles.captureButtonText}>{t('corpCaptureButton')}</Text>
+                  </>
+                )}
+              </GradientButton>
+            </>
+          )}
         </View>
       </View>
 
@@ -840,6 +957,36 @@ const styles = StyleSheet.create({
   },
   stateBox: { flex: 1, width: '100%', justifyContent: 'center', alignItems: 'center' },
   stateText: { color: '#fff', fontSize: 20, textAlign: 'center', paddingHorizontal: spacing.lg },
+  rfidPanel: { flex: 1, width: '100%', justifyContent: 'center', alignItems: 'center', padding: spacing.lg },
+  rfidReaderTypeRow: { flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.md },
+  rfidReaderChip: {
+    height: 40,
+    justifyContent: 'center',
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+    paddingHorizontal: spacing.md,
+  },
+  rfidReaderChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  rfidReaderChipText: { fontSize: 17, color: 'rgba(255,255,255,0.75)', fontWeight: '600' },
+  rfidReaderChipTextActive: { color: '#fff' },
+  rfidStatusRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
+  rfidStatusDot: { width: 10, height: 10, borderRadius: 5 },
+  rfidStatusDotConnected: { backgroundColor: colors.success },
+  rfidStatusDotDisconnected: { backgroundColor: '#8a94a6' },
+  rfidStatusText: { fontSize: 18, color: '#fff' },
+  rfidStatusTextConnected: { color: colors.success, fontWeight: '600' },
+  rfidConnectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    height: 44,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
+    marginTop: spacing.xs,
+  },
+  rfidConnectButtonText: { color: '#fff', fontSize: 18, fontWeight: '600' },
   frameOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center' },
   overlayHintWrap: {
     position: 'absolute',
