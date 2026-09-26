@@ -132,7 +132,7 @@ export default function EmployeeHomeScreen({ navigation, user, onLogout }: any) 
           useBottomBarSpace() mirrors the exact offset AppLayout itself uses
           for its bottom bar, so this floats flush above it on every device. */}
       <TouchableOpacity
-        style={[styles.rfidScanButton, { bottom: bottomBarSpace + spacing.md }]}
+        style={[styles.rfidScanButton, { bottom: bottomBarSpace + spacing.lg }]}
         onPress={handleRfidScan}
         activeOpacity={0.85}
       >

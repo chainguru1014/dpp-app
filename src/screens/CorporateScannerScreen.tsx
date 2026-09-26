@@ -721,7 +721,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                 if (!readerId) {
                   return (
                     <View style={styles.rfidStatusRow}>
-                      <VectorIcon name="error-outline" size={22} color="#fbb" />
+                      <VectorIcon name="error-outline" size={22} color={colors.danger} />
                       <Text style={styles.rfidStatusText}>{t('rfidNoReaderAssigned')}</Text>
                     </View>
                   );
@@ -751,8 +751,8 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                 );
               })()}
 
-              <VectorIcon name="wifi-tethering" size={56} color="#fff" style={{ marginTop: spacing.lg }} />
-              <Text style={[styles.stateText, { marginTop: spacing.sm }]}>
+              <VectorIcon name="wifi-tethering" size={56} color={colors.primary} style={{ marginTop: spacing.lg }} />
+              <Text style={[styles.stateText, styles.rfidHintText, { marginTop: spacing.sm }]}>
                 {rfidReady
                   ? (rfidTags.length > 0
                     ? t('corpRfidTagsDetected').replace('{count}', String(rfidTags.length))
@@ -957,25 +957,32 @@ const styles = StyleSheet.create({
   },
   stateBox: { flex: 1, width: '100%', justifyContent: 'center', alignItems: 'center' },
   stateText: { color: '#fff', fontSize: 20, textAlign: 'center', paddingHorizontal: spacing.lg },
-  rfidPanel: { flex: 1, width: '100%', justifyContent: 'center', alignItems: 'center', padding: spacing.lg },
+  // White background specifically for the RFID panel (unlike the camera/NFC
+  // dark viewport it sits inside) — fills scanViewport entirely, so its own
+  // color wins regardless of the dark backgroundColor set on scanViewport.
+  rfidPanel: { flex: 1, width: '100%', justifyContent: 'center', alignItems: 'center', padding: spacing.lg, backgroundColor: colors.surface },
   rfidReaderTypeRow: { flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.md },
   rfidReaderChip: {
     height: 40,
     justifyContent: 'center',
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceAlt,
     paddingHorizontal: spacing.md,
   },
   rfidReaderChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  rfidReaderChipText: { fontSize: 17, color: 'rgba(255,255,255,0.75)', fontWeight: '600' },
+  rfidReaderChipText: { fontSize: 17, color: colors.muted, fontWeight: '600' },
   rfidReaderChipTextActive: { color: '#fff' },
   rfidStatusRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
   rfidStatusDot: { width: 10, height: 10, borderRadius: 5 },
   rfidStatusDotConnected: { backgroundColor: colors.success },
   rfidStatusDotDisconnected: { backgroundColor: '#8a94a6' },
-  rfidStatusText: { fontSize: 18, color: '#fff' },
+  rfidStatusText: { fontSize: 18, color: colors.text },
   rfidStatusTextConnected: { color: colors.success, fontWeight: '600' },
+  // Overrides stateText's white color (meant for the dark camera/NFC
+  // viewport) back to a readable dark tone on the RFID panel's white bg.
+  rfidHintText: { color: colors.muted },
   rfidConnectButton: {
     flexDirection: 'row',
     alignItems: 'center',
