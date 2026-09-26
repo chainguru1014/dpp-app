@@ -118,9 +118,9 @@ const EMPLOYEE_BOTTOM_BAR_CONTENT = 85;
  * pad IT past the bar too, not just rely on AppLayout's own outer padding.
  * Always derived from useSafeAreaInsets(), never a hardcoded per-device guess.
  */
-export function useBottomBarSpace(): number {
+export function useBottomBarSpace(bar: 'default' | 'employee' = 'default'): number {
   const insets = useSafeAreaInsets();
-  return BOTTOM_BAR_CONTENT + insets.bottom;
+  return (bar === 'employee' ? EMPLOYEE_BOTTOM_BAR_CONTENT : BOTTOM_BAR_CONTENT) + insets.bottom;
 }
 
 /**
@@ -837,7 +837,9 @@ const styles = StyleSheet.create({
   bottomTabLabel: { fontSize: 15, color: '#333333', marginTop: 3, fontWeight: '500' },
   bottomTabLabelSelected: { color: colors.primary, fontWeight: '700' },
   // Employee/staff bar only (see EMPLOYEE_TAB_ICON_SIZE) — explicit 20px per feedback.
-  employeeBottomTabLabel: { fontSize: 20 },
+  // Tight lineHeight + small negative margin: at 20px the default line box
+  // adds visible padding above the glyphs, which read as a big icon/label gap.
+  employeeBottomTabLabel: { fontSize: 20, lineHeight: 22, marginTop: -2 },
   scanTab: { flex: 1, height: '100%', alignItems: 'center', justifyContent: 'center' },
   scanCircle: {
     width: 54,

@@ -16,6 +16,7 @@ import { useIsFocused } from '@react-navigation/native';
 import VectorIcon from 'react-native-vector-icons/MaterialIcons';
 import AppLayout from '../components/AppLayout';
 import GradientButton from '../components/GradientButton';
+import MediaSlider from '../components/MediaSlider';
 import { useI18n } from '../i18n/I18nContext';
 import { API_BASE_URL } from '../config/api';
 import { colors, radius, spacing, shadow, MIN_TOUCH } from '../theme';
@@ -1047,14 +1048,29 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
           rfidProductByEpc when the tag was auto-captured. */}
       <Modal visible={!!previewTag} transparent animationType="fade" onRequestClose={() => setPreviewTag(null)}>
         <TouchableOpacity style={styles.helpOverlay} activeOpacity={1} onPress={() => setPreviewTag(null)}>
-          <View style={styles.previewCard}>
-            {previewTag?.product?.images?.[0] ? (
-              <Image source={{ uri: fileUrl(previewTag.product.images[0]) }} style={styles.previewMedia} />
-            ) : (
-              <View style={[styles.previewMedia, styles.previewMediaPlaceholder]}>
-                <VectorIcon name="inventory-2" size={40} color={colors.muted} />
-              </View>
-            )}
+          {/* Inner touchable swallows taps so only the dim backdrop (or the
+              close icon) dismisses — swiping the slider mustn't close it. */}
+          <TouchableOpacity style={styles.previewCard} activeOpacity={1} onPress={() => {}}>
+            <TouchableOpacity
+              style={styles.previewCloseIcon}
+              onPress={() => setPreviewTag(null)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel={t('close')}
+            >
+              <VectorIcon name="close" size={26} color={colors.muted} />
+            </TouchableOpacity>
+            {/* Same images-then-videos slider as the consumer Product Summary page. */}
+            <View style={styles.previewMedia}>
+              <MediaSlider
+                images={Array.isArray(previewTag?.product?.images) ? previewTag.product.images : []}
+                videos={Array.isArray(previewTag?.product?.videos) ? previewTag.product.videos : []}
+                hideHeader
+                flush
+                maxHeight={180}
+                getFileUrl={fileUrl}
+              />
+            </View>
             <Text style={styles.previewName} numberOfLines={2}>{previewTag?.product?.name || '—'}</Text>
             <View style={styles.previewVerifiedBadge}>
               <VectorIcon name="check-circle" size={18} color={colors.primary} />
@@ -1074,18 +1090,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                 </View>
               ))}
             </View>
-            <GradientButton
-              style={styles.helpCloseButton}
-              onPress={() => {
-                const { productId, qrcodeId } = previewTag || {};
-                setPreviewTag(null);
-                navigation.navigate('Result', { productId, qrcodeId });
-              }}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.helpCloseButtonText}>{t('summaryViewProductDetails')}</Text>
-            </GradientButton>
-          </View>
+          </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
     </AppLayout>
@@ -1387,12 +1392,13 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     ...shadow(3),
   },
-  previewMedia: { width: '100%', height: 160, borderRadius: radius.md, backgroundColor: colors.surfaceAlt, marginBottom: spacing.sm },
-  previewMediaPlaceholder: { alignItems: 'center', justifyContent: 'center' },
-  previewName: { fontSize: 22, fontWeight: '700', color: colors.heading, marginBottom: spacing.xs },
-  previewVerifiedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: spacing.md },
+  // marginTop leaves a clear row for the absolutely-positioned close icon.
+  previewCloseIcon: { position: 'absolute', top: spacing.sm, right: spacing.sm, zIndex: 2, padding: 4 },
+  previewMedia: { width: '100%', marginTop: spacing.lg, marginBottom: spacing.sm },
+  previewName: { fontSize: 22, fontWeight: '700', color: colors.heading, marginBottom: spacing.xs, textAlign: 'center' },
+  previewVerifiedBadge: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, marginBottom: spacing.md },
   previewVerifiedText: { fontSize: 15, color: colors.primary, fontWeight: '600' },
-  previewRows: { marginBottom: spacing.lg },
+  previewRows: {},
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

@@ -47,7 +47,7 @@ const TILE_HEIGHT = 87;
 // worker comes back to this screen (via Back or a refresh).
 export default function EmployeeHomeScreen({ navigation, user, onLogout }: any) {
   const { t } = useI18n();
-  const bottomBarSpace = useBottomBarSpace();
+  const bottomBarSpace = useBottomBarSpace('employee');
   const [steps, setSteps] = useState<ProcessStep[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedStep, setSelectedStep] = useState<number | null>(null);
@@ -132,7 +132,7 @@ export default function EmployeeHomeScreen({ navigation, user, onLogout }: any) 
           useBottomBarSpace() mirrors the exact offset AppLayout itself uses
           for its bottom bar, so this floats flush above it on every device. */}
       <TouchableOpacity
-        style={[styles.rfidScanButton, { bottom: bottomBarSpace + spacing.lg }]}
+        style={[styles.rfidScanButton, { bottom: bottomBarSpace + spacing.xxl }]}
         onPress={handleRfidScan}
         activeOpacity={0.85}
       >
@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
     ...shadow(1),
   },
   tileSelected: {
-    borderColor: '#4A8DEB',
+    borderColor: colors.headerLight,
     borderWidth: 2,
   },
   // 1:3 left/right split (explicit flex ratio, not a fixed px width) per
@@ -180,9 +180,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceAlt,
   },
   tileNumberPartSelected: {
-    backgroundColor: '#4A8DEB',
+    backgroundColor: colors.headerLight,
   },
-  tileNumber: { fontSize: 23, fontWeight: '700', color: '#4A8DEB' },
+  tileNumber: { fontSize: 23, fontWeight: '700', color: colors.headerLight },
   tileNumberSelected: { color: '#fff' },
   tileTextPart: {
     flex: 3,
@@ -208,7 +208,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.primary,
+    // Header gradient's light stop — same blue as the selected workflow tile.
+    backgroundColor: colors.headerLight,
     borderRadius: radius.pill,
     ...shadow(2),
   },
