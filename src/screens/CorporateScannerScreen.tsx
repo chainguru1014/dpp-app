@@ -55,8 +55,8 @@ const RFID_READER_TYPES: { key: RfidReaderType; labelKey: any }[] = [
 
 const CAPTURE_TYPES: { key: CaptureType; labelKey: any; icon: string }[] = [
   { key: 'qr', labelKey: 'captureTypeQr', icon: 'qr-code' },
-  { key: 'barcode', labelKey: 'captureTypeBarcode', icon: 'view-week' },
   { key: 'rfid', labelKey: 'captureTypeRfid', icon: 'wifi-tethering' },
+  { key: 'barcode', labelKey: 'captureTypeBarcode', icon: 'view-week' },
   { key: 'nfc', labelKey: 'captureTypeNfc', icon: 'nfc' },
 ];
 
@@ -113,7 +113,11 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   // product's image and be tappable straight to its detail page. `null`
   // means "looked up, not registered to a product"; absent means "not
   // looked up yet" (briefly, right when a tag first appears).
-  const [rfidProductByEpc, setRfidProductByEpc] = useState<Record<string, { productId?: string; qrcodeId?: string; productImage?: string } | null>>({});
+  const [rfidProductByEpc, setRfidProductByEpc] = useState<Record<string, { productId?: string; qrcodeId?: string; productImage?: string; product?: any } | null>>({});
+  // The tag currently shown in the tap-to-preview dialog — holds both the
+  // resolved product object and the tapped tag so the dialog's "View Product
+  // Details" button can still navigate with the right ids.
+  const [previewTag, setPreviewTag] = useState<{ product: any; productId?: string; qrcodeId?: string } | null>(null);
   const [rfidReaderType, setRfidReaderType] = useState<RfidReaderType>('yometel');
   // Mocked connection state, per reader type — no real BLE/LLRP hardware is
   // wired up yet (see project notes). Connect just flips this locally; the
@@ -439,7 +443,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   // NFC tag id/UID) — same resolution path verifyScannedCode's barcode
   // branch uses, just parameterized by source_type instead of hardcoded to
   // 'barcode'.
-  const lookupBySourceType = async (sourceType: 'rfid' | 'nfc', value: string): Promise<{ recognized: boolean; productId?: string; qrcodeId?: string; productImage?: string }> => {
+  const lookupBySourceType = async (sourceType: 'rfid' | 'nfc', value: string): Promise<{ recognized: boolean; productId?: string; qrcodeId?: string; productImage?: string; product?: any }> => {
     try {
       const res = await fetch(`${API_BASE_URL}pmc/lookup`, {
         method: 'POST',
@@ -457,6 +461,10 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
           // primary image. Used by the RFID recent-captures card, which has
           // no photo of its own to show (unlike qr/barcode).
           productImage: Array.isArray(data.data?.images) && data.data.images.length > 0 ? String(data.data.images[0]) : undefined,
+          // Full lookup payload (name/brandInfo/productType/color/size/
+          // detailFacts/images/...), cached so the RFID Passing Tags preview
+          // dialog can show it without a second network call.
+          product: data.data,
         };
       }
       return { recognized: false };
@@ -506,14 +514,14 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   // ones out (see the bottomBoard render below).
   const captureRfidTag = async (tag: RfidTag) => {
     try {
-      const [{ recognized, productId, qrcodeId, productImage }, location, device] = await Promise.all([
+      const [{ recognized, productId, qrcodeId, productImage, product }, location, device] = await Promise.all([
         lookupBySourceType('rfid', tag.epc),
         getCurrentLocation(),
         getDeviceInfo(),
       ]);
       setRfidProductByEpc((prev) => ({
         ...prev,
-        [tag.epc]: recognized ? { productId, qrcodeId, productImage } : null,
+        [tag.epc]: recognized ? { productId, qrcodeId, productImage, product } : null,
       }));
       await postCapture({
         rawValue: tag.epc,
@@ -868,7 +876,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                           style={styles.rfidPassingRow}
                           activeOpacity={productId ? 0.7 : 1}
                           disabled={!productId}
-                          onPress={() => navigation.navigate('Result', { productId, qrcodeId: resolved?.qrcodeId })}
+                          onPress={() => setPreviewTag({ product: resolved?.product, productId, qrcodeId: resolved?.qrcodeId })}
                         >
                           {resolved?.productImage ? (
                             <Image source={{ uri: resolved.productImage }} style={styles.rfidPassingIconBox} />
@@ -1018,6 +1026,56 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
             <Text style={styles.helpBody}>{t('scanHelpBody')}</Text>
             <GradientButton style={styles.helpCloseButton} onPress={() => setHelpVisible(false)} activeOpacity={0.8}>
               <Text style={styles.helpCloseButtonText}>{t('close')}</Text>
+            </GradientButton>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Tapping a registered Passing Tags row opens this instead of
+          navigating away — same overlay/card idiom as the help dialog
+          above, content modeled on the consumer ProductSummaryScreen's
+          "initial info" subset (image, name, brand/type/color/size/
+          material), sourced from the pmc/lookup result already cached in
+          rfidProductByEpc when the tag was auto-captured. */}
+      <Modal visible={!!previewTag} transparent animationType="fade" onRequestClose={() => setPreviewTag(null)}>
+        <TouchableOpacity style={styles.helpOverlay} activeOpacity={1} onPress={() => setPreviewTag(null)}>
+          <View style={styles.previewCard}>
+            {previewTag?.product?.images?.[0] ? (
+              <Image source={{ uri: previewTag.product.images[0] }} style={styles.previewMedia} />
+            ) : (
+              <View style={[styles.previewMedia, styles.previewMediaPlaceholder]}>
+                <VectorIcon name="inventory-2" size={40} color={colors.muted} />
+              </View>
+            )}
+            <Text style={styles.previewName} numberOfLines={2}>{previewTag?.product?.name || '—'}</Text>
+            <View style={styles.previewVerifiedBadge}>
+              <VectorIcon name="check-circle" size={18} color={colors.primary} />
+              <Text style={styles.previewVerifiedText}>{t('overviewAuthenticated')}</Text>
+            </View>
+            <View style={styles.previewRows}>
+              {[
+                { label: t('summaryBrand'), value: previewTag?.product?.brandInfo?.name },
+                { label: t('factProductType'), value: previewTag?.product?.productType },
+                { label: t('factColor'), value: previewTag?.product?.color },
+                { label: t('factSize'), value: previewTag?.product?.size },
+                { label: t('summaryMaterial'), value: previewTag?.product?.detailFacts?.material },
+              ].filter((row) => !!row.value).map((row) => (
+                <View key={row.label} style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>{row.label}</Text>
+                  <Text style={styles.detailValue} numberOfLines={1}>{row.value}</Text>
+                </View>
+              ))}
+            </View>
+            <GradientButton
+              style={styles.helpCloseButton}
+              onPress={() => {
+                const { productId, qrcodeId } = previewTag || {};
+                setPreviewTag(null);
+                navigation.navigate('Result', { productId, qrcodeId });
+              }}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.helpCloseButtonText}>{t('summaryViewProductDetails')}</Text>
             </GradientButton>
           </View>
         </TouchableOpacity>
@@ -1313,6 +1371,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   helpCloseButtonText: { color: '#fff', fontSize: 21, fontWeight: '700' },
+  previewCard: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    ...shadow(3),
+  },
+  previewMedia: { width: '100%', height: 160, borderRadius: radius.md, backgroundColor: colors.surfaceAlt, marginBottom: spacing.sm },
+  previewMediaPlaceholder: { alignItems: 'center', justifyContent: 'center' },
+  previewName: { fontSize: 22, fontWeight: '700', color: colors.heading, marginBottom: spacing.xs },
+  previewVerifiedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: spacing.md },
+  previewVerifiedText: { fontSize: 15, color: colors.primary, fontWeight: '600' },
+  previewRows: { marginBottom: spacing.lg },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  detailLabel: { fontSize: 16, color: colors.muted },
+  detailValue: { fontSize: 16, color: colors.text, fontWeight: '600', flexShrink: 1, textAlign: 'right', marginLeft: spacing.md },
   stalledOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(11,18,32,0.82)',
