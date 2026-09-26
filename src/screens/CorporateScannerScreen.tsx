@@ -26,6 +26,7 @@ import ScanFrameCorners from '../components/ScanFrameCorners';
 import { getCurrentLocation, getDeviceInfo } from '../utils/deviceCapture';
 import { uploadCaptureImage } from '../utils/uploadCapture';
 import { isNfcSupported, readNfcTag } from '../utils/nfc';
+import DUMMY_RFID_TAGS from '../data/dummyRfidTags.json';
 
 const LIVENESS_TIMEOUT_MS = 700;
 // How often to poll for recent RFID tag detections while RFID mode is
@@ -33,6 +34,15 @@ const LIVENESS_TIMEOUT_MS = 700;
 // tag that just appeared shows up within a beat, not right at the edge.
 const RFID_POLL_MS = 1500;
 const RFID_WINDOW_SECONDS = 5;
+// Presentation/demo mode: no real RFID gateway is wired up yet (see the
+// mocked Connect state above), so instead of polling /rfid/recent, a fixed
+// list of dummy tags (data/dummyRfidTags.json) is revealed one at a time on
+// a timer to simulate tags passing near the reader. Every step downstream —
+// pmc/lookup, POST /captures, GET /captures — is still the real backend;
+// only the detection signal itself is faked. Flip to false once a real
+// reader/gateway is posting to /rfid/ingest, to restore live polling.
+const RFID_SIMULATION_MODE = true;
+const RFID_SIMULATION_DELAY_MS = 4000;
 
 type CaptureType = 'qr' | 'barcode' | 'rfid' | 'nfc';
 type RfidReaderType = 'yometel' | 'impinj' | 'zebra';
@@ -125,6 +135,9 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   // poll tick while it just sits in range — only a genuinely new freshest
   // EPC (or reconnecting) triggers another capture+log call.
   const lastAutoCapturedEpcRef = useRef<string>('');
+  // How many dummy tags have been revealed so far this "connection" —
+  // resets to 0 on disconnect so reconnecting replays the demo from tag 1.
+  const dummyRevealIndexRef = useRef(0);
   const nativeCameraRef = useRef<CaptureCameraHandle>(null);
   const webScannerRef = useRef<WebCodeScannerHandle>(null);
 
@@ -284,7 +297,26 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
       if (rfidPollIntervalRef.current) clearInterval(rfidPollIntervalRef.current);
       setRfidTags([]);
       lastAutoCapturedEpcRef.current = '';
+      dummyRevealIndexRef.current = 0;
       return;
+    }
+
+    if (RFID_SIMULATION_MODE) {
+      let cancelled = false;
+      const revealNext = () => {
+        if (cancelled) return;
+        const idx = dummyRevealIndexRef.current;
+        if (idx >= DUMMY_RFID_TAGS.length) return; // played through the demo list — stay idle
+        const tag = DUMMY_RFID_TAGS[idx];
+        dummyRevealIndexRef.current = idx + 1;
+        setRfidTags((prev) => [{ epc: tag.epc, seenAt: new Date().toISOString() }, ...prev]);
+      };
+      revealNext(); // first tag appears immediately on connect, not after a delay
+      rfidPollIntervalRef.current = setInterval(revealNext, RFID_SIMULATION_DELAY_MS);
+      return () => {
+        cancelled = true;
+        clearInterval(rfidPollIntervalRef.current);
+      };
     }
 
     let cancelled = false;
@@ -736,6 +768,18 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                       <Text style={[styles.rfidStatusText, connected ? styles.rfidStatusTextConnected : undefined]}>
                         {connected ? t('rfidConnectedLabel') : t('rfidDisconnectedLabel')}
                       </Text>
+                      {/* Tap to disconnect — mainly so a live demo can be
+                          replayed from the first dummy tag without leaving
+                          the screen (see dummyRevealIndexRef reset above). */}
+                      {connected && (
+                        <TouchableOpacity
+                          onPress={() => setRfidConnectedByType((prev) => ({ ...prev, [rfidReaderType]: false }))}
+                          activeOpacity={0.7}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <VectorIcon name="bluetooth-disabled" size={20} color={colors.muted} />
+                        </TouchableOpacity>
+                      )}
                     </View>
                     {!connected && (
                       <TouchableOpacity
@@ -743,7 +787,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                         onPress={() => setRfidConnectedByType((prev) => ({ ...prev, [rfidReaderType]: true }))}
                         activeOpacity={0.85}
                       >
-                        <VectorIcon name="bluetooth" size={22} color="#fff" />
+                        <VectorIcon name="bluetooth" size={20} color="#fff" />
                         <Text style={styles.rfidConnectButtonText}>{t('rfidConnectButton')}</Text>
                       </TouchableOpacity>
                     )}
@@ -751,14 +795,39 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                 );
               })()}
 
-              <VectorIcon name="wifi-tethering" size={56} color={colors.primary} style={{ marginTop: spacing.lg }} />
-              <Text style={[styles.stateText, styles.rfidHintText, { marginTop: spacing.sm }]}>
-                {rfidReady
-                  ? (rfidTags.length > 0
-                    ? t('corpRfidTagsDetected').replace('{count}', String(rfidTags.length))
-                    : t('corpRfidHint'))
-                  : t('rfidConnectHint')}
-              </Text>
+              <View style={styles.rfidPassingCard}>
+                <Text style={styles.rfidPassingHeading}>{t('rfidPassingTagsHeading')}</Text>
+                {rfidTags.length === 0 ? (
+                  <View style={styles.rfidPassingEmpty}>
+                    <VectorIcon name="wifi-tethering" size={40} color={colors.muted} />
+                    <Text style={[styles.rfidHintText, { marginTop: spacing.sm, textAlign: 'center' }]}>
+                      {rfidReady ? t('corpRfidHint') : t('rfidConnectHint')}
+                    </Text>
+                  </View>
+                ) : (
+                  <ScrollView style={styles.rfidPassingList} showsVerticalScrollIndicator={false}>
+                    {rfidTags.map((tag, index) => {
+                      const dummy = DUMMY_RFID_TAGS.find((d) => d.epc === tag.epc);
+                      return (
+                        <View key={`${tag.epc}-${tag.seenAt}`} style={styles.rfidPassingRow}>
+                          <View style={styles.rfidPassingIconBox}>
+                            <VectorIcon name="wifi-tethering" size={22} color={colors.primary} />
+                          </View>
+                          <View style={styles.rfidPassingDetail}>
+                            <Text style={styles.rfidPassingLabel} numberOfLines={1}>{dummy?.label || t('rfidUnknownTag')}</Text>
+                            <Text style={styles.rfidPassingEpc} numberOfLines={1}>{tag.epc}</Text>
+                          </View>
+                          {index === 0 && (
+                            <View style={styles.rfidNewBadge}>
+                              <Text style={styles.rfidNewBadgeText}>{t('rfidLatestBadge')}</Text>
+                            </View>
+                          )}
+                        </View>
+                      );
+                    })}
+                  </ScrollView>
+                )}
+              </View>
             </View>
           ) : (
             <View style={styles.stateBox}>
@@ -960,8 +1029,10 @@ const styles = StyleSheet.create({
   // White background specifically for the RFID panel (unlike the camera/NFC
   // dark viewport it sits inside) — fills scanViewport entirely, so its own
   // color wins regardless of the dark backgroundColor set on scanViewport.
-  rfidPanel: { flex: 1, width: '100%', justifyContent: 'center', alignItems: 'center', padding: spacing.lg, backgroundColor: colors.surface },
-  rfidReaderTypeRow: { flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.md },
+  // Top-aligned (not centered) so the reader selector/status pack toward the
+  // top and the passing-tags card below gets the rest of the height.
+  rfidPanel: { flex: 1, width: '100%', justifyContent: 'flex-start', alignItems: 'stretch', padding: spacing.lg, backgroundColor: colors.surface },
+  rfidReaderTypeRow: { flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.md, alignSelf: 'center' },
   rfidReaderChip: {
     height: 40,
     justifyContent: 'center',
@@ -986,14 +1057,60 @@ const styles = StyleSheet.create({
   rfidConnectButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: spacing.xs,
     height: 44,
     paddingHorizontal: spacing.lg,
     borderRadius: radius.pill,
     backgroundColor: colors.primary,
     marginTop: spacing.xs,
+    marginBottom: spacing.md,
   },
   rfidConnectButtonText: { color: '#fff', fontSize: 18, fontWeight: '600' },
+  // Live "tags passing near the reader" card — fills the rest of the RFID
+  // panel's height below the reader selector/status, distinct from the
+  // Recent Captures card further down (this shows detections, that shows
+  // already-logged/registered captures).
+  rfidPassingCard: {
+    flex: 1,
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+  },
+  rfidPassingHeading: { fontSize: 17, fontWeight: '600', color: colors.muted, marginBottom: spacing.xs },
+  rfidPassingEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  rfidPassingList: { flex: 1 },
+  rfidPassingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  rfidPassingIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rfidPassingDetail: { flex: 1, marginLeft: spacing.sm },
+  rfidPassingLabel: { fontSize: 16, fontWeight: '600', color: colors.text },
+  rfidPassingEpc: { fontSize: 13, color: colors.muted, marginTop: 1 },
+  rfidNewBadge: {
+    backgroundColor: colors.primary,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    marginLeft: spacing.xs,
+  },
+  rfidNewBadgeText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   frameOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center' },
   overlayHintWrap: {
     position: 'absolute',
