@@ -58,7 +58,11 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
   const [period, setPeriod] = useState<PeriodOption>('today');
   const [filter, setFilter] = useState<FilterTab>('newest');
   const [detailDoc, setDetailDoc] = useState<CaptureDoc | null>(null);
-  const [detailPos, setDetailPos] = useState({ top: 0, left: 0 });
+  // Tap point + measured overlay/popup sizes — the popup's final position is
+  // clamped from these at render time so it always fits fully on screen.
+  const [detailTap, setDetailTap] = useState({ x: 0, y: 0 });
+  const [detailArea, setDetailArea] = useState({ width: 0, height: 0 });
+  const [detailSize, setDetailSize] = useState({ width: 0, height: 0 });
   const [periodMenuVisible, setPeriodMenuVisible] = useState(false);
   const [periodPopover, setPeriodPopover] = useState({ top: 0, right: 0 });
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
@@ -139,19 +143,36 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
   const visibleDocs = filteredDocs.slice(0, visibleCount);
   const hasMore = visibleCount < filteredDocs.length;
 
-  const DETAIL_POPUP_WIDTH = 240;
+  const DETAIL_POPUP_MAX_WIDTH = 360;
+  const DETAIL_EDGE = 12;
 
   // Shows the tapped row's detail as a floating popup anchored just below
   // the tap point (mouse click on web, touch on native) — not an inline
   // panel that pushes the rest of the list down.
   const openDetail = (doc: CaptureDoc, e: any) => {
     const { pageY, pageX } = e.nativeEvent;
-    setDetailPos({
-      top: pageY + 8,
-      left: Math.min(Math.max(12, pageX - DETAIL_POPUP_WIDTH / 2), SCREEN_WIDTH - DETAIL_POPUP_WIDTH - 12),
-    });
+    setDetailTap({ x: pageX, y: pageY });
+    setDetailSize({ width: 0, height: 0 });
     setDetailDoc(doc);
   };
+
+  // Clamp inside the modal's real area (not a module-load Dimensions value,
+  // which goes stale when a browser window resizes): as wide as fits, centred
+  // on the tap horizontally, below the tap — or above it when it would run
+  // off the bottom.
+  const detailWidth = Math.min(DETAIL_POPUP_MAX_WIDTH, Math.max(0, (detailArea.width || SCREEN_WIDTH) - DETAIL_EDGE * 2));
+  const detailLeft = Math.min(
+    Math.max(DETAIL_EDGE, detailTap.x - detailWidth / 2),
+    Math.max(DETAIL_EDGE, (detailArea.width || SCREEN_WIDTH) - detailWidth - DETAIL_EDGE),
+  );
+  const detailTop = (() => {
+    const areaH = detailArea.height;
+    const popH = detailSize.height;
+    const below = detailTap.y + 8;
+    if (!areaH || !popH || below + popH <= areaH - DETAIL_EDGE) return below;
+    const above = detailTap.y - popH - 8;
+    return Math.min(Math.max(DETAIL_EDGE, above), Math.max(DETAIL_EDGE, areaH - popH - DETAIL_EDGE));
+  })();
 
   const openPeriodMenu = () => {
     periodButtonRef.current?.measureInWindow((x: number, y: number, width: number, height: number) => {
@@ -320,9 +341,25 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
 
       <Modal visible={!!detailDoc} transparent animationType="none" onRequestClose={() => setDetailDoc(null)}>
         <TouchableWithoutFeedback onPress={() => setDetailDoc(null)}>
-          <View style={styles.detailOverlay}>
+          <View
+            style={styles.detailOverlay}
+            onLayout={(e) => {
+              const { width, height } = e.nativeEvent.layout;
+              setDetailArea((prev) => (prev.width === width && prev.height === height ? prev : { width, height }));
+            }}
+          >
             {!!detailDoc && (
-              <View style={[styles.detailPopover, { position: 'absolute', top: detailPos.top, left: detailPos.left }]}>
+              <View
+                style={[
+                  styles.detailPopover,
+                  // Hidden until measured, so it never flashes in the unclamped spot.
+                  { position: 'absolute', top: detailTop, left: detailLeft, width: detailWidth, opacity: detailSize.height ? 1 : 0 },
+                ]}
+                onLayout={(e) => {
+                  const { width, height } = e.nativeEvent.layout;
+                  setDetailSize((prev) => (prev.width === width && prev.height === height ? prev : { width, height }));
+                }}
+              >
                 <DetailRow icon="smartphone" label={t('corpTerminalIdLabel')} value={detailDoc.terminalId || '—'} />
                 <DetailRow icon="person" label={t('corpWorkerLabel')} value={detailDoc.workerLabel || '—'} />
                 <DetailRow
@@ -337,7 +374,7 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
                 />
                 <DetailRow icon="photo-camera" label={t('corpCapturedViaLabel')} value={detailDoc.identifierType || '—'} />
                 {!detailDoc.imagePath && !!detailDoc.rawValue && (
-                  <DetailRow icon="sell" label={t('corpTagValueLabel')} value={detailDoc.rawValue} />
+                  <DetailRow icon="sell" label={t('corpTagValueLabel')} value={detailDoc.rawValue} wrap />
                 )}
                 <DetailRow icon="tablet-mac" label={t('corpCapturedDeviceLabel')} value={detailDoc.device?.model || '—'} />
               </View>
@@ -349,13 +386,15 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
   );
 }
 
-const DetailRow = ({ icon, label, value }: { icon: string; label: string; value: string }) => (
+// `wrap`: long unbroken values (a 24-char EPC) wrap to a second line instead
+// of truncating — break-all so web breaks mid-string too.
+const DetailRow = ({ icon, label, value, wrap = false }: { icon: string; label: string; value: string; wrap?: boolean }) => (
   <View style={styles.detailRow}>
     <View style={styles.detailLabelWrap}>
       <VectorIcon name={icon} size={21} color={colors.muted} style={styles.detailIcon} />
       <Text style={styles.detailLabel}>{label}</Text>
     </View>
-    <Text style={styles.detailValue} numberOfLines={1}>{value}</Text>
+    <Text style={[styles.detailValue, wrap && ({ wordBreak: 'break-all' } as any)]} numberOfLines={wrap ? 2 : 1}>{value}</Text>
   </View>
 );
 
@@ -455,7 +494,7 @@ const styles = StyleSheet.create({
   // overlay/dismiss pattern as periodOverlay/periodPopover above.
   detailOverlay: { flex: 1 },
   detailPopover: {
-    width: 360,
+    // width set inline (min of 360 and the available screen width)
     backgroundColor: colors.surface,
     borderRadius: radius.md,
     borderWidth: 1,
