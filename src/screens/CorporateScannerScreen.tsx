@@ -44,6 +44,14 @@ const RFID_WINDOW_SECONDS = 5;
 const RFID_SIMULATION_MODE = true;
 const RFID_SIMULATION_DELAY_MS = 4000;
 
+// pmc/lookup returns product images as bare upload filenames — same
+// resolution every other product-image screen uses.
+const fileUrl = (f: string) => {
+  if (!f) return '';
+  if (/^https?:\/\//i.test(f)) return f;
+  return `${API_BASE_URL}files/${String(f).replace(/^\/+/, '')}`;
+};
+
 type CaptureType = 'qr' | 'barcode' | 'rfid' | 'nfc';
 type RfidReaderType = 'yometel' | 'impinj' | 'zebra';
 
@@ -879,7 +887,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                           onPress={() => setPreviewTag({ product: resolved?.product, productId, qrcodeId: resolved?.qrcodeId })}
                         >
                           {resolved?.productImage ? (
-                            <Image source={{ uri: resolved.productImage }} style={styles.rfidPassingIconBox} />
+                            <Image source={{ uri: fileUrl(resolved.productImage) }} style={styles.rfidPassingIconBox} />
                           ) : (
                             <View style={styles.rfidPassingIconBox}>
                               <VectorIcon name="wifi-tethering" size={22} color={colors.primary} />
@@ -1041,7 +1049,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
         <TouchableOpacity style={styles.helpOverlay} activeOpacity={1} onPress={() => setPreviewTag(null)}>
           <View style={styles.previewCard}>
             {previewTag?.product?.images?.[0] ? (
-              <Image source={{ uri: previewTag.product.images[0] }} style={styles.previewMedia} />
+              <Image source={{ uri: fileUrl(previewTag.product.images[0]) }} style={styles.previewMedia} />
             ) : (
               <View style={[styles.previewMedia, styles.previewMediaPlaceholder]}>
                 <VectorIcon name="inventory-2" size={40} color={colors.muted} />
