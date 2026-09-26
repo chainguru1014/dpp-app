@@ -243,6 +243,11 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
     }
   };
 
+  // Recent Captures shows only the selected capture type's records (a QR
+  // capture stores identifierType 'qr', barcode 'barcode', etc. — same keys
+  // as CaptureType). The header's Today's Scans stays the all-types total.
+  const typeCaptures = captures.filter((doc) => doc.identifierType === captureType);
+
   const loadCaptures = async () => {
     try {
       const res = await fetch(`${API_BASE_URL}captures?stepIndex=${stepIndex}&date=today`, {
@@ -1072,11 +1077,11 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
           <View style={styles.bottomBoard}>
             <View style={styles.thumbRow}>
               <Text style={styles.thumbHeading}>{t('corpRecentCaptures')}</Text>
-              <Text style={styles.seeAllLink}>{t('scanTodayCountLabel').replace('{count}', String(captures.length))}</Text>
+              <Text style={styles.seeAllLink}>{t('scanTodayCountLabel').replace('{count}', String(typeCaptures.length))}</Text>
             </View>
-            {captures.length > 0 && (
+            {typeCaptures.length > 0 && (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.thumbStrip}>
-                {captures.map((doc, index) => (
+                {typeCaptures.map((doc, index) => (
                   <TouchableOpacity
                     key={doc._id}
                     style={styles.thumbCard}
