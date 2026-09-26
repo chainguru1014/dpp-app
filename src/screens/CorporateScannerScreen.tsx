@@ -18,7 +18,7 @@ import AppLayout from '../components/AppLayout';
 import GradientButton from '../components/GradientButton';
 import { useI18n } from '../i18n/I18nContext';
 import { API_BASE_URL } from '../config/api';
-import { colors, radius, spacing, shadow } from '../theme';
+import { colors, radius, spacing, shadow, MIN_TOUCH } from '../theme';
 import WebCodeScanner, { WebCodeScannerHandle } from '../components/WebCodeScanner';
 import CaptureCameraView, { CaptureCameraHandle, isCaptureCameraAvailable, CapturedCodeFormat } from '../components/CaptureCameraView';
 import { requestNativeCameraPermission } from '../components/NativeCodeScanner';
@@ -108,6 +108,12 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   const [helpVisible, setHelpVisible] = useState(false);
   const [captureType, setCaptureType] = useState<CaptureType>(initialCaptureType);
   const [rfidTags, setRfidTags] = useState<RfidTag[]>([]);
+  // Per-EPC product resolution for the Passing Tags card — populated as each
+  // tag gets auto-captured (see captureRfidTag), so each row can show the
+  // product's image and be tappable straight to its detail page. `null`
+  // means "looked up, not registered to a product"; absent means "not
+  // looked up yet" (briefly, right when a tag first appears).
+  const [rfidProductByEpc, setRfidProductByEpc] = useState<Record<string, { productId?: string; qrcodeId?: string; productImage?: string } | null>>({});
   const [rfidReaderType, setRfidReaderType] = useState<RfidReaderType>('yometel');
   // Mocked connection state, per reader type — no real BLE/LLRP hardware is
   // wired up yet (see project notes). Connect just flips this locally; the
@@ -140,6 +146,19 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   const dummyRevealIndexRef = useRef(0);
   const nativeCameraRef = useRef<CaptureCameraHandle>(null);
   const webScannerRef = useRef<WebCodeScannerHandle>(null);
+  // Left/right scroll chevrons for the capture-type row — same pattern as
+  // ProductLifecycleScreen's tab row (canScrollTabsLeft/Right + scrollTabsBy).
+  const typeScrollRef = useRef<ScrollView>(null);
+  const [typeViewportWidth, setTypeViewportWidth] = useState(0);
+  const [typeContentWidth, setTypeContentWidth] = useState(0);
+  const [typeScrollX, setTypeScrollX] = useState(0);
+  const canScrollTypesLeft = typeScrollX > 4;
+  const canScrollTypesRight = typeContentWidth - typeViewportWidth - typeScrollX > 4;
+  const scrollTypesBy = (dir: 1 | -1) => {
+    const step = Math.max(120, typeViewportWidth * 0.7);
+    const next = Math.max(0, Math.min(typeContentWidth - typeViewportWidth, typeScrollX + dir * step));
+    typeScrollRef.current?.scrollTo({ x: next, animated: true });
+  };
 
   const isCameraType = captureType === 'qr' || captureType === 'barcode';
 
@@ -282,6 +301,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
     setCodeUnrecognized(false);
     lastCheckedValueRef.current = '';
     setRfidTags([]);
+    setRfidProductByEpc({});
     lastAutoCapturedEpcRef.current = '';
   }, [captureType]);
 
@@ -296,6 +316,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
     if (!rfidReady) {
       if (rfidPollIntervalRef.current) clearInterval(rfidPollIntervalRef.current);
       setRfidTags([]);
+      setRfidProductByEpc({});
       lastAutoCapturedEpcRef.current = '';
       dummyRevealIndexRef.current = 0;
       return;
@@ -490,6 +511,10 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
         getCurrentLocation(),
         getDeviceInfo(),
       ]);
+      setRfidProductByEpc((prev) => ({
+        ...prev,
+        [tag.epc]: recognized ? { productId, qrcodeId, productImage } : null,
+      }));
       await postCapture({
         rawValue: tag.epc,
         identifierType: 'rfid',
@@ -613,14 +638,6 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   const dateLabel = today.toLocaleDateString();
   const currentRef = captures[0]?.refNumber || '—';
   const subtitle = step ? `${step.entity} / ${step.type}` : undefined;
-  // RFID's recent-captures card only ever shows tags that resolved to a
-  // registered product — an unrecognized tag is still logged (captureRfidTag
-  // always posts) but never rendered here, unlike qr/barcode/nfc which show
-  // an unrecognized capture too. Other capture types render the full list
-  // unchanged.
-  const displayedCaptures = captureType === 'rfid'
-    ? captures.filter((doc) => doc.identifierType === 'rfid' && !!doc.productId)
-    : captures;
 
   const renderCamera = () => {
     if (hasPermission === null) {
@@ -703,31 +720,66 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
           </View>
         </View>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.typeSelectorScroll}
-          contentContainerStyle={styles.typeSelectorRow}
-        >
-          {CAPTURE_TYPES.map((opt) => (
-            <TouchableOpacity
-              key={opt.key}
-              style={[styles.typeChip, captureType === opt.key && styles.typeChipActive]}
-              onPress={() => setCaptureType(opt.key)}
-              activeOpacity={0.75}
-            >
-              <VectorIcon
-                name={opt.icon}
-                size={21}
-                color={captureType === opt.key ? '#fff' : colors.muted}
-                style={styles.typeChipIcon}
-              />
-              <Text style={[styles.typeChipText, captureType === opt.key && styles.typeChipTextActive]}>
-                {t(opt.labelKey)}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        <View style={styles.typeRowWrap}>
+          {/* Both arrow slots stay mounted at all times (disabled + dimmed at
+              the respective edge, rather than unmounted) so the ScrollView's
+              viewport width never shifts as the user scrolls — same reasoning
+              as ProductLifecycleScreen's tab row. */}
+          <TouchableOpacity
+            style={styles.typeArrowBtn}
+            onPress={() => scrollTypesBy(-1)}
+            disabled={!canScrollTypesLeft}
+            accessibilityRole="button"
+            accessibilityLabel={t('lifecyclePrevTabs')}
+            accessibilityState={{ disabled: !canScrollTypesLeft }}
+          >
+            <View style={[styles.typeEdgeHint, !canScrollTypesLeft && styles.typeEdgeHintDisabled]}>
+              <VectorIcon name="chevron-left" size={22} color={canScrollTypesLeft ? colors.primary : colors.placeholder} />
+            </View>
+          </TouchableOpacity>
+          <ScrollView
+            ref={typeScrollRef}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.typeSelectorScroll}
+            contentContainerStyle={styles.typeSelectorRow}
+            onLayout={(e) => setTypeViewportWidth(e.nativeEvent.layout.width)}
+            onContentSizeChange={(w) => setTypeContentWidth(w)}
+            onScroll={(e) => setTypeScrollX(e.nativeEvent.contentOffset.x)}
+            scrollEventThrottle={32}
+          >
+            {CAPTURE_TYPES.map((opt) => (
+              <TouchableOpacity
+                key={opt.key}
+                style={[styles.typeChip, captureType === opt.key && styles.typeChipActive]}
+                onPress={() => setCaptureType(opt.key)}
+                activeOpacity={0.75}
+              >
+                <VectorIcon
+                  name={opt.icon}
+                  size={21}
+                  color={captureType === opt.key ? '#fff' : colors.muted}
+                  style={styles.typeChipIcon}
+                />
+                <Text style={[styles.typeChipText, captureType === opt.key && styles.typeChipTextActive]}>
+                  {t(opt.labelKey)}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+          <TouchableOpacity
+            style={styles.typeArrowBtn}
+            onPress={() => scrollTypesBy(1)}
+            disabled={!canScrollTypesRight}
+            accessibilityRole="button"
+            accessibilityLabel={t('lifecycleNextTabs')}
+            accessibilityState={{ disabled: !canScrollTypesRight }}
+          >
+            <View style={[styles.typeEdgeHint, !canScrollTypesRight && styles.typeEdgeHintDisabled]}>
+              <VectorIcon name="chevron-right" size={22} color={canScrollTypesRight ? colors.primary : colors.placeholder} />
+            </View>
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.scanViewport}>
           {isCameraType ? renderCamera() : captureType === 'rfid' ? (
@@ -808,11 +860,23 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                   <ScrollView style={styles.rfidPassingList} showsVerticalScrollIndicator={false}>
                     {rfidTags.map((tag, index) => {
                       const dummy = DUMMY_RFID_TAGS.find((d) => d.epc === tag.epc);
+                      const resolved = rfidProductByEpc[tag.epc];
+                      const productId = resolved?.productId;
                       return (
-                        <View key={`${tag.epc}-${tag.seenAt}`} style={styles.rfidPassingRow}>
-                          <View style={styles.rfidPassingIconBox}>
-                            <VectorIcon name="wifi-tethering" size={22} color={colors.primary} />
-                          </View>
+                        <TouchableOpacity
+                          key={`${tag.epc}-${tag.seenAt}`}
+                          style={styles.rfidPassingRow}
+                          activeOpacity={productId ? 0.7 : 1}
+                          disabled={!productId}
+                          onPress={() => navigation.navigate('Result', { productId, qrcodeId: resolved?.qrcodeId })}
+                        >
+                          {resolved?.productImage ? (
+                            <Image source={{ uri: resolved.productImage }} style={styles.rfidPassingIconBox} />
+                          ) : (
+                            <View style={styles.rfidPassingIconBox}>
+                              <VectorIcon name="wifi-tethering" size={22} color={colors.primary} />
+                            </View>
+                          )}
                           <View style={styles.rfidPassingDetail}>
                             <Text style={styles.rfidPassingLabel} numberOfLines={1}>{dummy?.label || t('rfidUnknownTag')}</Text>
                             <Text style={styles.rfidPassingEpc} numberOfLines={1}>{tag.epc}</Text>
@@ -822,7 +886,8 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                               <Text style={styles.rfidNewBadgeText}>{t('rfidLatestBadge')}</Text>
                             </View>
                           )}
-                        </View>
+                          {!!productId && <VectorIcon name="chevron-right" size={20} color={colors.muted} />}
+                        </TouchableOpacity>
                       );
                     })}
                   </ScrollView>
@@ -878,71 +943,72 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
           )}
         </View>
 
-        <View style={styles.bottomBoard}>
-          <View style={styles.thumbRow}>
-            <Text style={styles.thumbHeading}>{t('corpRecentCaptures')}</Text>
-            <Text style={styles.seeAllLink}>{t('scanTodayCountLabel').replace('{count}', String(displayedCaptures.length))}</Text>
-          </View>
-          {displayedCaptures.length > 0 && (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.thumbStrip}>
-              {displayedCaptures.map((doc, index) => (
-                <TouchableOpacity
-                  key={doc._id}
-                  style={styles.thumbCard}
-                  activeOpacity={doc.productId ? 0.7 : 1}
-                  disabled={!doc.productId}
-                  onPress={() => navigation.navigate('Result', { productId: doc.productId, qrcodeId: doc.qrcodeId })}
-                >
-                  {doc.imagePath ? (
-                    <Image source={{ uri: `${API_BASE_URL.replace(/\/$/, '')}${doc.imagePath}` }} style={styles.thumbImage} />
-                  ) : doc.identifierType === 'rfid' && doc.productImage ? (
-                    <Image source={{ uri: doc.productImage }} style={styles.thumbImage} />
-                  ) : (doc.identifierType === 'rfid' || doc.identifierType === 'nfc') && (
-                    <View style={styles.thumbTagIconBox}>
-                      <VectorIcon name={doc.identifierType === 'rfid' ? 'wifi-tethering' : 'nfc'} size={30} color={colors.primary} />
-                    </View>
-                  )}
-                  <View style={styles.thumbDetail}>
-                    <Text style={styles.thumbIndex}>{index + 1}</Text>
-                    <Text style={styles.thumbRef} numberOfLines={1}>{doc.refNumber}</Text>
+        {/* RFID mode has no Recent Captures card — the Passing Tags card
+            above already shows registered captures live, with product image
+            and tap-through, so this section is skipped entirely rather than
+            just hiding its button; scanViewport's flex:1 then fills the
+            freed vertical space on its own. */}
+        {captureType !== 'rfid' && (
+          <View style={styles.bottomBoard}>
+            <View style={styles.thumbRow}>
+              <Text style={styles.thumbHeading}>{t('corpRecentCaptures')}</Text>
+              <Text style={styles.seeAllLink}>{t('scanTodayCountLabel').replace('{count}', String(captures.length))}</Text>
+            </View>
+            {captures.length > 0 && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.thumbStrip}>
+                {captures.map((doc, index) => (
+                  <TouchableOpacity
+                    key={doc._id}
+                    style={styles.thumbCard}
+                    activeOpacity={doc.productId ? 0.7 : 1}
+                    disabled={!doc.productId}
+                    onPress={() => navigation.navigate('Result', { productId: doc.productId, qrcodeId: doc.qrcodeId })}
+                  >
                     {doc.imagePath ? (
-                      <Text style={styles.thumbTime}>{new Date(doc.capturedAt).toLocaleTimeString()}</Text>
-                    ) : (
-                      <Text style={styles.thumbTime} numberOfLines={1}>{doc.rawValue}</Text>
+                      <Image source={{ uri: `${API_BASE_URL.replace(/\/$/, '')}${doc.imagePath}` }} style={styles.thumbImage} />
+                    ) : doc.identifierType === 'nfc' && (
+                      <View style={styles.thumbTagIconBox}>
+                        <VectorIcon name="nfc" size={30} color={colors.primary} />
+                      </View>
                     )}
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          )}
+                    <View style={styles.thumbDetail}>
+                      <Text style={styles.thumbIndex}>{index + 1}</Text>
+                      <Text style={styles.thumbRef} numberOfLines={1}>{doc.refNumber}</Text>
+                      {doc.imagePath ? (
+                        <Text style={styles.thumbTime}>{new Date(doc.capturedAt).toLocaleTimeString()}</Text>
+                      ) : (
+                        <Text style={styles.thumbTime} numberOfLines={1}>{doc.rawValue}</Text>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
 
-          {captureType !== 'rfid' && (
-            <>
-              {!!codeUnrecognized && !liveCode && (
-                <Text style={styles.unrecognizedText}>{t('corpCodeUnrecognized')}</Text>
+            {!!codeUnrecognized && !liveCode && (
+              <Text style={styles.unrecognizedText}>{t('corpCodeUnrecognized')}</Text>
+            )}
+
+            <GradientButton
+              style={[styles.captureButton, (!captureEnabled || capturing) && styles.captureButtonDisabled]}
+              onPress={handleCapture}
+              disabled={!captureEnabled || capturing}
+            >
+              {capturing || verifying ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <VectorIcon
+                    name={captureType === 'nfc' ? 'nfc' : 'photo-camera'}
+                    size={38}
+                    color="#fff"
+                  />
+                  <Text style={styles.captureButtonText}>{t('corpCaptureButton')}</Text>
+                </>
               )}
-
-              <GradientButton
-                style={[styles.captureButton, (!captureEnabled || capturing) && styles.captureButtonDisabled]}
-                onPress={handleCapture}
-                disabled={!captureEnabled || capturing}
-              >
-                {capturing || verifying ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <>
-                    <VectorIcon
-                      name={captureType === 'nfc' ? 'nfc' : 'photo-camera'}
-                      size={38}
-                      color="#fff"
-                    />
-                    <Text style={styles.captureButtonText}>{t('corpCaptureButton')}</Text>
-                  </>
-                )}
-              </GradientButton>
-            </>
-          )}
-        </View>
+            </GradientButton>
+          </View>
+        )}
       </View>
 
       <Modal visible={helpVisible} transparent animationType="fade" onRequestClose={() => setHelpVisible(false)}>
@@ -989,10 +1055,28 @@ const styles = StyleSheet.create({
     ...shadow(1),
   },
   infoCell: { flex: 1, alignItems: 'center', gap: 2 },
-  infoLabel: { fontSize: 17, color: colors.muted },
-  infoValue: { fontSize: 20, fontWeight: '600', color: colors.text },
-  typeSelectorScroll: { flexGrow: 0, marginBottom: spacing.sm },
-  typeSelectorRow: { flexDirection: 'row', gap: spacing.xs },
+  // numberOfLines={1} makes these size to the full cell width for ellipsis
+  // purposes, so the parent's alignItems:'center' alone doesn't center the
+  // glyphs inside — textAlign does.
+  infoLabel: { fontSize: 17, color: colors.muted, textAlign: 'center' },
+  infoValue: { fontSize: 20, fontWeight: '600', color: colors.text, textAlign: 'center' },
+  // Left/right chevron wrapper — same structure as ProductLifecycleScreen's
+  // tabRowWrap: arrows are real flex siblings with a permanently reserved
+  // MIN_TOUCH-wide slot each (disabled + dimmed at the respective edge
+  // rather than unmounted), so the ScrollView's viewport width never shifts.
+  typeRowWrap: { flexDirection: 'row', alignItems: 'stretch', marginBottom: spacing.sm },
+  typeArrowBtn: { width: MIN_TOUCH, alignItems: 'center', justifyContent: 'center' },
+  typeEdgeHint: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surfaceAlt,
+  },
+  typeEdgeHintDisabled: { opacity: 0.35 },
+  typeSelectorScroll: { flex: 1 },
+  typeSelectorRow: { flexDirection: 'row', gap: spacing.xs, paddingHorizontal: spacing.xs },
   typeChip: {
     flexDirection: 'row',
     alignItems: 'center',

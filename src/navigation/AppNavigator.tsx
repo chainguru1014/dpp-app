@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { CommonActions } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import { API_BASE_URL } from '../config/api';
 import LoginScreen from '../screens/LoginScreen';
 import HomeScreen from '../screens/HomeScreen';
 import RegisterScreen from '../screens/RegisterScreen';
@@ -99,6 +100,29 @@ export default function AppNavigator({ navigationRef }: { navigationRef: any }) 
     prevUserRef.current = user;
   }, [user, loading, navigationRef]);
 
+  // Re-fetches an Employee actor's own record from the backend so
+  // admin-changed fields (rfidReaderIds, name, etc.) show up on the next
+  // reload/focus instead of staying stuck at whatever otp/verify returned at
+  // login. Best-effort: any failure just keeps the cached copy already set
+  // by checkAuth, since a stale profile is better than a broken app.
+  const refreshEmployeeSelf = async (cached: any) => {
+    if (!cached || cached.actorKind !== 'Employee') return;
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      if (!token) return;
+      const res = await fetch(`${API_BASE_URL}employee-auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.status !== 'success' || !data?.employee) return;
+      const tagged = { ...data.employee, actorKind: 'Employee' };
+      await AsyncStorage.setItem('user', JSON.stringify(tagged));
+      setUser(tagged);
+    } catch (error) {
+      console.error('refreshEmployeeSelf failed:', error);
+    }
+  };
+
   const checkAuth = async () => {
     try {
       const userData = await AsyncStorage.getItem('user');
@@ -107,6 +131,7 @@ export default function AppNavigator({ navigationRef }: { navigationRef: any }) 
           const parsed = JSON.parse(userData as string);
           if (parsed) {
             setUser(parsed);
+            refreshEmployeeSelf(parsed);
           }
         } catch (parseError) {
           console.error('Parse error:', parseError);
