@@ -121,7 +121,10 @@ export default function HomeScreen({ navigation, user, onLogout }: HomeScreenPro
 
   return (
     <AppLayout navigation={navigation} user={user} onLogout={onLogout} logoLeft>
-      <ScrollView style={styles.screen} contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+      {/* Indicator shown (not the usual hidden-scrollbar pattern) -- on a
+          long Recent Scans list, a visible scrollbar is the cue that there's
+          more below, without the user having to blind-scroll to discover it. */}
+      <ScrollView style={styles.screen} contentContainerStyle={styles.container} showsVerticalScrollIndicator>
         {/* The one and only way to start a scan from Home — the whole card taps. */}
         <TouchableOpacity
           activeOpacity={0.9}

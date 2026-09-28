@@ -494,7 +494,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
   // Expand/collapse detail for one Material Origins row — company, material,
   // country, icon. Shared by the Materials tab and the Traceability tab.
   const renderOriginDetail = (o: any) => (
-    <View style={styles.jDetail}>
+    <View style={styles.cardDetail}>
       {!!o.icon && (
         <View style={{ alignItems: 'flex-start', marginBottom: spacing.sm }}>
           <Image source={{ uri: fileUrl(o.icon) }} style={styles.originDetailImg} resizeMode="contain" />
@@ -714,7 +714,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
           </TouchableOpacity>
         )}
         {traceOriginsOpen && materialOrigins.length > 0 && (
-          <View style={styles.jDetail}>
+          <View style={styles.cardDetail}>
             {materialOrigins.map((o: any, i: number) => (
               <View key={i} style={[styles.originRow, i === materialOrigins.length - 1 && { borderBottomWidth: 0 }]}>
                 <View style={styles.originIcon}>
@@ -749,7 +749,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
                 <Icon name={jOpen ? 'expand-less' : 'expand-more'} size={22} color={colors.muted} />
               </TouchableOpacity>
               {jOpen && (
-                <View style={styles.jDetail}>
+                <View style={styles.cardDetail}>
                   <Row label={t('lifecycleShippingLogLabel')} value={esg.shippingLog || ''} />
                   <Row label={t('lifecycleShippingDistance')} value={esg.distance || ''} />
                   <Row label={t('lifecycleEstEmissions')} value={formatUnitSpacing(routeInfo.emissions || esg.co2Transportation || '')} />
@@ -932,10 +932,13 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
               </View>
             </TouchableOpacity>
           </View>
+          {/* Indicator shown (not hidden) -- when a tab's content (e.g.
+              Origin & Impact with everything expanded) runs longer than the
+              viewport, a visible scrollbar is the cue there's more below. */}
           <ScrollView
             style={styles.tabScroll}
             contentContainerStyle={[styles.tabScrollContent, { paddingBottom: spacing.lg + bottomBarSpace }]}
-            showsVerticalScrollIndicator={false}
+            showsVerticalScrollIndicator
           >
             {renderTab()}
           </ScrollView>
@@ -1091,8 +1094,17 @@ const styles = StyleSheet.create({
   jTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   jTitle: { fontSize: 22, fontWeight: '700', color: '#000' },
   jDesc: { fontSize: 18, color: colors.muted, marginTop: 3, lineHeight: 24 },
-  jDetail: { marginTop: spacing.md, backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: spacing.md },
+  // Journey rows sit directly on the tab sheet's own background (not inside
+  // a white card), so their expanded detail matches that same background
+  // instead of standing out as a separate gray block.
+  jDetail: { marginTop: spacing.md, backgroundColor: colors.bg, borderRadius: radius.md, padding: spacing.md },
   jDetailEmpty: { fontSize: 17, color: colors.muted },
+  // Same expand/collapse detail block, but for rows that live inside a white
+  // `card` (Materials / Origin & Impact) -- matches the card's own white
+  // instead of the unrelated gray `jDetail` fill, with a hairline border so
+  // the grouped section still reads as distinct on an otherwise-identical
+  // white background.
+  cardDetail: { marginTop: spacing.md, backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md },
   jLinkRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingVertical: 3 },
   jLink: { fontSize: 18, color: colors.accent, fontWeight: '600', textDecorationLine: 'underline' },
   // rows
