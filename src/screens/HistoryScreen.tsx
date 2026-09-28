@@ -15,7 +15,7 @@ interface Props {
   onLogout?: () => void;
 }
 
-type TabKey = 'scanned' | 'purchased' | 'cancelled';
+type TabKey = 'scanned' | 'liked' | 'purchased';
 
 const fileUrl = (f: string) => {
   if (!f) return '';
@@ -40,7 +40,7 @@ export default function HistoryScreen({ navigation, user, onLogout }: Props) {
   const [loading, setLoading] = useState(true);
   const [scanned, setScanned] = useState<Row[]>([]);
   const [purchased, setPurchased] = useState<Row[]>([]);
-  const [cancelled, setCancelled] = useState<Row[]>([]);
+  const [liked, setLiked] = useState<Row[]>([]);
 
   const load = useCallback(async () => {
     if (!user?._id) {
@@ -50,9 +50,10 @@ export default function HistoryScreen({ navigation, user, onLogout }: Props) {
     const uid = encodeURIComponent(String(user._id));
     setLoading(true);
     try {
-      const [scanRes, purRes] = await Promise.all([
+      const [scanRes, purRes, likedRes] = await Promise.all([
         fetch(`${API_BASE_URL}qrcode/scan/list?user_id=${uid}`).then((r) => r.json()).catch(() => null),
         fetch(`${API_BASE_URL}transfer/purchases?user_id=${uid}`).then((r) => r.json()).catch(() => null),
+        fetch(`${API_BASE_URL}engagement/product-reactions?user_id=${uid}&reaction=like`).then((r) => r.json()).catch(() => null),
       ]);
 
       if (scanRes?.status === 'success' && Array.isArray(scanRes.data)) {
@@ -88,8 +89,25 @@ export default function HistoryScreen({ navigation, user, onLogout }: Props) {
           raw: o,
         });
         setPurchased(purRes.data.filter((o: any) => o.status === 'confirmed').map(mapRow));
-        setCancelled(
-          purRes.data.filter((o: any) => o.status === 'rejected' || o.status === 'cancelled').map(mapRow)
+      }
+
+      if (likedRes?.status === 'success' && Array.isArray(likedRes.data)) {
+        setLiked(
+          likedRes.data
+            // The reaction can outlive the product it points to (deleted
+            // product, or one the enriching lookup simply didn't find) --
+            // skip those rather than showing a blank row.
+            .filter((r: any) => r.product)
+            .map((r: any, i: number): Row => ({
+              key: `${r._id || i}`,
+              productId: r.product_id,
+              tokenId: r.token_id,
+              name: r.product?.name || t('homeProduct'),
+              sub: r.product?.brandInfo?.name || r.product?.model || '',
+              image: fileUrl(Array.isArray(r.product?.images) ? r.product.images[0] : ''),
+              when: r.updatedAt ? new Date(r.updatedAt).getTime() : undefined,
+              raw: r.product,
+            }))
         );
       }
     } catch (e) {
@@ -105,7 +123,7 @@ export default function HistoryScreen({ navigation, user, onLogout }: Props) {
     }, [load])
   );
 
-  const rows = tab === 'scanned' ? scanned : tab === 'purchased' ? purchased : cancelled;
+  const rows = tab === 'scanned' ? scanned : tab === 'liked' ? liked : purchased;
 
   const openRow = (row: Row) => {
     if (!row.productId) return;
@@ -123,8 +141,8 @@ export default function HistoryScreen({ navigation, user, onLogout }: Props) {
         <View style={styles.tabRow}>
           {([
             { key: 'scanned' as const, label: t('historyTabScanned') },
+            { key: 'liked' as const, label: t('historyTabLiked') },
             { key: 'purchased' as const, label: t('historyTabPurchased') },
-            { key: 'cancelled' as const, label: t('historyTabCancelled') },
           ]).map((tb) => (
             <TouchableOpacity
               key={tb.key}

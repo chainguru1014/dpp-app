@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, Linking, Platform, Modal, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Linking, Platform, Modal, TextInput, Alert, ScrollView, ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import AppLayout from '../components/AppLayout';
 import BottomSafeScrollView from '../components/BottomSafeScrollView';
@@ -43,6 +43,11 @@ export default function BrandDetailScreen({ navigation, route, user, onLogout }:
   const [coverUrl, setCoverUrl] = useState<string>(brand.coverUrl || '');
   const [logoUrl, setLogoUrl] = useState<string>(brand.logoUrl || '');
   const [brandDetail, setBrandDetail] = useState<string>(brand.detail || '');
+  const [productsModalVisible, setProductsModalVisible] = useState(false);
+  const [customersModalVisible, setCustomersModalVisible] = useState(false);
+  const [customers, setCustomers] = useState<{ name: string | null; country: string }[]>([]);
+  const [customersLoading, setCustomersLoading] = useState(false);
+  const [customersLoaded, setCustomersLoaded] = useState(false);
 
   useEffect(() => {
     if (!website) return;
@@ -102,6 +107,23 @@ export default function BrandDetailScreen({ navigation, route, user, onLogout }:
     const safe = /^https?:\/\//i.test(website) ? website : `https://${website}`;
     if (Platform.OS === 'web') (globalThis as any)?.open?.(safe, '_blank', 'noopener,noreferrer');
     else Linking.openURL(safe).catch(() => {});
+  };
+
+  // Fetched lazily on first open rather than alongside the stats count --
+  // most visits never open this dialog, and the count alone is all the
+  // Customers tile itself needs.
+  const openCustomersModal = () => {
+    setCustomersModalVisible(true);
+    if (customersLoaded || !website) return;
+    setCustomersLoading(true);
+    fetch(`${API_BASE_URL}engagement/brand/followers?website=${encodeURIComponent(website)}`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (j?.status === 'success' && Array.isArray(j.data)) setCustomers(j.data);
+        setCustomersLoaded(true);
+      })
+      .catch(() => {})
+      .finally(() => setCustomersLoading(false));
   };
 
   const sendIntroduction = async () => {
@@ -197,18 +219,37 @@ export default function BrandDetailScreen({ navigation, route, user, onLogout }:
 
         <View style={styles.statRow}>
           {[
-            { icon: 'inventory-2', value: String(products.length), label: t('brandStatProducts') },
+            {
+              icon: 'inventory-2',
+              value: String(products.length),
+              label: products.length === 1 ? t('brandStatProduct') : t('brandStatProducts'),
+              onPress: () => setProductsModalVisible(true),
+            },
             // Rating has no real data source anywhere in the app yet -- showing a
             // permanent "—" reads as broken, not "unavailable", so it's omitted
             // entirely rather than displayed as a dead placeholder.
-            stats.followerCount > 0 && { icon: 'group', value: String(stats.followerCount), label: t('brandStatCustomers') },
+            stats.followerCount > 0 && {
+              icon: 'group',
+              value: String(stats.followerCount),
+              label: stats.followerCount === 1 ? t('brandStatCustomer') : t('brandStatCustomers'),
+              onPress: openCustomersModal,
+            },
             stats.countryCount > 0 && { icon: 'public', value: String(stats.countryCount), label: t('brandStatCountries') },
           ].filter(Boolean).map((s: any) => (
-            <View key={s.label} style={styles.statTile} accessible accessibilityLabel={`${s.value} ${s.label}`}>
+            <TouchableOpacity
+              key={s.label}
+              style={styles.statTile}
+              onPress={s.onPress}
+              disabled={!s.onPress}
+              activeOpacity={s.onPress ? 0.7 : 1}
+              accessibilityRole={s.onPress ? 'button' : undefined}
+              accessible
+              accessibilityLabel={`${s.value} ${s.label}`}
+            >
               <Icon name={s.icon} size={19} color={colors.primary} />
               <Text style={styles.statValue}>{s.value}</Text>
               <Text style={styles.statLabel}>{s.label}</Text>
-            </View>
+            </TouchableOpacity>
           ))}
         </View>
 
@@ -320,6 +361,127 @@ export default function BrandDetailScreen({ navigation, route, user, onLogout }:
             >
               <Text style={styles.sheetSendText}>{t('brandIntroSend')}</Text>
             </GradientButton>
+          </View>
+        </View>
+      </Modal>
+
+      {/* All Products -- reuses the same row look as the Featured Products
+          list below, just unfiltered (that list caps at 3 unless "View all"
+          is toggled) and reachable straight from the stat tile. */}
+      <Modal visible={productsModalVisible} transparent animationType="slide" onRequestClose={() => setProductsModalVisible(false)}>
+        <View style={styles.sheetOverlay}>
+          <View style={[styles.sheet, styles.listSheet]}>
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>{t('brandAllProductsTitle')}</Text>
+              <TouchableOpacity
+                style={styles.sheetCloseBtn}
+                onPress={() => setProductsModalVisible(false)}
+                accessibilityRole="button"
+                accessibilityLabel={t('close')}
+              >
+                <Icon name="close" size={22} color={colors.muted} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={styles.listSheetContent}>
+              {products.length === 0 ? (
+                <Text style={styles.emptyText}>{t('brandNoProducts')}</Text>
+              ) : (
+                products.map((p, i) => {
+                  const img = firstImage(p);
+                  return (
+                    <TouchableOpacity
+                      key={`${p._id}-${i}`}
+                      style={styles.productRow}
+                      activeOpacity={0.7}
+                      onPress={() => {
+                        setProductsModalVisible(false);
+                        navigation.navigate('ProductSummary', { product: p, owned: false });
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel={p?.name || t('unnamedProduct')}
+                    >
+                      {img ? (
+                        <Image source={{ uri: img }} style={styles.productImage} resizeMode="cover" />
+                      ) : (
+                        <View style={[styles.productImage, styles.productImagePlaceholder]}>
+                          <Icon name="inventory-2" size={20} color={colors.placeholder} />
+                        </View>
+                      )}
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.productName} numberOfLines={1}>{p?.name || '—'}</Text>
+                        <Text style={styles.productSub} numberOfLines={1}>{p?.model || p?.brandInfo?.name || ''}</Text>
+                      </View>
+                      <Icon name="chevron-right" size={22} color={colors.muted} />
+                    </TouchableOpacity>
+                  );
+                })
+              )}
+            </ScrollView>
+            <TouchableOpacity
+              style={styles.dialogCloseBtn}
+              onPress={() => setProductsModalVisible(false)}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel={t('close')}
+            >
+              <Text style={styles.dialogCloseBtnText}>{t('close')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Who's following -- consumer accounts identify via a nickname only
+          (never a real name, by design), so `name` falls back to a neutral
+          placeholder rather than a blank row when one isn't set. */}
+      <Modal visible={customersModalVisible} transparent animationType="slide" onRequestClose={() => setCustomersModalVisible(false)}>
+        <View style={styles.sheetOverlay}>
+          <View style={[styles.sheet, styles.listSheet]}>
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>{t('brandCustomersTitle')}</Text>
+              <TouchableOpacity
+                style={styles.sheetCloseBtn}
+                onPress={() => setCustomersModalVisible(false)}
+                accessibilityRole="button"
+                accessibilityLabel={t('close')}
+              >
+                <Icon name="close" size={22} color={colors.muted} />
+              </TouchableOpacity>
+            </View>
+            {customersLoading ? (
+              <ActivityIndicator size="large" color={colors.accent} style={{ marginVertical: spacing.xxl }} />
+            ) : (
+              <ScrollView contentContainerStyle={styles.listSheetContent}>
+                {customers.length === 0 ? (
+                  <Text style={styles.emptyText}>{t('brandNoCustomersYet')}</Text>
+                ) : (
+                  customers.map((c, i) => (
+                    <View
+                      key={i}
+                      style={styles.customerRow}
+                      accessible
+                      accessibilityLabel={[c.name || t('brandAnonymousCustomer'), c.country].filter(Boolean).join(', ')}
+                    >
+                      <View style={styles.customerAvatar}>
+                        <Icon name="person" size={20} color={colors.placeholder} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.customerName} numberOfLines={1}>{c.name || t('brandAnonymousCustomer')}</Text>
+                        {!!c.country && <Text style={styles.customerCountry} numberOfLines={1}>{c.country}</Text>}
+                      </View>
+                    </View>
+                  ))
+                )}
+              </ScrollView>
+            )}
+            <TouchableOpacity
+              style={styles.dialogCloseBtn}
+              onPress={() => setCustomersModalVisible(false)}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel={t('close')}
+            >
+              <Text style={styles.dialogCloseBtnText}>{t('close')}</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -435,4 +597,32 @@ const styles = StyleSheet.create({
   brandMiniDetail: { fontSize: 17, color: colors.muted, marginTop: 2 },
   sheetSend: { marginTop: spacing.lg, backgroundColor: colors.accent, borderRadius: radius.md, height: MIN_TOUCH, justifyContent: 'center', alignItems: 'center' },
   sheetSendText: { color: '#fff', fontSize: 20, fontWeight: '600' },
+  // Capped height (not just content-sized like the intro sheet) so a long
+  // products/customers list can't push the Close button off-screen.
+  listSheet: { maxHeight: '78%' },
+  listSheetContent: { paddingBottom: spacing.sm },
+  dialogCloseBtn: {
+    marginTop: spacing.md,
+    height: MIN_TOUCH,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dialogCloseBtnText: { fontSize: 19, fontWeight: '600', color: colors.primary },
+  customerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  customerAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
+  customerName: { fontSize: 19, fontWeight: '600', color: colors.heading },
+  customerCountry: { fontSize: 17, color: colors.muted, marginTop: 2 },
 });
