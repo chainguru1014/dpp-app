@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Scroll bar thumb in the app's dark brand blue (#27618d), matching the
+<!-- Scroll bar thumb in the app's brand blue (#428acb), matching the
      app's web build. Used by AppTheme in values/styles.xml. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-    <solid android:color="#27618d" />
+    <solid android:color="#428acb" />
     <corners android:radius="4dp" />
     <size android:width="4dp" android:height="4dp" />
 </shape>
