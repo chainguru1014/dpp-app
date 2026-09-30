@@ -58,25 +58,26 @@
         /* App-wide scrollbar theme (desktop/web browsers only -- iOS/Android
            intentionally hide static scrollbars on touch scroll views by OS
            design, no web CSS can override that; this styles whichever
-           scrollbars a given browser/input method does show). Thin + brand
-           navy instead of each browser's default (usually wide and grey). */
+           scrollbars a given browser/input method does show). Brand blue
+           thumb (#4585db, the top bar colour) on a light blue track -- the
+           same as the web admin panel (frontend/src/theme.js). */
         * {
             scrollbar-width: thin;
-            scrollbar-color: rgba(27, 79, 114, 0.35) transparent;
+            scrollbar-color: #4585db #e6eef8;
         }
         *::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
+            width: 8px;
+            height: 8px;
         }
         *::-webkit-scrollbar-track {
-            background: transparent;
+            background: #e6eef8;
         }
         *::-webkit-scrollbar-thumb {
-            background-color: rgba(27, 79, 114, 0.35);
-            border-radius: 3px;
+            background-color: #4585db;
+            border-radius: 4px;
         }
         *::-webkit-scrollbar-thumb:hover {
-            background-color: rgba(27, 79, 114, 0.55);
+            background-color: #3a72c0;
         }
     </style>
     <link rel="preconnect" href="https://fonts.googleapis.com">
