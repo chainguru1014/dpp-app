@@ -67,6 +67,27 @@ export default function AppNavigator({ navigationRef }: { navigationRef: any }) 
       return;
     }
 
+    // GS1 Digital Link: /01/<GTIN>/21/<item number>. Ask the server which
+    // product that is, then open it exactly like a /product/ link.
+    const gs1Match = pathname.match(/^\/01\/(\d{8,14})\/21\/([^/]+)\/?$/);
+    if (gs1Match) {
+      handledWebProductPathRef.current = true;
+      fetch(`${API_BASE_URL}qrcode/gs1/${encodeURIComponent(gs1Match[1])}/${encodeURIComponent(decodeURIComponent(gs1Match[2]))}`)
+        .then((r) => r.json())
+        .then((j) => {
+          const product = j?.status === 'success' ? j.data : null;
+          if (!product?._id || product?.token_id == null) return;
+          navigationRef.current?.dispatch(
+            CommonActions.reset({
+              index: 0,
+              routes: [{ name: 'Result', params: { productId: String(product._id), qrcodeId: String(product.token_id) } }],
+            })
+          );
+        })
+        .catch(() => {});
+      return;
+    }
+
     const match = pathname.match(/^\/product\/([^/]+)\/([^/]+)\/?$/);
     if (!match) return;
 
