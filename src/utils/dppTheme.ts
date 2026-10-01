@@ -281,7 +281,7 @@ export const buttonFill = (look: BrandLook) => {
   return { from: mix(p.primary, '#ffffff', 0.35), to: p.primary, text: p.onPrimary, border: null };
 };
 
-// One request per company per app session — product screens open often.
+// One request per brand per app session — product screens open often.
 const themeCache: Record<string, DppTheme> = {};
 
 const STANDARD_LOOK: BrandLook = { theme: DEFAULT_DPP_THEME, palette: BASE_PALETTE, fontFamily: undefined, isCustom: false };
@@ -293,28 +293,32 @@ const STANDARD_LOOK: BrandLook = { theme: DEFAULT_DPP_THEME, palette: BASE_PALET
 export const useBrandLook = (product: any, enabled = true): BrandLook => {
   const rawCompany = product?.company_id;
   const companyId = rawCompany && typeof rawCompany === 'object' ? String(rawCompany._id || '') : String(rawCompany || '');
-  const [theme, setTheme] = useState<DppTheme | null>(companyId ? themeCache[companyId] || null : null);
+  // A company can sell under several brands, each with its own design.
+  const brandName = String(product?.brandInfo?.name || '').trim();
+  const cacheKey = companyId ? `${companyId}|${brandName.toLowerCase()}` : '';
+  const [theme, setTheme] = useState<DppTheme | null>(cacheKey ? themeCache[cacheKey] || null : null);
 
   useEffect(() => {
-    if (!enabled || !companyId) {
+    if (!enabled || !cacheKey) {
       setTheme(null);
       return;
     }
-    if (themeCache[companyId]) {
-      setTheme(themeCache[companyId]);
+    if (themeCache[cacheKey]) {
+      setTheme(themeCache[cacheKey]);
       return;
     }
     let cancelled = false;
-    fetch(`${API_BASE_URL}company/${encodeURIComponent(companyId)}/dpp-theme`)
+    fetch(`${API_BASE_URL}company/${encodeURIComponent(companyId)}/dpp-theme?brand=${encodeURIComponent(brandName)}`)
       .then((r) => r.json())
       .then((j) => {
         const loaded = normalizeDppTheme(j?.data?.dppTheme);
-        themeCache[companyId] = loaded;
+        themeCache[cacheKey] = loaded;
         if (!cancelled) setTheme(loaded);
       })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [companyId, enabled]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cacheKey, enabled]);
 
   return useMemo(() => {
     if (!enabled || !theme || JSON.stringify(theme) === JSON.stringify(DEFAULT_DPP_THEME)) return STANDARD_LOOK;
