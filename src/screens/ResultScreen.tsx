@@ -30,7 +30,7 @@ import { useI18n } from '../i18n/I18nContext';
 import MediaSlider from '../components/MediaSlider';
 import { saveTextFile, safeFileBaseName } from '../utils/saveTextFile';
 import { colors, radius, spacing, shadow, MIN_TOUCH } from '../theme';
-import { Palette, useBrandLook, withFont } from '../utils/dppTheme';
+import { BASE_PALETTE, Palette, applyLook, buttonFill, useBrandLook } from '../utils/dppTheme';
 
 // Web QR Scanner
 let QRCodeScanner: any = null;
@@ -98,9 +98,13 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
   const look = useBrandLook(productData, user?.actorKind !== 'Employee');
   const colors = look.palette;
   const styles = useMemo(
-    () => (look.isCustom ? withFont(makeStyles(look.palette), look.fontFamily) : baseStyles),
+    () => (look.isCustom ? applyLook(makeStyles(look.palette), look, ['ovProductCard', 'ovCard']) : baseStyles),
     [look]
   );
+  // The main button, per the brand's button style; `btn` is the same for the
+  // many small buttons in dialogs, which always stay filled.
+  const fill = buttonFill(look);
+  const btn = look.isCustom && look.theme.buttonStyle === 'outline' ? { from: colors.primary, to: colors.primary } : fill;
   const buttonShape = look.isCustom ? { borderRadius: look.theme.buttonRadius } : null;
   const BRAND_COLOR = colors.primary;
   const [expandedSections, setExpandedSections] = useState<{ [key: number]: boolean }>({});
@@ -1349,7 +1353,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
       return (
         <View style={styles.cameraContainer}>
           <Text style={styles.cameraPlaceholder}>{t('qrScannerWebImpl')}</Text>
-          <GradientButton from={colors.headerLight} to={colors.primary}
+          <GradientButton from={btn.from} to={btn.to}
             style={styles.button}
             onPress={() => {
               // Simulate QR scan for web
@@ -1372,7 +1376,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
       return (
         <View style={styles.cameraContainer}>
           <Text style={styles.cameraPlaceholder}>{t('cameraNotAvailable')}</Text>
-          <GradientButton from={colors.headerLight} to={colors.primary}
+          <GradientButton from={btn.from} to={btn.to}
             style={styles.button}
             onPress={() => setShowCamera(false)}
           >
@@ -1400,7 +1404,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
           }
           bottomContent={
             <View style={styles.bottomContent}>
-              <GradientButton from={colors.headerLight} to={colors.primary}
+              <GradientButton from={btn.from} to={btn.to}
                 style={styles.button}
                 onPress={() => setShowCamera(false)}
               >
@@ -1432,162 +1436,33 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
     }
   };
 
-  return (
-    <AppLayout
-      navigation={navigation}
-      user={user}
-      onLogout={onLogout}
-      showBackButton={isAuthenticatedUser}
-      onBackPress={
-        isAuthenticatedUser
-          ? () => navigation.navigate(user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Home')
-          : undefined
-      }
-      bottomBar={isAuthenticatedUser && !isEmployeeActor ? 'product' : 'auto'}
-      flatContent={isEmployeeActor}
-      flushBottom
-      rightIcon="menu"
-      isFavorite={isInAlbum}
-      onToggleFavorite={() => handleActionMenuPress('toggleAlbum')}
-      product={productData}
-      onGuestAction={showLoginPrompt}
-      onActionMenuPress={handleActionMenuPress}
-      isBrandFollowed={isBrandFollowed}
-      isInAlbum={isInAlbum}
-      isProductDetailPage={true}
-      barColors={look.isCustom ? { from: colors.headerLight, to: colors.primary } : undefined}
-    >
-      <BottomSafeScrollView
-        style={[styles.content, Platform.OS === 'web' && { minHeight: availableContentMinHeight }]}
-        contentContainerStyle={[
-          styles.contentContainer,
-          Platform.OS === 'web' && { minHeight: availableContentMinHeight },
-        ]}
-        showsVerticalScrollIndicator={false}
-      >
-        {!productData || Object.keys(productData).length === 0 ? (
-          <View style={styles.emptyStateContainer}>
-            <Text style={styles.noDataText}>{t('failedToDecryptProduct')}</Text>
+  const heroInfo = (
+    <>
+      <Text style={styles.ovName} numberOfLines={2}>{productData?.name || '—'}</Text>
+      {!!productData?.model && <Text style={styles.ovModel} numberOfLines={1}>{productData.model}</Text>}
+      {look.theme.showProductId && (productData?.pmc_code || productData?.token_id != null) && (
+        <Text style={styles.ovId} numberOfLines={1}>ID: {productData?.pmc_code || productData?.token_id}</Text>
+      )}
+      {/* A label the brand marked as a suspected copy never shows
+          as authenticated — see the warning card below. */}
+      {productData?.item_status !== 'blocked' && (
+        <View style={styles.ovAuthBadge} accessible accessibilityLabel={`${t('overviewAuthenticated')}. ${t('lifecycleVerifiedByBrand')}`}>
+          <View style={styles.ovAuthBadgeCheck}><Icon name="check" size={11} color={colors.onBadge} /></View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.ovAuthBadgeTitle}>{t('overviewAuthenticated')}</Text>
+            <Text style={styles.ovAuthBadgeSub}>{t('lifecycleVerifiedByBrand')}</Text>
           </View>
-        ) : null}
+        </View>
+      )}
+    </>
+  );
 
-        {isEmployeeActor && renderImageSlider()}
-
-        {/* Security Check Button or Authenticated Message (staff / full view) */}
-        {isEmployeeActor && (
-          <View style={styles.securityCheckContainer}>
-            {showSecurityCheck && !isAuthenticated ? (
-              <GradientButton from={colors.headerLight} to={colors.primary} style={styles.securityCheckButton} onPress={handleSecurityCheck}>
-                <Image source={require('../assets/shield.png')} style={[styles.actionIcon, { tintColor: '#fff' }]} />
-                <Text style={styles.securityCheckText}>{t('securityCheck')}</Text>
-              </GradientButton>
-            ) : isAuthenticated ? (
-              <View style={styles.authenticatedContainer}>
-                <View style={styles.authenticatedIcon}>
-                  <Image source={require('../assets/insurance.png')} style={styles.authenticatedStatusIcon} />
-                </View>
-                <Text style={styles.authenticatedTitle}>{t('productIdAuthenticatedTitle')}</Text>
-                <Text style={styles.authenticatedText}>{t('authRecordedLine1')}</Text>
-                <Text style={styles.authenticatedText}>{t('authRecordedLine2')}</Text>
-              </View>
-            ) : null}
-          </View>
-        )}
-
-        {isEmployeeActor ? (
-          <>
-            {(() => {
-              const isPending = !isOwnedMode && transferStatus === 'pending' && transferRequestSent;
-              const isOwned = !isOwnedMode && transferStatus === 'confirmed';
-              const buyLocked = isPending || isOwned;
-              const label = isOwnedMode
-                ? t('transferButton')
-                : isPending ? t('requested') : isOwned ? t('owned') : t('buy');
-              return (
-                <View style={styles.actionButtonsRow}>
-                  <TouchableOpacity style={[styles.actionPill, selectedFeedback === 'like' && styles.actionPillActive]} onPress={handleLike}>
-                    {selectedFeedback === 'like' && <GradientView from={colors.headerLight} to={colors.primary} style={StyleSheet.absoluteFill} />}
-                    <Image source={require('../assets/like.png')} style={[styles.actionPillIcon, selectedFeedback === 'like' && styles.actionPillIconActive]} />
-                    <Text style={[styles.actionPillText, selectedFeedback === 'like' && styles.actionPillTextActive]}>{t('like')}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[styles.actionPill, selectedFeedback === 'dislike' && styles.actionPillActive]} onPress={handleDislike}>
-                    {selectedFeedback === 'dislike' && <GradientView from={colors.headerLight} to={colors.primary} style={StyleSheet.absoluteFill} />}
-                    <Image source={require('../assets/dislike.png')} style={[styles.actionPillIcon, selectedFeedback === 'dislike' && styles.actionPillIconActive]} />
-                    <Text style={[styles.actionPillText, selectedFeedback === 'dislike' && styles.actionPillTextActive]}>{t('dislike')}</Text>
-                  </TouchableOpacity>
-                  <GradientButton from={colors.headerLight} to={colors.primary}
-                    style={[styles.actionPill, styles.actionPillActive, buyLocked && styles.actionPillDisabled]}
-                    onPress={isOwnedMode ? openOwnerTransfer : handleBuy}
-                    activeOpacity={0.85}
-                    disabled={buyLocked}
-                  >
-                    <Image source={isOwnedMode ? require('../assets/connection.png') : require('../assets/cart.png')} style={[styles.actionPillIcon, styles.actionPillIconActive]} />
-                    <Text style={[styles.actionPillText, styles.actionPillTextActive]}>
-                      {label}{isOwnedMode && ownedQuantity != null ? ` ×${ownedQuantity}` : ''}
-                    </Text>
-                  </GradientButton>
-                </View>
-              );
-            })()}
-            {!showProductInfo ? (
-              <GradientButton from={colors.headerLight} to={colors.primary} style={styles.productInfoButton} onPress={() => setShowProductInfo(true)} activeOpacity={0.85}>
-                <Text style={styles.productInfoButtonText}>{t('resultProductInformation')}</Text>
-              </GradientButton>
-            ) : (
-              sections.map((section) => (
-                <View key={section.id} style={styles.accordionSection}>
-                  <GradientButton from={colors.headerLight} to={colors.primary} style={styles.accordionHeader} onPress={() => toggleSection(section.id)} activeOpacity={0.85}>
-                    <Text style={styles.accordionHeaderText}>{section.title}</Text>
-                    <View style={styles.accordionToggleBadge}>
-                      <Icon name={expandedSections[section.id] ? 'keyboard-arrow-up' : 'keyboard-arrow-down'} size={22} color={'#fff'} />
-                    </View>
-                  </GradientButton>
-                  {expandedSections[section.id] && (
-                    <View style={styles.accordionContent}>
-                      {section.id === 0 ? renderProductDetails() : renderSectionContent(section.id)}
-                    </View>
-                  )}
-                </View>
-              ))
-            )}
-          </>
-        ) : (
-          <>
-            {/* Header — image slider on the left, name / model / ID / Authenticated on the right. */}
-            <View style={styles.ovProductCard}>
-              <View style={styles.ovHeaderRow}>
-                <View style={styles.ovHeaderMedia}>{renderImageSlider(132, true)}</View>
-                <View style={styles.ovHeaderInfo}>
-                  <Text style={styles.ovName} numberOfLines={2}>{productData?.name || '—'}</Text>
-                  {!!productData?.model && <Text style={styles.ovModel} numberOfLines={1}>{productData.model}</Text>}
-                  {(productData?.pmc_code || productData?.token_id != null) && (
-                    <Text style={styles.ovId} numberOfLines={1}>ID: {productData?.pmc_code || productData?.token_id}</Text>
-                  )}
-                  {/* A label the brand marked as a suspected copy never shows
-                      as authenticated — see the warning card below. */}
-                  {productData?.item_status !== 'blocked' && (
-                  <View style={styles.ovAuthBadge} accessible accessibilityLabel={`${t('overviewAuthenticated')}. ${t('lifecycleVerifiedByBrand')}`}>
-                    <View style={styles.ovAuthBadgeCheck}><Icon name="check" size={11} color="#fff" /></View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.ovAuthBadgeTitle}>{t('overviewAuthenticated')}</Text>
-                      <Text style={styles.ovAuthBadgeSub}>{t('lifecycleVerifiedByBrand')}</Text>
-                    </View>
-                  </View>
-                  )}
-                </View>
-              </View>
-            </View>
-
-            {productData?.item_status === 'blocked' && (
-              <View style={styles.ovSuspectCard} accessible accessibilityRole="alert">
-                <Icon name="warning" size={24} color={colors.danger} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.ovSuspectTitle}>{t('overviewSuspectTitle')}</Text>
-                  <Text style={styles.ovSuspectBody}>{t('overviewSuspectBody')}</Text>
-                </View>
-              </View>
-            )}
-
+  // The blocks of the consumer Overview below the product card. The brand
+  // chooses which show and in what order (theme.blocks); a block with
+  // nothing to show returns nothing.
+  const overviewBlocks: Record<string, () => React.ReactNode> = {
+    highlights: () => (
+      <>
             {/* Key Highlights — Type / Color / Size. */}
             {(() => {
               const extra = [
@@ -1609,6 +1484,10 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
               );
             })()}
 
+      </>
+    ),
+    lifecycle: () => (
+      <>
             {/* Lifecycle Preview strip. */}
             <View style={styles.ovCard}>
               <Text style={[styles.ovCardTitle, { marginBottom: 14 }]}>{t('overviewLifecyclePreview')}</Text>
@@ -1640,8 +1519,72 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
               </TouchableOpacity>
             </View>
 
-            {/* Bottom-anchored action group — pushed to the foot of the content layer. */}
-            <View style={styles.ovBottomGroup}>
+      </>
+    ),
+    about: () => (productData?.aboutProduct ? (
+      <View style={styles.ovCard}>
+        <Text style={styles.ovCardTitle}>{t('lifecycleAboutProduct')}</Text>
+        <Text style={styles.ovBlockText}>{productData.aboutProduct}</Text>
+      </View>
+    ) : null),
+    brand: () => {
+      const info = productData?.brandInfo || {};
+      const name = String(info.name || '').trim();
+      if (!name) return null;
+      const website = String(info.websiteUrl || '').trim();
+      return (
+        <View style={styles.ovCard}>
+          <View style={styles.ovBrandRow}>
+            {!!info.logoUrl && <Image source={{ uri: getFileUrl(String(info.logoUrl)) }} style={styles.ovBrandLogo} resizeMode="contain" />}
+            <Text style={[styles.ovCardTitle, { marginBottom: 0, flex: 1 }]} numberOfLines={2}>{name}</Text>
+          </View>
+          {!!info.detail && <Text style={styles.ovBlockText}>{info.detail}</Text>}
+          {!!website && (
+            <TouchableOpacity
+              style={styles.ovViewLc}
+              onPress={() => openBrandWebsite(website)}
+              activeOpacity={0.7}
+              accessibilityRole="link"
+              accessibilityLabel={`${name}: ${website}`}
+            >
+              <Text style={styles.ovViewLcText} numberOfLines={1}>{website.replace(/^https?:\/\//i, '').replace(/\/$/, '')}</Text>
+              <Icon name="open-in-new" size={16} color={colors.accent} />
+            </TouchableOpacity>
+          )}
+        </View>
+      );
+    },
+    message: () => {
+      const { title, body } = look.theme.message;
+      if (!title && !body) return null;
+      return (
+        <View style={styles.ovCard}>
+          {!!title && <Text style={styles.ovCardTitle}>{title}</Text>}
+          {!!body && <Text style={styles.ovBlockText}>{body}</Text>}
+        </View>
+      );
+    },
+    cta: () => {
+      const { label, url } = look.theme.cta;
+      if (!label || !url) return null;
+      return (
+        <View style={styles.ovCtaRow}>
+          <GradientButton
+            from={fill.from}
+            to={fill.to}
+            style={[styles.ovPrimaryCta, buttonShape, fill.border]}
+            onPress={() => openBrandWebsite(url)}
+            activeOpacity={0.85}
+            accessibilityRole="link"
+            accessibilityLabel={label}
+          >
+            <Text style={[styles.ovPrimaryCtaText, { color: fill.text }]} numberOfLines={1}>{label}</Text>
+          </GradientButton>
+        </View>
+      );
+    },
+    feedback: () => (
+      <View style={{ marginTop: spacing.lg }}>
             {/* Helpful / Not helpful / Share — labelled, not icon-only. Share
                 is visually the most prominent of the three since it's the one
                 most consumers actually use. */}
@@ -1684,6 +1627,10 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
               </TouchableOpacity>
             </View>
 
+      </View>
+    ),
+    actions: () => (
+      <>
             {/* Scan Product | Request ownership — Scan is the action nearly
                 every consumer wants; ownership transfer is a secondary,
                 situational feature, so it takes the outlined/lower-emphasis
@@ -1697,14 +1644,14 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
                 : isPending ? t('requested') : isOwned ? t('owned') : t('overviewContactOwner');
               return (
                 <View style={styles.ovCtaRow}>
-                  <GradientButton from={colors.headerLight} to={colors.primary}
-                    style={[styles.ovPrimaryCta, buttonShape]}
+                  <GradientButton from={fill.from} to={fill.to}
+                    style={[styles.ovPrimaryCta, buttonShape, fill.border]}
                     onPress={() => navigation.navigate('Scanner')}
                     activeOpacity={0.85}
                     accessibilityRole="button"
                     accessibilityLabel={t('overviewScanProduct')}
                   >
-                    <Text style={styles.ovPrimaryCtaText}>{t('overviewScanProduct')}</Text>
+                    <Text style={[styles.ovPrimaryCtaText, { color: fill.text }]}>{t('overviewScanProduct')}</Text>
                   </GradientButton>
                   <TouchableOpacity
                     style={[styles.ovSecondaryCta, buttonShape, locked && { opacity: 0.6 }]}
@@ -1721,6 +1668,163 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
               );
             })()}
 
+      </>
+    ),
+  };
+
+  return (
+    <AppLayout
+      navigation={navigation}
+      user={user}
+      onLogout={onLogout}
+      showBackButton={isAuthenticatedUser}
+      onBackPress={
+        isAuthenticatedUser
+          ? () => navigation.navigate(user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Home')
+          : undefined
+      }
+      bottomBar={isAuthenticatedUser && !isEmployeeActor ? 'product' : 'auto'}
+      flatContent={isEmployeeActor}
+      flushBottom
+      rightIcon="menu"
+      isFavorite={isInAlbum}
+      onToggleFavorite={() => handleActionMenuPress('toggleAlbum')}
+      product={productData}
+      onGuestAction={showLoginPrompt}
+      onActionMenuPress={handleActionMenuPress}
+      isBrandFollowed={isBrandFollowed}
+      isInAlbum={isInAlbum}
+      isProductDetailPage={true}
+      barColors={look.isCustom ? { from: colors.headerLight, to: colors.header, text: colors.onHeader } : undefined}
+    >
+      <BottomSafeScrollView
+        style={[styles.content, Platform.OS === 'web' && { minHeight: availableContentMinHeight }]}
+        contentContainerStyle={[
+          styles.contentContainer,
+          Platform.OS === 'web' && { minHeight: availableContentMinHeight },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        {!productData || Object.keys(productData).length === 0 ? (
+          <View style={styles.emptyStateContainer}>
+            <Text style={styles.noDataText}>{t('failedToDecryptProduct')}</Text>
+          </View>
+        ) : null}
+
+        {isEmployeeActor && renderImageSlider()}
+
+        {/* Security Check Button or Authenticated Message (staff / full view) */}
+        {isEmployeeActor && (
+          <View style={styles.securityCheckContainer}>
+            {showSecurityCheck && !isAuthenticated ? (
+              <GradientButton from={btn.from} to={btn.to} style={styles.securityCheckButton} onPress={handleSecurityCheck}>
+                <Image source={require('../assets/shield.png')} style={[styles.actionIcon, { tintColor: '#fff' }]} />
+                <Text style={styles.securityCheckText}>{t('securityCheck')}</Text>
+              </GradientButton>
+            ) : isAuthenticated ? (
+              <View style={styles.authenticatedContainer}>
+                <View style={styles.authenticatedIcon}>
+                  <Image source={require('../assets/insurance.png')} style={styles.authenticatedStatusIcon} />
+                </View>
+                <Text style={styles.authenticatedTitle}>{t('productIdAuthenticatedTitle')}</Text>
+                <Text style={styles.authenticatedText}>{t('authRecordedLine1')}</Text>
+                <Text style={styles.authenticatedText}>{t('authRecordedLine2')}</Text>
+              </View>
+            ) : null}
+          </View>
+        )}
+
+        {isEmployeeActor ? (
+          <>
+            {(() => {
+              const isPending = !isOwnedMode && transferStatus === 'pending' && transferRequestSent;
+              const isOwned = !isOwnedMode && transferStatus === 'confirmed';
+              const buyLocked = isPending || isOwned;
+              const label = isOwnedMode
+                ? t('transferButton')
+                : isPending ? t('requested') : isOwned ? t('owned') : t('buy');
+              return (
+                <View style={styles.actionButtonsRow}>
+                  <TouchableOpacity style={[styles.actionPill, selectedFeedback === 'like' && styles.actionPillActive]} onPress={handleLike}>
+                    {selectedFeedback === 'like' && <GradientView from={btn.from} to={btn.to} style={StyleSheet.absoluteFill} />}
+                    <Image source={require('../assets/like.png')} style={[styles.actionPillIcon, selectedFeedback === 'like' && styles.actionPillIconActive]} />
+                    <Text style={[styles.actionPillText, selectedFeedback === 'like' && styles.actionPillTextActive]}>{t('like')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.actionPill, selectedFeedback === 'dislike' && styles.actionPillActive]} onPress={handleDislike}>
+                    {selectedFeedback === 'dislike' && <GradientView from={btn.from} to={btn.to} style={StyleSheet.absoluteFill} />}
+                    <Image source={require('../assets/dislike.png')} style={[styles.actionPillIcon, selectedFeedback === 'dislike' && styles.actionPillIconActive]} />
+                    <Text style={[styles.actionPillText, selectedFeedback === 'dislike' && styles.actionPillTextActive]}>{t('dislike')}</Text>
+                  </TouchableOpacity>
+                  <GradientButton from={btn.from} to={btn.to}
+                    style={[styles.actionPill, styles.actionPillActive, buyLocked && styles.actionPillDisabled]}
+                    onPress={isOwnedMode ? openOwnerTransfer : handleBuy}
+                    activeOpacity={0.85}
+                    disabled={buyLocked}
+                  >
+                    <Image source={isOwnedMode ? require('../assets/connection.png') : require('../assets/cart.png')} style={[styles.actionPillIcon, styles.actionPillIconActive]} />
+                    <Text style={[styles.actionPillText, styles.actionPillTextActive]}>
+                      {label}{isOwnedMode && ownedQuantity != null ? ` ×${ownedQuantity}` : ''}
+                    </Text>
+                  </GradientButton>
+                </View>
+              );
+            })()}
+            {!showProductInfo ? (
+              <GradientButton from={btn.from} to={btn.to} style={styles.productInfoButton} onPress={() => setShowProductInfo(true)} activeOpacity={0.85}>
+                <Text style={styles.productInfoButtonText}>{t('resultProductInformation')}</Text>
+              </GradientButton>
+            ) : (
+              sections.map((section) => (
+                <View key={section.id} style={styles.accordionSection}>
+                  <GradientButton from={btn.from} to={btn.to} style={styles.accordionHeader} onPress={() => toggleSection(section.id)} activeOpacity={0.85}>
+                    <Text style={styles.accordionHeaderText}>{section.title}</Text>
+                    <View style={styles.accordionToggleBadge}>
+                      <Icon name={expandedSections[section.id] ? 'keyboard-arrow-up' : 'keyboard-arrow-down'} size={22} color={'#fff'} />
+                    </View>
+                  </GradientButton>
+                  {expandedSections[section.id] && (
+                    <View style={styles.accordionContent}>
+                      {section.id === 0 ? renderProductDetails() : renderSectionContent(section.id)}
+                    </View>
+                  )}
+                </View>
+              ))
+            )}
+          </>
+        ) : (
+          <>
+            {/* Product card — photo beside the name, or (brand's choice) a large photo on top. */}
+            <View style={styles.ovProductCard}>
+              {look.theme.heroLayout === 'top' ? (
+                <>
+                  <View style={{ marginBottom: spacing.md }}>{renderImageSlider(240, true)}</View>
+                  {heroInfo}
+                </>
+              ) : (
+                <View style={styles.ovHeaderRow}>
+                  <View style={styles.ovHeaderMedia}>{renderImageSlider(132, true)}</View>
+                  <View style={styles.ovHeaderInfo}>{heroInfo}</View>
+                </View>
+              )}
+            </View>
+
+            {productData?.item_status === 'blocked' && (
+              <View style={styles.ovSuspectCard} accessible accessibilityRole="alert">
+                <Icon name="warning" size={24} color={colors.danger} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.ovSuspectTitle}>{t('overviewSuspectTitle')}</Text>
+                  <Text style={styles.ovSuspectBody}>{t('overviewSuspectBody')}</Text>
+                </View>
+              </View>
+            )}
+
+            {/* The rest of the page, in the brand's order (the standard order
+                when the brand has not changed it). */}
+            {look.theme.blocks.filter((b) => b.visible).map((b) => (
+              <React.Fragment key={b.key}>{overviewBlocks[b.key]?.()}</React.Fragment>
+            ))}
+
+            <View style={styles.ovBottomGroup}>
             {(!!feedbackToast || !!myProductsToast) && (
               <View style={styles.overviewToast}>
                 <Icon name="check-circle" size={16} color={colors.success} />
@@ -1765,7 +1869,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
                 "create account" entry point anymore — Register requires a
                 bearer token from a completed auth step and is no longer a
                 valid destination for a signed-out user. */}
-            <GradientButton from={colors.headerLight} to={colors.primary}
+            <GradientButton from={btn.from} to={btn.to}
               style={styles.joinModalButton}
               onPress={() => {
                 setShowJoinDialog(false);
@@ -1816,7 +1920,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
                     <View style={styles.copyRowTextWrap}>
                       <Text style={styles.copyRowValue} numberOfLines={2}>{transferUrl}</Text>
                     </View>
-                    <GradientButton from={colors.headerLight} to={colors.primary} style={styles.copyButton} onPress={() => copyToClipboard(transferUrl)}>
+                    <GradientButton from={btn.from} to={btn.to} style={styles.copyButton} onPress={() => copyToClipboard(transferUrl)}>
                       <Text style={styles.copyButtonText}>{t('copyLink')}</Text>
                     </GradientButton>
                   </View>
@@ -1852,7 +1956,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
               >
                 <Text style={styles.dialogActionSecondaryText}>{t('cancel')}</Text>
               </TouchableOpacity>
-              <GradientButton from={colors.headerLight} to={colors.primary}
+              <GradientButton from={btn.from} to={btn.to}
                 style={[styles.dialogActionPrimary, (transferLoading || transferEmailSending) && { opacity: 0.6 }]}
                 disabled={transferLoading || transferEmailSending}
                 onPress={sendTransferEmail}
@@ -1895,7 +1999,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
                       onPress={() => setOtMethod(m)}
                     >
                       {otMethod === m && (
-                        <GradientView from={colors.headerLight} to={colors.primary} style={[StyleSheet.absoluteFill, { borderRadius: radius.pill }]} />
+                        <GradientView from={btn.from} to={btn.to} style={[StyleSheet.absoluteFill, { borderRadius: radius.pill }]} />
                       )}
                       <Text style={[styles.methodChipText, otMethod === m && styles.methodChipTextActive]}>
                         {t(`method_${m}` as any)}
@@ -1916,7 +2020,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
                   <TouchableOpacity style={styles.dialogActionSecondary} onPress={() => setShowOwnerTransfer(false)}>
                     <Text style={styles.dialogActionSecondaryText}>{t('cancel')}</Text>
                   </TouchableOpacity>
-                  <GradientButton from={colors.headerLight} to={colors.primary}
+                  <GradientButton from={btn.from} to={btn.to}
                     style={[styles.dialogActionPrimary, otLoading && { opacity: 0.6 }]}
                     disabled={otLoading}
                     onPress={submitOwnerTransfer}
@@ -1935,7 +2039,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
                   <TouchableOpacity style={styles.dialogActionSecondary} onPress={() => setOtConfirmNew(false)}>
                     <Text style={styles.dialogActionSecondaryText}>{t('editEmail')}</Text>
                   </TouchableOpacity>
-                  <GradientButton from={colors.headerLight} to={colors.primary}
+                  <GradientButton from={btn.from} to={btn.to}
                     style={[styles.dialogActionPrimary, otLoading && { opacity: 0.6 }]}
                     disabled={otLoading}
                     onPress={performOwnerTransfer}
@@ -2001,7 +2105,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
                   <Text style={styles.copyRowLabel}>{item.label}</Text>
                   <Text style={styles.copyRowValue}>{item.value || '-'}</Text>
                 </View>
-                <GradientButton from={colors.headerLight} to={colors.primary}
+                <GradientButton from={btn.from} to={btn.to}
                   style={styles.copyButton}
                   onPress={() => copyFieldValue(item.value)}
                   disabled={!item.value}
@@ -2046,7 +2150,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
               >
                 <Text style={styles.dialogActionSecondaryText}>Cancel</Text>
               </TouchableOpacity>
-              <GradientButton from={colors.headerLight} to={colors.primary}
+              <GradientButton from={btn.from} to={btn.to}
                 style={styles.dialogActionPrimary}
                 onPress={async () => {
                   if (!isValidEmail(friendEmail)) {
@@ -2098,7 +2202,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
               >
                 <Text style={styles.dialogActionSecondaryText}>Cancel</Text>
               </TouchableOpacity>
-              <GradientButton from={colors.headerLight} to={colors.primary}
+              <GradientButton from={btn.from} to={btn.to}
                 style={styles.dialogActionPrimary}
                 onPress={async () => {
                   if (!isValidEmail(sendInfoEmail)) {
@@ -2217,7 +2321,8 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     marginTop: spacing.sm,
-    backgroundColor: '#eef5fc',
+    // The standard pale blue, or a tint of the brand's own card colour.
+    backgroundColor: colors === BASE_PALETTE ? '#eef5fc' : colors.surfaceAlt,
     borderRadius: radius.md,
     paddingHorizontal: 8,
     paddingVertical: 6,
@@ -2226,7 +2331,7 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.badge,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2256,6 +2361,9 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
     ...shadow(1),
   },
   ovCardTitle: { fontSize: 20, fontWeight: '700', color: colors.primary, marginBottom: 8 },
+  ovBlockText: { fontSize: 18, color: colors.text, lineHeight: 26 },
+  ovBrandRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: 8 },
+  ovBrandLogo: { width: 40, height: 40 },
   ovHlRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 6 },
   ovHlText: { flex: 1, fontSize: 19, color: colors.text, lineHeight: 26 },
   ovLcStrip: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6 },
@@ -2300,7 +2408,7 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
   },
   ovIconBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   ovIconBtnText: { fontSize: 17, fontWeight: '600', color: colors.primary },
-  ovIconBtnTextActive: { color: '#fff' },
+  ovIconBtnTextActive: { color: colors.onPrimary },
   // Share is the action most consumers actually reach for -- a light tint
   // (not the same solid fill as the like/dislike "active" state, which is
   // reserved for the feedback that's currently selected) sets it apart
@@ -2317,7 +2425,7 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
     backgroundColor: colors.accent,
     ...shadow(1),
   },
-  ovPrimaryCtaText: { color: '#fff', fontSize: 17, fontWeight: '700', textAlign: 'center' },
+  ovPrimaryCtaText: { color: colors.onPrimary, fontSize: 17, fontWeight: '700', textAlign: 'center' },
   ovSecondaryCta: {
     flex: 1,
     minHeight: 48,
@@ -2377,7 +2485,7 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
     backgroundColor: colors.accent,
     ...shadow(1),
   },
-  overviewBuyText: { color: '#fff', fontSize: 20, fontWeight: '700' },
+  overviewBuyText: { color: colors.onPrimary, fontSize: 20, fontWeight: '700' },
   overviewActionRow: { flexDirection: 'row', gap: spacing.md, marginHorizontal: spacing.lg, marginTop: spacing.md },
   overviewActionBtn: {
     flex: 1,
@@ -2393,7 +2501,7 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
   },
   overviewActionBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   overviewActionText: { fontSize: 18, fontWeight: '600', color: colors.primary },
-  overviewActionTextActive: { color: '#fff' },
+  overviewActionTextActive: { color: colors.onPrimary },
   overviewToast: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2506,7 +2614,7 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
   },
   videoSlideCaption: {
     marginTop: 8,
-    color: '#fff',
+    color: colors.onPrimary,
     fontSize: 18,
     textAlign: 'center',
     textShadowColor: 'rgba(0,0,0,0.8)',
@@ -2752,7 +2860,7 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
   accordionHeaderText: {
     fontSize: 22,
     fontWeight: '400',
-    color: '#fff',
+    color: colors.onPrimary,
     letterSpacing: 0.3,
     flex: 1,
   },
@@ -2789,7 +2897,7 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
     ...shadow(1),
   },
   securityCheckText: {
-    color: '#fff',
+    color: colors.onPrimary,
     fontSize: 22,
     fontWeight: '400',
     marginLeft: 10,
@@ -2872,7 +2980,7 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
     color: colors.text,
   },
   actionPillTextActive: {
-    color: '#fff',
+    color: colors.onPrimary,
   },
   // Gate button shown instead of the accordion sections until tapped.
   productInfoButton: {
@@ -2885,7 +2993,7 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
     ...shadow(2),
   },
   productInfoButtonText: {
-    color: '#fff',
+    color: colors.onPrimary,
     fontSize: 22,
     fontWeight: '600',
   },
@@ -2899,7 +3007,7 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
     flex: 1,
   },
   cameraPlaceholder: {
-    color: '#fff',
+    color: colors.onPrimary,
     fontSize: 24,
     marginBottom: 20,
   },
@@ -2910,7 +3018,7 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
   },
   centerText: {
     fontSize: 24,
-    color: '#fff',
+    color: colors.onPrimary,
     textAlign: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
     padding: 16,
@@ -2931,7 +3039,7 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
     marginTop: 20,
   },
   buttonText: {
-    color: '#fff',
+    color: colors.onPrimary,
     fontSize: 24,
     fontWeight: '400',
   },
@@ -2965,7 +3073,7 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
   environmentText: {
     fontSize: 18,
     fontWeight: '400',
-    color: '#fff',
+    color: colors.onPrimary,
   },
   inquiryLabel: {
     fontSize: 17,
@@ -3022,7 +3130,7 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
     ...shadow(1),
   },
   joinModalButtonText: {
-    color: '#fff',
+    color: colors.onPrimary,
     fontSize: 22,
     fontWeight: '400',
   },
@@ -3118,7 +3226,7 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
     backgroundColor: colors.primary,
   },
   copyButtonText: {
-    color: '#fff',
+    color: colors.onPrimary,
     fontSize: 17,
     fontWeight: '400',
   },
@@ -3222,7 +3330,7 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
     fontWeight: '400',
   },
   methodChipTextActive: {
-    color: '#fff',
+    color: colors.onPrimary,
   },
   otErrorText: {
     fontSize: 18,
@@ -3273,10 +3381,10 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
     borderRadius: 8,
   },
   dialogActionPrimaryText: {
-    color: '#fff',
+    color: colors.onPrimary,
     fontSize: 19,
     fontWeight: '400',
   },
 });
 
-const baseStyles = makeStyles(colors);
+const baseStyles = makeStyles(BASE_PALETTE);

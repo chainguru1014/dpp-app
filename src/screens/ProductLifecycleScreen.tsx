@@ -12,7 +12,7 @@ import { CareSymbol, getCareSymbolLabel } from '../components/CareSymbols';
 import { useI18n } from '../i18n/I18nContext';
 import { API_BASE_URL } from '../config/api';
 import { colors, radius, spacing, shadow, MIN_TOUCH } from '../theme';
-import { Palette, useBrandLook, withFont } from '../utils/dppTheme';
+import { BASE_PALETTE, Palette, applyLook, buttonFill, useBrandLook } from '../utils/dppTheme';
 
 interface Props {
   navigation: any;
@@ -146,9 +146,13 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
   const look = useBrandLook(productData, user?.actorKind !== 'Employee');
   const colors = look.palette;
   const styles = useMemo(
-    () => (look.isCustom ? withFont(makeStyles(look.palette), look.fontFamily) : baseStyles),
+    () => (look.isCustom ? applyLook(makeStyles(look.palette), look, ['card', 'leafCard', 'hintCard', 'infoCard']) : baseStyles),
     [look]
   );
+  const fill = buttonFill(look);
+  // Dialog buttons always stay filled, whatever the brand's main-button style.
+  const btn = look.isCustom && look.theme.buttonStyle === 'outline' ? { from: colors.primary, to: colors.primary } : fill;
+  const pillTabs = look.isCustom && look.theme.tabStyle === 'pills';
   const buttonShape = look.isCustom ? { borderRadius: look.theme.buttonRadius } : null;
   // Tabs in the brand's order, minus the ones it hides.
   const tabs = useMemo(() => {
@@ -931,14 +935,14 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
       isInAlbum={isInAlbum}
       isBrandFollowed={isBrandFollowed}
       onActionMenuPress={onActionMenuPress}
-      barColors={look.isCustom ? { from: colors.headerLight, to: colors.primary } : undefined}
+      barColors={look.isCustom ? { from: colors.headerLight, to: colors.header, text: colors.onHeader } : undefined}
     >
       <LookContext.Provider value={{ styles, colors }}>
       <GradientView
         style={styles.screen}
         angle="diagonal"
         from={colors.headerLight}
-        to={colors.primary}
+        to={colors.header}
         frame={headerHeight > 0 ? { totalHeight: topBarHeight + headerHeight, offsetY: topBarHeight } : undefined}
       >
         {/* Blue header — product image slider + name / model / id + Authenticated card. */}
@@ -970,7 +974,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
             {!!productData?.model && (
               <Text style={styles.headerMeta} numberOfLines={1}>{productData.model}</Text>
             )}
-            {(productData?.pmc_code || productData?.token_id != null) && (
+            {look.theme.showProductId && (productData?.pmc_code || productData?.token_id != null) && (
               <Text style={styles.headerMetaId} numberOfLines={1}>
                 {`ID: ${productData?.pmc_code || productData?.token_id}`}
               </Text>
@@ -978,12 +982,12 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
             {productData?.item_status === 'blocked' ? (
               // The brand marked this label as a suspected copy.
               <View style={styles.authCard} accessible accessibilityRole="alert" accessibilityLabel={t('overviewSuspectTitle')}>
-                <Icon name="warning" size={18} color="#fff" />
+                <Icon name="warning" size={18} color={colors.onHeader} />
                 <Text style={[styles.authTitle, { flexShrink: 1 }]}>{t('overviewSuspectTitle')}</Text>
               </View>
             ) : (
             <View style={styles.authCard} accessible accessibilityLabel={`${t('overviewAuthenticated')}. ${t('lifecycleVerifiedByBrand')}`}>
-              <View style={styles.authCheck}><Icon name="check" size={12} color={colors.primary} /></View>
+              <View style={styles.authCheck}><Icon name="check" size={12} color={colors.header} /></View>
               <View>
                 <Text style={styles.authTitle}>{t('overviewAuthenticated')}</Text>
                 <Text style={styles.authSub}>{t('lifecycleVerifiedByBrand')}</Text>
@@ -1031,7 +1035,13 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
               {tabs.map((tb) => (
                 <TouchableOpacity
                   key={tb.key}
-                  style={[styles.tabBtn, tab === tb.key && styles.tabBtnActive]}
+                  style={[
+                    styles.tabBtn,
+                    tab === tb.key && styles.tabBtnActive,
+                    // Brand's choice: tabs as rounded pills instead of an underline.
+                    pillTabs && styles.tabPill,
+                    pillTabs && tab === tb.key && { backgroundColor: colors.primary },
+                  ]}
                   onPress={() => selectTab(tb.key)}
                   onLayout={(e) => {
                     tabLayoutsRef.current[tb.key] = { x: e.nativeEvent.layout.x, width: e.nativeEvent.layout.width };
@@ -1041,8 +1051,13 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
                   accessibilityState={{ selected: tab === tb.key }}
                   accessibilityLabel={t(tb.labelKey as any)}
                 >
-                  <Text style={[styles.tabText, tab === tb.key && styles.tabTextActive]} numberOfLines={2}>{t(tb.labelKey as any)}</Text>
-                  {tab === tb.key && <View style={styles.tabUnderline} />}
+                  <Text
+                    style={[styles.tabText, tab === tb.key && styles.tabTextActive, pillTabs && tab === tb.key && { color: colors.onPrimary }]}
+                    numberOfLines={2}
+                  >
+                    {t(tb.labelKey as any)}
+                  </Text>
+                  {tab === tb.key && !pillTabs && <View style={styles.tabUnderline} />}
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -1083,7 +1098,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
           <TouchableOpacity style={styles.dialogCard} activeOpacity={1}>
             <Text style={styles.dialogTitle}>{infoDialog?.title}</Text>
             <Text style={styles.dialogBody}>{infoDialog?.body}</Text>
-            <GradientButton style={[styles.dialogClose, buttonShape]} from={colors.headerLight} to={colors.primary} onPress={() => setInfoDialog(null)} activeOpacity={0.85}>
+            <GradientButton style={[styles.dialogClose, buttonShape]} from={btn.from} to={btn.to} onPress={() => setInfoDialog(null)} activeOpacity={0.85}>
               <Text style={styles.dialogCloseText}>{t('close')}</Text>
             </GradientButton>
           </TouchableOpacity>
@@ -1097,7 +1112,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
 // A function of the palette so a brand's colours can be swapped in; the
 // parameter is named `colors` so every rule below reads the same as before.
 const makeStyles = (colors: Palette) => StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.primary },
+  screen: { flex: 1, backgroundColor: colors.header },
   header: {
     flexDirection: 'row',
     gap: spacing.lg,
@@ -1110,9 +1125,9 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
   headerMedia: { width: 88 },
   headerThumb: { width: 88, height: 88, borderRadius: radius.md, backgroundColor: 'rgba(255,255,255,0.15)' },
   headerThumbPlaceholder: { alignItems: 'center', justifyContent: 'center' },
-  headerName: { fontSize: 23, fontWeight: '700', color: '#fff', marginBottom: 4 },
-  headerMeta: { fontSize: 17, color: 'rgba(255,255,255,0.9)', marginTop: 3, lineHeight: 22 },
-  headerMetaId: { fontSize: 14, color: 'rgba(255,255,255,0.7)', marginTop: 2, lineHeight: 18 },
+  headerName: { fontSize: 23, fontWeight: '700', color: colors.onHeader, marginBottom: 4 },
+  headerMeta: { fontSize: 17, color: colors.onHeader, opacity: 0.9, marginTop: 3, lineHeight: 22 },
+  headerMetaId: { fontSize: 14, color: colors.onHeader, opacity: 0.7, marginTop: 2, lineHeight: 18 },
   authCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1124,12 +1139,12 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: '#fff',
+    backgroundColor: colors.onHeader,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  authTitle: { fontSize: 18, fontWeight: '700', color: '#fff' },
-  authSub: { fontSize: 16, color: 'rgba(255,255,255,0.85)', marginTop: 1 },
+  authTitle: { fontSize: 18, fontWeight: '700', color: colors.onHeader },
+  authSub: { fontSize: 16, color: colors.onHeader, opacity: 0.85, marginTop: 1 },
   sheet: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -1181,6 +1196,7 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
   // Selected state is shown two ways (background tint + underline), not
   // colour alone, so it still reads for low-vision / colour-blind users.
   tabBtnActive: { backgroundColor: colors.surfaceAlt },
+  tabPill: { minHeight: 40, marginVertical: 6, marginHorizontal: 3, borderRadius: 999, backgroundColor: colors.surfaceAlt },
   tabText: { fontSize: 16, fontWeight: '700', color: colors.muted, textAlign: 'center' },
   tabTextActive: { color: colors.primary },
   tabUnderline: {
@@ -1356,7 +1372,7 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
     borderRadius: radius.pill,
     backgroundColor: colors.primary,
   },
-  dialogCloseText: { color: '#fff', fontSize: 19, fontWeight: '700' },
+  dialogCloseText: { color: colors.onPrimary, fontSize: 19, fontWeight: '700' },
 });
 
-const baseStyles = makeStyles(colors);
+const baseStyles = makeStyles(BASE_PALETTE);

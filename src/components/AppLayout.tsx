@@ -76,7 +76,7 @@ interface AppLayoutProps {
   headerBleedHeight?: number;
   // Brand colours for the top bar's gradient (product pages of a brand with
   // its own look). Unset = the standard Yometel blue.
-  barColors?: { from: string; to: string };
+  barColors?: { from: string; to: string; text?: string };
 }
 
 const ROUTE_TITLE_KEYS: Record<string, string> = {
@@ -308,6 +308,10 @@ export default function AppLayout({
     onActionMenuPress?.(key);
   };
 
+  // Icons and title on the top bar: white, or the colour that reads on a brand's own bar.
+
+  const barText = barColors?.text || colors.white;
+
   const rightIconEl = (() => {
     if (rightIcon === 'none') return <View style={styles.iconButton} />;
     if (rightIcon === 'heart') {
@@ -320,7 +324,7 @@ export default function AppLayout({
           accessibilityLabel={isFavorite ? t('overviewRemovedFromMyProducts') : t('overviewAddToMyProducts')}
           accessibilityState={{ selected: isFavorite }}
         >
-          <Icon name={isFavorite ? 'favorite' : 'favorite-border'} size={28} color={colors.white} />
+          <Icon name={isFavorite ? 'favorite' : 'favorite-border'} size={28} color={barText} />
         </TouchableOpacity>
       );
     }
@@ -333,7 +337,7 @@ export default function AppLayout({
           accessibilityRole="button"
           accessibilityLabel={t('share')}
         >
-          <Icon name="share" size={26} color={colors.white} />
+          <Icon name="share" size={26} color={barText} />
         </TouchableOpacity>
       );
     }
@@ -346,7 +350,7 @@ export default function AppLayout({
           accessibilityRole="button"
           accessibilityLabel={t('moreOptions')}
         >
-          <Icon name="menu" size={28} color={colors.white} />
+          <Icon name="menu" size={28} color={barText} />
         </TouchableOpacity>
       );
     }
@@ -361,7 +365,7 @@ export default function AppLayout({
         }
       >
         <View>
-          <Icon name="notifications" size={28} color={colors.white} />
+          <Icon name="notifications" size={28} color={barText} />
           <NotificationBadge userId={user?._id ? String(user._id) : undefined} onCountChange={setUnreadCount} />
         </View>
       </TouchableOpacity>
@@ -419,7 +423,7 @@ export default function AppLayout({
               accessibilityLabel={t('goBack')}
               hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
             >
-              <Icon name="arrow-back" size={26} color={colors.white} />
+              <Icon name="arrow-back" size={26} color={barText} />
             </TouchableOpacity>
           ) : (
             <View style={styles.iconButton} />
@@ -428,7 +432,7 @@ export default function AppLayout({
           <View style={styles.titleBlock} pointerEvents="none">
             {!logoLeft && (
               <Text
-                style={styles.titleText}
+                style={[styles.titleText, barColors?.text ? { color: barColors.text } : null]}
                 numberOfLines={1}
                 adjustsFontSizeToFit
                 minimumFontScale={0.7}
