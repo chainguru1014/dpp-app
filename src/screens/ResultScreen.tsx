@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -30,6 +30,7 @@ import { useI18n } from '../i18n/I18nContext';
 import MediaSlider from '../components/MediaSlider';
 import { saveTextFile, safeFileBaseName } from '../utils/saveTextFile';
 import { colors, radius, spacing, shadow, MIN_TOUCH } from '../theme';
+import { Palette, useBrandLook, withFont } from '../utils/dppTheme';
 
 // Web QR Scanner
 let QRCodeScanner: any = null;
@@ -85,13 +86,23 @@ const LIFECYCLE_STAGES: { key: string; icon: string; labelKey: string }[] = [
 ];
 
 export default function ResultScreen({ route, navigation, user, onLogout }: ResultScreenProps) {
-  const BRAND_COLOR = colors.primary;
   const FALLBACK_BRAND_NAME = 'Yometel';
   const FALLBACK_BRAND_DETAIL = 'Developing innovative "real-time and automatic" digital twins IoT /RFID technologies';
   const FALLBACK_BRAND_WEBSITE = 'https://www.yometel.jp/';
   const { t } = useI18n();
   const { height: windowHeight } = useWindowDimensions();
   const [productData, setProductData] = useState<any>(route?.params?.productData || {});
+  // The brand's own look for this product (staff sessions keep the standard
+  // one). `colors` / `styles` below deliberately shadow the standard ones so
+  // everything this screen draws follows it.
+  const look = useBrandLook(productData, user?.actorKind !== 'Employee');
+  const colors = look.palette;
+  const styles = useMemo(
+    () => (look.isCustom ? withFont(makeStyles(look.palette), look.fontFamily) : baseStyles),
+    [look]
+  );
+  const buttonShape = look.isCustom ? { borderRadius: look.theme.buttonRadius } : null;
+  const BRAND_COLOR = colors.primary;
   const [expandedSections, setExpandedSections] = useState<{ [key: number]: boolean }>({});
   const [showProductInfo, setShowProductInfo] = useState(false);
   const [showSecurityCheck, setShowSecurityCheck] = useState(true);
@@ -1338,7 +1349,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
       return (
         <View style={styles.cameraContainer}>
           <Text style={styles.cameraPlaceholder}>{t('qrScannerWebImpl')}</Text>
-          <GradientButton
+          <GradientButton from={colors.headerLight} to={colors.primary}
             style={styles.button}
             onPress={() => {
               // Simulate QR scan for web
@@ -1361,7 +1372,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
       return (
         <View style={styles.cameraContainer}>
           <Text style={styles.cameraPlaceholder}>{t('cameraNotAvailable')}</Text>
-          <GradientButton
+          <GradientButton from={colors.headerLight} to={colors.primary}
             style={styles.button}
             onPress={() => setShowCamera(false)}
           >
@@ -1389,7 +1400,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
           }
           bottomContent={
             <View style={styles.bottomContent}>
-              <GradientButton
+              <GradientButton from={colors.headerLight} to={colors.primary}
                 style={styles.button}
                 onPress={() => setShowCamera(false)}
               >
@@ -1444,6 +1455,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
       isBrandFollowed={isBrandFollowed}
       isInAlbum={isInAlbum}
       isProductDetailPage={true}
+      barColors={look.isCustom ? { from: colors.headerLight, to: colors.primary } : undefined}
     >
       <BottomSafeScrollView
         style={[styles.content, Platform.OS === 'web' && { minHeight: availableContentMinHeight }]}
@@ -1465,7 +1477,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
         {isEmployeeActor && (
           <View style={styles.securityCheckContainer}>
             {showSecurityCheck && !isAuthenticated ? (
-              <GradientButton style={styles.securityCheckButton} onPress={handleSecurityCheck}>
+              <GradientButton from={colors.headerLight} to={colors.primary} style={styles.securityCheckButton} onPress={handleSecurityCheck}>
                 <Image source={require('../assets/shield.png')} style={[styles.actionIcon, { tintColor: '#fff' }]} />
                 <Text style={styles.securityCheckText}>{t('securityCheck')}</Text>
               </GradientButton>
@@ -1494,16 +1506,16 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
               return (
                 <View style={styles.actionButtonsRow}>
                   <TouchableOpacity style={[styles.actionPill, selectedFeedback === 'like' && styles.actionPillActive]} onPress={handleLike}>
-                    {selectedFeedback === 'like' && <GradientView style={StyleSheet.absoluteFill} />}
+                    {selectedFeedback === 'like' && <GradientView from={colors.headerLight} to={colors.primary} style={StyleSheet.absoluteFill} />}
                     <Image source={require('../assets/like.png')} style={[styles.actionPillIcon, selectedFeedback === 'like' && styles.actionPillIconActive]} />
                     <Text style={[styles.actionPillText, selectedFeedback === 'like' && styles.actionPillTextActive]}>{t('like')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={[styles.actionPill, selectedFeedback === 'dislike' && styles.actionPillActive]} onPress={handleDislike}>
-                    {selectedFeedback === 'dislike' && <GradientView style={StyleSheet.absoluteFill} />}
+                    {selectedFeedback === 'dislike' && <GradientView from={colors.headerLight} to={colors.primary} style={StyleSheet.absoluteFill} />}
                     <Image source={require('../assets/dislike.png')} style={[styles.actionPillIcon, selectedFeedback === 'dislike' && styles.actionPillIconActive]} />
                     <Text style={[styles.actionPillText, selectedFeedback === 'dislike' && styles.actionPillTextActive]}>{t('dislike')}</Text>
                   </TouchableOpacity>
-                  <GradientButton
+                  <GradientButton from={colors.headerLight} to={colors.primary}
                     style={[styles.actionPill, styles.actionPillActive, buyLocked && styles.actionPillDisabled]}
                     onPress={isOwnedMode ? openOwnerTransfer : handleBuy}
                     activeOpacity={0.85}
@@ -1518,13 +1530,13 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
               );
             })()}
             {!showProductInfo ? (
-              <GradientButton style={styles.productInfoButton} onPress={() => setShowProductInfo(true)} activeOpacity={0.85}>
+              <GradientButton from={colors.headerLight} to={colors.primary} style={styles.productInfoButton} onPress={() => setShowProductInfo(true)} activeOpacity={0.85}>
                 <Text style={styles.productInfoButtonText}>{t('resultProductInformation')}</Text>
               </GradientButton>
             ) : (
               sections.map((section) => (
                 <View key={section.id} style={styles.accordionSection}>
-                  <GradientButton style={styles.accordionHeader} onPress={() => toggleSection(section.id)} activeOpacity={0.85}>
+                  <GradientButton from={colors.headerLight} to={colors.primary} style={styles.accordionHeader} onPress={() => toggleSection(section.id)} activeOpacity={0.85}>
                     <Text style={styles.accordionHeaderText}>{section.title}</Text>
                     <View style={styles.accordionToggleBadge}>
                       <Icon name={expandedSections[section.id] ? 'keyboard-arrow-up' : 'keyboard-arrow-down'} size={22} color={'#fff'} />
@@ -1671,8 +1683,8 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
                 : isPending ? t('requested') : isOwned ? t('owned') : t('overviewContactOwner');
               return (
                 <View style={styles.ovCtaRow}>
-                  <GradientButton
-                    style={styles.ovPrimaryCta}
+                  <GradientButton from={colors.headerLight} to={colors.primary}
+                    style={[styles.ovPrimaryCta, buttonShape]}
                     onPress={() => navigation.navigate('Scanner')}
                     activeOpacity={0.85}
                     accessibilityRole="button"
@@ -1681,7 +1693,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
                     <Text style={styles.ovPrimaryCtaText}>{t('overviewScanProduct')}</Text>
                   </GradientButton>
                   <TouchableOpacity
-                    style={[styles.ovSecondaryCta, locked && { opacity: 0.6 }]}
+                    style={[styles.ovSecondaryCta, buttonShape, locked && { opacity: 0.6 }]}
                     onPress={isOwnedMode ? openOwnerTransfer : handleBuy}
                     activeOpacity={0.8}
                     disabled={locked}
@@ -1739,7 +1751,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
                 "create account" entry point anymore — Register requires a
                 bearer token from a completed auth step and is no longer a
                 valid destination for a signed-out user. */}
-            <GradientButton
+            <GradientButton from={colors.headerLight} to={colors.primary}
               style={styles.joinModalButton}
               onPress={() => {
                 setShowJoinDialog(false);
@@ -1790,7 +1802,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
                     <View style={styles.copyRowTextWrap}>
                       <Text style={styles.copyRowValue} numberOfLines={2}>{transferUrl}</Text>
                     </View>
-                    <GradientButton style={styles.copyButton} onPress={() => copyToClipboard(transferUrl)}>
+                    <GradientButton from={colors.headerLight} to={colors.primary} style={styles.copyButton} onPress={() => copyToClipboard(transferUrl)}>
                       <Text style={styles.copyButtonText}>{t('copyLink')}</Text>
                     </GradientButton>
                   </View>
@@ -1826,7 +1838,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
               >
                 <Text style={styles.dialogActionSecondaryText}>{t('cancel')}</Text>
               </TouchableOpacity>
-              <GradientButton
+              <GradientButton from={colors.headerLight} to={colors.primary}
                 style={[styles.dialogActionPrimary, (transferLoading || transferEmailSending) && { opacity: 0.6 }]}
                 disabled={transferLoading || transferEmailSending}
                 onPress={sendTransferEmail}
@@ -1869,7 +1881,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
                       onPress={() => setOtMethod(m)}
                     >
                       {otMethod === m && (
-                        <GradientView style={[StyleSheet.absoluteFill, { borderRadius: radius.pill }]} />
+                        <GradientView from={colors.headerLight} to={colors.primary} style={[StyleSheet.absoluteFill, { borderRadius: radius.pill }]} />
                       )}
                       <Text style={[styles.methodChipText, otMethod === m && styles.methodChipTextActive]}>
                         {t(`method_${m}` as any)}
@@ -1890,7 +1902,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
                   <TouchableOpacity style={styles.dialogActionSecondary} onPress={() => setShowOwnerTransfer(false)}>
                     <Text style={styles.dialogActionSecondaryText}>{t('cancel')}</Text>
                   </TouchableOpacity>
-                  <GradientButton
+                  <GradientButton from={colors.headerLight} to={colors.primary}
                     style={[styles.dialogActionPrimary, otLoading && { opacity: 0.6 }]}
                     disabled={otLoading}
                     onPress={submitOwnerTransfer}
@@ -1909,7 +1921,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
                   <TouchableOpacity style={styles.dialogActionSecondary} onPress={() => setOtConfirmNew(false)}>
                     <Text style={styles.dialogActionSecondaryText}>{t('editEmail')}</Text>
                   </TouchableOpacity>
-                  <GradientButton
+                  <GradientButton from={colors.headerLight} to={colors.primary}
                     style={[styles.dialogActionPrimary, otLoading && { opacity: 0.6 }]}
                     disabled={otLoading}
                     onPress={performOwnerTransfer}
@@ -1975,7 +1987,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
                   <Text style={styles.copyRowLabel}>{item.label}</Text>
                   <Text style={styles.copyRowValue}>{item.value || '-'}</Text>
                 </View>
-                <GradientButton
+                <GradientButton from={colors.headerLight} to={colors.primary}
                   style={styles.copyButton}
                   onPress={() => copyFieldValue(item.value)}
                   disabled={!item.value}
@@ -2020,7 +2032,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
               >
                 <Text style={styles.dialogActionSecondaryText}>Cancel</Text>
               </TouchableOpacity>
-              <GradientButton
+              <GradientButton from={colors.headerLight} to={colors.primary}
                 style={styles.dialogActionPrimary}
                 onPress={async () => {
                   if (!isValidEmail(friendEmail)) {
@@ -2072,7 +2084,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
               >
                 <Text style={styles.dialogActionSecondaryText}>Cancel</Text>
               </TouchableOpacity>
-              <GradientButton
+              <GradientButton from={colors.headerLight} to={colors.primary}
                 style={styles.dialogActionPrimary}
                 onPress={async () => {
                   if (!isValidEmail(sendInfoEmail)) {
@@ -2166,7 +2178,9 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
   );
 }
 
-const styles = StyleSheet.create({
+// A function of the palette so a brand's colours can be swapped in; the
+// parameter is named `colors` so every rule below reads the same as before.
+const makeStyles = (colors: Palette) => StyleSheet.create({
   // --- Product Overview — compact no-scroll layout (round 2) ---
   ovProductCard: {
     backgroundColor: colors.surface,
@@ -3237,3 +3251,5 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
 });
+
+const baseStyles = makeStyles(colors);

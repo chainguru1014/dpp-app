@@ -74,6 +74,9 @@ interface AppLayoutProps {
   // its own — see useTopBarHeight() for getting the matching offset on the
   // screen's own header gradient.
   headerBleedHeight?: number;
+  // Brand colours for the top bar's gradient (product pages of a brand with
+  // its own look). Unset = the standard Yometel blue.
+  barColors?: { from: string; to: string };
 }
 
 const ROUTE_TITLE_KEYS: Record<string, string> = {
@@ -156,6 +159,7 @@ export default function AppLayout({
   title,
   subtitle,
   headerBleedHeight,
+  barColors,
 }: AppLayoutProps) {
   const { t, locale, setLocale, languages } = useI18n();
   const route = useRoute();
@@ -386,11 +390,15 @@ export default function AppLayout({
         style={[styles.topBar, { height: topBarHeight + radius.xl, zIndex: 0, elevation: 0 }]}
         angle="diagonal"
         pointerEvents="none"
+        from={barColors?.from}
+        to={barColors?.to}
         frame={headerBleedHeight ? { totalHeight: topBarHeight + headerBleedHeight, offsetY: 0 } : undefined}
       />
       <GradientView
         style={[styles.topBar, { height: topBarHeight }]}
         angle="diagonal"
+        from={barColors?.from}
+        to={barColors?.to}
         frame={headerBleedHeight ? { totalHeight: topBarHeight + headerBleedHeight, offsetY: 0 } : undefined}
       >
         <View style={styles.topBarRow}>

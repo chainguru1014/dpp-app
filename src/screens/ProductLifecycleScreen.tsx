@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Image, Platform, Alert, Modal } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import Clipboard from '@react-native-clipboard/clipboard';
@@ -12,6 +12,7 @@ import { CareSymbol, getCareSymbolLabel } from '../components/CareSymbols';
 import { useI18n } from '../i18n/I18nContext';
 import { API_BASE_URL } from '../config/api';
 import { colors, radius, spacing, shadow, MIN_TOUCH } from '../theme';
+import { Palette, useBrandLook, withFont } from '../utils/dppTheme';
 
 interface Props {
   navigation: any;
@@ -78,7 +79,13 @@ const fileUrl = (filename: string) => {
   return `${API_BASE_URL}files/${String(filename).replace(/^\/+/, '')}`;
 };
 
+// The style sheet and colours the screen is currently drawn with — the
+// standard ones, or the brand's own look (see useBrandLook). Read through
+// context so the small row components below follow the same look.
+const LookContext = React.createContext<{ styles: ReturnType<typeof makeStyles>; colors: Palette }>(null as any);
+
 function Bar({ label, percent }: { label: string; percent: number }) {
+  const { styles } = useContext(LookContext);
   return (
     <View style={styles.barRow}>
       <Text style={styles.barLabel} numberOfLines={2}>{label}</Text>
@@ -91,6 +98,7 @@ function Bar({ label, percent }: { label: string; percent: number }) {
 }
 
 function Row({ label, value, icon, chevron, onPress }: { label: string; value: string; icon?: string; chevron?: boolean; onPress?: () => void }) {
+  const { styles, colors } = useContext(LookContext);
   if (!value) return null;
   const content = (
     <>
@@ -131,7 +139,29 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
   // instead of each restarting independently at the seam between them.
   const [headerHeight, setHeaderHeight] = useState(0);
   const [productData, setProductData] = useState<any>(route?.params?.productData || {});
+  // The brand's own look for this product (staff sessions keep the standard
+  // one). `colors` / `styles` below deliberately shadow the standard ones so
+  // everything this screen draws follows it.
+  const look = useBrandLook(productData, user?.actorKind !== 'Employee');
+  const colors = look.palette;
+  const styles = useMemo(
+    () => (look.isCustom ? withFont(makeStyles(look.palette), look.fontFamily) : baseStyles),
+    [look]
+  );
+  const buttonShape = look.isCustom ? { borderRadius: look.theme.buttonRadius } : null;
+  // Tabs in the brand's order, minus the ones it hides.
+  const tabs = useMemo(() => {
+    if (!look.isCustom) return TABS;
+    const ordered = look.theme.sections
+      .filter((s) => s.visible)
+      .map((s) => TABS.find((tb) => tb.key === s.key))
+      .filter(Boolean) as typeof TABS;
+    return ordered.length ? ordered : TABS;
+  }, [look]);
   const [tab, setTab] = useState<TabKey>('journey');
+  useEffect(() => {
+    if (!tabs.some((tb) => tb.key === tab)) setTab(tabs[0].key);
+  }, [tabs, tab]);
   // Journey stages are all collapsed by default — a down-chevron invites the tap.
   const [openStage, setOpenStage] = useState<string | null>(null);
   const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
@@ -816,10 +846,14 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
       isInAlbum={isInAlbum}
       isBrandFollowed={isBrandFollowed}
       onActionMenuPress={onActionMenuPress}
+      barColors={look.isCustom ? { from: colors.headerLight, to: colors.primary } : undefined}
     >
+      <LookContext.Provider value={{ styles, colors }}>
       <GradientView
         style={styles.screen}
         angle="diagonal"
+        from={colors.headerLight}
+        to={colors.primary}
         frame={headerHeight > 0 ? { totalHeight: topBarHeight + headerHeight, offsetY: topBarHeight } : undefined}
       >
         {/* Blue header — product image slider + name / model / id + Authenticated card. */}
@@ -901,7 +935,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
               onScroll={(e) => setTabScrollX(e.nativeEvent.contentOffset.x)}
               scrollEventThrottle={32}
             >
-              {TABS.map((tb) => (
+              {tabs.map((tb) => (
                 <TouchableOpacity
                   key={tb.key}
                   style={[styles.tabBtn, tab === tb.key && styles.tabBtnActive]}
@@ -956,17 +990,20 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
           <TouchableOpacity style={styles.dialogCard} activeOpacity={1}>
             <Text style={styles.dialogTitle}>{infoDialog?.title}</Text>
             <Text style={styles.dialogBody}>{infoDialog?.body}</Text>
-            <GradientButton style={styles.dialogClose} onPress={() => setInfoDialog(null)} activeOpacity={0.85}>
+            <GradientButton style={[styles.dialogClose, buttonShape]} from={colors.headerLight} to={colors.primary} onPress={() => setInfoDialog(null)} activeOpacity={0.85}>
               <Text style={styles.dialogCloseText}>{t('close')}</Text>
             </GradientButton>
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
+      </LookContext.Provider>
     </AppLayout>
   );
 }
 
-const styles = StyleSheet.create({
+// A function of the palette so a brand's colours can be swapped in; the
+// parameter is named `colors` so every rule below reads the same as before.
+const makeStyles = (colors: Palette) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.primary },
   header: {
     flexDirection: 'row',
@@ -1228,3 +1265,5 @@ const styles = StyleSheet.create({
   },
   dialogCloseText: { color: '#fff', fontSize: 19, fontWeight: '700' },
 });
+
+const baseStyles = makeStyles(colors);
