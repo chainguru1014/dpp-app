@@ -11,7 +11,7 @@ import { colors } from '../theme';
  * missing response can only ever fall back to the standard Yometel look.
  */
 
-export type DppSectionKey = 'journey' | 'care' | 'materials' | 'dispose' | 'traceability';
+export type DppSectionKey = 'journey' | 'care' | 'materials' | 'dispose' | 'traceability' | 'compliance';
 export type DppFont = 'system' | 'serif' | 'rounded' | 'mono';
 
 export interface DppTheme {
@@ -28,7 +28,7 @@ export interface DppTheme {
 /** Same keys as `colors` in theme.ts, but any colour — what a themed screen draws with. */
 export type Palette = { [K in keyof typeof colors]: string };
 
-const SECTION_KEYS: DppSectionKey[] = ['journey', 'care', 'materials', 'dispose', 'traceability'];
+const SECTION_KEYS: DppSectionKey[] = ['journey', 'care', 'materials', 'dispose', 'traceability', 'compliance'];
 const FONT_KEYS: DppFont[] = ['system', 'serif', 'rounded', 'mono'];
 
 export const DEFAULT_DPP_THEME: DppTheme = {

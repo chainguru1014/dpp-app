@@ -21,7 +21,7 @@ interface Props {
   onLogout?: () => void;
 }
 
-type TabKey = 'journey' | 'care' | 'materials' | 'dispose' | 'traceability';
+type TabKey = 'journey' | 'care' | 'materials' | 'dispose' | 'traceability' | 'compliance';
 
 const TABS: { key: TabKey; labelKey: string }[] = [
   { key: 'journey', labelKey: 'lifecycleTabJourney' },
@@ -29,6 +29,7 @@ const TABS: { key: TabKey; labelKey: string }[] = [
   { key: 'materials', labelKey: 'lifecycleTabMaterials' },
   { key: 'dispose', labelKey: 'lifecycleTabDispose' },
   { key: 'traceability', labelKey: 'lifecycleTabTraceability' },
+  { key: 'compliance', labelKey: 'lifecycleTabCompliance' },
 ];
 
 const JOURNEY_STAGES: { key: string; icon: string; labelKey: string; descKey: string }[] = [
@@ -356,7 +357,9 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
   const materialSize = productData?.materialSize || {};
   const materials = toArray(materialSize.materials);
   // certifications: legacy string[] OR {icon,title,content}[].
-  const certifications: { icon?: string; title: string; content?: string }[] = toArray(productData?.certifications)
+  // Optional per-certificate details: who issued it, its number, an expiry
+  // date (YYYY-MM-DD) and the certificate file itself.
+  const certifications: { icon?: string; title: string; content?: string; issuer?: string; number?: string; validUntil?: string; fileUrl?: string }[] = toArray(productData?.certifications)
     .map((c: any) => (typeof c === 'string' ? { title: c } : c))
     .filter((c: any) => c && (c.title || c.content));
   const esg = productData?.traceabilityEsg || {};
@@ -811,6 +814,83 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
     );
   };
 
+  // Manuals / certificates the brand uploaded as PDF files.
+  const documents = [...toStrArray(productData?.files), ...toStrArray(productData?.manualsAndCerts?.files)];
+  const today = new Date().toISOString().slice(0, 10);
+
+  const renderCompliance = () => (
+    <View>
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>{t('lifecycleCertifications')}</Text>
+        {certifications.length > 0 ? certifications.map((c, i) => {
+          const expired = !!c.validUntil && c.validUntil < today;
+          const meta = [
+            c.issuer && `${t('lifecycleCertIssuedBy')} ${c.issuer}`,
+            c.number && `${t('lifecycleCertNumber')} ${c.number}`,
+            c.validUntil && `${expired ? t('lifecycleCertExpired') : t('lifecycleCertValidUntil')} ${c.validUntil}`,
+          ].filter(Boolean).join(' · ');
+          return (
+            <TouchableOpacity
+              key={i}
+              style={[styles.originRow, i === certifications.length - 1 && { borderBottomWidth: 0 }]}
+              activeOpacity={c.fileUrl ? 0.7 : 1}
+              disabled={!c.fileUrl}
+              onPress={() => openUrl(fileUrl(c.fileUrl || ''))}
+              accessibilityRole={c.fileUrl ? 'button' : undefined}
+              accessibilityLabel={[c.title, meta].filter(Boolean).join('. ')}
+            >
+              <View style={styles.originIcon}>
+                {c.icon ? (
+                  <Image source={{ uri: fileUrl(c.icon) }} style={styles.originImg} resizeMode="contain" />
+                ) : (
+                  <Icon name={expired ? 'error-outline' : 'verified'} size={20} color={expired ? colors.warning : colors.success} />
+                )}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.originName}>{c.title || '—'}</Text>
+                {!!meta && <Text style={[styles.originSub, expired && { color: colors.warning }]}>{meta}</Text>}
+                {!!c.content && <Text style={styles.originSub}>{c.content}</Text>}
+              </View>
+              {!!c.fileUrl && <Icon name="open-in-new" size={18} color={colors.muted} />}
+            </TouchableOpacity>
+          );
+        }) : <Text style={styles.emptyText}>{t('lifecycleNoData')}</Text>}
+      </View>
+      {documents.length > 0 && (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>{t('lifecycleDocuments')}</Text>
+          {documents.map((doc, i) => (
+            <Row
+              key={i}
+              icon="picture-as-pdf"
+              label={decodeURIComponent(String(doc).split('/').pop() || '')}
+              value=" "
+              chevron
+              onPress={() => openUrl(fileUrl(doc))}
+            />
+          ))}
+        </View>
+      )}
+      <View style={styles.card}>
+        <Row icon="fingerprint" label={t('lifecyclePassportId')} value={String(productData?.pmc_code || productData?.token_id || '')} />
+        <Row icon="place" label={t('lifecycleCountryOfOrigin')} value={originCountry} />
+        <Row icon="shield" label={t('lifecycleWarranty')} value={productData?.warrantyStatus || ''} />
+        <Row
+          icon="event-available"
+          label={t('lifecycleWarrantyValidFor')}
+          value={productData?.warrantyValidYears ? `${productData.warrantyValidYears} ${t('lifecycleYears')}` : ''}
+        />
+      </View>
+      <View style={styles.leafCard}>
+        <View style={styles.leafIcon}><Icon name="verified-user" size={20} color={colors.primary} /></View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.leafTitle}>{t('lifecycleComplianceHintTitle')}</Text>
+          <Text style={styles.leafBody}>{t('lifecycleComplianceHint')}</Text>
+        </View>
+      </View>
+    </View>
+  );
+
   const renderTab = () => {
     switch (tab) {
       case 'journey': return renderJourney();
@@ -818,6 +898,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
       case 'materials': return renderMaterials();
       case 'dispose': return renderDispose();
       case 'traceability': return renderTraceability();
+      case 'compliance': return renderCompliance();
       default: return null;
     }
   };
