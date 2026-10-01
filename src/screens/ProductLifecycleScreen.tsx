@@ -824,6 +824,8 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
         <Text style={styles.cardTitle}>{t('lifecycleCertifications')}</Text>
         {certifications.length > 0 ? certifications.map((c, i) => {
           const expired = !!c.validUntil && c.validUntil < today;
+          // Materials the brand tied to this certificate.
+          const covered = materials.filter((m: any) => m?.certificate && m.certificate === c.title).map((m: any) => m.material).filter(Boolean);
           const meta = [
             c.issuer && `${t('lifecycleCertIssuedBy')} ${c.issuer}`,
             c.number && `${t('lifecycleCertNumber')} ${c.number}`,
@@ -847,7 +849,9 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
                 )}
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.originName}>{c.title || '—'}</Text>
+                <Text style={styles.originName}>
+                  {c.title || '—'}{covered.length ? ` (${covered.join(', ')})` : ''}
+                </Text>
                 {!!meta && <Text style={[styles.originSub, expired && { color: colors.warning }]}>{meta}</Text>}
                 {!!c.content && <Text style={styles.originSub}>{c.content}</Text>}
               </View>
