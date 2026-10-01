@@ -971,6 +971,13 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
                 {`ID: ${productData?.pmc_code || productData?.token_id}`}
               </Text>
             )}
+            {productData?.item_status === 'blocked' ? (
+              // The brand marked this label as a suspected copy.
+              <View style={styles.authCard} accessible accessibilityRole="alert" accessibilityLabel={t('overviewSuspectTitle')}>
+                <Icon name="warning" size={18} color="#fff" />
+                <Text style={[styles.authTitle, { flexShrink: 1 }]}>{t('overviewSuspectTitle')}</Text>
+              </View>
+            ) : (
             <View style={styles.authCard} accessible accessibilityLabel={`${t('overviewAuthenticated')}. ${t('lifecycleVerifiedByBrand')}`}>
               <View style={styles.authCheck}><Icon name="check" size={12} color={colors.primary} /></View>
               <View>
@@ -978,6 +985,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
                 <Text style={styles.authSub}>{t('lifecycleVerifiedByBrand')}</Text>
               </View>
             </View>
+            )}
           </View>
         </View>
 

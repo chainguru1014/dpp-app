@@ -1563,6 +1563,9 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
                   {(productData?.pmc_code || productData?.token_id != null) && (
                     <Text style={styles.ovId} numberOfLines={1}>ID: {productData?.pmc_code || productData?.token_id}</Text>
                   )}
+                  {/* A label the brand marked as a suspected copy never shows
+                      as authenticated — see the warning card below. */}
+                  {productData?.item_status !== 'blocked' && (
                   <View style={styles.ovAuthBadge} accessible accessibilityLabel={`${t('overviewAuthenticated')}. ${t('lifecycleVerifiedByBrand')}`}>
                     <View style={styles.ovAuthBadgeCheck}><Icon name="check" size={11} color="#fff" /></View>
                     <View style={{ flex: 1 }}>
@@ -1570,9 +1573,20 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
                       <Text style={styles.ovAuthBadgeSub}>{t('lifecycleVerifiedByBrand')}</Text>
                     </View>
                   </View>
+                  )}
                 </View>
               </View>
             </View>
+
+            {productData?.item_status === 'blocked' && (
+              <View style={styles.ovSuspectCard} accessible accessibilityRole="alert">
+                <Icon name="warning" size={24} color={colors.danger} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.ovSuspectTitle}>{t('overviewSuspectTitle')}</Text>
+                  <Text style={styles.ovSuspectBody}>{t('overviewSuspectBody')}</Text>
+                </View>
+              </View>
+            )}
 
             {/* Key Highlights — Type / Color / Size. */}
             {(() => {
@@ -2216,6 +2230,19 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  ovSuspectCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+    backgroundColor: colors.dangerSoft,
+    borderWidth: 1,
+    borderColor: colors.danger,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  ovSuspectTitle: { fontSize: 19, fontWeight: '700', color: colors.danger },
+  ovSuspectBody: { fontSize: 17, color: colors.text, lineHeight: 23, marginTop: 2 },
   ovAuthBadgeTitle: { fontSize: 17, fontWeight: '700', color: colors.heading },
   ovAuthBadgeSub: { fontSize: 16, color: colors.muted, marginTop: 1 },
   ovCard: {
