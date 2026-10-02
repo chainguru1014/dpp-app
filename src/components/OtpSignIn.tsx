@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -92,6 +92,10 @@ export default function OtpSignIn({ onSuccess, onError, mode }: OtpSignInProps) 
     }
   };
 
+  // The "send code" request still under way, if any. Verifying waits for it:
+  // the server has no code to compare with until that request is done.
+  const pendingRequest = useRef<Promise<boolean> | null>(null);
+
   const handleSendCode = async () => {
     const trimmed = email.trim();
     if (!trimmed || !trimmed.includes('@')) {
@@ -106,7 +110,10 @@ export default function OtpSignIn({ onSuccess, onError, mode }: OtpSignInProps) 
     setCode('');
     setStage('code');
     setResendCooldown(RESEND_COOLDOWN_SECONDS);
-    sendCode(trimmed).then((ok) => {
+    const request = sendCode(trimmed);
+    pendingRequest.current = request;
+    request.then((ok) => {
+      if (pendingRequest.current === request) pendingRequest.current = null;
       if (ok) return;
       setResendCooldown(0);
       setStage('email');
@@ -129,6 +136,7 @@ export default function OtpSignIn({ onSuccess, onError, mode }: OtpSignInProps) 
     }
     setVerifying(true);
     try {
+      if (pendingRequest.current && !(await pendingRequest.current)) return;
       const response = await fetch(`${API_BASE_URL}auth/otp/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
