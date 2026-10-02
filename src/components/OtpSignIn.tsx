@@ -76,6 +76,11 @@ export default function OtpSignIn({ onSuccess, onError, mode }: OtpSignInProps) 
         body: JSON.stringify({ email: targetEmail }),
       });
       const data = await response.json().catch(() => ({}));
+      // 429: a code was sent less than a minute ago and is still valid.
+      if (response.status === 429) {
+        setResendCooldown(RESEND_COOLDOWN_SECONDS);
+        return true;
+      }
       if (!response.ok) {
         throw new Error(data?.message || t('otpSendFailed'));
       }
@@ -94,10 +99,18 @@ export default function OtpSignIn({ onSuccess, onError, mode }: OtpSignInProps) 
       reportError(t('otpInvalidEmail'));
       return;
     }
-    setRequesting(true);
-    const ok = await sendCode(trimmed);
-    setRequesting(false);
-    if (ok) setStage('code');
+    // Show the code field at once and send the request in the background —
+    // waiting for the server's answer first made every sign-in feel slow. If
+    // the server refuses (email not registered, no connection), come back to
+    // the email step; sendCode has already put the reason on screen.
+    setCode('');
+    setStage('code');
+    setResendCooldown(RESEND_COOLDOWN_SECONDS);
+    sendCode(trimmed).then((ok) => {
+      if (ok) return;
+      setResendCooldown(0);
+      setStage('email');
+    });
   };
 
   const handleResendCode = async () => {
