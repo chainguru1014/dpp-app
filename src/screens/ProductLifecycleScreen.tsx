@@ -13,6 +13,8 @@ import { useI18n } from '../i18n/I18nContext';
 import { API_BASE_URL } from '../config/api';
 import { colors, radius, spacing, shadow, MIN_TOUCH } from '../theme';
 import { BASE_PALETTE, Palette, applyLook, buttonFill, useBrandLook } from '../utils/dppTheme';
+import ProductServices from '../components/ProductServices';
+import { SERVICE_META, readyServices } from '../utils/circularity';
 
 interface Props {
   navigation: any;
@@ -368,7 +370,6 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
     .filter((c: any) => c && (c.title || c.content));
   const esg = productData?.traceabilityEsg || {};
   const materialOrigins = toArray(esg.materialOrigins);
-  const disposal = productData?.disposal || {};
   const impactRaw = productData?.sustainabilityImpact || {};
   const impactItems: { icon?: string; value: string; label: string; description?: string }[] =
     Array.isArray(impactRaw.items) && impactRaw.items.length
@@ -384,15 +385,8 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
     new Set(materialOrigins.map((o: any) => o.country || o.origin).filter(Boolean))
   ) as string[];
 
-  const disposeLinks = useMemo(
-    () => [
-      { key: 'reuse', icon: 'volunteer-activism', labelKey: 'lifecycleReuse', subKey: 'lifecycleReuseSub', url: disposal.reuseUrl },
-      { key: 'repair', icon: 'build', labelKey: 'lifecycleRepair', subKey: 'lifecycleRepairSub', url: disposal.repairUrl },
-      { key: 'rental', icon: 'storefront', labelKey: 'lifecycleRentResell', subKey: 'lifecycleRentResellSub', url: disposal.rentalUrl },
-      { key: 'dispose', icon: 'delete-outline', labelKey: 'lifecycleDisposeResponsibly', subKey: 'lifecycleDisposeResponsiblySub', url: disposal.disposeUrl },
-    ],
-    [disposal.reuseUrl, disposal.repairUrl, disposal.rentalUrl, disposal.disposeUrl]
-  );
+  // Repair / resell / rent / recycle: only what the brand offers.
+  const services = useMemo(() => readyServices(productData), [productData]);
 
   // ---- tab bodies ----
 
@@ -456,18 +450,14 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
       );
     }
     if (key === 'endOfLife') {
-      const links = disposeLinks.filter((l) => l.url);
+      const links = services;
       if (!links.length && !impactItems.length) return null;
       return (
         <View style={styles.jDetail}>
           {links.map((l) => (
-            <TouchableOpacity key={l.key} style={styles.jLinkRow} onPress={() => openUrl(l.url)}>
-              <Text style={styles.jLink}>{t(l.labelKey as any)}</Text>
-              {/* Plain-colored text with no underline/icon read as static
-                  labels, not links a tap opens a URL from — this pairs the
-                  text with the same open-in-new cue as the Reuse & Recycle
-                  tab's equivalent rows. */}
-              <Icon name="open-in-new" size={15} color={colors.accent} />
+            <TouchableOpacity key={l.kind} style={styles.jLinkRow} onPress={() => selectTab('dispose')} accessibilityRole="button">
+              <Text style={styles.jLink}>{t(SERVICE_META[l.kind].title)}</Text>
+              <Icon name="chevron-right" size={18} color={colors.accent} />
             </TouchableOpacity>
           ))}
           {impactItems.map((it, i) => (
@@ -667,31 +657,17 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
 
   const renderDispose = () => (
     <View>
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>{t('lifecycleExtendLife')}</Text>
-        {disposeLinks.map((l) => (
-          <TouchableOpacity
-            key={l.key}
-            style={styles.disposeRow}
-            onPress={() => openUrl(l.url)}
-            activeOpacity={l.url ? 0.7 : 1}
-            disabled={!l.url}
-            accessibilityRole="button"
-            accessibilityLabel={`${t(l.labelKey as any)}. ${t(l.subKey as any)}`}
-            accessibilityState={{ disabled: !l.url }}
-          >
-            <View style={styles.disposeIcon}><Icon name={l.icon} size={22} color={colors.primary} /></View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.disposeTitle}>{t(l.labelKey as any)}</Text>
-              <Text style={styles.disposeSub}>{t(l.subKey as any)}</Text>
-            </View>
-            {/* "open-in-new" (not chevron-right) — every row here opens an
-                external URL (see openUrl), not a deeper in-app screen, so the
-                trailing icon should say that instead of implying in-app nav. */}
-            <Icon name="open-in-new" size={18} color={colors.muted} />
-          </TouchableOpacity>
-        ))}
-      </View>
+      <ProductServices
+        product={productData}
+        qrcodeId={qrcodeId}
+        user={user}
+        palette={colors}
+        button={btn}
+        buttonRadius={look.isCustom ? look.theme.buttonRadius : undefined}
+        cardStyle={styles.card}
+        cardTitleStyle={styles.cardTitle}
+        onSignIn={() => navigation.navigate('Login')}
+      />
       {impactItems.length > 0 && (
         <View style={styles.card}>
           <Text style={styles.cardTitle}>{t('lifecycleSustainabilityImpact')}</Text>
