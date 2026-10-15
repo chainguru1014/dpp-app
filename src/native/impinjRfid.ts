@@ -1,20 +1,22 @@
-// Thin wrapper around the Impinj R700 reader-service HTTP API — a small
-// REST service (built with the Octane SDK, see /rfid-reader-service at the
-// repo root). Plain HTTP, no auth, no TLS (per the API's own spec) — this is
-// a trusted-network-only service, not a public endpoint.
+import { API_BASE_URL } from '../config/api';
+
+// Thin wrapper around the Impinj R700 reader-service — a small Octane SDK
+// HTTP API (see /rfid-reader-service at the repo root) running on the same
+// hosting server as the DPP backend.
+//
+// This does NOT call the reader-service directly from the app. The app runs
+// on a staff member's own phone/browser, where "localhost" would resolve to
+// that device, not the server — so calling the reader-service's own
+// localhost:5284 address from here can never reach it. Instead this goes
+// through the DPP backend's /impinj/* routes (backend/controllers/
+// impinjController.ts), which run ON that same server and proxy straight
+// through to the reader-service's documented API one-for-one.
 //
 // Unlike Yometel (phone-to-reader BLE, Android-only, per-employee MAC), this
-// is platform-independent: it's just fetch() calls, so it works the same on
-// web, iOS and Android. There's also only ever one Impinj reader (this
-// fixed service address), not a per-employee reader id.
-
-// The reader-service now runs on the same hosting server as this app/the
-// DPP backend (previously a separate PC reachable only via Tailscale), so
-// this is a same-host call rather than a public IP. Update this if the
-// service ever moves to a different machine/port — nothing else in the app
-// needs to change.
-const IMPINJ_SERVICE_BASE_URL = 'http://localhost:5284';
-export const IMPINJ_SERVICE_DISPLAY_ADDRESS = IMPINJ_SERVICE_BASE_URL.replace(/^https?:\/\//, '');
+// is platform-independent — plain fetch() to the regular backend, so it
+// works the same on web, iOS and Android. There's also only ever one Impinj
+// reader (one fixed backend), not a per-employee reader id.
+export const IMPINJ_READER_DISPLAY_NAME = 'Impinj R700 (fixed reader)';
 
 const REQUEST_TIMEOUT_MS = 8000;
 
@@ -41,13 +43,14 @@ export interface ImpinjTagRead {
 
 // Every endpoint shares the same shape of concerns (timeout, non-2xx ->
 // {error}, 204 -> no body), so it's all funneled through one helper instead
-// of repeating try/catch per call.
+// of repeating try/catch per call. Path is relative to API_BASE_URL, which
+// already includes a trailing slash (see config/api.ts).
 async function request<T>(method: string, path: string): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   let res: Response;
   try {
-    res = await fetch(`${IMPINJ_SERVICE_BASE_URL}${path}`, { method, signal: controller.signal });
+    res = await fetch(`${API_BASE_URL}impinj/${path}`, { method, signal: controller.signal });
   } catch (err: any) {
     throw new Error(
       err?.name === 'AbortError'
@@ -68,15 +71,15 @@ async function request<T>(method: string, path: string): Promise<T> {
   return data as T;
 }
 
-export const getImpinjReaderStatus = () => request<ImpinjReaderStatus>('GET', '/api/reader/status');
-export const connectImpinjReader = () => request<ImpinjReaderStatus>('POST', '/api/reader/connect');
-export const disconnectImpinjReader = () => request<ImpinjReaderStatus>('POST', '/api/reader/disconnect');
-export const startImpinjReading = () => request<ImpinjReaderStatus>('POST', '/api/reader/start');
-export const stopImpinjReading = () => request<ImpinjReaderStatus>('POST', '/api/reader/stop');
+export const getImpinjReaderStatus = () => request<ImpinjReaderStatus>('GET', 'status');
+export const connectImpinjReader = () => request<ImpinjReaderStatus>('POST', 'connect');
+export const disconnectImpinjReader = () => request<ImpinjReaderStatus>('POST', 'disconnect');
+export const startImpinjReading = () => request<ImpinjReaderStatus>('POST', 'start');
+export const stopImpinjReading = () => request<ImpinjReaderStatus>('POST', 'stop');
 
 // Tags currently "in view" (seen within the service's ~10s window) — this is
 // what the Passing Tags card polls, same role scanOnceYometel() plays for
 // the Yometel branch.
-export const getImpinjTagsInView = () => request<ImpinjTagRead[]>('GET', '/api/tags');
-export const getImpinjRecentTags = (count = 100) => request<ImpinjTagRead[]>('GET', `/api/tags/recent?count=${count}`);
-export const clearImpinjTags = () => request<void>('DELETE', '/api/tags');
+export const getImpinjTagsInView = () => request<ImpinjTagRead[]>('GET', 'tags');
+export const getImpinjRecentTags = (count = 100) => request<ImpinjTagRead[]>('GET', `tags/recent?count=${count}`);
+export const clearImpinjTags = () => request<void>('DELETE', 'tags');

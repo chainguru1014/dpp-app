@@ -36,7 +36,7 @@ import {
   stopImpinjReading,
   getImpinjReaderStatus,
   getImpinjTagsInView,
-  IMPINJ_SERVICE_DISPLAY_ADDRESS,
+  IMPINJ_READER_DISPLAY_NAME,
 } from '../native/impinjRfid';
 
 const LIVENESS_TIMEOUT_MS = 700;
@@ -1019,10 +1019,10 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
 
               {(() => {
                 // Impinj has no per-employee reader id — it's one fixed R700
-                // reachable at a known service address, so that address
-                // stands in for "which reader" here instead.
+                // reached through the backend, so a static label stands in
+                // for "which reader" here instead.
                 const readerId = rfidReaderType === 'impinj'
-                  ? IMPINJ_SERVICE_DISPLAY_ADDRESS
+                  ? IMPINJ_READER_DISPLAY_NAME
                   : user?.rfidReaderIds?.[rfidReaderType];
                 const connected = rfidConnectedByType[rfidReaderType];
                 if (!readerId) {
