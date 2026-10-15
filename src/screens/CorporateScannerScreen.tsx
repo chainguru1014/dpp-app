@@ -1125,7 +1125,13 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                             </View>
                           )}
                           <View style={styles.rfidPassingDetail}>
-                            <Text style={styles.rfidPassingLabel} numberOfLines={1}>{dummy?.label || t('rfidUnknownTag')}</Text>
+                            {/* Real lookup result first — dummy.label only
+                                still applies to the simulated/demo tag list,
+                                and even then only if that EPC somehow isn't
+                                registered as a product identifier. */}
+                            <Text style={styles.rfidPassingLabel} numberOfLines={1}>
+                              {resolved?.product?.name || dummy?.label || t('rfidUnknownTag')}
+                            </Text>
                             <Text style={styles.rfidPassingEpc} numberOfLines={1}>{tag.epc}</Text>
                           </View>
                           {index === 0 && (
