@@ -1,17 +1,19 @@
 // Thin wrapper around the Impinj R700 reader-service HTTP API — a small
 // REST service (built with the Octane SDK, see /rfid-reader-service at the
-// repo root) running on the same PC the fixed R700 reader is plugged into.
-// Plain HTTP, no auth, no TLS (per the API's own spec) — this is a trusted
-// LAN/Tailscale-only service, not a public endpoint.
+// repo root). Plain HTTP, no auth, no TLS (per the API's own spec) — this is
+// a trusted-network-only service, not a public endpoint.
 //
 // Unlike Yometel (phone-to-reader BLE, Android-only, per-employee MAC), this
 // is platform-independent: it's just fetch() calls, so it works the same on
 // web, iOS and Android. There's also only ever one Impinj reader (this
 // fixed service address), not a per-employee reader id.
 
-// The reader-service host. Update this if the service moves to a different
-// machine/port — nothing else in the app needs to change.
-const IMPINJ_SERVICE_BASE_URL = 'http://82.165.217.122:5284';
+// The reader-service now runs on the same hosting server as this app/the
+// DPP backend (previously a separate PC reachable only via Tailscale), so
+// this is a same-host call rather than a public IP. Update this if the
+// service ever moves to a different machine/port — nothing else in the app
+// needs to change.
+const IMPINJ_SERVICE_BASE_URL = 'http://localhost:5284';
 export const IMPINJ_SERVICE_DISPLAY_ADDRESS = IMPINJ_SERVICE_BASE_URL.replace(/^https?:\/\//, '');
 
 const REQUEST_TIMEOUT_MS = 8000;
