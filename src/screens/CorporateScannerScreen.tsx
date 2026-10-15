@@ -29,6 +29,15 @@ import { uploadCaptureImage } from '../utils/uploadCapture';
 import { isNfcSupported, readNfcTag } from '../utils/nfc';
 import DUMMY_RFID_TAGS from '../data/dummyRfidTags.json';
 import { connectYometelReader, disconnectYometelReader, scanOnceYometel, subscribeYometelDebug } from '../native/yometelRfid';
+import {
+  connectImpinjReader,
+  disconnectImpinjReader,
+  startImpinjReading,
+  stopImpinjReading,
+  getImpinjReaderStatus,
+  getImpinjTagsInView,
+  IMPINJ_SERVICE_DISPLAY_ADDRESS,
+} from '../native/impinjRfid';
 
 const LIVENESS_TIMEOUT_MS = 700;
 // How often to poll for recent RFID tag detections while RFID mode is
@@ -45,11 +54,14 @@ const RFID_WINDOW_SECONDS = 5;
 // reader/gateway is posting to /rfid/ingest, to restore live polling.
 const RFID_SIMULATION_MODE = true;
 const RFID_SIMULATION_DELAY_MS = 4000;
-// Real vs Simulate follows the platform: the web build always simulates
-// (virtual connection + dummy tags); the installed Android/iOS app talks to
-// the real reader. Only Yometel has a real transport (native module under
-// android/app/src/main/java/com/yometel/dpp/rfid); Impinj/Zebra are pending
-// hardware confirmation, so they simulate everywhere.
+// Real vs Simulate follows the platform for Yometel only: the web build
+// always simulates Yometel (virtual connection + dummy tags); the installed
+// Android/iOS app talks to the real reader over BLE (native module under
+// android/app/src/main/java/com/yometel/dpp/rfid). Zebra is still pending
+// hardware confirmation, so it simulates everywhere. Impinj (see
+// isRealImpinj below) is real on every platform instead, since it talks to
+// a fixed R700 over plain HTTP (rfid-reader-service), not phone BLE — no
+// native-module/platform restriction applies to it.
 const RFID_REAL_DEVICE_PLATFORM = Platform.OS !== 'web';
 
 // pmc/lookup returns product images as bare upload filenames — same
@@ -148,6 +160,9 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   // Only meaningful for the Yometel branch (real BLE connect can take a few
   // seconds) — Impinj/Zebra's mocked Connect is instant, no loading state.
   const isRealYometel = rfidReaderType === 'yometel' && RFID_REAL_DEVICE_PLATFORM;
+  // Impinj: real on every platform (plain HTTP to the fixed R700
+  // reader-service) — no per-employee reader id, no platform gate.
+  const isRealImpinj = rfidReaderType === 'impinj';
   const [rfidConnecting, setRfidConnecting] = useState(false);
   const [rfidConnectError, setRfidConnectError] = useState('');
   // Debug timeline for the Yometel BLE handshake + TX/RX traffic — see
@@ -392,6 +407,32 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
       };
     }
 
+    if (isRealImpinj) {
+      let cancelled = false;
+      const poll = async () => {
+        try {
+          const tags = await getImpinjTagsInView();
+          if (cancelled) return;
+          setRfidTags(
+            tags.map((tag) => ({
+              epc: tag.epc,
+              antennaId: tag.antennaPort != null ? String(tag.antennaPort) : undefined,
+              rssi: tag.peakRssiInDbm ?? undefined,
+              seenAt: tag.lastSeenTimeUtc || new Date().toISOString(),
+            }))
+          );
+        } catch (err) {
+          if (!cancelled) setRfidTags([]);
+        }
+      };
+      poll();
+      rfidPollIntervalRef.current = setInterval(poll, RFID_POLL_MS);
+      return () => {
+        cancelled = true;
+        clearInterval(rfidPollIntervalRef.current);
+      };
+    }
+
     if (RFID_SIMULATION_MODE) {
       let cancelled = false;
       const revealNext = () => {
@@ -436,7 +477,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
       cancelled = true;
       clearInterval(rfidPollIntervalRef.current);
     };
-  }, [rfidReady, rfidReaderType, isRealYometel]);
+  }, [rfidReady, rfidReaderType, isRealYometel, isRealImpinj]);
 
   // Only a code that resolves to one of our own registered products (a valid
   // security/encrypted QR, a GS1 Digital Link, or a barcode already mapped
@@ -596,8 +637,39 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   };
 
   const handleConnectPress = async () => {
+    if (isRealImpinj) {
+      setRfidConnectError('');
+      setRfidConnecting(true);
+      try {
+        // Checking status first (rather than calling connect() unconditionally)
+        // avoids a spurious 409 "already connected" if the reader-service was
+        // left connected from a previous session (e.g. a web page reload
+        // resets our local rfidConnectedByType state, but not the service).
+        let status = await getImpinjReaderStatus();
+        if (!status.isConnected) {
+          status = await connectImpinjReader();
+        }
+        if (!status.isConnected) {
+          throw new Error(status.lastError || t('rfidConnectFailed'));
+        }
+        setRfidConnectedByType((prev) => ({ ...prev, impinj: true }));
+        if (!status.isStarted) {
+          try {
+            await startImpinjReading();
+          } catch (startErr: any) {
+            setRfidConnectError(startErr?.message || 'Connected, but failed to start reading');
+          }
+        }
+      } catch (err: any) {
+        console.error('Impinj connect failed:', err);
+        setRfidConnectError(err?.message || t('rfidConnectFailed'));
+      } finally {
+        setRfidConnecting(false);
+      }
+      return;
+    }
     if (!isRealYometel) {
-      // Simulate (and Impinj/Zebra, always simulated) — virtual connection.
+      // Simulate (and Zebra, always simulated) — virtual connection.
       setRfidConnectedByType((prev) => ({ ...prev, [rfidReaderType]: true }));
       return;
     }
@@ -624,7 +696,14 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   };
 
   const handleDisconnectPress = async () => {
-    if (isRealYometel) {
+    if (isRealImpinj) {
+      try {
+        await stopImpinjReading().catch(() => {});
+        await disconnectImpinjReader();
+      } catch (err) {
+        console.warn('Impinj disconnect failed:', err);
+      }
+    } else if (isRealYometel) {
       try {
         await disconnectYometelReader();
       } catch (err) {
@@ -939,7 +1018,12 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
               </View>
 
               {(() => {
-                const readerId = user?.rfidReaderIds?.[rfidReaderType];
+                // Impinj has no per-employee reader id — it's one fixed R700
+                // reachable at a known service address, so that address
+                // stands in for "which reader" here instead.
+                const readerId = rfidReaderType === 'impinj'
+                  ? IMPINJ_SERVICE_DISPLAY_ADDRESS
+                  : user?.rfidReaderIds?.[rfidReaderType];
                 const connected = rfidConnectedByType[rfidReaderType];
                 if (!readerId) {
                   return (
