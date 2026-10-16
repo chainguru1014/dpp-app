@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Platform, Modal } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import VectorIcon from 'react-native-vector-icons/MaterialIcons';
 import AppLayout from '../components/AppLayout';
@@ -9,7 +9,7 @@ import CaptureCameraView, { isCaptureCameraAvailable } from '../components/Captu
 import { requestNativeCameraPermission } from '../components/NativeCodeScanner';
 import { useI18n } from '../i18n/I18nContext';
 import { API_BASE_URL } from '../config/api';
-import { colors, radius, spacing, shadow } from '../theme';
+import { colors, radius, spacing, shadow, MIN_TOUCH } from '../theme';
 import {
   connectImpinjReader,
   startImpinjReading,
@@ -61,18 +61,30 @@ export default function ShipmentInspectionScreen({ navigation, user, onLogout }:
   const { t } = useI18n();
   const [step, setStep] = useState<Step>('lookup');
 
-  // Step 1 — lookup
+  // Step 1 — lookup. Mirrors the normal-user scan page's layout
+  // (ScannerScreen.tsx): full-screen camera is the default view, with
+  // "Enter code manually" as a pill overlaid near the bottom of the camera
+  // feed rather than a text field shown up front.
   const [codeInput, setCodeInput] = useState('');
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupError, setLookupError] = useState('');
   const [manifest, setManifest] = useState<ManifestDto | null>(null);
-  // "Standard barcode scanner" per the brief — camera scan is the primary
-  // path, with the text field underneath as a fallback (barcode scanner
-  // hardware on a warehouse device usually just types into focused input
-  // anyway, so the field stays useful either way).
-  const [scannerActive, setScannerActive] = useState(false);
-  const [scannerPermissionDenied, setScannerPermissionDenied] = useState(false);
+  const [manualEntryMode, setManualEntryMode] = useState(false);
+  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const scannerHandledRef = useRef(false);
+
+  useEffect(() => {
+    if (step !== 'lookup') return;
+    if (Platform.OS === 'web') {
+      setHasCameraPermission(true);
+      return;
+    }
+    (async () => {
+      const granted = await requestNativeCameraPermission();
+      setHasCameraPermission(granted);
+      if (!granted) setManualEntryMode(true);
+    })();
+  }, [step]);
 
   // Step 2 — gate scan
   const [gateState, setGateState] = useState<GateState>('idle');
@@ -102,9 +114,9 @@ export default function ShipmentInspectionScreen({ navigation, user, onLogout }:
     return token ? { Authorization: `Bearer ${token}` } : undefined;
   };
 
-  const handleLookup = async (overrideCode?: string) => {
+  const handleLookup = async (overrideCode?: string): Promise<boolean> => {
     const code = (overrideCode ?? codeInput).trim();
-    if (!code || lookupLoading) return;
+    if (!code || lookupLoading) return false;
     setLookupLoading(true);
     setLookupError('');
     try {
@@ -116,35 +128,30 @@ export default function ShipmentInspectionScreen({ navigation, user, onLogout }:
       }
       setManifest(data.data);
       setStep('gateScan');
+      return true;
     } catch (err: any) {
       setLookupError(err?.message || t('shipmentManifestNotFound'));
+      return false;
     } finally {
       setLookupLoading(false);
     }
   };
 
-  const openScanner = async () => {
-    setScannerPermissionDenied(false);
-    if (Platform.OS !== 'web') {
-      const granted = await requestNativeCameraPermission();
-      if (!granted) {
-        setScannerPermissionDenied(true);
-        return;
-      }
-    }
-    scannerHandledRef.current = false;
-    setScannerActive(true);
-  };
-
-  const handleCameraScan = (value: string) => {
+  const handleCameraScan = async (value: string) => {
     // CaptureCameraView/WebCodeScanner can fire onScan for several frames in
     // a row before `active` actually flips off — guard so only the first
-    // detected code triggers the lookup.
+    // detected code triggers a lookup.
     if (scannerHandledRef.current) return;
     scannerHandledRef.current = true;
-    setScannerActive(false);
     setCodeInput(value);
-    handleLookup(value);
+    const ok = await handleLookup(value);
+    if (!ok) {
+      // Don't just keep re-scanning the same bad code — surface the error
+      // via the manual-entry view so it's actually visible, with a way
+      // back to the camera from there.
+      setManualEntryMode(true);
+      scannerHandledRef.current = false;
+    }
   };
 
   const resetToLookup = () => {
@@ -158,6 +165,9 @@ export default function ShipmentInspectionScreen({ navigation, user, onLogout }:
     setManifest(null);
     setResult(null);
     setCodeInput('');
+    setLookupError('');
+    setManualEntryMode(hasCameraPermission === false);
+    scannerHandledRef.current = false;
     setStep('lookup');
   };
 
@@ -275,21 +285,57 @@ export default function ShipmentInspectionScreen({ navigation, user, onLogout }:
   const productVariantDetail = [productInfo?.color, productInfo?.size].filter(Boolean).join(' ');
 
   return (
-    <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton onBackPress={() => navigation.goBack()}>
+    <AppLayout
+      navigation={navigation}
+      user={user}
+      onLogout={onLogout}
+      showBackButton
+      onBackPress={() => navigation.goBack()}
+      title={t('shipmentInspectionTitle')}
+      flatContent
+      flushBottom={step === 'lookup' && !manualEntryMode}
+    >
+      {step === 'lookup' && !manualEntryMode ? (
+        // Default view, matching the normal-user scan page: full-screen
+        // camera, with "Enter code manually" as a pill near the bottom
+        // instead of a text field shown up front.
+        <View style={styles.cameraScreen}>
+          <View style={styles.cameraViewport}>
+            {hasCameraPermission === null ? (
+              <ActivityIndicator size="large" color={colors.primary} />
+            ) : Platform.OS === 'web' ? (
+              <WebCodeScanner active onScan={(value) => handleCameraScan(value)} />
+            ) : isCaptureCameraAvailable() ? (
+              <CaptureCameraView active onScan={(value) => handleCameraScan(value)} />
+            ) : (
+              <Text style={styles.scannerUnavailableTextDark}>{t('cameraNotAvailableBrowser')}</Text>
+            )}
+            {lookupLoading && (
+              <View style={styles.cameraLoadingOverlay}>
+                <ActivityIndicator color="#fff" />
+              </View>
+            )}
+            <View pointerEvents="none" style={styles.cameraHintWrap}>
+              <VectorIcon name="qr-code" size={16} color="#fff" style={{ marginRight: 6 }} />
+              <Text style={styles.cameraHintText}>{t('shipmentInspectionLookupPrompt')}</Text>
+            </View>
+            <View style={styles.cameraBottomRow}>
+              <TouchableOpacity
+                style={styles.cameraBottomBtn}
+                onPress={() => setManualEntryMode(true)}
+                activeOpacity={0.85}
+              >
+                <VectorIcon name="keyboard" size={18} color={colors.primary} />
+                <Text style={styles.cameraBottomBtnText}>{t('shipmentInspectionOrEnterManually')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      ) : (
       <ScrollView style={styles.screen} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>{t('shipmentInspectionTitle')}</Text>
-
         {step === 'lookup' && (
           <>
             <Text style={styles.prompt}>{t('shipmentInspectionLookupPrompt')}</Text>
-
-            <TouchableOpacity style={styles.scanQrButton} onPress={openScanner} activeOpacity={0.85}>
-              <VectorIcon name="qr-code-scanner" size={22} color="#fff" />
-              <Text style={styles.primaryButtonText}>{t('shipmentInspectionScanQr')}</Text>
-            </TouchableOpacity>
-            {scannerPermissionDenied && <Text style={styles.errorText}>{t('cameraPermissionDenied')}</Text>}
-
-            <Text style={styles.orDivider}>{t('shipmentInspectionOrEnterManually')}</Text>
 
             <View style={styles.inputWrap}>
               <TextInput
@@ -316,29 +362,18 @@ export default function ShipmentInspectionScreen({ navigation, user, onLogout }:
               {lookupLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>{t('shipmentInspectionLookupButton')}</Text>}
             </GradientButton>
 
-            <Modal visible={scannerActive} animationType="slide" onRequestClose={() => setScannerActive(false)}>
-              <View style={styles.scannerModal}>
-                <View style={styles.scannerHeader}>
-                  <TouchableOpacity
-                    onPress={() => setScannerActive(false)}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  >
-                    <VectorIcon name="close" size={28} color="#fff" />
-                  </TouchableOpacity>
-                  <Text style={styles.scannerHeaderText}>{t('shipmentInspectionScanQr')}</Text>
-                  <View style={{ width: 28 }} />
-                </View>
-                <View style={styles.scannerViewport}>
-                  {Platform.OS === 'web' ? (
-                    <WebCodeScanner active={scannerActive} onScan={(value) => handleCameraScan(value)} />
-                  ) : isCaptureCameraAvailable() ? (
-                    <CaptureCameraView active={scannerActive} onScan={(value) => handleCameraScan(value)} />
-                  ) : (
-                    <Text style={styles.scannerUnavailableText}>{t('cameraNotAvailableBrowser')}</Text>
-                  )}
-                </View>
-              </View>
-            </Modal>
+            {hasCameraPermission === true && (
+              <TouchableOpacity
+                style={styles.linkButton}
+                onPress={() => {
+                  setManualEntryMode(false);
+                  setLookupError('');
+                  scannerHandledRef.current = false;
+                }}
+              >
+                <Text style={styles.linkButtonText}>{t('shipmentInspectionScanQr')}</Text>
+              </TouchableOpacity>
+            )}
           </>
         )}
 
@@ -464,6 +499,7 @@ export default function ShipmentInspectionScreen({ navigation, user, onLogout }:
           </>
         )}
       </ScrollView>
+      )}
     </AppLayout>
   );
 }
@@ -471,7 +507,6 @@ export default function ShipmentInspectionScreen({ navigation, user, onLogout }:
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   container: { padding: spacing.lg, paddingBottom: spacing.xxxl },
-  title: { fontSize: 24, fontWeight: '700', color: colors.heading, marginBottom: spacing.md },
   prompt: { fontSize: 19, color: colors.muted, marginBottom: spacing.lg },
   inputWrap: {
     backgroundColor: colors.surface,
@@ -525,29 +560,56 @@ const styles = StyleSheet.create({
   scanningBoxComplete: { backgroundColor: colors.success },
   scanningCountComplete: { color: '#fff' },
   scanningLabelComplete: { color: '#fff' },
-  scanQrButton: {
+  // Full-screen camera (default lookup view) — mirrors ScannerScreen's
+  // container/scanViewport + bottom action-pill pattern.
+  cameraScreen: { flex: 1, backgroundColor: colors.bg },
+  cameraViewport: {
+    flex: 1,
+    minHeight: 180,
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+    backgroundColor: '#000',
+  },
+  scannerUnavailableTextDark: { color: '#fff', fontSize: 17, textAlign: 'center', marginHorizontal: spacing.xl },
+  cameraLoadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cameraHintWrap: {
+    position: 'absolute',
+    top: spacing.lg,
+    left: spacing.lg,
+    right: spacing.lg,
     flexDirection: 'row',
-    height: 56,
-    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: radius.pill,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+  },
+  cameraHintText: { color: '#fff', fontSize: 15 },
+  cameraBottomRow: {
+    position: 'absolute',
+    left: spacing.lg,
+    right: spacing.lg,
+    bottom: spacing.xxl,
+  },
+  cameraBottomBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.headerLight,
-    marginBottom: spacing.md,
-    ...shadow(1),
+    minHeight: MIN_TOUCH,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    ...shadow(2),
   },
-  orDivider: { fontSize: 15, color: colors.muted, textAlign: 'center', marginVertical: spacing.md },
-  scannerModal: { flex: 1, backgroundColor: '#000' },
-  scannerHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
-  },
-  scannerHeaderText: { color: '#fff', fontSize: 18, fontWeight: '600' },
-  scannerViewport: { flex: 1 },
-  scannerUnavailableText: { color: '#fff', fontSize: 17, textAlign: 'center', marginTop: spacing.xxl },
+  cameraBottomBtnText: { color: colors.primary, fontSize: 18, fontWeight: '700' },
   resultCard: {
     alignItems: 'center',
     gap: spacing.sm,
