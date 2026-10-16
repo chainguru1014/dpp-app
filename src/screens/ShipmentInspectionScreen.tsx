@@ -301,15 +301,22 @@ export default function ShipmentInspectionScreen({ navigation, user, onLogout }:
         // instead of a text field shown up front.
         <View style={styles.cameraScreen}>
           <View style={styles.cameraViewport}>
-            {hasCameraPermission === null ? (
-              <ActivityIndicator size="large" color={colors.primary} />
-            ) : Platform.OS === 'web' ? (
-              <WebCodeScanner active onScan={(value) => handleCameraScan(value)} />
-            ) : isCaptureCameraAvailable() ? (
-              <CaptureCameraView active onScan={(value) => handleCameraScan(value)} />
-            ) : (
-              <Text style={styles.scannerUnavailableTextDark}>{t('cameraNotAvailableBrowser')}</Text>
-            )}
+            {/* Fills exactly the viewport's bounds rather than the camera's
+                own intrinsic size (same fix ScannerScreen's
+                webScannerContainer applies) — without this, the camera on
+                web renders at its natural size and pushes everything below
+                it (including the bottom pill) out of the visible area. */}
+            <View style={styles.cameraFill}>
+              {hasCameraPermission === null ? (
+                <ActivityIndicator size="large" color={colors.primary} />
+              ) : Platform.OS === 'web' ? (
+                <WebCodeScanner active onScan={(value) => handleCameraScan(value)} />
+              ) : isCaptureCameraAvailable() ? (
+                <CaptureCameraView active onScan={(value) => handleCameraScan(value)} />
+              ) : (
+                <Text style={styles.scannerUnavailableTextDark}>{t('cameraNotAvailableBrowser')}</Text>
+              )}
+            </View>
             {lookupLoading && (
               <View style={styles.cameraLoadingOverlay}>
                 <ActivityIndicator color="#fff" />
@@ -571,6 +578,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     position: 'relative',
     backgroundColor: '#000',
+  },
+  cameraFill: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   scannerUnavailableTextDark: { color: '#fff', fontSize: 17, textAlign: 'center', marginHorizontal: spacing.xl },
   cameraLoadingOverlay: {
