@@ -435,13 +435,21 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
         try {
           const tags = await getImpinjTagsInView();
           if (cancelled) return;
+          // The reader-service's own ordering isn't documented/guaranteed —
+          // this list replaces entirely on every poll tick (unlike
+          // Yometel's prepend-only list), so sort explicitly by
+          // lastSeenTimeUtc descending to keep the most recently passed
+          // tag at the top, matching index 0's existing meaning (see the
+          // "New" badge below).
           setRfidTags(
-            tags.map((tag) => ({
-              epc: tag.epc,
-              antennaId: tag.antennaPort != null ? String(tag.antennaPort) : undefined,
-              rssi: tag.peakRssiInDbm ?? undefined,
-              seenAt: tag.lastSeenTimeUtc || new Date().toISOString(),
-            }))
+            tags
+              .map((tag) => ({
+                epc: tag.epc,
+                antennaId: tag.antennaPort != null ? String(tag.antennaPort) : undefined,
+                rssi: tag.peakRssiInDbm ?? undefined,
+                seenAt: tag.lastSeenTimeUtc || new Date().toISOString(),
+              }))
+              .sort((a, b) => new Date(b.seenAt).getTime() - new Date(a.seenAt).getTime())
           );
         } catch (err) {
           if (!cancelled) setRfidTags([]);
