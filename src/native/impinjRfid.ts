@@ -18,13 +18,12 @@ import { API_BASE_URL } from '../config/api';
 // reader (one fixed backend), not a per-employee reader id.
 export const IMPINJ_READER_DISPLAY_NAME = 'Impinj R700 (fixed reader)';
 
-// Kept a few seconds above the backend's own REQUEST_TIMEOUT_MS
-// (backend/controllers/impinjController.ts) — the backend's call to the
-// reader-service can legitimately take a while (the Octane SDK talking live
-// to the physical R700, not just cached state), so the app needs to wait
-// at least that long before giving up itself, or it'll show its own timeout
-// before the backend's real answer (success or failure) ever arrives.
-const REQUEST_TIMEOUT_MS = 25000;
+// Kept comfortably above the backend's own worst case (impinjController.ts):
+// REQUEST_TIMEOUT_MS (20s) * up to 2 attempts for start()'s retry + the 2s
+// gap between them = ~42s — so the app needs to wait at least that long
+// before giving up itself, or it'll show its own timeout before the
+// backend's real answer (success or failure) ever arrives.
+const REQUEST_TIMEOUT_MS = 45000;
 
 export interface ImpinjReaderStatus {
   isConnected: boolean;
