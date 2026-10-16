@@ -1,9 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Platform, Modal } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import VectorIcon from 'react-native-vector-icons/MaterialIcons';
 import AppLayout from '../components/AppLayout';
 import GradientButton from '../components/GradientButton';
+import WebCodeScanner from '../components/WebCodeScanner';
+import CaptureCameraView, { isCaptureCameraAvailable } from '../components/CaptureCameraView';
+import { requestNativeCameraPermission } from '../components/NativeCodeScanner';
 import { useI18n } from '../i18n/I18nContext';
 import { API_BASE_URL } from '../config/api';
 import { colors, radius, spacing, shadow } from '../theme';
@@ -31,7 +34,7 @@ interface ManifestDto {
   label: string;
   status: 'pending' | 'complete' | 'mismatch';
   expected_qrcode_ids: number[];
-  product_id: { _id: string; name: string } | string;
+  product_id: { _id: string; name: string; color?: string; size?: string } | string;
 }
 
 interface InspectionResultDto {
@@ -42,6 +45,13 @@ interface InspectionResultDto {
     missing_qrcode_ids: number[];
     unexpected_epcs: string[];
   };
+}
+
+interface MatchPreviewDto {
+  matchedQrcodeIds: number[];
+  missingQrcodeIds: number[];
+  unexpectedEpcs: string[];
+  result: 'pass' | 'fail';
 }
 
 type Step = 'lookup' | 'gateScan' | 'result';
@@ -56,6 +66,13 @@ export default function ShipmentInspectionScreen({ navigation, user, onLogout }:
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupError, setLookupError] = useState('');
   const [manifest, setManifest] = useState<ManifestDto | null>(null);
+  // "Standard barcode scanner" per the brief — camera scan is the primary
+  // path, with the text field underneath as a fallback (barcode scanner
+  // hardware on a warehouse device usually just types into focused input
+  // anyway, so the field stays useful either way).
+  const [scannerActive, setScannerActive] = useState(false);
+  const [scannerPermissionDenied, setScannerPermissionDenied] = useState(false);
+  const scannerHandledRef = useRef(false);
 
   // Step 2 — gate scan
   const [gateState, setGateState] = useState<GateState>('idle');
@@ -64,6 +81,11 @@ export default function ShipmentInspectionScreen({ navigation, user, onLogout }:
   const [scannedCount, setScannedCount] = useState(0);
   const pollIntervalRef = useRef<any>(null);
   const pollInFlightRef = useRef(false);
+  // Live "Real-Time Matching" preview (Step 3 of the brief, shown while the
+  // scan is still running, not just after Finish Scan) — recomputed via the
+  // read-only /preview-match endpoint whenever a new tag is seen.
+  const [previewMatched, setPreviewMatched] = useState(0);
+  const previewInFlightRef = useRef(false);
 
   // Step 3 — result
   const [result, setResult] = useState<InspectionResultDto | null>(null);
@@ -80,8 +102,8 @@ export default function ShipmentInspectionScreen({ navigation, user, onLogout }:
     return token ? { Authorization: `Bearer ${token}` } : undefined;
   };
 
-  const handleLookup = async () => {
-    const code = codeInput.trim();
+  const handleLookup = async (overrideCode?: string) => {
+    const code = (overrideCode ?? codeInput).trim();
     if (!code || lookupLoading) return;
     setLookupLoading(true);
     setLookupError('');
@@ -101,11 +123,36 @@ export default function ShipmentInspectionScreen({ navigation, user, onLogout }:
     }
   };
 
+  const openScanner = async () => {
+    setScannerPermissionDenied(false);
+    if (Platform.OS !== 'web') {
+      const granted = await requestNativeCameraPermission();
+      if (!granted) {
+        setScannerPermissionDenied(true);
+        return;
+      }
+    }
+    scannerHandledRef.current = false;
+    setScannerActive(true);
+  };
+
+  const handleCameraScan = (value: string) => {
+    // CaptureCameraView/WebCodeScanner can fire onScan for several frames in
+    // a row before `active` actually flips off — guard so only the first
+    // detected code triggers the lookup.
+    if (scannerHandledRef.current) return;
+    scannerHandledRef.current = true;
+    setScannerActive(false);
+    setCodeInput(value);
+    handleLookup(value);
+  };
+
   const resetToLookup = () => {
     if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
     stopImpinjReading().catch(() => {});
     scannedEpcsRef.current = new Set();
     setScannedCount(0);
+    setPreviewMatched(0);
     setGateState('idle');
     setGateError('');
     setManifest(null);
@@ -114,11 +161,36 @@ export default function ShipmentInspectionScreen({ navigation, user, onLogout }:
     setStep('lookup');
   };
 
+  const previewMatch = async () => {
+    if (!manifest || previewInFlightRef.current) return;
+    previewInFlightRef.current = true;
+    try {
+      const headers = await authHeader();
+      const res = await fetch(`${API_BASE_URL}shipment-manifest/${manifest._id}/preview-match`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(headers || {}) },
+        body: JSON.stringify({ scanned_epcs: [...scannedEpcsRef.current] }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data?.status === 'success') {
+        const preview: MatchPreviewDto = data.data;
+        setPreviewMatched(preview.matchedQrcodeIds.length);
+      }
+    } catch (err) {
+      // Live preview is best-effort UI feedback — a failed tick just tries
+      // again next time scannedCount changes; Finish Scan's real /inspect
+      // call is the one that actually has to succeed.
+    } finally {
+      previewInFlightRef.current = false;
+    }
+  };
+
   const handleStartGateScan = async () => {
     setGateError('');
     setGateState('connecting');
     scannedEpcsRef.current = new Set();
     setScannedCount(0);
+    setPreviewMatched(0);
     try {
       let status = await getImpinjReaderStatus();
       if (!status.isConnected) {
@@ -142,7 +214,10 @@ export default function ShipmentInspectionScreen({ navigation, user, onLogout }:
               added = true;
             }
           }
-          if (added) setScannedCount(scannedEpcsRef.current.size);
+          if (added) {
+            setScannedCount(scannedEpcsRef.current.size);
+            previewMatch();
+          }
         } catch (err) {
           // A transient poll failure mid-session isn't fatal — the next
           // tick tries again; only Finish Scan's own errors stop things.
@@ -185,13 +260,19 @@ export default function ShipmentInspectionScreen({ navigation, user, onLogout }:
   const handleRescan = () => {
     scannedEpcsRef.current = new Set();
     setScannedCount(0);
+    setPreviewMatched(0);
     setResult(null);
     setGateState('idle');
     setGateError('');
     setStep('gateScan');
   };
 
-  const productName = manifest && typeof manifest.product_id === 'object' ? manifest.product_id.name : '';
+  const productInfo = manifest && typeof manifest.product_id === 'object' ? manifest.product_id : null;
+  const productName = productInfo?.name || '';
+  // "(Jeans Size L)" style detail per the brief — same for every missing
+  // item since a manifest is scoped to one product, so it's shown once
+  // alongside the item numbers rather than repeated per item.
+  const productVariantDetail = [productInfo?.color, productInfo?.size].filter(Boolean).join(' ');
 
   return (
     <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton onBackPress={() => navigation.goBack()}>
@@ -201,6 +282,15 @@ export default function ShipmentInspectionScreen({ navigation, user, onLogout }:
         {step === 'lookup' && (
           <>
             <Text style={styles.prompt}>{t('shipmentInspectionLookupPrompt')}</Text>
+
+            <TouchableOpacity style={styles.scanQrButton} onPress={openScanner} activeOpacity={0.85}>
+              <VectorIcon name="qr-code-scanner" size={22} color="#fff" />
+              <Text style={styles.primaryButtonText}>{t('shipmentInspectionScanQr')}</Text>
+            </TouchableOpacity>
+            {scannerPermissionDenied && <Text style={styles.errorText}>{t('cameraPermissionDenied')}</Text>}
+
+            <Text style={styles.orDivider}>{t('shipmentInspectionOrEnterManually')}</Text>
+
             <View style={styles.inputWrap}>
               <TextInput
                 style={styles.input}
@@ -214,17 +304,41 @@ export default function ShipmentInspectionScreen({ navigation, user, onLogout }:
                 autoCapitalize="characters"
                 autoCorrect={false}
                 editable={!lookupLoading}
-                onSubmitEditing={handleLookup}
+                onSubmitEditing={() => handleLookup()}
               />
             </View>
             {!!lookupError && <Text style={styles.errorText}>{lookupError}</Text>}
             <GradientButton
               style={[styles.primaryButton, (!codeInput.trim() || lookupLoading) && styles.primaryButtonDisabled]}
-              onPress={handleLookup}
+              onPress={() => handleLookup()}
               disabled={!codeInput.trim() || lookupLoading}
             >
               {lookupLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>{t('shipmentInspectionLookupButton')}</Text>}
             </GradientButton>
+
+            <Modal visible={scannerActive} animationType="slide" onRequestClose={() => setScannerActive(false)}>
+              <View style={styles.scannerModal}>
+                <View style={styles.scannerHeader}>
+                  <TouchableOpacity
+                    onPress={() => setScannerActive(false)}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <VectorIcon name="close" size={28} color="#fff" />
+                  </TouchableOpacity>
+                  <Text style={styles.scannerHeaderText}>{t('shipmentInspectionScanQr')}</Text>
+                  <View style={{ width: 28 }} />
+                </View>
+                <View style={styles.scannerViewport}>
+                  {Platform.OS === 'web' ? (
+                    <WebCodeScanner active={scannerActive} onScan={(value) => handleCameraScan(value)} />
+                  ) : isCaptureCameraAvailable() ? (
+                    <CaptureCameraView active={scannerActive} onScan={(value) => handleCameraScan(value)} />
+                  ) : (
+                    <Text style={styles.scannerUnavailableText}>{t('cameraNotAvailableBrowser')}</Text>
+                  )}
+                </View>
+              </View>
+            </Modal>
           </>
         )}
 
@@ -255,10 +369,37 @@ export default function ShipmentInspectionScreen({ navigation, user, onLogout }:
 
             {gateState === 'scanning' && (
               <>
-                <View style={styles.scanningBox}>
-                  <VectorIcon name="wifi-tethering" size={40} color={colors.primary} />
-                  <Text style={styles.scanningCount}>{scannedCount}</Text>
-                  <Text style={styles.scanningLabel}>{t('shipmentInspectionTagsDetected')}</Text>
+                {/* Real-Time Matching (Step 3 of the brief, shown live as
+                    tags come in, not just after Finish Scan) — matched vs.
+                    expected count, turning green the moment every expected
+                    item has been seen. */}
+                <View style={[
+                  styles.scanningBox,
+                  previewMatched > 0 && previewMatched === manifest.expected_qrcode_ids.length && styles.scanningBoxComplete,
+                ]}>
+                  <VectorIcon
+                    name="wifi-tethering"
+                    size={40}
+                    color={previewMatched === manifest.expected_qrcode_ids.length && previewMatched > 0 ? '#fff' : colors.primary}
+                  />
+                  <Text style={[
+                    styles.scanningCount,
+                    previewMatched === manifest.expected_qrcode_ids.length && previewMatched > 0 && styles.scanningCountComplete,
+                  ]}>
+                    {previewMatched} / {manifest.expected_qrcode_ids.length}
+                  </Text>
+                  <Text style={[
+                    styles.scanningLabel,
+                    previewMatched === manifest.expected_qrcode_ids.length && previewMatched > 0 && styles.scanningLabelComplete,
+                  ]}>
+                    {t('shipmentInspectionExpectedItemsLabel')}
+                  </Text>
+                  <Text style={[
+                    styles.scanningSubtext,
+                    previewMatched === manifest.expected_qrcode_ids.length && previewMatched > 0 && styles.scanningLabelComplete,
+                  ]}>
+                    {scannedCount} {t('shipmentInspectionTagsDetected')}
+                  </Text>
                 </View>
                 <GradientButton style={styles.primaryButton} onPress={handleFinishGateScan}>
                   <Text style={styles.primaryButtonText}>{t('shipmentInspectionFinishGateScan')}</Text>
@@ -302,6 +443,7 @@ export default function ShipmentInspectionScreen({ navigation, user, onLogout }:
               {result.inspection.result === 'fail' && result.inspection.missing_qrcode_ids.length > 0 && (
                 <Text style={styles.resultMissing}>
                   {t('shipmentInspectionMissingLabel')}: {result.inspection.missing_qrcode_ids.map((id) => `#${id}`).join(', ')}
+                  {!!productName && ` (${[productName, productVariantDetail].filter(Boolean).join(', ')})`}
                 </Text>
               )}
               {result.inspection.unexpected_epcs.length > 0 && (
@@ -379,6 +521,33 @@ const styles = StyleSheet.create({
   },
   scanningCount: { fontSize: 44, fontWeight: '700', color: colors.primary },
   scanningLabel: { fontSize: 17, color: colors.muted },
+  scanningSubtext: { fontSize: 14, color: colors.muted, marginTop: spacing.xs },
+  scanningBoxComplete: { backgroundColor: colors.success },
+  scanningCountComplete: { color: '#fff' },
+  scanningLabelComplete: { color: '#fff' },
+  scanQrButton: {
+    flexDirection: 'row',
+    height: 56,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.headerLight,
+    marginBottom: spacing.md,
+    ...shadow(1),
+  },
+  orDivider: { fontSize: 15, color: colors.muted, textAlign: 'center', marginVertical: spacing.md },
+  scannerModal: { flex: 1, backgroundColor: '#000' },
+  scannerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+  },
+  scannerHeaderText: { color: '#fff', fontSize: 18, fontWeight: '600' },
+  scannerViewport: { flex: 1 },
+  scannerUnavailableText: { color: '#fff', fontSize: 17, textAlign: 'center', marginTop: spacing.xxl },
   resultCard: {
     alignItems: 'center',
     gap: spacing.sm,
