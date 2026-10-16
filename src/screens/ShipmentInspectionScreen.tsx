@@ -326,16 +326,20 @@ export default function ShipmentInspectionScreen({ navigation, user, onLogout }:
               <VectorIcon name="qr-code" size={16} color="#fff" style={{ marginRight: 6 }} />
               <Text style={styles.cameraHintText}>{t('shipmentInspectionLookupPrompt')}</Text>
             </View>
-            <View style={styles.cameraBottomRow}>
-              <TouchableOpacity
-                style={styles.cameraBottomBtn}
-                onPress={() => setManualEntryMode(true)}
-                activeOpacity={0.85}
-              >
-                <VectorIcon name="keyboard" size={18} color={colors.primary} />
-                <Text style={styles.cameraBottomBtnText}>{t('shipmentInspectionOrEnterManually')}</Text>
-              </TouchableOpacity>
-            </View>
+          </View>
+          {/* Normal flex layout, not an absolutely-positioned overlay on top
+              of the camera — sits between the bottom of the camera area and
+              the bottom bar, guaranteed visible regardless of whatever the
+              camera component itself does internally on web. */}
+          <View style={styles.cameraBottomBar}>
+            <TouchableOpacity
+              style={styles.cameraBottomBtn}
+              onPress={() => setManualEntryMode(true)}
+              activeOpacity={0.85}
+            >
+              <VectorIcon name="keyboard" size={18} color={colors.primary} />
+              <Text style={styles.cameraBottomBtnText}>{t('shipmentInspectionOrEnterManually')}</Text>
+            </TouchableOpacity>
           </View>
         </View>
       ) : (
@@ -605,11 +609,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   cameraHintText: { color: '#fff', fontSize: 15 },
-  cameraBottomRow: {
-    position: 'absolute',
-    left: spacing.lg,
-    right: spacing.lg,
-    bottom: spacing.xxl,
+  cameraBottomBar: {
+    backgroundColor: colors.bg,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.lg,
   },
   cameraBottomBtn: {
     flexDirection: 'row',
@@ -617,6 +621,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.sm,
     minHeight: MIN_TOUCH,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
     borderRadius: radius.pill,
     backgroundColor: 'rgba(255,255,255,0.95)',
     ...shadow(2),
