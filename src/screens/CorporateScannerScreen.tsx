@@ -165,6 +165,13 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   const isRealImpinj = rfidReaderType === 'impinj';
   const [rfidConnecting, setRfidConnecting] = useState(false);
   const [rfidConnectError, setRfidConnectError] = useState('');
+  // Impinj-only: connect() and start() are two separate backend calls with
+  // their own success/failure, so the status row shows which one actually
+  // succeeded rather than collapsing both into one "Connected" state —
+  // 'connected' = the reader-service session is up but reading hasn't
+  // begun yet; 'started' = reading is actually active (this is also what
+  // gates tag polling, see rfidReady below); 'failed' = either call errored.
+  const [impinjStatus, setImpinjStatus] = useState<'idle' | 'connected' | 'started' | 'failed'>('idle');
   // Debug timeline for the Yometel BLE handshake + TX/RX traffic — see
   // native/yometelRfid.ts's subscribeYometelDebug. Purely for the incoming
   // dev's hardware bring-up; capped so a long scanning session doesn't grow
@@ -377,7 +384,14 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   // this is what feeds the auto-capture effect below and the recent-captures
   // card. Stops polling immediately when leaving RFID mode, the screen, or
   // disconnecting.
-  const rfidReady = captureType === 'rfid' && isFocused && rfidConnectedByType[rfidReaderType];
+  // Impinj: "ready" means reading has actually started (impinjStatus ===
+  // 'started'), not just connected — rfidConnectedByType.impinj flips true
+  // as soon as connect() succeeds, before start() has even been attempted,
+  // so gating tag polling on that alone would poll /api/tags before
+  // reading was ever enabled server-side.
+  const rfidReady = captureType === 'rfid' && isFocused && (
+    rfidReaderType === 'impinj' ? impinjStatus === 'started' : rfidConnectedByType[rfidReaderType]
+  );
 
   useEffect(() => {
     if (!rfidReady) {
@@ -650,6 +664,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
     if (isRealImpinj) {
       setRfidConnectError('');
       setRfidConnecting(true);
+      setImpinjStatus('idle');
       try {
         // Checking status first (rather than calling connect() unconditionally)
         // avoids a spurious 409 "already connected" if the reader-service was
@@ -663,22 +678,22 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
           throw new Error(status.lastError || t('rfidConnectFailed'));
         }
         setRfidConnectedByType((prev) => ({ ...prev, impinj: true }));
+        setImpinjStatus('connected');
         // Always (re)issue start rather than trusting isStarted — it only
         // reflects the reader-service's own flag, which can end up stale
         // if a previous read loop stopped/errored server-side without
         // resetting it (seen live: "connection success" but no tags ever
-        // came in because start() was skipped on that belief). Worst case
-        // if it's already genuinely running is a harmless no-op/409 from
-        // the service, not a real failure, so it's swallowed rather than
-        // shown as a connect error.
-        try {
-          await startImpinjReading();
-        } catch (startErr) {
-          console.warn('Impinj start (after connect) did not succeed — may already be running:', startErr);
-        }
+        // came in because start() was skipped on that belief). Unlike
+        // before, a start failure here is now a real failure for this
+        // button press — tag polling (gated on impinjStatus === 'started')
+        // would otherwise silently never begin with no indication why.
+        await startImpinjReading();
+        setImpinjStatus('started');
       } catch (err: any) {
         console.error('Impinj connect failed:', err);
         setRfidConnectError(err?.message || t('rfidConnectFailed'));
+        setImpinjStatus('failed');
+        setRfidConnectedByType((prev) => ({ ...prev, impinj: false }));
       } finally {
         setRfidConnecting(false);
       }
@@ -719,6 +734,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
       } catch (err) {
         console.warn('Impinj disconnect failed:', err);
       }
+      setImpinjStatus('idle');
     } else if (isRealYometel) {
       try {
         await disconnectYometelReader();
@@ -1041,6 +1057,31 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                   ? IMPINJ_READER_DISPLAY_NAME
                   : user?.rfidReaderIds?.[rfidReaderType];
                 const connected = rfidConnectedByType[rfidReaderType];
+                // Impinj shows a richer 3-state status (Connected / Started /
+                // failed-red) instead of the plain binary connected/
+                // disconnected every other reader type uses — see
+                // impinjStatus. 'idle' and 'failed' both read as
+                // "Disconnected" text; 'failed' just colors it red instead
+                // of the neutral gray, so a failure is visibly distinct
+                // from "never tried yet".
+                const isImpinjRow = rfidReaderType === 'impinj';
+                const statusDotStyle = isImpinjRow
+                  ? (impinjStatus === 'started' ? styles.rfidStatusDotStarted
+                    : impinjStatus === 'connected' ? styles.rfidStatusDotConnected
+                    : impinjStatus === 'failed' ? styles.rfidStatusDotFailed
+                    : styles.rfidStatusDotDisconnected)
+                  : (connected ? styles.rfidStatusDotConnected : styles.rfidStatusDotDisconnected);
+                const statusTextStyle = isImpinjRow
+                  ? (impinjStatus === 'started' ? styles.rfidStatusTextStarted
+                    : impinjStatus === 'connected' ? styles.rfidStatusTextConnected
+                    : impinjStatus === 'failed' ? styles.rfidStatusTextFailed
+                    : undefined)
+                  : (connected ? styles.rfidStatusTextConnected : undefined);
+                const statusLabel = isImpinjRow
+                  ? (impinjStatus === 'started' ? t('rfidStartedLabel')
+                    : impinjStatus === 'connected' ? t('rfidConnectedLabel')
+                    : t('rfidDisconnectedLabel'))
+                  : (connected ? t('rfidConnectedLabel') : t('rfidDisconnectedLabel'));
                 if (!readerId) {
                   return (
                     <View style={styles.rfidStatusRow}>
@@ -1052,12 +1093,12 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                 return (
                   <>
                     <View style={styles.rfidStatusRow}>
-                      <View style={[styles.rfidStatusDot, connected ? styles.rfidStatusDotConnected : styles.rfidStatusDotDisconnected]} />
+                      <View style={[styles.rfidStatusDot, statusDotStyle]} />
                       <Text style={styles.rfidStatusText} numberOfLines={1}>
                         {t('rfidReaderIdLabel')}: {readerId}
                       </Text>
-                      <Text style={[styles.rfidStatusText, connected ? styles.rfidStatusTextConnected : undefined]}>
-                        {connected ? t('rfidConnectedLabel') : t('rfidDisconnectedLabel')}
+                      <Text style={[styles.rfidStatusText, statusTextStyle]}>
+                        {statusLabel}
                       </Text>
                       {/* Tap to disconnect — mainly so a live demo can be
                           replayed from the first dummy tag without leaving
@@ -1501,8 +1542,15 @@ const styles = StyleSheet.create({
   rfidStatusDot: { width: 10, height: 10, borderRadius: 5 },
   rfidStatusDotConnected: { backgroundColor: colors.success },
   rfidStatusDotDisconnected: { backgroundColor: '#8a94a6' },
+  // Impinj-only extra states — see impinjStatus. Started uses the app's
+  // dark-navy primary color (distinct from the green "just connected"
+  // state); failed uses the same red as every other error indicator here.
+  rfidStatusDotStarted: { backgroundColor: colors.primary },
+  rfidStatusDotFailed: { backgroundColor: colors.danger },
   rfidStatusText: { fontSize: 18, color: colors.text },
   rfidStatusTextConnected: { color: colors.success, fontWeight: '600' },
+  rfidStatusTextStarted: { color: colors.primary, fontWeight: '600' },
+  rfidStatusTextFailed: { color: colors.danger, fontWeight: '600' },
   // Overrides stateText's white color (meant for the dark camera/NFC
   // viewport) back to a readable dark tone on the RFID panel's white bg.
   rfidHintText: { color: colors.muted },
