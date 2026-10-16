@@ -409,7 +409,15 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
 
     if (isRealImpinj) {
       let cancelled = false;
+      // Guards against overlapping requests piling up — a single slow
+      // /api/tags round-trip (the backend's own timeout is 20s) would
+      // otherwise get a fresh request stacked on top of it every
+      // RFID_POLL_MS (1.5s) with nothing to stop them, same risk
+      // scanOnceYometel() already guards against for the Yometel branch.
+      let pollInFlight = false;
       const poll = async () => {
+        if (pollInFlight) return;
+        pollInFlight = true;
         try {
           const tags = await getImpinjTagsInView();
           if (cancelled) return;
@@ -423,6 +431,8 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
           );
         } catch (err) {
           if (!cancelled) setRfidTags([]);
+        } finally {
+          pollInFlight = false;
         }
       };
       poll();
@@ -653,12 +663,18 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
           throw new Error(status.lastError || t('rfidConnectFailed'));
         }
         setRfidConnectedByType((prev) => ({ ...prev, impinj: true }));
-        if (!status.isStarted) {
-          try {
-            await startImpinjReading();
-          } catch (startErr: any) {
-            setRfidConnectError(startErr?.message || 'Connected, but failed to start reading');
-          }
+        // Always (re)issue start rather than trusting isStarted — it only
+        // reflects the reader-service's own flag, which can end up stale
+        // if a previous read loop stopped/errored server-side without
+        // resetting it (seen live: "connection success" but no tags ever
+        // came in because start() was skipped on that belief). Worst case
+        // if it's already genuinely running is a harmless no-op/409 from
+        // the service, not a real failure, so it's swallowed rather than
+        // shown as a connect error.
+        try {
+          await startImpinjReading();
+        } catch (startErr) {
+          console.warn('Impinj start (after connect) did not succeed — may already be running:', startErr);
         }
       } catch (err: any) {
         console.error('Impinj connect failed:', err);
