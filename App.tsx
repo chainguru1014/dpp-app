@@ -109,6 +109,7 @@ export default function App() {
         EmployeeHome: 'employee-home',
         CorporateScanner: 'corporate-scanner',
         CorporateReview: 'corporate-review',
+        ShipmentInspection: 'shipment-inspection',
       },
     },
   };

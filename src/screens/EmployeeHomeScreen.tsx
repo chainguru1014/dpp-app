@@ -87,9 +87,13 @@ export default function EmployeeHomeScreen({ navigation, user, onLogout }: any) 
     navigation.navigate('CorporateScanner', { stepIndex: selectedStep ?? 0, captureType: 'rfid' });
   };
 
+  const handleShipmentInspection = () => {
+    navigation.navigate('ShipmentInspection');
+  };
+
   return (
     <AppLayout navigation={navigation} user={user} onLogout={onLogout} flatContent>
-      <ScrollView contentContainerStyle={[styles.container, { paddingBottom: spacing.xxxl + 56 }]}>
+      <ScrollView contentContainerStyle={[styles.container, { paddingBottom: spacing.xxxl + 56 + 54 + spacing.md }]}>
         <Text style={styles.title}>{t('workerOperationsTitle')}</Text>
         <Text style={styles.subtitle}>{t('workerOperationsSubtitle')}</Text>
 
@@ -138,6 +142,18 @@ export default function EmployeeHomeScreen({ navigation, user, onLogout }: any) 
       >
         <VectorIcon name="wifi-tethering" size={24} color="#fff" />
         <Text style={styles.rfidScanButtonText}>{t('rfidScanHomeButton')}</Text>
+      </TouchableOpacity>
+
+      {/* Shipment Inspection entry point — stacked above the RFID Scan
+          button, dark-navy (colors.primary) instead of the RFID button's
+          lighter header-blue so the two don't read as the same action. */}
+      <TouchableOpacity
+        style={[styles.shipmentInspectionButton, { bottom: bottomBarSpace + spacing.xxl + 54 + spacing.md }]}
+        onPress={handleShipmentInspection}
+        activeOpacity={0.85}
+      >
+        <VectorIcon name="local-shipping" size={24} color="#fff" />
+        <Text style={styles.rfidScanButtonText}>{t('shipmentInspectionHomeButton')}</Text>
       </TouchableOpacity>
     </AppLayout>
   );
@@ -214,4 +230,17 @@ const styles = StyleSheet.create({
     ...shadow(2),
   },
   rfidScanButtonText: { color: '#fff', fontSize: 20, fontWeight: '600' },
+  shipmentInspectionButton: {
+    position: 'absolute',
+    left: spacing.xl,
+    right: spacing.xl,
+    height: 54,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.primary,
+    borderRadius: radius.pill,
+    ...shadow(2),
+  },
 });

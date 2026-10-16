@@ -30,6 +30,7 @@ import StaffLoginScreen from '../screens/StaffLoginScreen';
 import EmployeeHomeScreen from '../screens/EmployeeHomeScreen';
 import CorporateScannerScreen from '../screens/CorporateScannerScreen';
 import CorporateReviewScreen from '../screens/CorporateReviewScreen';
+import ShipmentInspectionScreen from '../screens/ShipmentInspectionScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -230,6 +231,10 @@ export default function AppNavigator({ navigationRef }: { navigationRef: any }) 
 
       <Stack.Screen name="CorporateReview">
         {(props) => <CorporateReviewScreen {...props} user={user} onLogout={handleLogout} />}
+      </Stack.Screen>
+
+      <Stack.Screen name="ShipmentInspection">
+        {(props) => <ShipmentInspectionScreen {...props} user={user} onLogout={handleLogout} />}
       </Stack.Screen>
 
       <Stack.Screen name="Register">
