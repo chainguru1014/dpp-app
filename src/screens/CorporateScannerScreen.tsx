@@ -10,6 +10,8 @@ import {
   Image,
   ScrollView,
   Modal,
+  TextInput,
+  Switch,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused } from '@react-navigation/native';
@@ -36,7 +38,12 @@ import {
   stopImpinjReading,
   getImpinjReaderStatus,
   getImpinjTagsInView,
+  getImpinjReaderSettings,
+  updateImpinjReaderSettings,
   IMPINJ_READER_DISPLAY_NAME,
+  IMPINJ_DEFAULT_READER_SETTINGS,
+  ImpinjReaderSettings,
+  ImpinjInventorySettings,
 } from '../native/impinjRfid';
 
 const LIVENESS_TIMEOUT_MS = 700;
@@ -172,6 +179,15 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   // begun yet; 'started' = reading is actually active (this is also what
   // gates tag polling, see rfidReady below); 'failed' = either call errored.
   const [impinjStatus, setImpinjStatus] = useState<'idle' | 'connected' | 'started' | 'failed'>('idle');
+  // Reader Connection Settings (gear icon next to the Impinj row) — name/
+  // IP/port/timeout/reconnect behavior/antenna selection/advanced inventory
+  // options, sent to the reader-service via the backend's PUT /impinj/settings.
+  const [impinjSettingsVisible, setImpinjSettingsVisible] = useState(false);
+  const [impinjSettingsLoading, setImpinjSettingsLoading] = useState(false);
+  const [impinjSettingsSaving, setImpinjSettingsSaving] = useState(false);
+  const [impinjSettingsError, setImpinjSettingsError] = useState('');
+  const [impinjSettingsForm, setImpinjSettingsForm] = useState<ImpinjReaderSettings>(IMPINJ_DEFAULT_READER_SETTINGS);
+  const [impinjAdvancedOpen, setImpinjAdvancedOpen] = useState(false);
   // Debug timeline for the Yometel BLE handshake + TX/RX traffic — see
   // native/yometelRfid.ts's subscribeYometelDebug. Purely for the incoming
   // dev's hardware bring-up; capped so a long scanning session doesn't grow
@@ -753,6 +769,54 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
     setRfidConnectedByType((prev) => ({ ...prev, [rfidReaderType]: false }));
   };
 
+  const openImpinjSettings = async () => {
+    setImpinjSettingsVisible(true);
+    setImpinjSettingsError('');
+    setImpinjSettingsLoading(true);
+    try {
+      const current = await getImpinjReaderSettings();
+      setImpinjSettingsForm({ ...IMPINJ_DEFAULT_READER_SETTINGS, ...current });
+    } catch (err: any) {
+      // Reader-service may not have this endpoint live yet, or be
+      // unreachable right now — fall back to the given defaults rather
+      // than leaving the form blank, but say why.
+      setImpinjSettingsForm(IMPINJ_DEFAULT_READER_SETTINGS);
+      setImpinjSettingsError(err?.message || 'Could not load current settings — showing defaults.');
+    } finally {
+      setImpinjSettingsLoading(false);
+    }
+  };
+
+  const setImpinjField = <K extends keyof ImpinjReaderSettings>(key: K, value: ImpinjReaderSettings[K]) => {
+    setImpinjSettingsForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const setImpinjInventoryField = (key: keyof ImpinjInventorySettings, value: ImpinjInventorySettings[keyof ImpinjInventorySettings]) => {
+    setImpinjSettingsForm((prev) => ({ ...prev, inventorySettings: { ...prev.inventorySettings, [key]: value } }));
+  };
+
+  const handleSaveImpinjSettings = async () => {
+    setImpinjSettingsError('');
+    if (!impinjSettingsForm.ipAddress.trim()) {
+      setImpinjSettingsError('IP address is required.');
+      return;
+    }
+    if (!Number.isInteger(impinjSettingsForm.port) || impinjSettingsForm.port < 1 || impinjSettingsForm.port > 65535) {
+      setImpinjSettingsError('Port must be a number between 1 and 65535.');
+      return;
+    }
+    setImpinjSettingsSaving(true);
+    try {
+      const applied = await updateImpinjReaderSettings(impinjSettingsForm);
+      setImpinjSettingsForm({ ...IMPINJ_DEFAULT_READER_SETTINGS, ...applied });
+      setImpinjSettingsVisible(false);
+    } catch (err: any) {
+      setImpinjSettingsError(err?.message || 'Could not save settings.');
+    } finally {
+      setImpinjSettingsSaving(false);
+    }
+  };
+
   // Logs one detected RFID tag — called automatically by the auto-capture
   // effect below (RFID mode has no manual Capture button; a tag passing near
   // a connected reader is captured on its own). Every detected tag is
@@ -1134,6 +1198,19 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                           <VectorIcon name="bug-report" size={20} color={colors.muted} />
                         </TouchableOpacity>
                       )}
+                      {/* Reader Connection Settings — available whenever the
+                          Impinj chip is selected, connected or not, since
+                          these (IP/port/reconnect behavior/etc.) are
+                          normally set up before ever connecting. */}
+                      {isRealImpinj && (
+                        <TouchableOpacity
+                          onPress={openImpinjSettings}
+                          activeOpacity={0.7}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <VectorIcon name="settings" size={20} color={colors.muted} />
+                        </TouchableOpacity>
+                      )}
                     </View>
                     {!connected && (
                       <TouchableOpacity
@@ -1436,6 +1513,232 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
             >
               <Text style={styles.debugClearButtonText}>Clear</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Reader Connection Settings — name/IP/port/timeout/reconnect
+          behavior/auto-connect-on-startup/antenna selection, plus an
+          advanced inventory-settings section. Loads the reader-service's
+          current settings on open (falling back to the given defaults if
+          that call fails/isn't implemented yet), saves via PUT. */}
+      <Modal visible={impinjSettingsVisible} transparent animationType="slide" onRequestClose={() => setImpinjSettingsVisible(false)}>
+        <View style={styles.debugOverlay}>
+          <View style={[styles.debugCard, styles.impinjSettingsCard]}>
+            <View style={styles.debugHeaderRow}>
+              <Text style={[styles.debugTitle, styles.impinjSettingsTitle]}>Reader Connection Settings</Text>
+              <TouchableOpacity
+                onPress={() => setImpinjSettingsVisible(false)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityRole="button"
+                accessibilityLabel={t('close')}
+              >
+                <VectorIcon name="close" size={24} color={colors.muted} />
+              </TouchableOpacity>
+            </View>
+            {impinjSettingsLoading ? (
+              <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.primary} />
+            ) : (
+              <ScrollView style={styles.debugScroll} keyboardShouldPersistTaps="handled">
+                <Text style={styles.impinjFieldLabel}>Reader name</Text>
+                <TextInput
+                  style={styles.impinjInput}
+                  value={impinjSettingsForm.readerName}
+                  onChangeText={(v) => setImpinjField('readerName', v)}
+                  placeholder="Main RFID Reader"
+                  placeholderTextColor={colors.placeholder}
+                />
+
+                <Text style={styles.impinjFieldLabel}>IP address or hostname</Text>
+                <TextInput
+                  style={styles.impinjInput}
+                  value={impinjSettingsForm.ipAddress}
+                  onChangeText={(v) => setImpinjField('ipAddress', v)}
+                  placeholder="192.168.1.10"
+                  placeholderTextColor={colors.placeholder}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+
+                <Text style={styles.impinjFieldLabel}>LLRP TCP port</Text>
+                <TextInput
+                  style={styles.impinjInput}
+                  value={String(impinjSettingsForm.port)}
+                  onChangeText={(v) => setImpinjField('port', Number(v.replace(/[^0-9]/g, '')) || 0)}
+                  keyboardType="numeric"
+                  placeholder="5084"
+                  placeholderTextColor={colors.placeholder}
+                />
+
+                <Text style={styles.impinjFieldLabel}>Connection timeout (ms)</Text>
+                <TextInput
+                  style={styles.impinjInput}
+                  value={String(impinjSettingsForm.connectionTimeoutMs)}
+                  onChangeText={(v) => setImpinjField('connectionTimeoutMs', Number(v.replace(/[^0-9]/g, '')) || 0)}
+                  keyboardType="numeric"
+                  placeholder="10000"
+                  placeholderTextColor={colors.placeholder}
+                />
+
+                <View style={styles.impinjSwitchRow}>
+                  <Text style={styles.impinjFieldLabel}>Automatic reconnection</Text>
+                  <Switch
+                    value={impinjSettingsForm.autoReconnect}
+                    onValueChange={(v) => setImpinjField('autoReconnect', v)}
+                    trackColor={{ false: '#8a94a6', true: colors.primary }}
+                  />
+                </View>
+
+                {impinjSettingsForm.autoReconnect && (
+                  <>
+                    <Text style={styles.impinjFieldLabel}>Reconnect interval (ms)</Text>
+                    <TextInput
+                      style={styles.impinjInput}
+                      value={String(impinjSettingsForm.reconnectIntervalMs)}
+                      onChangeText={(v) => setImpinjField('reconnectIntervalMs', Number(v.replace(/[^0-9]/g, '')) || 0)}
+                      keyboardType="numeric"
+                      placeholder="5000"
+                      placeholderTextColor={colors.placeholder}
+                    />
+
+                    <View style={styles.impinjSwitchRow}>
+                      <Text style={styles.impinjFieldLabel}>Unlimited reconnect attempts</Text>
+                      <Switch
+                        value={impinjSettingsForm.unlimitedReconnectAttempts}
+                        onValueChange={(v) => setImpinjField('unlimitedReconnectAttempts', v)}
+                        trackColor={{ false: '#8a94a6', true: colors.primary }}
+                      />
+                    </View>
+
+                    {!impinjSettingsForm.unlimitedReconnectAttempts && (
+                      <>
+                        <Text style={styles.impinjFieldLabel}>Maximum reconnect attempts</Text>
+                        <TextInput
+                          style={styles.impinjInput}
+                          value={String(impinjSettingsForm.maxReconnectAttempts)}
+                          onChangeText={(v) => setImpinjField('maxReconnectAttempts', Number(v.replace(/[^0-9]/g, '')) || 0)}
+                          keyboardType="numeric"
+                          placeholder="10"
+                          placeholderTextColor={colors.placeholder}
+                        />
+                      </>
+                    )}
+                  </>
+                )}
+
+                <View style={styles.impinjSwitchRow}>
+                  <Text style={styles.impinjFieldLabel}>Connect automatically on startup</Text>
+                  <Switch
+                    value={impinjSettingsForm.autoConnectOnStartup}
+                    onValueChange={(v) => setImpinjField('autoConnectOnStartup', v)}
+                    trackColor={{ false: '#8a94a6', true: colors.primary }}
+                  />
+                </View>
+
+                {/* Only shown once the reader-service has reported its real
+                    antenna capabilities (typically after a first successful
+                    connect) — nothing to pick from before that. */}
+                {!!impinjSettingsForm.availableAntennaPorts?.length && (
+                  <>
+                    <Text style={styles.impinjFieldLabel}>Enabled antennas</Text>
+                    <View style={styles.impinjAntennaRow}>
+                      {impinjSettingsForm.availableAntennaPorts.map((port) => {
+                        const enabled = impinjSettingsForm.enabledAntennaPorts
+                          ? impinjSettingsForm.enabledAntennaPorts.includes(port)
+                          : true;
+                        return (
+                          <TouchableOpacity
+                            key={port}
+                            style={[styles.impinjAntennaChip, enabled && styles.impinjAntennaChipActive]}
+                            activeOpacity={0.75}
+                            onPress={() => {
+                              setImpinjSettingsForm((prev) => {
+                                const current = prev.enabledAntennaPorts ?? prev.availableAntennaPorts ?? [];
+                                const next = current.includes(port)
+                                  ? current.filter((p) => p !== port)
+                                  : [...current, port];
+                                return { ...prev, enabledAntennaPorts: next };
+                              });
+                            }}
+                          >
+                            <Text style={[styles.impinjAntennaChipText, enabled && styles.impinjAntennaChipTextActive]}>
+                              {`Antenna ${port}`}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </>
+                )}
+
+                <TouchableOpacity
+                  style={styles.impinjAdvancedToggle}
+                  onPress={() => setImpinjAdvancedOpen((v) => !v)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.impinjAdvancedToggleText}>Advanced inventory settings</Text>
+                  <VectorIcon name={impinjAdvancedOpen ? 'expand-less' : 'expand-more'} size={22} color={colors.primary} />
+                </TouchableOpacity>
+
+                {impinjAdvancedOpen && (
+                  <View>
+                    <Text style={styles.impinjFieldHint}>Leave any of these blank to use the reader-service's own default.</Text>
+
+                    <Text style={styles.impinjFieldLabel}>RF mode</Text>
+                    <TextInput
+                      style={styles.impinjInput}
+                      value={impinjSettingsForm.inventorySettings?.rfMode != null ? String(impinjSettingsForm.inventorySettings.rfMode) : ''}
+                      onChangeText={(v) => setImpinjInventoryField('rfMode', v ? Number(v.replace(/[^0-9]/g, '')) : null)}
+                      keyboardType="numeric"
+                      placeholderTextColor={colors.placeholder}
+                    />
+
+                    <Text style={styles.impinjFieldLabel}>Search mode</Text>
+                    <TextInput
+                      style={styles.impinjInput}
+                      value={impinjSettingsForm.inventorySettings?.searchMode || ''}
+                      onChangeText={(v) => setImpinjInventoryField('searchMode', v || null)}
+                      placeholder="e.g. DualTarget"
+                      placeholderTextColor={colors.placeholder}
+                      autoCapitalize="none"
+                    />
+
+                    <Text style={styles.impinjFieldLabel}>Session (0-3)</Text>
+                    <TextInput
+                      style={styles.impinjInput}
+                      value={impinjSettingsForm.inventorySettings?.session != null ? String(impinjSettingsForm.inventorySettings.session) : ''}
+                      onChangeText={(v) => setImpinjInventoryField('session', v ? Number(v.replace(/[^0-9]/g, '')) : null)}
+                      keyboardType="numeric"
+                      placeholderTextColor={colors.placeholder}
+                    />
+
+                    <Text style={styles.impinjFieldLabel}>Power level (dBm)</Text>
+                    <TextInput
+                      style={styles.impinjInput}
+                      value={impinjSettingsForm.inventorySettings?.powerDbm != null ? String(impinjSettingsForm.inventorySettings.powerDbm) : ''}
+                      onChangeText={(v) => setImpinjInventoryField('powerDbm', v ? Number(v.replace(/[^0-9.]/g, '')) : null)}
+                      keyboardType="numeric"
+                      placeholderTextColor={colors.placeholder}
+                    />
+                  </View>
+                )}
+
+                {!!impinjSettingsError && <Text style={styles.rfidConnectErrorText}>{impinjSettingsError}</Text>}
+
+                <GradientButton
+                  style={styles.impinjSaveButton}
+                  onPress={handleSaveImpinjSettings}
+                  activeOpacity={0.85}
+                  disabled={impinjSettingsSaving}
+                >
+                  {impinjSettingsSaving ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.helpCloseButtonText}>Save</Text>
+                  )}
+                </GradientButton>
+              </ScrollView>
+            )}
           </View>
         </View>
       </Modal>
@@ -1845,4 +2148,51 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   debugClearButtonText: { color: '#8a94a6', fontSize: 15, fontWeight: '600' },
+  // Reader Connection Settings — reuses debugOverlay/debugCard/
+  // debugHeaderRow/debugScroll's bottom-sheet layout, but overrides the
+  // dark debug-log theme back to the app's normal light surface (a form
+  // full of text inputs needs to be legible, not styled like a log).
+  impinjSettingsCard: { backgroundColor: colors.surface, height: '85%' },
+  impinjSettingsTitle: { color: colors.heading },
+  impinjFieldLabel: { fontSize: 15, color: colors.primaryDark, marginBottom: spacing.xs, marginTop: spacing.sm },
+  impinjFieldHint: { fontSize: 13, color: colors.muted, marginBottom: spacing.sm },
+  impinjInput: {
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: 11,
+    paddingHorizontal: 14,
+    fontSize: 16,
+    color: colors.text,
+  },
+  impinjSwitchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing.md,
+  },
+  impinjAntennaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+  impinjAntennaChip: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceAlt,
+  },
+  impinjAntennaChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  impinjAntennaChipText: { fontSize: 14, color: colors.text, fontWeight: '600' },
+  impinjAntennaChipTextActive: { color: '#fff' },
+  impinjAdvancedToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  impinjAdvancedToggleText: { fontSize: 16, fontWeight: '600', color: colors.primary },
+  impinjSaveButton: { marginTop: spacing.lg, marginBottom: spacing.xl, borderRadius: radius.pill, paddingVertical: spacing.md, alignItems: 'center' },
 });

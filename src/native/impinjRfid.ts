@@ -46,16 +46,65 @@ export interface ImpinjTagRead {
   phaseAngleInRadians: number | null;
 }
 
+// Reader connection settings — proposed contract against the reader-
+// service's GET/PUT /api/reader/settings (not yet confirmed against the
+// actual .NET implementation; see rfid-reader-service's handoff notes for
+// the exact spec this was designed against). availableAntennaPorts is
+// populated by the reader-service once it knows the hardware's real
+// capabilities (e.g. after a successful connect) — the settings UI only
+// shows antenna selection when this is present, per "if capabilities are
+// available".
+export interface ImpinjInventorySettings {
+  rfMode?: number | null;
+  searchMode?: string | null;
+  session?: number | null;
+  powerDbm?: number | null;
+}
+
+export interface ImpinjReaderSettings {
+  readerName: string;
+  ipAddress: string;
+  port: number;
+  connectionTimeoutMs: number;
+  autoReconnect: boolean;
+  reconnectIntervalMs: number;
+  maxReconnectAttempts: number;
+  unlimitedReconnectAttempts: boolean;
+  autoConnectOnStartup: boolean;
+  availableAntennaPorts?: number[] | null;
+  enabledAntennaPorts?: number[] | null;
+  inventorySettings?: ImpinjInventorySettings;
+}
+
+// Initial/fallback values given for this feature — shown in the settings
+// form before the reader-service's actual current settings have loaded
+// (or if that GET fails), so the form is never blank.
+export const IMPINJ_DEFAULT_READER_SETTINGS: ImpinjReaderSettings = {
+  readerName: 'Main RFID Reader',
+  ipAddress: '192.168.1.10',
+  port: 5084,
+  connectionTimeoutMs: 10000,
+  autoReconnect: true,
+  reconnectIntervalMs: 5000,
+  maxReconnectAttempts: 10,
+  unlimitedReconnectAttempts: false,
+  autoConnectOnStartup: true,
+};
+
 // Every endpoint shares the same shape of concerns (timeout, non-2xx ->
 // {error}, 204 -> no body), so it's all funneled through one helper instead
 // of repeating try/catch per call. Path is relative to API_BASE_URL, which
 // already includes a trailing slash (see config/api.ts).
-async function request<T>(method: string, path: string): Promise<T> {
+async function request<T>(method: string, path: string, body?: any): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   let res: Response;
   try {
-    res = await fetch(`${API_BASE_URL}impinj/${path}`, { method, signal: controller.signal });
+    res = await fetch(`${API_BASE_URL}impinj/${path}`, {
+      method,
+      signal: controller.signal,
+      ...(body !== undefined ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}),
+    });
   } catch (err: any) {
     throw new Error(
       err?.name === 'AbortError'
@@ -88,3 +137,7 @@ export const stopImpinjReading = () => request<ImpinjReaderStatus>('POST', 'stop
 export const getImpinjTagsInView = () => request<ImpinjTagRead[]>('GET', 'tags');
 export const getImpinjRecentTags = (count = 100) => request<ImpinjTagRead[]>('GET', `tags/recent?count=${count}`);
 export const clearImpinjTags = () => request<void>('DELETE', 'tags');
+
+export const getImpinjReaderSettings = () => request<ImpinjReaderSettings>('GET', 'settings');
+export const updateImpinjReaderSettings = (settings: ImpinjReaderSettings) =>
+  request<ImpinjReaderSettings>('PUT', 'settings', settings);
