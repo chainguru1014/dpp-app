@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Platform, Modal } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Platform, Modal, Image } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import VectorIcon from 'react-native-vector-icons/MaterialIcons';
 import AppLayout from '../components/AppLayout';
 import GradientButton from '../components/GradientButton';
+import MediaSlider from '../components/MediaSlider';
 import WebCodeScanner from '../components/WebCodeScanner';
 import CaptureCameraView, { isCaptureCameraAvailable } from '../components/CaptureCameraView';
 import { requestNativeCameraPermission } from '../components/NativeCodeScanner';
@@ -28,6 +29,19 @@ import {
 // scan-and-capture loop.
 
 const GATE_POLL_MS = 1200;
+
+// pmc/lookup returns product images as bare upload filenames — same
+// resolution every other product-image screen uses.
+const fileUrl = (f: string) => {
+  if (!f) return '';
+  if (/^https?:\/\//i.test(f)) return f;
+  return `${API_BASE_URL}files/${String(f).replace(/^\/+/, '')}`;
+};
+
+interface PassingTag {
+  epc: string;
+  seenAt: string;
+}
 
 interface ManifestDto {
   _id: string;
@@ -101,6 +115,12 @@ export default function ShipmentInspectionScreen({ navigation, user, onLogout }:
   // read-only /preview-match endpoint whenever a new tag is seen.
   const [previewMatched, setPreviewMatched] = useState(0);
   const previewInFlightRef = useRef(false);
+  // Passing Tags — every unique EPC seen this session, newest-found first,
+  // same card/tap-to-preview UX as CorporateScannerScreen's RFID flow
+  // (lookupBySourceType/rfidProductByEpc/previewTag ported directly).
+  const [passingTags, setPassingTags] = useState<PassingTag[]>([]);
+  const [rfidProductByEpc, setRfidProductByEpc] = useState<Record<string, { productId?: string; qrcodeId?: string; productImage?: string; product?: any } | null>>({});
+  const [previewTag, setPreviewTag] = useState<{ product: any; productId?: string; qrcodeId?: string } | null>(null);
 
   // Step 3 — result
   const [result, setResult] = useState<InspectionResultDto | null>(null);
@@ -115,6 +135,33 @@ export default function ShipmentInspectionScreen({ navigation, user, onLogout }:
   const authHeader = async () => {
     const token = await AsyncStorage.getItem('userToken');
     return token ? { Authorization: `Bearer ${token}` } : undefined;
+  };
+
+  // Ported directly from CorporateScannerScreen's RFID flow — unauthenticated,
+  // works for any registered identifier (not manifest-scoped), so the same
+  // helper serves both screens without needing to know about manifests.
+  const lookupRfidProduct = async (epc: string): Promise<{ recognized: boolean; productId?: string; qrcodeId?: string; productImage?: string; product?: any }> => {
+    try {
+      const res = await fetch(`${API_BASE_URL}pmc/lookup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source_type: 'rfid', raw_value: epc }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.status === 'success') {
+        return {
+          recognized: true,
+          productId: data.data?._id ? String(data.data._id) : undefined,
+          qrcodeId: data.data?.token_id != null ? String(data.data.token_id) : undefined,
+          productImage: Array.isArray(data.data?.images) && data.data.images.length > 0 ? String(data.data.images[0]) : undefined,
+          product: data.data,
+        };
+      }
+      return { recognized: false };
+    } catch (err) {
+      console.error('lookupRfidProduct failed:', err);
+      return { recognized: false };
+    }
   };
 
   const handleLookup = async (overrideCode?: string): Promise<boolean> => {
@@ -163,6 +210,8 @@ export default function ShipmentInspectionScreen({ navigation, user, onLogout }:
     scannedEpcsRef.current = new Set();
     setScannedCount(0);
     setPreviewMatched(0);
+    setPassingTags([]);
+    setRfidProductByEpc({});
     setGateState('idle');
     setGateError('');
     setManifest(null);
@@ -204,6 +253,8 @@ export default function ShipmentInspectionScreen({ navigation, user, onLogout }:
     scannedEpcsRef.current = new Set();
     setScannedCount(0);
     setPreviewMatched(0);
+    setPassingTags([]);
+    setRfidProductByEpc({});
     try {
       let status = await getImpinjReaderStatus();
       if (!status.isConnected) {
@@ -221,15 +272,32 @@ export default function ShipmentInspectionScreen({ navigation, user, onLogout }:
         try {
           const tags = await getImpinjTagsInView();
           let added = false;
+          const newEpcs: string[] = [];
           for (const tag of tags) {
             if (tag.epc && !scannedEpcsRef.current.has(tag.epc)) {
               scannedEpcsRef.current.add(tag.epc);
+              newEpcs.push(tag.epc);
               added = true;
             }
           }
           if (added) {
             setScannedCount(scannedEpcsRef.current.size);
             previewMatch();
+            const seenAt = new Date().toISOString();
+            setPassingTags((prev) => [...newEpcs.map((epc) => ({ epc, seenAt })), ...prev]);
+            // Resolve each newly-seen tag's product in the background —
+            // doesn't block the poll loop or Finish Scan, just fills in the
+            // Passing Tags card's image/name as each lookup completes.
+            newEpcs.forEach((epc) => {
+              lookupRfidProduct(epc).then((resolved) => {
+                setRfidProductByEpc((prev) => ({
+                  ...prev,
+                  [epc]: resolved.recognized
+                    ? { productId: resolved.productId, qrcodeId: resolved.qrcodeId, productImage: resolved.productImage, product: resolved.product }
+                    : null,
+                }));
+              });
+            });
           }
         } catch (err) {
           // A transient poll failure mid-session isn't fatal — the next
@@ -470,6 +538,58 @@ export default function ShipmentInspectionScreen({ navigation, user, onLogout }:
                     {scannedCount} {t('shipmentInspectionTagsDetected')}
                   </Text>
                 </View>
+
+                {/* Passing Tags — same card/tap-to-preview UX as
+                    CorporateScannerScreen's RFID flow, newest-found tag on
+                    top, each row clickable once its product resolves. */}
+                <View style={styles.rfidPassingCard}>
+                  <Text style={styles.rfidPassingHeading}>{t('rfidPassingTagsHeading')}</Text>
+                  {passingTags.length === 0 ? (
+                    <View style={styles.rfidPassingEmpty}>
+                      <VectorIcon name="wifi-tethering" size={32} color={colors.muted} />
+                      <Text style={[styles.rfidHintText, { marginTop: spacing.sm, textAlign: 'center' }]}>
+                        {t('corpRfidHint')}
+                      </Text>
+                    </View>
+                  ) : (
+                    <ScrollView style={styles.rfidPassingList} showsVerticalScrollIndicator={false}>
+                      {passingTags.map((tag, index) => {
+                        const resolved = rfidProductByEpc[tag.epc];
+                        const productId = resolved?.productId;
+                        return (
+                          <TouchableOpacity
+                            key={tag.epc}
+                            style={styles.rfidPassingRow}
+                            activeOpacity={productId ? 0.7 : 1}
+                            disabled={!productId}
+                            onPress={() => setPreviewTag({ product: resolved?.product, productId, qrcodeId: resolved?.qrcodeId })}
+                          >
+                            {resolved?.productImage ? (
+                              <Image source={{ uri: fileUrl(resolved.productImage) }} style={styles.rfidPassingIconBox} />
+                            ) : (
+                              <View style={styles.rfidPassingIconBox}>
+                                <VectorIcon name="wifi-tethering" size={20} color={colors.primary} />
+                              </View>
+                            )}
+                            <View style={styles.rfidPassingDetail}>
+                              <Text style={styles.rfidPassingLabel} numberOfLines={1}>
+                                {resolved?.product?.name || t('rfidUnknownTag')}
+                              </Text>
+                              <Text style={styles.rfidPassingEpc} numberOfLines={1}>{tag.epc}</Text>
+                            </View>
+                            {index === 0 && (
+                              <View style={styles.rfidNewBadge}>
+                                <Text style={styles.rfidNewBadgeText}>{t('rfidLatestBadge')}</Text>
+                              </View>
+                            )}
+                            {!!productId && <VectorIcon name="chevron-right" size={20} color={colors.muted} />}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                  )}
+                </View>
+
                 <GradientButton style={styles.primaryButton} onPress={handleFinishGateScan}>
                   <Text style={styles.primaryButtonText}>{t('shipmentInspectionFinishGateScan')}</Text>
                 </GradientButton>
@@ -534,6 +654,53 @@ export default function ShipmentInspectionScreen({ navigation, user, onLogout }:
         )}
       </ScrollView>
       )}
+
+      {/* Tapping a Passing Tags row opens this — identical pattern to
+          CorporateScannerScreen's RFID preview dialog. */}
+      <Modal visible={!!previewTag} transparent animationType="fade" onRequestClose={() => setPreviewTag(null)}>
+        <TouchableOpacity style={styles.helpOverlay} activeOpacity={1} onPress={() => setPreviewTag(null)}>
+          <TouchableOpacity style={styles.previewCard} activeOpacity={1} onPress={() => {}}>
+            <TouchableOpacity
+              style={styles.previewCloseIcon}
+              onPress={() => setPreviewTag(null)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel={t('close')}
+            >
+              <VectorIcon name="close" size={26} color={colors.muted} />
+            </TouchableOpacity>
+            <View style={styles.previewMedia}>
+              <MediaSlider
+                images={Array.isArray(previewTag?.product?.images) ? previewTag.product.images : []}
+                videos={Array.isArray(previewTag?.product?.videos) ? previewTag.product.videos : []}
+                hideHeader
+                flush
+                maxHeight={180}
+                getFileUrl={fileUrl}
+              />
+            </View>
+            <Text style={styles.previewName} numberOfLines={2}>{previewTag?.product?.name || '—'}</Text>
+            <View style={styles.previewVerifiedBadge}>
+              <VectorIcon name="check-circle" size={18} color={colors.primary} />
+              <Text style={styles.previewVerifiedText}>{t('overviewAuthenticated')}</Text>
+            </View>
+            <View style={styles.previewRows}>
+              {[
+                { label: t('summaryBrand'), value: previewTag?.product?.brandInfo?.name },
+                { label: t('factProductType'), value: previewTag?.product?.productType },
+                { label: t('factColor'), value: previewTag?.product?.color },
+                { label: t('factSize'), value: previewTag?.product?.size },
+                { label: t('summaryMaterial'), value: previewTag?.product?.detailFacts?.material },
+              ].filter((row) => !!row.value).map((row) => (
+                <View key={row.label} style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>{row.label}</Text>
+                  <Text style={styles.detailValue} numberOfLines={1}>{row.value}</Text>
+                </View>
+              ))}
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
 
       <Modal visible={helpVisible} transparent animationType="fade" onRequestClose={() => setHelpVisible(false)}>
         <TouchableOpacity style={styles.helpOverlay} activeOpacity={1} onPress={() => setHelpVisible(false)}>
@@ -612,6 +779,28 @@ const styles = StyleSheet.create({
   scanningBoxComplete: { backgroundColor: colors.success },
   scanningCountComplete: { color: '#fff' },
   scanningLabelComplete: { color: '#fff' },
+  rfidHintText: { color: colors.muted },
+  rfidPassingCard: { flex: 1, backgroundColor: colors.surfaceAlt, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.md },
+  rfidPassingHeading: { fontSize: 17, fontWeight: '600', color: colors.muted, marginBottom: spacing.xs },
+  rfidPassingEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  rfidPassingList: { flex: 1 },
+  rfidPassingRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.sm, marginBottom: spacing.xs },
+  rfidPassingIconBox: { width: 40, height: 40, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
+  rfidPassingDetail: { flex: 1, marginLeft: spacing.sm },
+  rfidPassingLabel: { fontSize: 16, fontWeight: '600', color: colors.text },
+  rfidPassingEpc: { fontSize: 13, color: colors.muted, marginTop: 1 },
+  rfidNewBadge: { backgroundColor: colors.primary, borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: 3, marginLeft: spacing.xs },
+  rfidNewBadgeText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  previewCard: { width: '100%', maxWidth: 360, backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, ...shadow(3) },
+  previewCloseIcon: { position: 'absolute', top: spacing.sm, right: spacing.sm, zIndex: 2, padding: 4 },
+  previewMedia: { width: '100%', marginTop: spacing.lg, marginBottom: spacing.sm },
+  previewName: { fontSize: 22, fontWeight: '700', color: colors.heading, marginBottom: spacing.xs, textAlign: 'center' },
+  previewVerifiedBadge: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, marginBottom: spacing.md },
+  previewVerifiedText: { fontSize: 15, color: colors.primary, fontWeight: '600' },
+  previewRows: {},
+  detailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.border },
+  detailLabel: { fontSize: 16, color: colors.muted },
+  detailValue: { fontSize: 16, color: colors.text, fontWeight: '600', flexShrink: 1, textAlign: 'right', marginLeft: spacing.md },
   // Full-screen camera (default lookup view) — mirrors ScannerScreen's
   // container/scanViewport + bottom action-pill pattern.
   cameraScreen: { flex: 1, backgroundColor: colors.bg },
