@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Platform, Modal } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import VectorIcon from 'react-native-vector-icons/MaterialIcons';
 import AppLayout from '../components/AppLayout';
@@ -7,6 +7,7 @@ import GradientButton from '../components/GradientButton';
 import WebCodeScanner from '../components/WebCodeScanner';
 import CaptureCameraView, { isCaptureCameraAvailable } from '../components/CaptureCameraView';
 import { requestNativeCameraPermission } from '../components/NativeCodeScanner';
+import ScanFrameCorners from '../components/ScanFrameCorners';
 import { useI18n } from '../i18n/I18nContext';
 import { API_BASE_URL } from '../config/api';
 import { colors, radius, spacing, shadow, MIN_TOUCH } from '../theme';
@@ -71,6 +72,8 @@ export default function ShipmentInspectionScreen({ navigation, user, onLogout }:
   const [manifest, setManifest] = useState<ManifestDto | null>(null);
   const [manualEntryMode, setManualEntryMode] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const [torchOn, setTorchOn] = useState(false);
+  const [helpVisible, setHelpVisible] = useState(false);
   const scannerHandledRef = useRef(false);
 
   useEffect(() => {
@@ -296,23 +299,19 @@ export default function ShipmentInspectionScreen({ navigation, user, onLogout }:
       flushBottom={step === 'lookup' && !manualEntryMode}
     >
       {step === 'lookup' && !manualEntryMode ? (
-        // Default view, matching the normal-user scan page: full-screen
-        // camera, with "Enter code manually" as a pill near the bottom
-        // instead of a text field shown up front.
+        // Mirrors ScannerScreen's own camera overlay layout exactly: frame
+        // corners, a top hint pill, a flash/help corner row, and a single
+        // bottom pill — same positions and styles, just one action
+        // ("Enter manually") instead of that screen's two.
         <View style={styles.cameraScreen}>
           <View style={styles.cameraViewport}>
-            {/* Fills exactly the viewport's bounds rather than the camera's
-                own intrinsic size (same fix ScannerScreen's
-                webScannerContainer applies) — without this, the camera on
-                web renders at its natural size and pushes everything below
-                it (including the bottom pill) out of the visible area. */}
             <View style={styles.cameraFill}>
               {hasCameraPermission === null ? (
                 <ActivityIndicator size="large" color={colors.primary} />
               ) : Platform.OS === 'web' ? (
                 <WebCodeScanner active onScan={(value) => handleCameraScan(value)} />
               ) : isCaptureCameraAvailable() ? (
-                <CaptureCameraView active onScan={(value) => handleCameraScan(value)} />
+                <CaptureCameraView active onScan={(value) => handleCameraScan(value)} torch={torchOn} />
               ) : (
                 <Text style={styles.scannerUnavailableTextDark}>{t('cameraNotAvailableBrowser')}</Text>
               )}
@@ -322,24 +321,48 @@ export default function ShipmentInspectionScreen({ navigation, user, onLogout }:
                 <ActivityIndicator color="#fff" />
               </View>
             )}
-            <View pointerEvents="none" style={styles.cameraHintWrap}>
-              <VectorIcon name="qr-code" size={16} color="#fff" style={{ marginRight: 6 }} />
-              <Text style={styles.cameraHintText}>{t('shipmentInspectionLookupPrompt')}</Text>
+            <View pointerEvents="none" style={styles.frameOverlay}>
+              <ScanFrameCorners size={240} />
             </View>
-          </View>
-          {/* Normal flex layout, not an absolutely-positioned overlay on top
-              of the camera — sits between the bottom of the camera area and
-              the bottom bar, guaranteed visible regardless of whatever the
-              camera component itself does internally on web. */}
-          <View style={styles.cameraBottomBar}>
-            <TouchableOpacity
-              style={styles.cameraBottomBtn}
-              onPress={() => setManualEntryMode(true)}
-              activeOpacity={0.85}
-            >
-              <VectorIcon name="keyboard" size={18} color={colors.primary} />
-              <Text style={styles.cameraBottomBtnText}>{t('shipmentInspectionOrEnterManually')}</Text>
-            </TouchableOpacity>
+            <View pointerEvents="none" style={styles.overlayHintWrap}>
+              <VectorIcon name="qr-code" size={16} color="#fff" style={styles.overlayHintIcon} />
+              <Text style={styles.overlayHintText}>{t('shipmentInspectionScanHint')}</Text>
+            </View>
+            <View style={styles.overlayCornerRow}>
+              <TouchableOpacity
+                style={styles.overlayCornerButton}
+                onPress={() => setTorchOn((v) => !v)}
+                activeOpacity={0.75}
+                accessibilityRole="button"
+                accessibilityLabel={t('scanFlash')}
+                accessibilityState={{ selected: torchOn }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <VectorIcon name={torchOn ? 'flash-on' : 'flash-off'} size={20} color="#fff" />
+                <Text style={styles.overlayCornerText}>{t('scanFlash')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.overlayCornerButton}
+                onPress={() => setHelpVisible(true)}
+                activeOpacity={0.75}
+                accessibilityRole="button"
+                accessibilityLabel={t('scanHelpLabel')}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <VectorIcon name="help-outline" size={20} color="#fff" />
+                <Text style={styles.overlayCornerText}>{t('scanHelpLabel')}</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.overlayActionRow}>
+              <TouchableOpacity
+                style={styles.overlayActionBtn}
+                onPress={() => setManualEntryMode(true)}
+                activeOpacity={0.85}
+              >
+                <VectorIcon name="keyboard" size={18} color={colors.primary} />
+                <Text style={styles.overlayActionText}>{t('shipmentInspectionEnterManually')}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       ) : (
@@ -511,6 +534,18 @@ export default function ShipmentInspectionScreen({ navigation, user, onLogout }:
         )}
       </ScrollView>
       )}
+
+      <Modal visible={helpVisible} transparent animationType="fade" onRequestClose={() => setHelpVisible(false)}>
+        <TouchableOpacity style={styles.helpOverlay} activeOpacity={1} onPress={() => setHelpVisible(false)}>
+          <View style={styles.helpCard}>
+            <Text style={styles.helpTitle}>{t('shipmentInspectionTitle')}</Text>
+            <Text style={styles.helpBody}>{t('shipmentInspectionHelpBody')}</Text>
+            <GradientButton style={styles.helpCloseButton} onPress={() => setHelpVisible(false)} activeOpacity={0.8}>
+              <Text style={styles.helpCloseButtonText}>{t('close')}</Text>
+            </GradientButton>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </AppLayout>
   );
 }
@@ -539,7 +574,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...shadow(1),
   },
-  primaryButtonDisabled: { opacity: 0.5 },
+  // GradientButton skips painting its gradient entirely while disabled
+  // (see that component's own comment), falling back to whatever flat
+  // backgroundColor this style sets — opacity alone left it with no
+  // background at all, nearly-white text on the page's own light
+  // background. Same solid muted fill CorporateScannerScreen's own
+  // captureButtonDisabled uses.
+  primaryButtonDisabled: { backgroundColor: colors.borderStrong },
   primaryButtonText: { color: '#fff', fontSize: 20, fontWeight: '600' },
   linkButton: { marginTop: spacing.lg, alignItems: 'center', paddingVertical: spacing.sm },
   linkButtonText: { color: colors.primary, fontSize: 17, fontWeight: '600' },
@@ -595,39 +636,102 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cameraHintWrap: {
+  // Overlay elements — same positions/styles as ScannerScreen's own
+  // renderCameraOverlay(), just one action in overlayActionRow instead of
+  // two (Upload Image doesn't apply here).
+  frameOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center' },
+  overlayHintWrap: {
     position: 'absolute',
     top: spacing.lg,
+    left: spacing.xl,
+    right: spacing.xl,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  overlayHintIcon: {
+    marginRight: 6,
+    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  overlayHintText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '400',
+    textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  overlayCornerRow: {
+    position: 'absolute',
     left: spacing.lg,
     right: spacing.lg,
+    bottom: 154,
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: radius.pill,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
   },
-  cameraHintText: { color: '#fff', fontSize: 15 },
-  cameraBottomBar: {
-    backgroundColor: colors.bg,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.lg,
-  },
-  cameraBottomBtn: {
-    flexDirection: 'row',
+  overlayCornerButton: {
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
+    minWidth: MIN_TOUCH,
     minHeight: MIN_TOUCH,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    borderRadius: radius.pill,
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    ...shadow(2),
+    justifyContent: 'center',
   },
-  cameraBottomBtnText: { color: colors.primary, fontSize: 18, fontWeight: '700' },
+  overlayCornerText: {
+    color: '#fff',
+    fontSize: 17,
+    marginTop: 2,
+    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  overlayActionRow: {
+    position: 'absolute',
+    left: spacing.lg,
+    right: spacing.lg,
+    bottom: 96,
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  overlayActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    minHeight: MIN_TOUCH,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    borderRadius: radius.md,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+  },
+  overlayActionText: { color: colors.primary, fontSize: 18, fontWeight: '700' },
+  helpOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(11,18,32,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.xl,
+  },
+  helpCard: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.xl,
+    ...shadow(3),
+  },
+  helpTitle: { fontSize: 26, fontWeight: '700', color: colors.heading, marginBottom: spacing.sm },
+  helpBody: { fontSize: 21, color: colors.text, lineHeight: 28, marginBottom: spacing.lg },
+  helpCloseButton: {
+    backgroundColor: colors.primary,
+    borderRadius: radius.pill,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+  },
+  helpCloseButtonText: { color: '#fff', fontSize: 21, fontWeight: '700' },
   resultCard: {
     alignItems: 'center',
     gap: spacing.sm,
