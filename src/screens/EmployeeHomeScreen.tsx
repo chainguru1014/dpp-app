@@ -83,8 +83,8 @@ export default function EmployeeHomeScreen({ navigation, user, onLogout }: any) 
     navigation.navigate('CorporateScanner', { stepIndex: index });
   };
 
-  const handleShipmentInspection = () => {
-    navigation.navigate('ShipmentInspection');
+  const handleRfidScan = () => {
+    navigation.navigate('CorporateScanner', { stepIndex: selectedStep ?? 0, captureType: 'rfid' });
   };
 
   return (
@@ -127,19 +127,20 @@ export default function EmployeeHomeScreen({ navigation, user, onLogout }: any) 
         )}
       </ScrollView>
 
-      {/* Shipment Inspection entry point, sitting just above the bottom bar —
-          replaces the old dedicated RFID Scan button (RFID capture is still
-          reachable via the bottom bar's own Capture tab). Same position and
-          color the RFID button used to have. useBottomBarSpace() mirrors the
-          exact offset AppLayout itself uses for its bottom bar, so this
-          floats flush above it on every device. */}
+      {/* Dedicated RFID entry point, sitting just above the bottom bar —
+          distinct from the bar's own Capture tab (which opens on QR mode).
+          Shipment Inspection is temporarily hidden from this screen (see
+          commit 10f7a8d for how it was wired in) — this button is back in
+          its original place/color until it's re-enabled.
+          useBottomBarSpace() mirrors the exact offset AppLayout itself uses
+          for its bottom bar, so this floats flush above it on every device. */}
       <TouchableOpacity
         style={[styles.rfidScanButton, { bottom: bottomBarSpace + spacing.xxl }]}
-        onPress={handleShipmentInspection}
+        onPress={handleRfidScan}
         activeOpacity={0.85}
       >
-        <VectorIcon name="local-shipping" size={24} color="#fff" />
-        <Text style={styles.rfidScanButtonText}>{t('shipmentInspectionHomeButton')}</Text>
+        <VectorIcon name="wifi-tethering" size={24} color="#fff" />
+        <Text style={styles.rfidScanButtonText}>{t('rfidScanHomeButton')}</Text>
       </TouchableOpacity>
     </AppLayout>
   );
@@ -210,8 +211,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    // Header gradient's light stop — same blue as the selected workflow tile.
-    backgroundColor: colors.headerLight,
+    backgroundColor: colors.primary,
     borderRadius: radius.pill,
     ...shadow(2),
   },
