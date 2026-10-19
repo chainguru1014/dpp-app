@@ -1,16 +1,16 @@
 import { API_BASE_URL } from '../config/api';
 
-// Thin wrapper around the Impinj R700 reader-service — a small Octane SDK
-// HTTP API (see /rfid-reader-service at the repo root) running on the same
-// hosting server as the DPP backend.
+// Thin wrapper around the Impinj R700 reader, reached via the DPP backend's
+// /impinj-llrp/* routes (backend/controllers/impinjLlrpController.ts), which
+// speak LLRP/TCP directly to the reader — no .NET Octane SDK process in the
+// middle anymore (that path is backend/controllers/impinjController.ts's
+// /impinj/* routes, kept as a fallback but no longer what this calls).
 //
-// This does NOT call the reader-service directly from the app. The app runs
-// on a staff member's own phone/browser, where "localhost" would resolve to
-// that device, not the server — so calling the reader-service's own
-// localhost:5284 address from here can never reach it. Instead this goes
-// through the DPP backend's /impinj/* routes (backend/controllers/
-// impinjController.ts), which run ON that same server and proxy straight
-// through to the reader-service's documented API one-for-one.
+// This does NOT call the reader directly from the app. The app runs on a
+// staff member's own phone/browser, which can't open a raw TCP/LLRP socket
+// to the reader's LAN IP the way this backend (on the same network via
+// Tailscale) can — so this goes through the backend, which does the actual
+// LLRP talking and hands back plain JSON matching the shapes below.
 //
 // Unlike Yometel (phone-to-reader BLE, Android-only, per-employee MAC), this
 // is platform-independent — plain fetch() to the regular backend, so it
@@ -100,7 +100,7 @@ async function request<T>(method: string, path: string, body?: any): Promise<T> 
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   let res: Response;
   try {
-    res = await fetch(`${API_BASE_URL}impinj/${path}`, {
+    res = await fetch(`${API_BASE_URL}impinj-llrp/${path}`, {
       method,
       signal: controller.signal,
       ...(body !== undefined ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}),
