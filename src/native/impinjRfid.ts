@@ -1,143 +1,329 @@
-import { API_BASE_URL } from '../config/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  ImpinjReaderStatus,
+  ImpinjTagRead,
+  ImpinjReaderSettings,
+  IMPINJ_DEFAULT_READER_SETTINGS,
+} from './impinjRfidShared';
 
-// Thin wrapper around the Impinj R700 reader, reached via the DPP backend's
-// /impinj-llrp/* routes (backend/controllers/impinjLlrpController.ts), which
-// speak LLRP/TCP directly to the reader — no .NET Octane SDK process in the
-// middle anymore (that path is backend/controllers/impinjController.ts's
-// /impinj/* routes, kept as a fallback but no longer what this calls).
+export * from './impinjRfidShared';
+
+// Native build (Android/iOS): connects straight to the Impinj R700 over
+// LLRP/TCP from the phone itself, instead of going through the DPP backend
+// (impinjRfid.web.ts's approach — a browser can't open a raw TCP socket, but
+// a phone on the same WiFi as the reader can). Uses the same `llrpjs`
+// package backend/controllers/impinjLlrpController.ts uses, pointed at
+// react-native-tcp-socket instead of Node's own `net` module via this
+// project's package.json "react-native": {"net": "react-native-tcp-socket"}
+// override (see react-native-tcp-socket's own docs for why that works:
+// it's built to be a drop-in replacement for exactly this kind of reuse).
 //
-// This does NOT call the reader directly from the app. The app runs on a
-// staff member's own phone/browser, which can't open a raw TCP/LLRP socket
-// to the reader's LAN IP the way this backend (on the same network via
-// Tailscale) can — so this goes through the backend, which does the actual
-// LLRP talking and hands back plain JSON matching the shapes below.
-//
-// Unlike Yometel (phone-to-reader BLE, Android-only, per-employee MAC), this
-// is platform-independent — plain fetch() to the regular backend, so it
-// works the same on web, iOS and Android. There's also only ever one Impinj
-// reader (one fixed backend), not a per-employee reader id.
-export const IMPINJ_READER_DISPLAY_NAME = 'Impinj R700 (fixed reader)';
+// This mirrors impinjLlrpController.ts's logic closely on purpose — same
+// ROSpec, same tag dedup-by-EPC + 10s "in view" window, same always-200
+// status-object-not-a-thrown-error contract — so CorporateScannerScreen.tsx
+// and ShipmentInspectionScreen.tsx behave identically regardless of which
+// file is actually running underneath.
+const { LLRPClient, LLRPCore } = require('llrpjs');
 
-// Kept comfortably above the backend's own worst case (impinjController.ts):
-// REQUEST_TIMEOUT_MS (20s) * up to 2 attempts for start()'s retry + the 2s
-// gap between them = ~42s — so the app needs to wait at least that long
-// before giving up itself, or it'll show its own timeout before the
-// backend's real answer (success or failure) ever arrives.
-const REQUEST_TIMEOUT_MS = 45000;
+const SETTINGS_STORAGE_KEY = 'impinjReaderSettings';
+const ROSPEC_ID = 123;
+const CONNECT_TIMEOUT_MS = 8000;
+const TRANSACT_TIMEOUT_MS = 8000;
+const TAG_IN_VIEW_WINDOW_MS = 10000;
 
-export interface ImpinjReaderStatus {
-  isConnected: boolean;
-  isStarted: boolean;
-  address: string | null;
-  firmwareVersion: string | null;
-  modelName: string | null;
-  temperatureInCelsius: number | null;
-  lastError: string | null;
-  lastErrorAtUtc: string | null;
+let settings: ImpinjReaderSettings = { ...IMPINJ_DEFAULT_READER_SETTINGS };
+let settingsLoaded = false;
+
+async function loadSettings(): Promise<ImpinjReaderSettings> {
+  if (settingsLoaded) return settings;
+  try {
+    const raw = await AsyncStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (raw) settings = { ...settings, ...JSON.parse(raw) };
+  } catch {
+    // Fall back to defaults — the settings form will just show them.
+  }
+  settingsLoaded = true;
+  return settings;
 }
 
-export interface ImpinjTagRead {
-  epc: string;
-  antennaPort: number;
-  peakRssiInDbm: number | null;
-  tagSeenCount: number | null;
-  firstSeenTimeUtc: string | null;
-  lastSeenTimeUtc: string | null;
-  phaseAngleInRadians: number | null;
+let client: any = null;
+let connected = false;
+let started = false;
+let lastError: string | null = null;
+let lastErrorAtUtc: string | null = null;
+
+function recordError(message: string) {
+  lastError = message;
+  lastErrorAtUtc = new Date().toISOString();
 }
 
-// Reader connection settings — proposed contract against the reader-
-// service's GET/PUT /api/reader/settings (not yet confirmed against the
-// actual .NET implementation; see rfid-reader-service's handoff notes for
-// the exact spec this was designed against). availableAntennaPorts is
-// populated by the reader-service once it knows the hardware's real
-// capabilities (e.g. after a successful connect) — the settings UI only
-// shows antenna selection when this is present, per "if capabilities are
-// available".
-export interface ImpinjInventorySettings {
-  rfMode?: number | null;
-  searchMode?: string | null;
-  session?: number | null;
-  powerDbm?: number | null;
+function buildStatus(): ImpinjReaderStatus {
+  return {
+    isConnected: connected && !!client?.socketWritable,
+    isStarted: started,
+    address: settings.ipAddress ? `${settings.ipAddress}:${settings.port}` : null,
+    firmwareVersion: null,
+    modelName: null,
+    temperatureInCelsius: null,
+    lastError,
+    lastErrorAtUtc,
+  };
 }
 
-export interface ImpinjReaderSettings {
-  readerName: string;
-  ipAddress: string;
-  port: number;
-  connectionTimeoutMs: number;
-  autoReconnect: boolean;
-  reconnectIntervalMs: number;
-  maxReconnectAttempts: number;
-  unlimitedReconnectAttempts: boolean;
-  autoConnectOnStartup: boolean;
-  availableAntennaPorts?: number[] | null;
-  enabledAntennaPorts?: number[] | null;
-  inventorySettings?: ImpinjInventorySettings;
+// LLRP timestamps arrive as microseconds-since-epoch (possibly a BigInt via
+// llrpjs's json-bigint dependency) — Number() handles both cleanly.
+function microsToIso(micros: any): string | null {
+  if (micros == null) return null;
+  try {
+    return new Date(Number(micros) / 1000).toISOString();
+  } catch {
+    return null;
+  }
+}
+function microsFromTimestampParam(param: any): any {
+  return param?.getMicroseconds ? param.getMicroseconds() : undefined;
 }
 
-// Initial/fallback values given for this feature — shown in the settings
-// form before the reader-service's actual current settings have loaded
-// (or if that GET fails), so the form is never blank.
-export const IMPINJ_DEFAULT_READER_SETTINGS: ImpinjReaderSettings = {
-  readerName: 'Main RFID Reader',
-  ipAddress: '192.168.1.10',
-  port: 5084,
-  connectionTimeoutMs: 10000,
-  autoReconnect: true,
-  reconnectIntervalMs: 5000,
-  maxReconnectAttempts: 10,
-  unlimitedReconnectAttempts: false,
-  autoConnectOnStartup: true,
+// Minimal "read everything, report immediately" ROSpec — same as
+// impinjLlrpController.ts's. AntennaIDs: [0] means "all antennas".
+function buildRoSpec() {
+  return new LLRPCore.ROSpec({
+    data: {
+      ROSpecID: ROSPEC_ID,
+      Priority: 0,
+      CurrentState: 'Disabled',
+      ROBoundarySpec: {
+        ROSpecStartTrigger: { ROSpecStartTriggerType: 'Null' },
+        ROSpecStopTrigger: { ROSpecStopTriggerType: 'Null', DurationTriggerValue: 0 },
+      },
+      AISpec: {
+        AntennaIDs: [0],
+        AISpecStopTrigger: { AISpecStopTriggerType: 'Null', DurationTrigger: 0 },
+        InventoryParameterSpec: { InventoryParameterSpecID: 1234, ProtocolID: 'EPCGlobalClass1Gen2' },
+      },
+      ROReportSpec: {
+        ROReportTrigger: 'Upon_N_Tags_Or_End_Of_AISpec',
+        N: 1,
+        TagReportContentSelector: {
+          EnableROSpecID: false,
+          EnableSpecIndex: false,
+          EnableInventoryParameterSpecID: false,
+          EnableAntennaID: true,
+          EnableChannelIndex: false,
+          EnablePeakRSSI: true,
+          EnableFirstSeenTimestamp: true,
+          EnableLastSeenTimestamp: true,
+          EnableTagSeenCount: false,
+          EnableAccessSpecID: false,
+        },
+      },
+    },
+  });
+}
+
+// Keyed by EPC, not an append log — the reader re-reports the same tag on
+// every inventory round while it's in range (see impinjLlrpController.ts's
+// commit message for the duplicate-rows bug this avoids).
+type TagEntry = ImpinjTagRead & { _lastSeenAtMs: number };
+let tagsByEpc = new Map<string, TagEntry>();
+
+function stripInternal(tag: TagEntry): ImpinjTagRead {
+  const { _lastSeenAtMs, ...rest } = tag;
+  return rest;
+}
+
+function attachTagReportListener(reader: any) {
+  reader.on('RO_ACCESS_REPORT', (msg: any) => {
+    let list = msg.getTagReportData();
+    if (!Array.isArray(list)) list = [list];
+    const nowMs = Date.now();
+    for (const tagReportData of list) {
+      const epc = tagReportData.getEPCParameter?.()?.getEPC?.();
+      if (!epc) continue;
+      const existing = tagsByEpc.get(epc);
+      const lastSeenTimeUtc =
+        microsToIso(microsFromTimestampParam(tagReportData.getLastSeenTimestampUTC?.())) ||
+        new Date(nowMs).toISOString();
+      tagsByEpc.set(epc, {
+        epc,
+        antennaPort: tagReportData.getAntennaID?.()?.getAntennaID?.() ?? null,
+        peakRssiInDbm: tagReportData.getPeakRSSI?.()?.getPeakRSSI?.() ?? null,
+        tagSeenCount: null,
+        // Kept from the first sighting, not overwritten on repeat reads.
+        firstSeenTimeUtc:
+          existing?.firstSeenTimeUtc ??
+          microsToIso(microsFromTimestampParam(tagReportData.getFirstSeenTimestampUTC?.())) ??
+          lastSeenTimeUtc,
+        lastSeenTimeUtc,
+        phaseAngleInRadians: null,
+        _lastSeenAtMs: nowMs,
+      });
+    }
+  });
+  // The reader expects a KEEPALIVE_ACK promptly or it may drop the
+  // connection as unresponsive.
+  reader.on('KEEPALIVE', () => {
+    reader.send(new LLRPCore.KEEPALIVE_ACK());
+  });
+  reader.on('disconnect', () => {
+    connected = false;
+    started = false;
+  });
+  reader.on('error', () => {
+    connected = false;
+    started = false;
+  });
+}
+
+async function ensureConnected() {
+  if (connected && client?.socketWritable) return client;
+  await loadSettings();
+  if (!settings.ipAddress) {
+    throw new Error('No reader IP address configured — set it via the RFID settings icon.');
+  }
+
+  client = new LLRPClient({ host: settings.ipAddress, port: settings.port });
+  attachTagReportListener(client);
+  await client.connect();
+
+  // The reader sends a READER_EVENT_NOTIFICATION right after the TCP
+  // handshake to confirm the LLRP session itself succeeded (a bad
+  // ConnectionAttemptEvent status here means "connected" at TCP level but
+  // rejected at the protocol level, e.g. another client already holds
+  // exclusive access).
+  const notif = await client.recv(CONNECT_TIMEOUT_MS);
+  if (!(notif instanceof LLRPCore.READER_EVENT_NOTIFICATION)) {
+    throw new Error(`Unexpected message while confirming connection: ${notif?.getName?.() ?? notif}`);
+  }
+  const status = notif.getReaderEventNotificationData().getConnectionAttemptEvent()?.getStatus();
+  if (status !== 'Success') {
+    throw new Error(`Reader rejected the LLRP connection: ${status}`);
+  }
+
+  connected = true;
+  return client;
+}
+
+// status never attempts a connection itself — screens call this first,
+// specifically to check current state before deciding whether to call
+// connect() (see CorporateScannerScreen.tsx's handleConnectPress), so this
+// just reflects in-memory state.
+export const getImpinjReaderStatus = async (): Promise<ImpinjReaderStatus> => {
+  await loadSettings();
+  return buildStatus();
 };
 
-// Every endpoint shares the same shape of concerns (timeout, non-2xx ->
-// {error}, 204 -> no body), so it's all funneled through one helper instead
-// of repeating try/catch per call. Path is relative to API_BASE_URL, which
-// already includes a trailing slash (see config/api.ts).
-async function request<T>(method: string, path: string, body?: any): Promise<T> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-  let res: Response;
+export const connectImpinjReader = async (): Promise<ImpinjReaderStatus> => {
   try {
-    res = await fetch(`${API_BASE_URL}impinj-llrp/${path}`, {
-      method,
-      signal: controller.signal,
-      ...(body !== undefined ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}),
-    });
-  } catch (err: any) {
-    throw new Error(
-      err?.name === 'AbortError'
-        ? 'Timed out reaching the Impinj reader service'
-        : err?.message || 'Could not reach the Impinj reader service'
-    );
+    await ensureConnected();
+  } catch (error: any) {
+    recordError(error?.message || 'Could not connect to the Impinj R700 reader over LLRP');
+  }
+  return buildStatus();
+};
+
+export const disconnectImpinjReader = async (): Promise<ImpinjReaderStatus> => {
+  try {
+    if (client?.socketWritable) {
+      await client.transact(new LLRPCore.CLOSE_CONNECTION(), TRANSACT_TIMEOUT_MS).catch(() => null);
+      await client.disconnect();
+    }
+  } catch (error: any) {
+    recordError(error?.message || 'Could not disconnect from the Impinj R700 reader');
   } finally {
-    clearTimeout(timer);
+    connected = false;
+    started = false;
   }
+  return buildStatus();
+};
 
-  if (res.status === 204) {
-    return undefined as unknown as T;
+export const startImpinjReading = async (): Promise<ImpinjReaderStatus> => {
+  try {
+    const reader = await ensureConnected();
+    // Clean slate — an already-added ROSpec from a prior session (crash,
+    // app reload) would otherwise make ADD_ROSPEC fail.
+    await reader.transact(new LLRPCore.DELETE_ROSPEC({ data: { ROSpecID: 0 } }), TRANSACT_TIMEOUT_MS);
+
+    const roSpec = buildRoSpec();
+    const addRsp = await reader.transact(new LLRPCore.ADD_ROSPEC().setROSpec(roSpec), TRANSACT_TIMEOUT_MS);
+    const addStatus = addRsp?.getLLRPStatus?.()?.getStatusCode?.();
+    if (addStatus && addStatus !== 'M_Success') {
+      throw new Error(`ADD_ROSPEC failed: ${addStatus}`);
+    }
+
+    await reader.transact(new LLRPCore.ENABLE_ROSPEC({ data: { ROSpecID: ROSPEC_ID } }), TRANSACT_TIMEOUT_MS);
+    const startRsp = await reader.transact(new LLRPCore.START_ROSPEC({ data: { ROSpecID: ROSPEC_ID } }), TRANSACT_TIMEOUT_MS);
+    const startStatus = startRsp?.getLLRPStatus?.()?.getStatusCode?.();
+    if (startStatus && startStatus !== 'M_Success') {
+      throw new Error(`START_ROSPEC failed: ${startStatus}`);
+    }
+
+    tagsByEpc = new Map();
+    started = true;
+  } catch (error: any) {
+    started = false;
+    recordError(error?.message || 'Could not start the Impinj R700 reader over LLRP');
   }
-  const data = await res.json().catch(() => null);
-  if (!res.ok) {
-    throw new Error((data && data.error) || `Impinj reader service error (HTTP ${res.status})`);
+  return buildStatus();
+};
+
+export const stopImpinjReading = async (): Promise<ImpinjReaderStatus> => {
+  try {
+    const reader = await ensureConnected();
+    await reader.transact(new LLRPCore.STOP_ROSPEC({ data: { ROSpecID: ROSPEC_ID } }), TRANSACT_TIMEOUT_MS);
+    await reader.transact(new LLRPCore.DELETE_ROSPEC({ data: { ROSpecID: ROSPEC_ID } }), TRANSACT_TIMEOUT_MS);
+  } catch (error: any) {
+    recordError(error?.message || 'Could not stop the Impinj R700 reader over LLRP');
+  } finally {
+    started = false;
   }
-  return data as T;
-}
+  return buildStatus();
+};
 
-export const getImpinjReaderStatus = () => request<ImpinjReaderStatus>('GET', 'status');
-export const connectImpinjReader = () => request<ImpinjReaderStatus>('POST', 'connect');
-export const disconnectImpinjReader = () => request<ImpinjReaderStatus>('POST', 'disconnect');
-export const startImpinjReading = () => request<ImpinjReaderStatus>('POST', 'start');
-export const stopImpinjReading = () => request<ImpinjReaderStatus>('POST', 'stop');
+// "Currently in view" — only tags re-read within the last
+// TAG_IN_VIEW_WINDOW_MS, newest-first. This is what the Passing Tags card
+// polls, same role scanOnceYometel() plays for the Yometel branch.
+export const getImpinjTagsInView = async (): Promise<ImpinjTagRead[]> => {
+  const cutoff = Date.now() - TAG_IN_VIEW_WINDOW_MS;
+  return Array.from(tagsByEpc.values())
+    .filter((t) => t._lastSeenAtMs >= cutoff)
+    .sort((a, b) => b._lastSeenAtMs - a._lastSeenAtMs)
+    .map(stripInternal);
+};
 
-// Tags currently "in view" (seen within the service's ~10s window) — this is
-// what the Passing Tags card polls, same role scanOnceYometel() plays for
-// the Yometel branch.
-export const getImpinjTagsInView = () => request<ImpinjTagRead[]>('GET', 'tags');
-export const getImpinjRecentTags = (count = 100) => request<ImpinjTagRead[]>('GET', `tags/recent?count=${count}`);
-export const clearImpinjTags = () => request<void>('DELETE', 'tags');
+// Full history since the last start()/clear, not windowed — every distinct
+// EPC seen this session, newest-first, capped to `count`.
+export const getImpinjRecentTags = async (count = 100): Promise<ImpinjTagRead[]> => {
+  return Array.from(tagsByEpc.values())
+    .sort((a, b) => b._lastSeenAtMs - a._lastSeenAtMs)
+    .slice(0, count)
+    .map(stripInternal);
+};
 
-export const getImpinjReaderSettings = () => request<ImpinjReaderSettings>('GET', 'settings');
-export const updateImpinjReaderSettings = (settings: ImpinjReaderSettings) =>
-  request<ImpinjReaderSettings>('PUT', 'settings', settings);
+export const clearImpinjTags = async (): Promise<void> => {
+  tagsByEpc = new Map();
+};
+
+export const getImpinjReaderSettings = async (): Promise<ImpinjReaderSettings> => {
+  return { ...(await loadSettings()) };
+};
+
+export const updateImpinjReaderSettings = async (next: ImpinjReaderSettings): Promise<ImpinjReaderSettings> => {
+  await loadSettings();
+  const addressChanged = next.ipAddress !== settings.ipAddress || next.port !== settings.port;
+  settings = { ...settings, ...next };
+  try {
+    await AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+  } catch {
+    // Non-fatal — settings just won't survive an app restart this time.
+  }
+  // A live LLRP session can't be repointed at a different host/port — drop
+  // it so the next connect() uses the new address instead of silently
+  // staying connected to the old one.
+  if (addressChanged && client?.socketWritable) {
+    await client.disconnect().catch(() => {});
+    connected = false;
+    started = false;
+  }
+  return { ...settings };
+};

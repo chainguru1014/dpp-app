@@ -74,7 +74,7 @@ module.exports = (env, argv) => {
       : undefined,
     performance: { hints: false },
     resolve: {
-      extensions: ['.web.js', '.js', '.ts', '.tsx', '.json'],
+      extensions: ['.web.ts', '.web.tsx', '.web.js', '.js', '.ts', '.tsx', '.json'],
       alias: {
         'react-native$': 'react-native-web',
         'react-native-qrcode-scanner': false,

@@ -2,6 +2,9 @@
   "name": "dpp-app",
   "version": "1.0.0",
   "private": true,
+  "react-native": {
+    "net": "react-native-tcp-socket"
+  },
   "scripts": {
     "android": "react-native run-android",
     "ios": "react-native run-ios",
@@ -27,6 +30,7 @@
     "@zxing/browser": "^0.2.1",
     "@zxing/library": "^0.23.0",
     "axios": "^1.13.5",
+    "llrpjs": "^1.0.1",
     "qrcode": "^1.5.4",
     "react": "18.2.0",
     "react-dom": "18.2.0",
@@ -38,6 +42,7 @@
     "react-native-safe-area-context": "^4.7.4",
     "react-native-screens": "~3.22.0",
     "react-native-svg": "^13.14.0",
+    "react-native-tcp-socket": "^6.4.3",
     "react-native-vector-icons": "^10.0.0",
     "react-native-vision-camera": "4.2.1",
     "react-native-web": "^0.19.12",
