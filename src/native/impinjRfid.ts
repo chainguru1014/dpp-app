@@ -57,6 +57,28 @@ function recordError(message: string) {
   lastErrorAtUtc = new Date().toISOString();
 }
 
+// llrpjs errors carry only a code in `name` (e.g. new LLRPError(
+// "ERR_LLRP_READER_TIMEOUT") has an empty message), so turn the common ones
+// into something a worker can act on instead of a blank generic failure.
+function describeLlrpError(error: any, fallback: string): string {
+  const code = error?.name || error?.code || '';
+  const where = settings.ipAddress ? `${settings.ipAddress}:${settings.port}` : 'the reader';
+  if (code === 'ERR_LLRP_READER_TIMEOUT') {
+    return `The reader at ${where} did not answer in time. Check that it is on, in LLRP mode, and that no other app is connected to it.`;
+  }
+  if (code === 'ERR_LLRP_READER_OFFLINE') {
+    return `Lost the connection to the reader at ${where}.`;
+  }
+  const message = error?.message || (typeof error === 'string' ? error : '');
+  if (/ECONNREFUSED|refused/i.test(message)) {
+    return `The reader at ${where} refused the connection. Check that its RFID interface is set to LLRP.`;
+  }
+  if (/EHOSTUNREACH|ENETUNREACH|ETIMEDOUT|timed out|unreachable/i.test(message)) {
+    return `Could not reach ${where}. Check that this phone is on the same WiFi as the reader.`;
+  }
+  return message || (code && code !== 'Error' ? `${fallback} (${code})` : fallback);
+}
+
 function buildStatus(): ImpinjReaderStatus {
   return {
     isConnected: connected && !!client?.socketWritable,
@@ -182,22 +204,32 @@ async function ensureConnected() {
     throw new Error('No reader IP address configured — set it via the RFID settings icon.');
   }
 
+  // A socket left open by an earlier failed attempt would hold the reader's
+  // single LLRP client slot and make every retry fail, so close it first.
+  if (client?.socketWritable) {
+    await client.disconnect().catch(() => {});
+  }
   client = new LLRPClient({ host: settings.ipAddress, port: settings.port });
   attachTagReportListener(client);
   await client.connect();
 
-  // The reader sends a READER_EVENT_NOTIFICATION right after the TCP
-  // handshake to confirm the LLRP session itself succeeded (a bad
-  // ConnectionAttemptEvent status here means "connected" at TCP level but
-  // rejected at the protocol level, e.g. another client already holds
-  // exclusive access).
-  const notif = await client.recv(CONNECT_TIMEOUT_MS);
-  if (!(notif instanceof LLRPCore.READER_EVENT_NOTIFICATION)) {
-    throw new Error(`Unexpected message while confirming connection: ${notif?.getName?.() ?? notif}`);
-  }
-  const status = notif.getReaderEventNotificationData().getConnectionAttemptEvent()?.getStatus();
-  if (status !== 'Success') {
-    throw new Error(`Reader rejected the LLRP connection: ${status}`);
+  try {
+    // The reader sends a READER_EVENT_NOTIFICATION right after the TCP
+    // handshake to confirm the LLRP session itself succeeded (a bad
+    // ConnectionAttemptEvent status here means "connected" at TCP level but
+    // rejected at the protocol level, e.g. another client already holds
+    // exclusive access).
+    const notif = await client.recv(CONNECT_TIMEOUT_MS);
+    if (!(notif instanceof LLRPCore.READER_EVENT_NOTIFICATION)) {
+      throw new Error(`Unexpected message while confirming connection: ${notif?.getName?.() ?? notif}`);
+    }
+    const status = notif.getReaderEventNotificationData().getConnectionAttemptEvent()?.getStatus();
+    if (status !== 'Success') {
+      throw new Error(`Reader rejected the LLRP connection: ${status}`);
+    }
+  } catch (error) {
+    await client.disconnect().catch(() => {});
+    throw error;
   }
 
   connected = true;
@@ -217,7 +249,7 @@ export const connectImpinjReader = async (): Promise<ImpinjReaderStatus> => {
   try {
     await ensureConnected();
   } catch (error: any) {
-    recordError(error?.message || 'Could not connect to the Impinj R700 reader over LLRP');
+    recordError(describeLlrpError(error, 'Could not connect to the Impinj R700 reader over LLRP'));
   }
   return buildStatus();
 };
@@ -229,7 +261,7 @@ export const disconnectImpinjReader = async (): Promise<ImpinjReaderStatus> => {
       await client.disconnect();
     }
   } catch (error: any) {
-    recordError(error?.message || 'Could not disconnect from the Impinj R700 reader');
+    recordError(describeLlrpError(error, 'Could not disconnect from the Impinj R700 reader'));
   } finally {
     connected = false;
     started = false;
@@ -262,7 +294,7 @@ export const startImpinjReading = async (): Promise<ImpinjReaderStatus> => {
     started = true;
   } catch (error: any) {
     started = false;
-    recordError(error?.message || 'Could not start the Impinj R700 reader over LLRP');
+    recordError(describeLlrpError(error, 'Could not start the Impinj R700 reader over LLRP'));
   }
   return buildStatus();
 };
@@ -273,7 +305,7 @@ export const stopImpinjReading = async (): Promise<ImpinjReaderStatus> => {
     await reader.transact(new LLRPCore.STOP_ROSPEC({ data: { ROSpecID: ROSPEC_ID } }), TRANSACT_TIMEOUT_MS);
     await reader.transact(new LLRPCore.DELETE_ROSPEC({ data: { ROSpecID: ROSPEC_ID } }), TRANSACT_TIMEOUT_MS);
   } catch (error: any) {
-    recordError(error?.message || 'Could not stop the Impinj R700 reader over LLRP');
+    recordError(describeLlrpError(error, 'Could not stop the Impinj R700 reader over LLRP'));
   } finally {
     started = false;
   }

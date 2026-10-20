@@ -1165,8 +1165,23 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                 return (
                   <>
                     <View style={styles.rfidStatusRow}>
+                      {/* Reader Connection Settings — first in the row so a
+                          long reader name can never push it off-screen;
+                          available whenever the Impinj chip is selected,
+                          connected or not, since these (IP/port/reconnect
+                          behavior/etc.) are normally set up before ever
+                          connecting. */}
+                      {isRealImpinj && (
+                        <TouchableOpacity
+                          onPress={openImpinjSettings}
+                          activeOpacity={0.7}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <VectorIcon name="settings" size={22} color={colors.muted} />
+                        </TouchableOpacity>
+                      )}
                       <View style={[styles.rfidStatusDot, statusDotStyle]} />
-                      <Text style={styles.rfidStatusText} numberOfLines={1}>
+                      <Text style={[styles.rfidStatusText, styles.rfidReaderIdText]} numberOfLines={1}>
                         {t('rfidReaderIdLabel')}: {readerId}
                       </Text>
                       <Text style={[styles.rfidStatusText, statusTextStyle]}>
@@ -1196,19 +1211,6 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                         >
                           <VectorIcon name="bug-report" size={20} color={colors.muted} />
-                        </TouchableOpacity>
-                      )}
-                      {/* Reader Connection Settings — available whenever the
-                          Impinj chip is selected, connected or not, since
-                          these (IP/port/reconnect behavior/etc.) are
-                          normally set up before ever connecting. */}
-                      {isRealImpinj && (
-                        <TouchableOpacity
-                          onPress={openImpinjSettings}
-                          activeOpacity={0.7}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        >
-                          <VectorIcon name="settings" size={20} color={colors.muted} />
                         </TouchableOpacity>
                       )}
                     </View>
@@ -1859,6 +1861,9 @@ const styles = StyleSheet.create({
   rfidStatusDotStarted: { backgroundColor: colors.primary },
   rfidStatusDotFailed: { backgroundColor: colors.danger },
   rfidStatusText: { fontSize: 18, color: colors.text },
+  // The reader name is the one part of the status row allowed to shrink
+  // (ellipsized), so the status label and icons after it stay on-screen.
+  rfidReaderIdText: { flexShrink: 1 },
   rfidStatusTextConnected: { color: colors.success, fontWeight: '600' },
   rfidStatusTextStarted: { color: colors.primary, fontWeight: '600' },
   rfidStatusTextFailed: { color: colors.danger, fontWeight: '600' },
