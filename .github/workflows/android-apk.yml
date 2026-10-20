@@ -31,16 +31,28 @@ jobs:
       - name: Install JS dependencies
         run: npm ci --legacy-peer-deps
 
-      # RN 0.72's gradle-plugin ships with Kotlin 1.7.22 / api+language 1.5, which
-      # can't read the Kotlin 1.9 stdlib bundled in Gradle 8.5. The local
-      # node_modules copy was hand-patched to 1.8.22 / 1.8; apply the same here.
-      - name: Patch RN gradle-plugin for Gradle 8.5
+      # The local node_modules has three hand edits that the build depends on;
+      # re-apply them here since CI gets pristine packages from npm.
+      - name: Re-apply local node_modules patches
         run: |
+          set -e
+          # RN 0.72 gradle-plugin ships Kotlin 1.7.22 / api+language 1.5, which can't
+          # read the Kotlin 1.9 stdlib bundled in Gradle 8.5.
           f=node_modules/@react-native/gradle-plugin/build.gradle.kts
           sed -i -e 's/kotlin("jvm") version "1.7.22"/kotlin("jvm") version "1.8.22"/' \
                  -e 's/apiVersion = "1.5"/apiVersion = "1.8"/' \
                  -e 's/languageVersion = "1.5"/languageVersion = "1.8"/' "$f"
           grep -q 'version "1.8.22"' "$f" && grep -q 'languageVersion = "1.8"' "$f"
+
+          # react-native-screens 3.22.1: R.attr.colorPrimary no longer resolves.
+          f=node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenStackHeaderConfig.kt
+          sed -i 's/resolveAttribute(R\.attr\.colorPrimary/resolveAttribute(android.R.attr.colorPrimary/' "$f"
+          grep -q 'android.R.attr.colorPrimary' "$f"
+
+          # react-native-camera 4.2.1 declares no namespace, which AGP 8 requires.
+          f=node_modules/react-native-camera/android/build.gradle
+          sed -i 's/^android {$/android {\n  namespace "org.reactnative.camera"/' "$f"
+          grep -q 'namespace "org.reactnative.camera"' "$f"
 
       - name: Install Android NDK
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;23.1.7779620" > /dev/null
