@@ -31,6 +31,14 @@ jobs:
       - name: Install JS dependencies
         run: npm ci --legacy-peer-deps
 
+      # RN 0.72's gradle-plugin is compiled with Kotlin 1.8, which rejects the
+      # Kotlin 1.9 stdlib bundled in Gradle 8.5. Locally a prebuilt copy hides this.
+      - name: Let RN gradle-plugin compile under Gradle 8.5
+        run: |
+          sed -i 's/languageVersion = "1.8"/languageVersion = "1.8"\n    freeCompilerArgs = freeCompilerArgs + "-Xskip-metadata-version-check"/' \
+            node_modules/@react-native/gradle-plugin/build.gradle.kts
+          grep -q skip-metadata-version-check node_modules/@react-native/gradle-plugin/build.gradle.kts
+
       - name: Install Android NDK
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;23.1.7779620" > /dev/null
 
