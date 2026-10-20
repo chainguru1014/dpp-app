@@ -83,7 +83,9 @@ jobs:
         run: |
           set -o pipefail
           if ! gradle assembleRelease --no-daemon 2>&1 | tee gradle-build.log; then
-            { grep -E '^e: |error:' gradle-build.log | head -20
+            # Runner shells use -e; a grep with no match must not abort the report.
+            set +e +o pipefail
+            { grep -E '^e: |error:|FAILED|went wrong|disappeared|Killed' gradle-build.log | head -20
               sed -n '/What went wrong/,/^\* Try/p' gradle-build.log | head -40
             } | awk '{printf "%s%%0A", $0}' | sed 's/^/::error title=Gradle build failed::/'; echo
             exit 1
