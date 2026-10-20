@@ -25,6 +25,110 @@ export * from './impinjRfidShared';
 // file is actually running underneath.
 const { LLRPClient, LLRPCore } = require('llrpjs');
 
+// llrpjs is written against Node's net.Socket, and react-native-tcp-socket
+// differs in three ways that each broke the connection:
+//  - no `writable` property, so llrpjs's socketWritable was always false: a
+//    successful handshake looked like a failure, and the still-open socket
+//    then held the reader's single LLRP slot ("A client initiated
+//    connection already exists" on the next tap);
+//  - write(data, cb) — llrpjs passes the callback where RN expects the
+//    encoding, so it was dropped and every send() never resolved;
+//  - end(cb) — RN treats the first argument as data to send and throws on a
+//    function, so disconnect() never closed anything.
+const { Socket: TcpSocket } = require('react-native-tcp-socket');
+if (TcpSocket && !TcpSocket.prototype.__llrpNodeCompat) {
+  const proto = TcpSocket.prototype;
+  const originalWrite = proto.write;
+  const originalEnd = proto.end;
+  Object.defineProperty(proto, 'writable', {
+    configurable: true,
+    get() {
+      return !this._pending && !this._destroyed && !this.__ended;
+    },
+  });
+  proto.write = function (data: any, encoding?: any, cb?: any) {
+    if (typeof encoding === 'function') {
+      return originalWrite.call(this, data, undefined, encoding);
+    }
+    return originalWrite.call(this, data, encoding, cb);
+  };
+  proto.end = function (data?: any, encoding?: any) {
+    if (typeof data === 'function') {
+      this.__ended = true;
+      originalEnd.call(this);
+      data();
+      return this;
+    }
+    this.__ended = true;
+    return originalEnd.call(this, data, encoding);
+  };
+  proto.__llrpNodeCompat = true;
+}
+
+// Two llrpjs bugs that a live, tag-streaming reader hits constantly:
+//  - its socket 'data' handler decodes only ONE message per chunk, so when
+//    the reader sends several together (a response plus tag reports) the
+//    rest sit in the buffer until more data happens to arrive;
+//  - its transact() awaits the same receive promise in a `while (true)`
+//    loop, so if any other message (a tag report, a keepalive) arrives
+//    before the response it spins forever and freezes the whole JS thread.
+// onData is replaced to drain every complete message, and transact() below
+// is used instead of llrpjs's.
+const { LLRPNet } = require('llrpjs/dist/src/net/base');
+const { LLRPProxyMessage } = require('llrpjs/dist/src/proxy/message');
+const { LLRPError } = require('llrpjs/dist/src/base/error');
+if (LLRPNet && !LLRPNet.prototype.__drainsAllMessages) {
+  LLRPNet.prototype.onData = async function (data: any) {
+    try {
+      this._scanner.addBuffer(data);
+      let msgBuf;
+      while ((msgBuf = this._scanner.getNext())) {
+        const msg = new LLRPProxyMessage(msgBuf).decode();
+        this._ee.emit('message', msg);
+        this._ee.emit(msg.getName(), msg);
+      }
+    } catch (e) {
+      if (e instanceof LLRPError) this._ee.emit('error', e);
+      else throw e;
+    }
+  };
+  LLRPNet.prototype.__drainsAllMessages = true;
+}
+
+// Sends `message` and resolves with its response, ignoring whatever else the
+// reader sends meanwhile. Rejects with the same ERR_LLRP_READER_TIMEOUT
+// llrpjs uses, so describeLlrpError's message still applies.
+function transact(reader: any, message: any, timeoutMs: number): Promise<any> {
+  const responseName = message.getResponseName();
+  return new Promise((resolve, reject) => {
+    let timer: any = null;
+    const onResponse = (response: any) => {
+      cleanup();
+      resolve(response);
+    };
+    const cleanup = () => {
+      if (timer) clearTimeout(timer);
+      if (responseName) reader.off(responseName, onResponse);
+    };
+    if (responseName) {
+      reader.on(responseName, onResponse);
+      timer = setTimeout(() => {
+        cleanup();
+        reject(new LLRPError('ERR_LLRP_READER_TIMEOUT'));
+      }, timeoutMs);
+    }
+    reader.send(message).then(
+      () => {
+        if (!responseName) resolve(null);
+      },
+      (error: any) => {
+        cleanup();
+        reject(error);
+      },
+    );
+  });
+}
+
 const SETTINGS_STORAGE_KEY = 'impinjReaderSettings';
 const ROSPEC_ID = 123;
 const CONNECT_TIMEOUT_MS = 8000;
@@ -197,6 +301,27 @@ function attachTagReportListener(reader: any) {
   });
 }
 
+// The R700 accepts one LLRP client at a time, so a socket left open by a
+// failed attempt makes every retry fail with "a client initiated connection
+// already exists". Every failure path closes through here: a polite end()
+// first, then destroy() in case that didn't take.
+async function closeClient() {
+  const old = client;
+  connected = false;
+  started = false;
+  if (!old) return;
+  try {
+    await Promise.race([old.disconnect(), new Promise((resolve) => setTimeout(resolve, 2000))]);
+  } catch {
+    // Fall through to destroy().
+  }
+  try {
+    old._tcp?.destroy?.();
+  } catch {
+    // Already gone.
+  }
+}
+
 async function ensureConnected() {
   if (connected && client?.socketWritable) return client;
   await loadSettings();
@@ -204,11 +329,7 @@ async function ensureConnected() {
     throw new Error('No reader IP address configured — set it via the RFID settings icon.');
   }
 
-  // A socket left open by an earlier failed attempt would hold the reader's
-  // single LLRP client slot and make every retry fail, so close it first.
-  if (client?.socketWritable) {
-    await client.disconnect().catch(() => {});
-  }
+  await closeClient();
   client = new LLRPClient({ host: settings.ipAddress, port: settings.port });
   attachTagReportListener(client);
   await client.connect();
@@ -224,15 +345,20 @@ async function ensureConnected() {
       throw new Error(`Unexpected message while confirming connection: ${notif?.getName?.() ?? notif}`);
     }
     const status = notif.getReaderEventNotificationData().getConnectionAttemptEvent()?.getStatus();
+    if (status === 'Failed_A_Client_Initiated_Connection_Already_Exists') {
+      throw new Error('The reader is already connected to another app or device (it allows only one at a time). Disconnect it there, or restart the reader, then try again.');
+    }
     if (status !== 'Success') {
       throw new Error(`Reader rejected the LLRP connection: ${status}`);
     }
   } catch (error) {
-    await client.disconnect().catch(() => {});
+    await closeClient();
     throw error;
   }
 
   connected = true;
+  lastError = null;
+  lastErrorAtUtc = null;
   return client;
 }
 
@@ -249,6 +375,9 @@ export const connectImpinjReader = async (): Promise<ImpinjReaderStatus> => {
   try {
     await ensureConnected();
   } catch (error: any) {
+    // Also covers the TCP connect itself failing before ensureConnected's
+    // own cleanup runs.
+    await closeClient();
     recordError(describeLlrpError(error, 'Could not connect to the Impinj R700 reader over LLRP'));
   }
   return buildStatus();
@@ -257,7 +386,7 @@ export const connectImpinjReader = async (): Promise<ImpinjReaderStatus> => {
 export const disconnectImpinjReader = async (): Promise<ImpinjReaderStatus> => {
   try {
     if (client?.socketWritable) {
-      await client.transact(new LLRPCore.CLOSE_CONNECTION(), TRANSACT_TIMEOUT_MS).catch(() => null);
+      await transact(client, new LLRPCore.CLOSE_CONNECTION(), TRANSACT_TIMEOUT_MS).catch(() => null);
       await client.disconnect();
     }
   } catch (error: any) {
@@ -274,17 +403,17 @@ export const startImpinjReading = async (): Promise<ImpinjReaderStatus> => {
     const reader = await ensureConnected();
     // Clean slate — an already-added ROSpec from a prior session (crash,
     // app reload) would otherwise make ADD_ROSPEC fail.
-    await reader.transact(new LLRPCore.DELETE_ROSPEC({ data: { ROSpecID: 0 } }), TRANSACT_TIMEOUT_MS);
+    await transact(reader, new LLRPCore.DELETE_ROSPEC({ data: { ROSpecID: 0 } }), TRANSACT_TIMEOUT_MS);
 
     const roSpec = buildRoSpec();
-    const addRsp = await reader.transact(new LLRPCore.ADD_ROSPEC().setROSpec(roSpec), TRANSACT_TIMEOUT_MS);
+    const addRsp = await transact(reader, new LLRPCore.ADD_ROSPEC().setROSpec(roSpec), TRANSACT_TIMEOUT_MS);
     const addStatus = addRsp?.getLLRPStatus?.()?.getStatusCode?.();
     if (addStatus && addStatus !== 'M_Success') {
       throw new Error(`ADD_ROSPEC failed: ${addStatus}`);
     }
 
-    await reader.transact(new LLRPCore.ENABLE_ROSPEC({ data: { ROSpecID: ROSPEC_ID } }), TRANSACT_TIMEOUT_MS);
-    const startRsp = await reader.transact(new LLRPCore.START_ROSPEC({ data: { ROSpecID: ROSPEC_ID } }), TRANSACT_TIMEOUT_MS);
+    await transact(reader, new LLRPCore.ENABLE_ROSPEC({ data: { ROSpecID: ROSPEC_ID } }), TRANSACT_TIMEOUT_MS);
+    const startRsp = await transact(reader, new LLRPCore.START_ROSPEC({ data: { ROSpecID: ROSPEC_ID } }), TRANSACT_TIMEOUT_MS);
     const startStatus = startRsp?.getLLRPStatus?.()?.getStatusCode?.();
     if (startStatus && startStatus !== 'M_Success') {
       throw new Error(`START_ROSPEC failed: ${startStatus}`);
@@ -293,7 +422,9 @@ export const startImpinjReading = async (): Promise<ImpinjReaderStatus> => {
     tagsByEpc = new Map();
     started = true;
   } catch (error: any) {
-    started = false;
+    // The Connect button treats a failed start as a failed connect, so free
+    // the reader for the next try rather than holding a half-set-up session.
+    await closeClient();
     recordError(describeLlrpError(error, 'Could not start the Impinj R700 reader over LLRP'));
   }
   return buildStatus();
@@ -302,8 +433,8 @@ export const startImpinjReading = async (): Promise<ImpinjReaderStatus> => {
 export const stopImpinjReading = async (): Promise<ImpinjReaderStatus> => {
   try {
     const reader = await ensureConnected();
-    await reader.transact(new LLRPCore.STOP_ROSPEC({ data: { ROSpecID: ROSPEC_ID } }), TRANSACT_TIMEOUT_MS);
-    await reader.transact(new LLRPCore.DELETE_ROSPEC({ data: { ROSpecID: ROSPEC_ID } }), TRANSACT_TIMEOUT_MS);
+    await transact(reader, new LLRPCore.STOP_ROSPEC({ data: { ROSpecID: ROSPEC_ID } }), TRANSACT_TIMEOUT_MS);
+    await transact(reader, new LLRPCore.DELETE_ROSPEC({ data: { ROSpecID: ROSPEC_ID } }), TRANSACT_TIMEOUT_MS);
   } catch (error: any) {
     recordError(describeLlrpError(error, 'Could not stop the Impinj R700 reader over LLRP'));
   } finally {

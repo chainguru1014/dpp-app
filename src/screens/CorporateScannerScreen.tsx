@@ -711,7 +711,12 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
         // before, a start failure here is now a real failure for this
         // button press — tag polling (gated on impinjStatus === 'started')
         // would otherwise silently never begin with no indication why.
-        await startImpinjReading();
+        // startImpinjReading reports failure in its returned status rather
+        // than throwing, and closes the connection itself when it fails.
+        const startStatus = await startImpinjReading();
+        if (!startStatus.isStarted) {
+          throw new Error(startStatus.lastError || t('rfidConnectFailed'));
+        }
         setImpinjStatus('started');
       } catch (err: any) {
         console.error('Impinj connect failed:', err);
