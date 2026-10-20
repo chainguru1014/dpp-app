@@ -62,6 +62,9 @@ subprojects {
                     // autolinked library here. Pin it explicitly to match.
                     if (project.name == 'react-native-ml-kit_barcode-scanning') {
                         namespace 'com.rnmlkit.barcodescanning'
+                    } else if (project.name == 'react-native-tcp-socket') {
+                        // Same mismatch: its manifest says package="com.asterinet.react.tcpsocket".
+                        namespace 'com.asterinet.react.tcpsocket'
                     } else {
                         namespace project.group
                     }
