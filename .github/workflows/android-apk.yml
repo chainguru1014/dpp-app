@@ -27,8 +27,9 @@ jobs:
         with:
           gradle-version: '8.5'
 
+      # react-qr-reader@2 declares a react@~16 peer; the project runs on React 18.
       - name: Install JS dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       - name: Install Android NDK
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;23.1.7779620" > /dev/null
