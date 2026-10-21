@@ -760,6 +760,15 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   };
 
   const handleDisconnectPress = async () => {
+    // Stop polling /tags immediately — don't wait for impinjStatus/
+    // rfidConnectedByType to flip and the rfidReady-driven effect below to
+    // notice and tear its interval down. Otherwise an in-flight poll tick
+    // (up to RFID_POLL_MS away) can still fire against a reader we just
+    // told the user we're disconnecting from.
+    if (rfidPollIntervalRef.current) {
+      clearInterval(rfidPollIntervalRef.current);
+      rfidPollIntervalRef.current = null;
+    }
     // Same loading flag the Connect press uses — the button is a single
     // toggle now, so one spinner state covers both directions.
     setRfidConnecting(true);
