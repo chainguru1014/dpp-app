@@ -51,6 +51,10 @@ const LIVENESS_TIMEOUT_MS = 700;
 // selected — comfortably inside the 5s server-side detection window so a
 // tag that just appeared shows up within a beat, not right at the edge.
 const RFID_POLL_MS = 1500;
+// Passing Tags card shows only the most recent N — rfidTags is already
+// newest-first (see the Impinj poll branch's explicit sort), so this is
+// just a display cap, not a re-sort.
+const MAX_PASSING_TAGS_SHOWN = 20;
 const RFID_WINDOW_SECONDS = 5;
 // Presentation/demo mode: no real RFID gateway is wired up yet (see the
 // mocked Connect state above), so instead of polling /rfid/recent, a fixed
@@ -153,7 +157,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   // resolved product object and the tapped tag so the dialog's "View Product
   // Details" button can still navigate with the right ids.
   const [previewTag, setPreviewTag] = useState<{ product: any; productId?: string; qrcodeId?: string } | null>(null);
-  const [rfidReaderType, setRfidReaderType] = useState<RfidReaderType>('yometel');
+  const [rfidReaderType, setRfidReaderType] = useState<RfidReaderType>('impinj');
   // Mocked connection state, per reader type — no real BLE/LLRP hardware is
   // wired up yet (see project notes). Connect just flips this locally; the
   // actual tag data still comes from the real /rfid/recent polling endpoint,
@@ -1108,24 +1112,6 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
         <View style={styles.scanViewport}>
           {isCameraType ? renderCamera() : captureType === 'rfid' ? (
             <View style={styles.rfidPanel}>
-              <View style={styles.rfidReaderTypeRow}>
-                {RFID_READER_TYPES.map((opt) => (
-                  <TouchableOpacity
-                    key={opt.key}
-                    style={[styles.rfidReaderChip, rfidReaderType === opt.key && styles.rfidReaderChipActive]}
-                    onPress={() => {
-                      setRfidReaderType(opt.key);
-                      setRfidConnectError('');
-                    }}
-                    activeOpacity={0.75}
-                  >
-                    <Text style={[styles.rfidReaderChipText, rfidReaderType === opt.key && styles.rfidReaderChipTextActive]}>
-                      {t(opt.labelKey)}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
               {(() => {
                 // Impinj has no per-employee reader id — it's one fixed R700
                 // reached through the backend, so a static label stands in
@@ -1170,21 +1156,6 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                 return (
                   <>
                     <View style={styles.rfidStatusRow}>
-                      {/* Reader Connection Settings — first in the row so a
-                          long reader name can never push it off-screen;
-                          available whenever the Impinj chip is selected,
-                          connected or not, since these (IP/port/reconnect
-                          behavior/etc.) are normally set up before ever
-                          connecting. */}
-                      {isRealImpinj && (
-                        <TouchableOpacity
-                          onPress={openImpinjSettings}
-                          activeOpacity={0.7}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        >
-                          <VectorIcon name="settings" size={22} color={colors.muted} />
-                        </TouchableOpacity>
-                      )}
                       <View style={[styles.rfidStatusDot, statusDotStyle]} />
                       <Text style={[styles.rfidStatusText, styles.rfidReaderIdText]} numberOfLines={1}>
                         {t('rfidReaderIdLabel')}: {readerId}
@@ -1192,18 +1163,6 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                       <Text style={[styles.rfidStatusText, statusTextStyle]}>
                         {statusLabel}
                       </Text>
-                      {/* Tap to disconnect — mainly so a live demo can be
-                          replayed from the first dummy tag without leaving
-                          the screen (see dummyRevealIndexRef reset above). */}
-                      {connected && (
-                        <TouchableOpacity
-                          onPress={handleDisconnectPress}
-                          activeOpacity={0.7}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        >
-                          <VectorIcon name="bluetooth-disabled" size={20} color={colors.muted} />
-                        </TouchableOpacity>
-                      )}
                       {/* Reopen the connect/communicate debug timeline at any
                           point — not just right after tapping Connect — so a
                           dev can check what's happening mid-scan too. Only
@@ -1219,10 +1178,18 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                         </TouchableOpacity>
                       )}
                     </View>
-                    {!connected && (
+                    <View style={styles.rfidConnectRow}>
+                      {/* Single toggling button: Connect while disconnected,
+                          Disconnect once a session is up and reading (by the
+                          time `connected` flips true for Impinj, start()
+                          has already succeeded too — see handleConnectPress). */}
                       <TouchableOpacity
-                        style={[styles.rfidConnectButton, rfidConnecting && styles.rfidConnectButtonDisabled]}
-                        onPress={handleConnectPress}
+                        style={[
+                          styles.rfidConnectButton,
+                          connected && styles.rfidDisconnectButtonVariant,
+                          rfidConnecting && styles.rfidConnectButtonDisabled,
+                        ]}
+                        onPress={connected ? handleDisconnectPress : handleConnectPress}
                         disabled={rfidConnecting}
                         activeOpacity={0.85}
                       >
@@ -1230,12 +1197,26 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                           <ActivityIndicator size="small" color="#fff" />
                         ) : (
                           <>
-                            <VectorIcon name="bluetooth" size={20} color="#fff" />
-                            <Text style={styles.rfidConnectButtonText}>{t('rfidConnectButton')}</Text>
+                            <VectorIcon name={connected ? 'bluetooth-disabled' : 'bluetooth'} size={20} color="#fff" />
+                            <Text style={styles.rfidConnectButtonText}>
+                              {connected ? t('rfidDisconnectButton') : t('rfidConnectButton')}
+                            </Text>
                           </>
                         )}
                       </TouchableOpacity>
-                    )}
+                      {/* RFID reader type + connection settings — available
+                          regardless of which type is currently selected, so
+                          switching types happens from here now instead of a
+                          chip row on the main panel. */}
+                      <TouchableOpacity
+                        style={styles.rfidSettingsIconButton}
+                        onPress={openImpinjSettings}
+                        activeOpacity={0.7}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <VectorIcon name="settings" size={22} color={colors.muted} />
+                      </TouchableOpacity>
+                    </View>
                     {!!rfidConnectError && !connected && (
                       <Text style={styles.rfidConnectErrorText}>{rfidConnectError}</Text>
                     )}
@@ -1254,7 +1235,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                   </View>
                 ) : (
                   <ScrollView style={styles.rfidPassingList} showsVerticalScrollIndicator={false}>
-                    {rfidTags.map((tag, index) => {
+                    {rfidTags.slice(0, MAX_PASSING_TAGS_SHOWN).map((tag, index) => {
                       const dummy = DUMMY_RFID_TAGS.find((d) => d.epc === tag.epc);
                       const resolved = rfidProductByEpc[tag.epc];
                       const productId = resolved?.productId;
@@ -1533,7 +1514,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
         <View style={styles.debugOverlay}>
           <View style={[styles.debugCard, styles.impinjSettingsCard]}>
             <View style={styles.debugHeaderRow}>
-              <Text style={[styles.debugTitle, styles.impinjSettingsTitle]}>Reader Connection Settings</Text>
+              <Text style={[styles.debugTitle, styles.impinjSettingsTitle]}>RFID Reader Settings</Text>
               <TouchableOpacity
                 onPress={() => setImpinjSettingsVisible(false)}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -1543,7 +1524,32 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                 <VectorIcon name="close" size={24} color={colors.muted} />
               </TouchableOpacity>
             </View>
-            {impinjSettingsLoading ? (
+            {/* Reader type — relocated here from the main scan panel's chip
+                row, so switching types is a settings action, not a
+                front-and-center control. Impinj is the default (see
+                rfidReaderType's initial state). */}
+            <View style={styles.rfidReaderTypeRow}>
+              {RFID_READER_TYPES.map((opt) => (
+                <TouchableOpacity
+                  key={opt.key}
+                  style={[styles.rfidReaderChip, rfidReaderType === opt.key && styles.rfidReaderChipActive]}
+                  onPress={() => {
+                    setRfidReaderType(opt.key);
+                    setRfidConnectError('');
+                  }}
+                  activeOpacity={0.75}
+                >
+                  <Text style={[styles.rfidReaderChipText, rfidReaderType === opt.key && styles.rfidReaderChipTextActive]}>
+                    {t(opt.labelKey)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            {rfidReaderType !== 'impinj' ? (
+              <Text style={[styles.impinjFieldLabel, { marginTop: spacing.md }]}>
+                No additional settings for this reader type.
+              </Text>
+            ) : impinjSettingsLoading ? (
               <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.primary} />
             ) : (
               <ScrollView style={styles.debugScroll} keyboardShouldPersistTaps="handled">
@@ -1875,7 +1881,12 @@ const styles = StyleSheet.create({
   // Overrides stateText's white color (meant for the dark camera/NFC
   // viewport) back to a readable dark tone on the RFID panel's white bg.
   rfidHintText: { color: colors.muted },
+  // Row pairing the Connect/Disconnect toggle with the settings gear —
+  // settings sits to the right of it, always reachable regardless of
+  // connection state or which reader type is selected.
+  rfidConnectRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs, marginBottom: spacing.md },
   rfidConnectButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1884,11 +1895,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     borderRadius: radius.pill,
     backgroundColor: colors.primary,
-    marginTop: spacing.xs,
-    marginBottom: spacing.md,
   },
+  // Disconnect reads as the same button, just recolored — same red used by
+  // every other stop/failure indicator on this screen (rfidStatusDotFailed).
+  rfidDisconnectButtonVariant: { backgroundColor: colors.danger },
   rfidConnectButtonText: { color: '#fff', fontSize: 18, fontWeight: '600' },
   rfidConnectButtonDisabled: { opacity: 0.7 },
+  rfidSettingsIconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
   rfidConnectErrorText: { color: colors.danger, fontSize: 15, marginBottom: spacing.md },
   // Live "tags passing near the reader" card — fills the rest of the RFID
   // panel's height below the reader selector/status, distinct from the
