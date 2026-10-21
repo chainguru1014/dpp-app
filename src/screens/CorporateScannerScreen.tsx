@@ -760,22 +760,29 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   };
 
   const handleDisconnectPress = async () => {
-    if (isRealImpinj) {
-      try {
-        await stopImpinjReading().catch(() => {});
-        await disconnectImpinjReader();
-      } catch (err) {
-        console.warn('Impinj disconnect failed:', err);
+    // Same loading flag the Connect press uses — the button is a single
+    // toggle now, so one spinner state covers both directions.
+    setRfidConnecting(true);
+    try {
+      if (isRealImpinj) {
+        try {
+          await stopImpinjReading().catch(() => {});
+          await disconnectImpinjReader();
+        } catch (err) {
+          console.warn('Impinj disconnect failed:', err);
+        }
+        setImpinjStatus('idle');
+      } else if (isRealYometel) {
+        try {
+          await disconnectYometelReader();
+        } catch (err) {
+          console.warn('Yometel disconnect failed:', err);
+        }
       }
-      setImpinjStatus('idle');
-    } else if (isRealYometel) {
-      try {
-        await disconnectYometelReader();
-      } catch (err) {
-        console.warn('Yometel disconnect failed:', err);
-      }
+      setRfidConnectedByType((prev) => ({ ...prev, [rfidReaderType]: false }));
+    } finally {
+      setRfidConnecting(false);
     }
-    setRfidConnectedByType((prev) => ({ ...prev, [rfidReaderType]: false }));
   };
 
   const openImpinjSettings = async () => {
