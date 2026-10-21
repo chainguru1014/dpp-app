@@ -449,10 +449,31 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
       // RFID_POLL_MS (1.5s) with nothing to stop them, same risk
       // scanOnceYometel() already guards against for the Yometel branch.
       let pollInFlight = false;
+      // Every N ticks, also re-check /status — the poll loop otherwise only
+      // ever calls /tags, which keeps returning 200 + [] forever if the
+      // backend's session ended for a reason the app never asked for (its
+      // idle-disconnect watchdog, the reader itself dropping the LLRP
+      // connection, etc.): Passing Tags would just silently stay empty with
+      // the UI still claiming Connected/Started, with no way to recover
+      // short of the user guessing to hit Disconnect then Connect again.
+      let tickCount = 0;
+      const STATUS_CHECK_EVERY_N_TICKS = 10; // ~15s at RFID_POLL_MS
       const poll = async () => {
         if (pollInFlight) return;
         pollInFlight = true;
         try {
+          tickCount += 1;
+          if (tickCount % STATUS_CHECK_EVERY_N_TICKS === 0) {
+            const status = await getImpinjReaderStatus();
+            if (cancelled) return;
+            if (!status.isStarted) {
+              setImpinjStatus('idle');
+              setRfidConnectedByType((prev) => ({ ...prev, impinj: false }));
+              setRfidConnectError(status.lastError || t('rfidConnectionLost'));
+              setRfidTags([]);
+              return;
+            }
+          }
           const tags = await getImpinjTagsInView();
           if (cancelled) return;
           // The reader-service's own ordering isn't documented/guaranteed —
