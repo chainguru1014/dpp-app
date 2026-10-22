@@ -332,7 +332,7 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
                   )}
                   <View style={styles.rowInfo}>
                     <View style={styles.rowRefMaskedWrap}>
-                      <Text style={styles.rowRef} numberOfLines={1}>******...******</Text>
+                      <Text style={styles.rowRef} numberOfLines={1}>{'*'.repeat(doc.refNumber?.length || 0)}</Text>
                       <TouchableOpacity
                         onPress={() => copyToClipboard(doc.refNumber)}
                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -433,9 +433,10 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
 
 // `wrap`: long unbroken values (a 24-char EPC) wrap to a second line instead
 // of truncating — break-all so web breaks mid-string too.
-// `onCopy`: when given, the value renders masked ("******...******") with a
-// copy icon that hands the real value to the caller (e.g. to clipboard)
-// instead of ever showing it on screen directly.
+// `onCopy`: when given, the value renders masked (one `*` per real
+// character, so the mask's length still signals the value's actual length)
+// with a copy icon that hands the real value to the caller (e.g. to
+// clipboard) instead of ever showing it on screen directly.
 const DetailRow = ({ icon, label, value, wrap = false, onCopy }: { icon: string; label: string; value: string; wrap?: boolean; onCopy?: () => void }) => (
   <View style={styles.detailRow}>
     <View style={styles.detailLabelWrap}>
@@ -444,7 +445,7 @@ const DetailRow = ({ icon, label, value, wrap = false, onCopy }: { icon: string;
     </View>
     {onCopy ? (
       <View style={styles.detailValueMaskedWrap}>
-        <Text style={styles.detailValue} numberOfLines={1}>******...******</Text>
+        <Text style={styles.detailValue} numberOfLines={wrap ? 2 : 1}>{'*'.repeat(value?.length || 0)}</Text>
         <TouchableOpacity onPress={onCopy} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <VectorIcon name="content-copy" size={18} color={colors.muted} />
         </TouchableOpacity>
