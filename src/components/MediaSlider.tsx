@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Dimensions, Platform } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useI18n } from '../i18n/I18nContext';
 import { colors, shadow } from '../theme';
@@ -99,6 +99,36 @@ export default function MediaSlider({
     setActive(i);
   };
 
+  // Touch swipe already works natively (pagingEnabled ScrollView) on iOS/
+  // Android and in mobile browsers. Desktop web is the gap: a browser's
+  // native overflow-x scroll container only responds to touch/wheel/
+  // scrollbar input, not an arbitrary mouse click-and-drag across the
+  // content -- so on web (mouse) only the dots worked. Mirrors the same
+  // drag-to-swipe fix applied to the frontend admin panel's own preview
+  // slider for the same reason.
+  const dragStartXRef = useRef(0);
+  const draggingRef = useRef(false);
+  const SWIPE_THRESHOLD_PX = 30;
+  const webDragHandlers = Platform.OS === 'web' ? {
+    onMouseDown: (e: any) => {
+      draggingRef.current = true;
+      dragStartXRef.current = e.nativeEvent?.pageX ?? e.clientX ?? 0;
+    },
+    onMouseUp: (e: any) => {
+      if (!draggingRef.current) return;
+      draggingRef.current = false;
+      const endX = e.nativeEvent?.pageX ?? e.clientX ?? 0;
+      const dx = endX - dragStartXRef.current;
+      if (Math.abs(dx) > SWIPE_THRESHOLD_PX) {
+        const next = Math.min(Math.max(active + (dx < 0 ? 1 : -1), 0), slides.length - 1);
+        if (next !== active) goTo(next);
+      }
+    },
+    onMouseLeave: () => {
+      draggingRef.current = false;
+    },
+  } : {};
+
   // Never leave a bare empty card behind -- an intentional placeholder reads
   // as "no photo for this product" instead of "something didn't load".
   if (slides.length === 0) {
@@ -153,6 +183,7 @@ export default function MediaSlider({
           if (w && w !== pageWidth) setPageWidth(w);
         }}
         style={styles.carousel}
+        {...(webDragHandlers as any)}
       >
         {slides.map((slide, index) => (
           <View key={index} style={[styles.slidePage, { width: pageWidth, paddingHorizontal: pad }]}>
