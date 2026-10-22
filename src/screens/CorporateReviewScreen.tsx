@@ -198,10 +198,15 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
     }
   };
 
-  // IDs/tag values are shown masked (privacy — a glance at the list/popup
-  // shouldn't expose the raw EPC or reference number) with a copy icon that
-  // puts the real value on the clipboard. Same web/native split ResultScreen's
-  // copyToClipboard already uses.
+  // IDs/tag values show their real characters (first 6 … last 4 when long
+  // enough that truncating actually shortens it) with a copy icon that puts
+  // the full value on the clipboard regardless of whether it's truncated.
+  const truncateValue = (value: string) => {
+    if (!value) return '';
+    return value.length > 14 ? `${value.slice(0, 6)} ... ${value.slice(-4)}` : value;
+  };
+
+  // Same web/native split ResultScreen's copyToClipboard already uses.
   const copyToClipboard = async (text: string) => {
     try {
       const nav = (globalThis as any)?.navigator;
@@ -332,7 +337,7 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
                   )}
                   <View style={styles.rowInfo}>
                     <View style={styles.rowRefMaskedWrap}>
-                      <Text style={styles.rowRef} numberOfLines={1}>{'*'.repeat(doc.refNumber?.length || 0)}</Text>
+                      <Text style={styles.rowRef} numberOfLines={1}>{truncateValue(doc.refNumber)}</Text>
                       <TouchableOpacity
                         onPress={() => copyToClipboard(doc.refNumber)}
                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -432,11 +437,11 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
 }
 
 // `wrap`: long unbroken values (a 24-char EPC) wrap to a second line instead
-// of truncating — break-all so web breaks mid-string too.
-// `onCopy`: when given, the value renders masked (one `*` per real
-// character, so the mask's length still signals the value's actual length)
-// with a copy icon that hands the real value to the caller (e.g. to
-// clipboard) instead of ever showing it on screen directly.
+// of truncating — break-all so web breaks mid-string too. Only applies to
+// the plain (non-`onCopy`) branch, since the truncated form is always short.
+// `onCopy`: when given, the value renders truncated (first 6 … last 4 chars,
+// only when that's actually shorter than the real value) with a copy icon
+// that hands the full, untruncated value to the caller (e.g. clipboard).
 const DetailRow = ({ icon, label, value, wrap = false, onCopy }: { icon: string; label: string; value: string; wrap?: boolean; onCopy?: () => void }) => (
   <View style={styles.detailRow}>
     <View style={styles.detailLabelWrap}>
@@ -445,7 +450,9 @@ const DetailRow = ({ icon, label, value, wrap = false, onCopy }: { icon: string;
     </View>
     {onCopy ? (
       <View style={styles.detailValueMaskedWrap}>
-        <Text style={styles.detailValue} numberOfLines={wrap ? 2 : 1}>{'*'.repeat(value?.length || 0)}</Text>
+        <Text style={styles.detailValue} numberOfLines={1}>
+          {value && value.length > 14 ? `${value.slice(0, 6)} ... ${value.slice(-4)}` : value}
+        </Text>
         <TouchableOpacity onPress={onCopy} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <VectorIcon name="content-copy" size={18} color={colors.muted} />
         </TouchableOpacity>
