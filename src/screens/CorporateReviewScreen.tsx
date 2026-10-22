@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, ActivityIndicator, Modal, TouchableWithoutFeedback, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, ActivityIndicator, Modal, TouchableWithoutFeedback, Dimensions, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Clipboard from '@react-native-clipboard/clipboard';
 import VectorIcon from 'react-native-vector-icons/MaterialIcons';
 import FeatherIcon from 'react-native-vector-icons/Feather';
 import AppLayout from '../components/AppLayout';
@@ -66,6 +67,7 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
   const [periodMenuVisible, setPeriodMenuVisible] = useState(false);
   const [periodPopover, setPeriodPopover] = useState({ top: 0, right: 0 });
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [showCopyInfoDialog, setShowCopyInfoDialog] = useState(false);
   const tokenRef = useRef<string>('');
   const periodButtonRef = useRef<View>(null);
 
@@ -196,6 +198,24 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
     }
   };
 
+  // IDs/tag values are shown masked (privacy — a glance at the list/popup
+  // shouldn't expose the raw EPC or reference number) with a copy icon that
+  // puts the real value on the clipboard. Same web/native split ResultScreen's
+  // copyToClipboard already uses.
+  const copyToClipboard = async (text: string) => {
+    try {
+      const nav = (globalThis as any)?.navigator;
+      if (Platform.OS === 'web' && nav?.clipboard?.writeText) {
+        await nav.clipboard.writeText(text);
+      } else {
+        await Clipboard.setString(text);
+      }
+      setShowCopyInfoDialog(true);
+    } catch (err) {
+      console.error('Clipboard copy failed:', err);
+    }
+  };
+
   const subtitle = stepIndex !== undefined
     ? (step ? `${step.entity} / ${step.type}` : undefined)
     : t('corpAllSteps');
@@ -311,7 +331,16 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
                     </View>
                   )}
                   <View style={styles.rowInfo}>
-                    <Text style={styles.rowRef} numberOfLines={1}>{doc.refNumber}</Text>
+                    <View style={styles.rowRefMaskedWrap}>
+                      <Text style={styles.rowRef} numberOfLines={1}>******...******</Text>
+                      <TouchableOpacity
+                        onPress={() => copyToClipboard(doc.refNumber)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        accessibilityLabel={t('corpCopyIdLabel')}
+                      >
+                        <VectorIcon name="content-copy" size={16} color={colors.muted} />
+                      </TouchableOpacity>
+                    </View>
                     <Text style={styles.rowTime}>{new Date(doc.capturedAt).toLocaleTimeString()}</Text>
                   </View>
                   <View style={[styles.badge, index === 0 ? styles.badgeLatest : styles.badgeSaved]}>
@@ -374,11 +403,27 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
                 />
                 <DetailRow icon="photo-camera" label={t('corpCapturedViaLabel')} value={detailDoc.identifierType || '—'} />
                 {!detailDoc.imagePath && !!detailDoc.rawValue && (
-                  <DetailRow icon="sell" label={t('corpTagValueLabel')} value={detailDoc.rawValue} wrap />
+                  <DetailRow icon="sell" label={t('corpTagValueLabel')} value={detailDoc.rawValue} wrap onCopy={() => copyToClipboard(detailDoc.rawValue)} />
                 )}
                 <DetailRow icon="tablet-mac" label={t('corpCapturedDeviceLabel')} value={detailDoc.device?.model || '—'} />
               </View>
             )}
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+      <Modal
+        visible={showCopyInfoDialog}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowCopyInfoDialog(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowCopyInfoDialog(false)}>
+          <View style={styles.copyInfoModalOverlay}>
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View style={styles.copyInfoModalCard}>
+                <Text style={styles.copyInfoModalText}>{t('corpCopiedToClipboard')}</Text>
+              </View>
+            </TouchableWithoutFeedback>
           </View>
         </TouchableWithoutFeedback>
       </Modal>
@@ -388,13 +433,25 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
 
 // `wrap`: long unbroken values (a 24-char EPC) wrap to a second line instead
 // of truncating — break-all so web breaks mid-string too.
-const DetailRow = ({ icon, label, value, wrap = false }: { icon: string; label: string; value: string; wrap?: boolean }) => (
+// `onCopy`: when given, the value renders masked ("******...******") with a
+// copy icon that hands the real value to the caller (e.g. to clipboard)
+// instead of ever showing it on screen directly.
+const DetailRow = ({ icon, label, value, wrap = false, onCopy }: { icon: string; label: string; value: string; wrap?: boolean; onCopy?: () => void }) => (
   <View style={styles.detailRow}>
     <View style={styles.detailLabelWrap}>
       <VectorIcon name={icon} size={21} color={colors.muted} style={styles.detailIcon} />
       <Text style={styles.detailLabel}>{label}</Text>
     </View>
-    <Text style={[styles.detailValue, wrap && ({ wordBreak: 'break-all' } as any)]} numberOfLines={wrap ? 2 : 1}>{value}</Text>
+    {onCopy ? (
+      <View style={styles.detailValueMaskedWrap}>
+        <Text style={styles.detailValue} numberOfLines={1}>******...******</Text>
+        <TouchableOpacity onPress={onCopy} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <VectorIcon name="content-copy" size={18} color={colors.muted} />
+        </TouchableOpacity>
+      </View>
+    ) : (
+      <Text style={[styles.detailValue, wrap && ({ wordBreak: 'break-all' } as any)]} numberOfLines={wrap ? 2 : 1}>{value}</Text>
+    )}
   </View>
 );
 
@@ -481,6 +538,7 @@ const styles = StyleSheet.create({
   },
   rowInfo: { flex: 1 },
   rowRef: { fontSize: 21, fontWeight: '600', color: colors.text },
+  rowRefMaskedWrap: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   rowTime: { fontSize: 18, color: colors.muted },
   badge: { paddingVertical: 6, paddingHorizontal: 15, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, marginRight: spacing.sm, borderWidth: 1, borderColor: 'transparent' },
   // Latest: outlined (not filled) so it reads distinct from the filled-green Saved badge.
@@ -507,6 +565,28 @@ const styles = StyleSheet.create({
   detailIcon: { marginRight: 6 },
   detailLabel: { fontSize: 18, color: colors.muted },
   detailValue: { fontSize: 18, color: colors.text, fontWeight: '600', flexShrink: 1, textAlign: 'right', marginLeft: spacing.md },
+  detailValueMaskedWrap: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginLeft: spacing.md },
+  copyInfoModalOverlay: {
+    flex: 1,
+    backgroundColor: colors.overlay,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  copyInfoModalCard: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: 22,
+    ...shadow(3),
+  },
+  copyInfoModalText: {
+    fontSize: 22,
+    color: colors.text,
+    textAlign: 'center',
+    lineHeight: 30,
+  },
   moreButton: {
     flexDirection: 'row',
     alignItems: 'center',

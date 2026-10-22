@@ -7,6 +7,7 @@ import VideoPlayerModal from '../components/VideoPlayerModal';
 import GradientButton from '../components/GradientButton';
 import { useI18n } from '../i18n/I18nContext';
 import { colors, spacing, radius, shadow, MIN_TOUCH } from '../theme';
+import { normalizeToStringArray, normalizeToArray } from '../utils/mediaNormalize';
 
 interface ScanSuccessfulScreenProps {
   navigation: any;
@@ -24,8 +25,13 @@ export default function ScanSuccessfulScreen({ navigation, route, user, onLogout
   const hasIds = productId != null && qrcodeId != null;
   const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
 
-  const images = Array.isArray(productData?.images) ? productData.images : [];
-  const videos = Array.isArray(productData?.videos) ? productData.videos : [];
+  // A shallow Array.isArray check silently drops to [] whenever the API
+  // returns images/videos as a keyed object instead of a flat array (seen
+  // live: the slider showed only the static placeholder here while the same
+  // product's ResultScreen, which already normalizes, showed the full
+  // carousel fine) — normalize the same way ResultScreen/ProductSummaryScreen do.
+  const images = normalizeToStringArray(productData?.images);
+  const videos = normalizeToArray(productData?.videos);
 
   const goToProductDetail = () => {
     navigation.replace('Result', {
