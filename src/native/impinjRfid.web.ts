@@ -7,12 +7,39 @@ import {
 
 export * from './impinjRfidShared';
 
-// Web build: a browser can't open a raw TCP/LLRP socket to the reader's LAN
-// IP, so this goes through the DPP backend's /impinj-llrp/* routes
+// Plain browser: a web page can't open a raw TCP/LLRP socket to the reader's
+// LAN IP, so this goes through the DPP backend's /impinj-llrp/* routes
 // (backend/controllers/impinjLlrpController.ts), which speak LLRP directly
 // to the reader and hand back JSON matching the shapes in impinjRfidShared.ts.
-// The native build (impinjRfid.ts) instead connects straight to the reader
-// from the phone itself — see that file for why web can't do the same.
+//
+// Desktop app (Electron, see /desktop at the repo root): this same web build
+// runs inside it too, but its main process *is* real Node — it can and does
+// open that socket directly (desktop/impinjLlrpMain.js, no backend, no
+// Tailscale needed as long as the desktop machine is on the reader's own
+// network). desktop/preload.js exposes that as window.electronImpinj; when
+// present, every export below calls straight through to it instead of
+// fetching the backend. CorporateScannerScreen.tsx/ShipmentInspectionScreen.tsx
+// don't know or care which path is active — same contract either way.
+//
+// The native mobile build (impinjRfid.ts) connects straight to the reader
+// from the phone itself the same way, for the same reason.
+declare global {
+  interface Window {
+    electronImpinj?: {
+      getStatus: () => Promise<ImpinjReaderStatus>;
+      connect: () => Promise<ImpinjReaderStatus>;
+      disconnect: () => Promise<ImpinjReaderStatus>;
+      start: () => Promise<ImpinjReaderStatus>;
+      stop: () => Promise<ImpinjReaderStatus>;
+      getTagsInView: () => Promise<ImpinjTagRead[]>;
+      getRecentTags: (count?: number) => Promise<ImpinjTagRead[]>;
+      clearTags: () => Promise<void>;
+      getSettings: () => Promise<ImpinjReaderSettings>;
+      updateSettings: (next: ImpinjReaderSettings) => Promise<ImpinjReaderSettings>;
+    };
+  }
+}
+const electronBridge = typeof window !== 'undefined' ? window.electronImpinj : undefined;
 
 // Kept comfortably above the backend's own worst case (impinjLlrpController.ts):
 // its own CONNECT/TRANSACT timeouts stack up across a start() sequence, so
@@ -54,19 +81,19 @@ async function request<T>(method: string, path: string, body?: any): Promise<T> 
   return data as T;
 }
 
-export const getImpinjReaderStatus = () => request<ImpinjReaderStatus>('GET', 'status');
-export const connectImpinjReader = () => request<ImpinjReaderStatus>('POST', 'connect');
-export const disconnectImpinjReader = () => request<ImpinjReaderStatus>('POST', 'disconnect');
-export const startImpinjReading = () => request<ImpinjReaderStatus>('POST', 'start');
-export const stopImpinjReading = () => request<ImpinjReaderStatus>('POST', 'stop');
+export const getImpinjReaderStatus = () => electronBridge ? electronBridge.getStatus() : request<ImpinjReaderStatus>('GET', 'status');
+export const connectImpinjReader = () => electronBridge ? electronBridge.connect() : request<ImpinjReaderStatus>('POST', 'connect');
+export const disconnectImpinjReader = () => electronBridge ? electronBridge.disconnect() : request<ImpinjReaderStatus>('POST', 'disconnect');
+export const startImpinjReading = () => electronBridge ? electronBridge.start() : request<ImpinjReaderStatus>('POST', 'start');
+export const stopImpinjReading = () => electronBridge ? electronBridge.stop() : request<ImpinjReaderStatus>('POST', 'stop');
 
 // Tags currently "in view" (seen within the service's ~10s window) — this is
 // what the Passing Tags card polls, same role scanOnceYometel() plays for
 // the Yometel branch.
-export const getImpinjTagsInView = () => request<ImpinjTagRead[]>('GET', 'tags');
-export const getImpinjRecentTags = (count = 100) => request<ImpinjTagRead[]>('GET', `tags/recent?count=${count}`);
-export const clearImpinjTags = () => request<void>('DELETE', 'tags');
+export const getImpinjTagsInView = () => electronBridge ? electronBridge.getTagsInView() : request<ImpinjTagRead[]>('GET', 'tags');
+export const getImpinjRecentTags = (count = 100) => electronBridge ? electronBridge.getRecentTags(count) : request<ImpinjTagRead[]>('GET', `tags/recent?count=${count}`);
+export const clearImpinjTags = () => electronBridge ? electronBridge.clearTags() : request<void>('DELETE', 'tags');
 
-export const getImpinjReaderSettings = () => request<ImpinjReaderSettings>('GET', 'settings');
+export const getImpinjReaderSettings = () => electronBridge ? electronBridge.getSettings() : request<ImpinjReaderSettings>('GET', 'settings');
 export const updateImpinjReaderSettings = (settings: ImpinjReaderSettings) =>
-  request<ImpinjReaderSettings>('PUT', 'settings', settings);
+  electronBridge ? electronBridge.updateSettings(settings) : request<ImpinjReaderSettings>('PUT', 'settings', settings);
