@@ -167,6 +167,13 @@ export default function AppLayout({
   // column on a soft backdrop instead of stretching edge to edge.
   const { width: winWidth, height: winHeight } = useWindowDimensions();
   const isWide = Platform.OS === 'web' && winWidth >= 700;
+  // RN Modal portals straight to the window root on web, bypassing the
+  // centred `wideColumn` wrapper below entirely -- so popovers/sheets that
+  // position themselves against the real window edges land outside the
+  // visible phone-width column on a wide browser. These let Modal content
+  // re-derive where that column actually sits and anchor to it instead.
+  const wideColumnWidth = isWide ? Math.min(460, winWidth) : winWidth;
+  const wideColumnInset = isWide ? (winWidth - wideColumnWidth) / 2 : 0;
   // Real device safe-area insets (notch / status bar / home indicator) --
   // added to the fixed design heights below instead of guessing per-platform
   // constants, so the header/tab bar never sit under system chrome.
@@ -519,13 +526,13 @@ export default function AppLayout({
           Profile tab and the employee Profile tab (replaces the old avatar menu). */}
       <Modal visible={profileSheetVisible} transparent animationType="fade" onRequestClose={() => setProfileSheetVisible(false)} accessibilityViewIsModal>
         <TouchableOpacity
-          style={styles.modalOverlay}
+          style={[styles.modalOverlay, isWide && styles.modalOverlayWide]}
           activeOpacity={1}
           onPress={() => setProfileSheetVisible(false)}
           accessibilityRole="button"
           accessibilityLabel={t('close')}
         >
-          <View style={[styles.sheet, { maxHeight: winHeight - topBarHeight, paddingBottom: spacingBottomForSheet }]}>
+          <View style={[styles.sheet, isWide && { width: wideColumnWidth }, { maxHeight: winHeight - topBarHeight, paddingBottom: spacingBottomForSheet }]}>
             <Text style={styles.sheetTitle}>{t('profile')}</Text>
             <TouchableOpacity style={styles.menuItem} onPress={handleProfile} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={t('editProfile')}>
               <Image source={require('../assets/account.png')} style={styles.menuItemIcon} resizeMode="contain" />
@@ -558,7 +565,7 @@ export default function AppLayout({
       <Modal visible={actionSheetVisible} transparent animationType="fade" onRequestClose={() => setActionSheetVisible(false)} accessibilityViewIsModal>
         <TouchableWithoutFeedback onPress={() => setActionSheetVisible(false)}>
           <View style={styles.langOverlay}>
-            <View style={[styles.morePopover, { position: 'absolute', top: topBarHeight - 4, right: 8 }]}>
+            <View style={[styles.morePopover, { position: 'absolute', top: topBarHeight - 4, right: wideColumnInset + 8 }]}>
               {consumerActionItems.map((item, i) => (
                 <View key={item.key}>
                   {i > 0 && <View style={styles.menuDivider} />}
@@ -582,7 +589,7 @@ export default function AppLayout({
       <Modal visible={langMenuVisible} transparent animationType="none" onRequestClose={() => setLangMenuVisible(false)} accessibilityViewIsModal>
         <TouchableWithoutFeedback onPress={() => setLangMenuVisible(false)}>
           <View style={styles.langOverlay}>
-            <View style={[styles.langPopover, { position: 'absolute', top: topBarHeight + 6, right: 16 }]}>
+            <View style={[styles.langPopover, { position: 'absolute', top: topBarHeight + 6, right: wideColumnInset + 16 }]}>
               {languages.map((lang) => (
                 <TouchableOpacity
                   key={lang.code}
@@ -813,6 +820,10 @@ const styles = StyleSheet.create({
   productTabShiftRight: { flex: 1, transform: [{ translateX: 16 }] },
   productTabShiftLeft: { flex: 1, transform: [{ translateX: -16 }] },
   modalOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
+  // Wide web: Modal portals to the real window root, so without this the
+  // sheet below stretches to the overlay's (full window) width instead of
+  // the app's centred phone-width column -- see `sheet`'s inline width.
+  modalOverlayWide: { alignItems: 'center' },
   sheet: {
     backgroundColor: colors.surface,
     borderTopLeftRadius: radius.xxl,
