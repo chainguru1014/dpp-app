@@ -20,7 +20,36 @@ try {
   console.warn('react-native-webview not available:', e);
 }
 
-export default function VideoFrame({ videoId }: { videoId: string }) {
+// Uploaded video files play through a tiny HTML5 <video> page in the same
+// WebView, so no extra native video module is needed.
+const fileVideoHtml = (src: string) =>
+  '<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">' +
+  '<style>html,body{margin:0;height:100%;background:#000}video{width:100%;height:100%;object-fit:contain}</style>' +
+  `</head><body><video src="${src.replace(/"/g, '&quot;')}" controls autoplay playsinline></video></body></html>`;
+
+export default function VideoFrame({ videoId, src }: { videoId?: string | null; src?: string | null }) {
+  if (src) {
+    if (!WebView) {
+      return (
+        <View style={styles.fallback}>
+          <TouchableOpacity style={styles.fallbackBtn} onPress={() => Linking.openURL(src)} activeOpacity={0.8}>
+            <Text style={styles.fallbackBtnText}>Open video</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    return (
+      <WebView
+        source={{ html: fileVideoHtml(src) }}
+        originWhitelist={['*']}
+        style={styles.web}
+        allowsFullscreenVideo
+        allowsInlineMediaPlayback
+        mediaPlaybackRequiresUserAction={false}
+        javaScriptEnabled
+      />
+    );
+  }
   if (!videoId) return null;
 
   const embedUrl =

@@ -1,8 +1,20 @@
 import React from 'react';
 
-// Web build: a plain YouTube embed iframe. Rendered full-bleed inside
-// VideoPlayerModal. (react-native-web passes DOM elements straight through.)
-export default function VideoFrame({ videoId }) {
+// Web build: a plain YouTube embed iframe, or an HTML5 <video> for an
+// uploaded file (src). Rendered full-bleed inside the media viewer.
+// (react-native-web passes DOM elements straight through.)
+export default function VideoFrame({ videoId, src }) {
+  if (src) {
+    return (
+      <video
+        src={src}
+        controls
+        autoPlay
+        playsInline
+        style={{ width: '100%', height: '100%', display: 'block', backgroundColor: '#000', objectFit: 'contain' }}
+      />
+    );
+  }
   if (!videoId) return null;
   return (
     <iframe

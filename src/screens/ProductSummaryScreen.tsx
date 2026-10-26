@@ -77,7 +77,7 @@ export default function ProductSummaryScreen({ navigation, route, user, onLogout
         <View style={styles.headerCard}>
           <View style={styles.headerMedia}>
             {hasMedia ? (
-              <MediaSlider images={images} videos={videos} hideHeader flush maxHeight={148} getFileUrl={fileUrl} />
+              <MediaSlider images={images} videos={videos} hideHeader flush maxHeight={210} getFileUrl={fileUrl} />
             ) : (
               <View style={[styles.thumb, styles.thumbPlaceholder]}>
                 <Icon name="inventory-2" size={28} color={colors.placeholder} />
@@ -146,6 +146,8 @@ const styles = StyleSheet.create({
   container: { flexGrow: 1, padding: spacing.lg },
   headerCard: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
     alignItems: 'center',
     gap: spacing.md,
     backgroundColor: colors.surface,
@@ -155,9 +157,10 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     ...shadow(1),
   },
-  headerMedia: { width: 140 },
-  headerInfo: { flex: 1 },
-  thumb: { width: 140, height: 140, borderRadius: radius.md, backgroundColor: colors.surfaceAlt },
+  // 1.5x the original 140; the name wraps below it on a narrow phone.
+  headerMedia: { width: 210, maxWidth: '100%' },
+  headerInfo: { flexGrow: 1, flexBasis: 140, minWidth: 0 },
+  thumb: { width: 210, height: 210, borderRadius: radius.md, backgroundColor: colors.surfaceAlt },
   thumbPlaceholder: { alignItems: 'center', justifyContent: 'center' },
   name: { fontSize: 26, fontWeight: '700', color: colors.heading },
   verifiedBadge: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 6 },

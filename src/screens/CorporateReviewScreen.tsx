@@ -109,6 +109,7 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
       const params = new URLSearchParams();
       if (stepIndex !== undefined) params.set('stepIndex', String(stepIndex));
       params.set('date', period === 'today' ? 'today' : 'all');
+      params.set('tzOffset', String(new Date().getTimezoneOffset()));
       const res = await fetch(`${API_BASE_URL}captures?${params.toString()}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });

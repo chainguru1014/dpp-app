@@ -12,6 +12,7 @@ import {
   Modal,
   TextInput,
   Switch,
+  useWindowDimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused } from '@react-navigation/native';
@@ -21,7 +22,7 @@ import GradientButton from '../components/GradientButton';
 import MediaSlider from '../components/MediaSlider';
 import { useI18n } from '../i18n/I18nContext';
 import { API_BASE_URL } from '../config/api';
-import { colors, radius, spacing, shadow, MIN_TOUCH } from '../theme';
+import { colors, radius, spacing, shadow } from '../theme';
 import WebCodeScanner, { WebCodeScannerHandle } from '../components/WebCodeScanner';
 import CaptureCameraView, { CaptureCameraHandle, isCaptureCameraAvailable, CapturedCodeFormat } from '../components/CaptureCameraView';
 import { requestNativeCameraPermission } from '../components/NativeCodeScanner';
@@ -51,10 +52,6 @@ const LIVENESS_TIMEOUT_MS = 700;
 // selected — comfortably inside the 5s server-side detection window so a
 // tag that just appeared shows up within a beat, not right at the edge.
 const RFID_POLL_MS = 1500;
-// Passing Tags card shows only the most recent N — rfidTags is already
-// newest-first (see the Impinj poll branch's explicit sort), so this is
-// just a display cap, not a re-sort.
-const MAX_PASSING_TAGS_SHOWN = 20;
 const RFID_WINDOW_SECONDS = 5;
 // Presentation/demo mode: no real RFID gateway is wired up yet (see the
 // mocked Connect state above), so instead of polling /rfid/recent, a fixed
@@ -83,7 +80,8 @@ const fileUrl = (f: string) => {
   return `${API_BASE_URL}files/${String(f).replace(/^\/+/, '')}`;
 };
 
-type CaptureType = 'qr' | 'barcode' | 'rfid' | 'nfc';
+// 'code' reads QR codes and barcodes together (the camera detects both).
+type CaptureType = 'code' | 'rfid' | 'nfc';
 type RfidReaderType = 'yometel' | 'impinj' | 'zebra';
 
 const RFID_READER_TYPES: { key: RfidReaderType; labelKey: any }[] = [
@@ -93,10 +91,9 @@ const RFID_READER_TYPES: { key: RfidReaderType; labelKey: any }[] = [
 ];
 
 const CAPTURE_TYPES: { key: CaptureType; labelKey: any; icon: string }[] = [
-  { key: 'qr', labelKey: 'captureTypeQr', icon: 'qr-code' },
-  { key: 'rfid', labelKey: 'captureTypeRfid', icon: 'wifi-tethering' },
-  { key: 'barcode', labelKey: 'captureTypeBarcode', icon: 'view-week' },
-  { key: 'nfc', labelKey: 'captureTypeNfc', icon: 'nfc' },
+  { key: 'code', labelKey: 'captureTypeCode', icon: 'qr-code' },
+  { key: 'rfid', labelKey: 'captureTypeRfidShort', icon: 'wifi-tethering' },
+  { key: 'nfc', labelKey: 'captureTypeNfcShort', icon: 'nfc' },
 ];
 
 interface ProcessStep {
@@ -131,10 +128,14 @@ interface CorporateScannerScreenProps {
 }
 
 export default function CorporateScannerScreen({ navigation, route, user, onLogout }: CorporateScannerScreenProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const isFocused = useIsFocused();
+  // Camera (Code) / NFC panel height — about half the screen, so the
+  // Capture button sits right under it, within thumb reach.
+  const { height: windowHeight } = useWindowDimensions();
+  const cameraHeight = Math.round(Math.min(540, Math.max(300, windowHeight * 0.51)));
   const stepIndex: number = route?.params?.stepIndex ?? 0;
-  const initialCaptureType: CaptureType = route?.params?.captureType === 'rfid' ? 'rfid' : 'qr';
+  const initialCaptureType: CaptureType = route?.params?.captureType === 'rfid' ? 'rfid' : 'code';
 
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [step, setStep] = useState<ProcessStep | null>(null);
@@ -143,6 +144,11 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   const [capturing, setCapturing] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [codeUnrecognized, setCodeUnrecognized] = useState(false);
+  // Result of the last Capture press, shown as a pill over the camera —
+  // Capture is always pressable, so this is what tells the worker whether
+  // a registered code was actually in frame.
+  const [captureFeedback, setCaptureFeedback] = useState<{ ok: boolean; text: string } | null>(null);
+  const captureFeedbackTimerRef = useRef<any>(null);
   const [torchOn, setTorchOn] = useState(false);
   const [helpVisible, setHelpVisible] = useState(false);
   const [captureType, setCaptureType] = useState<CaptureType>(initialCaptureType);
@@ -222,21 +228,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   const dummyRevealIndexRef = useRef(0);
   const nativeCameraRef = useRef<CaptureCameraHandle>(null);
   const webScannerRef = useRef<WebCodeScannerHandle>(null);
-  // Left/right scroll chevrons for the capture-type row — same pattern as
-  // ProductLifecycleScreen's tab row (canScrollTabsLeft/Right + scrollTabsBy).
-  const typeScrollRef = useRef<ScrollView>(null);
-  const [typeViewportWidth, setTypeViewportWidth] = useState(0);
-  const [typeContentWidth, setTypeContentWidth] = useState(0);
-  const [typeScrollX, setTypeScrollX] = useState(0);
-  const canScrollTypesLeft = typeScrollX > 4;
-  const canScrollTypesRight = typeContentWidth - typeViewportWidth - typeScrollX > 4;
-  const scrollTypesBy = (dir: 1 | -1) => {
-    const step = Math.max(120, typeViewportWidth * 0.7);
-    const next = Math.max(0, Math.min(typeContentWidth - typeViewportWidth, typeScrollX + dir * step));
-    typeScrollRef.current?.scrollTo({ x: next, animated: true });
-  };
-
-  const isCameraType = captureType === 'qr' || captureType === 'barcode';
+  const isCameraType = captureType === 'code';
 
   // Always listening (not gated on captureType/rfidReaderType) so switching
   // tabs mid-connect or mid-scan doesn't drop any lines from the timeline.
@@ -310,11 +302,14 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   // Recent Captures shows only the selected capture type's records (a QR
   // capture stores identifierType 'qr', barcode 'barcode', etc. — same keys
   // as CaptureType). The header's Today's Scans stays the all-types total.
-  const typeCaptures = captures.filter((doc) => doc.identifierType === captureType);
+  const typeCaptures = captures.filter((doc) => (captureType === 'code'
+    ? ['qr', 'barcode', 'gs1dl'].includes(doc.identifierType)
+    : doc.identifierType === captureType));
 
   const loadCaptures = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}captures?stepIndex=${stepIndex}&date=today`, {
+      // tzOffset makes "today" the worker's local day, not the UTC day.
+      const res = await fetch(`${API_BASE_URL}captures?stepIndex=${stepIndex}&date=today&tzOffset=${new Date().getTimezoneOffset()}`, {
         headers: tokenRef.current ? { Authorization: `Bearer ${tokenRef.current}` } : undefined,
       });
       const data = await res.json().catch(() => ({}));
@@ -655,16 +650,27 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   };
 
   const postCapture = async (payload: { rawValue: string; identifierType: string; imagePath: string; productId?: string; qrcodeId?: string; productImage?: string; location: any; device: any }) => {
-    await fetch(`${API_BASE_URL}captures`, {
+    const res = await fetch(`${API_BASE_URL}captures`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
         ...(tokenRef.current ? { Authorization: `Bearer ${tokenRef.current}` } : {}),
       },
-      body: JSON.stringify({ stepIndex, ...payload }),
+      body: JSON.stringify({ stepIndex, tzOffset: new Date().getTimezoneOffset(), ...payload }),
     });
+    if (!res.ok) throw new Error(`Capture save failed (${res.status})`);
   };
+
+  const showCaptureFeedback = (ok: boolean, text: string) => {
+    if (captureFeedbackTimerRef.current) clearTimeout(captureFeedbackTimerRef.current);
+    setCaptureFeedback({ ok, text });
+    captureFeedbackTimerRef.current = setTimeout(() => setCaptureFeedback(null), 2800);
+  };
+
+  useEffect(() => () => {
+    if (captureFeedbackTimerRef.current) clearTimeout(captureFeedbackTimerRef.current);
+  }, []);
 
   const handleScan = (value: string, format: CapturedCodeFormat, manual = false) => {
     // Only accept a detection matching the currently selected capture type
@@ -673,7 +679,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
     // selection, so this is what actually enforces the selector's meaning.
     // Manual entry bypasses this — it's explicitly typed for whichever type
     // is already selected.
-    if (!manual && format !== captureType) return;
+    if (!manual && captureType !== 'code') return;
     lastSeenAtRef.current = Date.now();
     if (value === lastCheckedValueRef.current) return;
     lastCheckedValueRef.current = value;
@@ -918,12 +924,17 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
 
     if (captureType === 'nfc') {
       if (nfcReading) return;
+      if (!nfcAvailable) {
+        showCaptureFeedback(false, t('corpNfcUnavailable'));
+        return;
+      }
       setCapturing(true);
       setNfcReading(true);
       try {
         const value = await readNfcTag();
         if (!value) {
           setCodeUnrecognized(true);
+          showCaptureFeedback(false, t('corpNoCodeDetected'));
           return;
         }
         const [{ recognized, productId, qrcodeId }, location, device] = await Promise.all([
@@ -941,9 +952,11 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
           location: location || undefined,
           device,
         });
+        showCaptureFeedback(recognized, recognized ? t('corpCaptureSaved') : t('corpCodeUnrecognized'));
         await loadCaptures();
       } catch (err) {
         console.error('NFC capture failed:', err);
+        showCaptureFeedback(false, t('corpCaptureFailed'));
       } finally {
         setNfcReading(false);
         setCapturing(false);
@@ -951,9 +964,14 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
       return;
     }
 
-    // Camera-driven types (qr / barcode) — unchanged
-    // from the original flow, still gated on liveCode.
-    if (!liveCode) return;
+    // Camera-driven types (qr / barcode). Capture is always pressable; with
+    // no registered code in frame it just says why nothing was captured.
+    if (!liveCode) {
+      showCaptureFeedback(false, verifying
+        ? t('corpCheckingCode')
+        : codeUnrecognized ? t('corpCodeUnrecognized') : t('corpNoCodeDetected'));
+      return;
+    }
     setCapturing(true);
     try {
       let photoUri: string | null = null;
@@ -985,23 +1003,26 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
       // and re-enter the frame first. It still clears via the liveness timer
       // once the code actually leaves frame, or updates immediately once a
       // different code is detected.
+      showCaptureFeedback(true, t('corpCaptureSaved'));
       await loadCaptures();
     } catch (err) {
       console.error('Capture failed:', err);
+      showCaptureFeedback(false, t('corpCaptureFailed'));
     } finally {
       setCapturing(false);
     }
   };
 
-  const captureEnabled = isCameraType
-    ? !!liveCode
-    : captureType === 'nfc'
-      ? nfcAvailable && !nfcReading
-      : rfidTags.length > 0;
+  // Ready = a registered code is in frame (camera) or NFC can be read —
+  // only dims the Capture button a little; it is never disabled.
+  const captureReady = isCameraType ? !!liveCode : nfcAvailable && !nfcReading;
 
   const today = new Date();
-  const dateLabel = today.toLocaleDateString();
-  const currentRef = captures[0]?.refNumber || '—';
+  // Explicit Y/M/D for Japanese (toLocaleDateString follows the device
+  // locale, not the app's language).
+  const dateLabel = locale === 'ja'
+    ? `${today.getFullYear()}/${today.getMonth() + 1}/${today.getDate()}`
+    : today.toLocaleDateString();
   const subtitle = step ? `${step.entity} / ${step.type}` : undefined;
 
   const renderCamera = () => {
@@ -1061,92 +1082,57 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
       subtitle={subtitle}
       flatContent
     >
-      <View style={styles.container}>
-        <View style={styles.infoStrip}>
-          <View style={styles.infoCell}>
-            <VectorIcon name="event" size={21} color={colors.primary} />
-            <Text style={styles.infoLabel}>{t('corpDateLabel')}</Text>
-            <Text style={styles.infoValue} numberOfLines={1}>{dateLabel}</Text>
+      <View style={[styles.container, captureType === 'rfid' && styles.containerCompact]}>
+        {/* Hidden in RFID mode so the Passing Tags list gets the height. */}
+        {captureType !== 'rfid' && (
+          <View style={styles.infoStrip}>
+            <View style={[styles.infoCell, styles.infoCellWide]}>
+              <VectorIcon name="event" size={21} color={colors.primary} />
+              <Text style={styles.infoLabel} numberOfLines={1}>{t('corpDateLabel')}</Text>
+              <Text style={styles.infoValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{dateLabel}</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.infoCell}
+              onPress={() => navigation.navigate('CorporateReview', { stepIndex })}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+            >
+              <VectorIcon name="show-chart" size={21} color={colors.primary} />
+              <Text style={styles.infoLabel} numberOfLines={1}>{t('corpTodayScans')}</Text>
+              <Text style={styles.infoValue} numberOfLines={1}>{captures.length}</Text>
+            </TouchableOpacity>
+            <View style={styles.infoCell}>
+              <VectorIcon name="person" size={21} color={colors.primary} />
+              <Text style={styles.infoLabel} numberOfLines={1}>{t('corpTerminal')}</Text>
+              <Text style={styles.infoValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{user?.terminalId || '—'}</Text>
+            </View>
           </View>
-          <View style={styles.infoCell}>
-            <VectorIcon name="show-chart" size={21} color={colors.primary} />
-            <Text style={styles.infoLabel}>{t('corpTodayScans')}</Text>
-            <Text style={styles.infoValue} numberOfLines={1}>{captures.length}</Text>
-          </View>
-          <View style={styles.infoCell}>
-            <VectorIcon name="description" size={21} color={colors.primary} />
-            <Text style={styles.infoLabel}>{t('corpCurrentRef')}</Text>
-            <Text style={styles.infoValue} numberOfLines={1}>{currentRef}</Text>
-          </View>
-          <View style={styles.infoCell}>
-            <VectorIcon name="person" size={21} color={colors.primary} />
-            <Text style={styles.infoLabel}>{t('corpTerminal')}</Text>
-            <Text style={styles.infoValue} numberOfLines={1}>Terminal {user?.terminalId || '—'}</Text>
-          </View>
+        )}
+
+        <View style={styles.typeSelectorRow}>
+          {CAPTURE_TYPES.map((opt) => (
+            <TouchableOpacity
+              key={opt.key}
+              style={[styles.typeChip, captureType === opt.key && styles.typeChipActive]}
+              onPress={() => setCaptureType(opt.key)}
+              activeOpacity={0.75}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: captureType === opt.key }}
+            >
+              <VectorIcon
+                name={opt.icon}
+                size={21}
+                color={captureType === opt.key ? '#fff' : colors.muted}
+                style={styles.typeChipIcon}
+              />
+              <Text style={[styles.typeChipText, captureType === opt.key && styles.typeChipTextActive]} numberOfLines={1}>
+                {t(opt.labelKey)}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
-        <View style={styles.typeRowWrap}>
-          {/* Both arrow slots stay mounted at all times (disabled + dimmed at
-              the respective edge, rather than unmounted) so the ScrollView's
-              viewport width never shifts as the user scrolls — same reasoning
-              as ProductLifecycleScreen's tab row. */}
-          <TouchableOpacity
-            style={styles.typeArrowBtn}
-            onPress={() => scrollTypesBy(-1)}
-            disabled={!canScrollTypesLeft}
-            accessibilityRole="button"
-            accessibilityLabel={t('lifecyclePrevTabs')}
-            accessibilityState={{ disabled: !canScrollTypesLeft }}
-          >
-            <View style={[styles.typeEdgeHint, !canScrollTypesLeft && styles.typeEdgeHintDisabled]}>
-              <VectorIcon name="chevron-left" size={22} color={canScrollTypesLeft ? colors.primary : colors.placeholder} />
-            </View>
-          </TouchableOpacity>
-          <ScrollView
-            ref={typeScrollRef}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.typeSelectorScroll}
-            contentContainerStyle={styles.typeSelectorRow}
-            onLayout={(e) => setTypeViewportWidth(e.nativeEvent.layout.width)}
-            onContentSizeChange={(w) => setTypeContentWidth(w)}
-            onScroll={(e) => setTypeScrollX(e.nativeEvent.contentOffset.x)}
-            scrollEventThrottle={32}
-          >
-            {CAPTURE_TYPES.map((opt) => (
-              <TouchableOpacity
-                key={opt.key}
-                style={[styles.typeChip, captureType === opt.key && styles.typeChipActive]}
-                onPress={() => setCaptureType(opt.key)}
-                activeOpacity={0.75}
-              >
-                <VectorIcon
-                  name={opt.icon}
-                  size={21}
-                  color={captureType === opt.key ? '#fff' : colors.muted}
-                  style={styles.typeChipIcon}
-                />
-                <Text style={[styles.typeChipText, captureType === opt.key && styles.typeChipTextActive]}>
-                  {t(opt.labelKey)}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-          <TouchableOpacity
-            style={styles.typeArrowBtn}
-            onPress={() => scrollTypesBy(1)}
-            disabled={!canScrollTypesRight}
-            accessibilityRole="button"
-            accessibilityLabel={t('lifecycleNextTabs')}
-            accessibilityState={{ disabled: !canScrollTypesRight }}
-          >
-            <View style={[styles.typeEdgeHint, !canScrollTypesRight && styles.typeEdgeHintDisabled]}>
-              <VectorIcon name="chevron-right" size={22} color={canScrollTypesRight ? colors.primary : colors.placeholder} />
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.scanViewport}>
+        <View style={[styles.scanViewport, captureType !== 'rfid' && { flex: 0, height: cameraHeight }]}>
           {isCameraType ? renderCamera() : captureType === 'rfid' ? (
             <View style={styles.rfidPanel}>
               {(() => {
@@ -1271,8 +1257,12 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                     </Text>
                   </View>
                 ) : (
-                  <ScrollView style={styles.rfidPassingList} showsVerticalScrollIndicator={false}>
-                    {rfidTags.slice(0, MAX_PASSING_TAGS_SHOWN).map((tag, index) => {
+                  <ScrollView
+                    style={styles.rfidPassingList}
+                    contentContainerStyle={styles.rfidPassingListContent}
+                    showsVerticalScrollIndicator
+                  >
+                    {rfidTags.map((tag, index) => {
                       const dummy = DUMMY_RFID_TAGS.find((d) => d.epc === tag.epc);
                       const resolved = rfidProductByEpc[tag.epc];
                       const productId = resolved?.productId;
@@ -1288,7 +1278,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                             <Image source={{ uri: fileUrl(resolved.productImage) }} style={styles.rfidPassingIconBox} />
                           ) : (
                             <View style={styles.rfidPassingIconBox}>
-                              <VectorIcon name="wifi-tethering" size={22} color={colors.primary} />
+                              <VectorIcon name="wifi-tethering" size={18} color={colors.primary} />
                             </View>
                           )}
                           <View style={styles.rfidPassingDetail}>
@@ -1325,23 +1315,34 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
           {isCameraType && (
             <>
               <View pointerEvents="none" style={styles.frameOverlay}>
-                <ScanFrameCorners size={240} active={!!liveCode} activeColor={colors.primary} />
+                <ScanFrameCorners size={Math.min(200, cameraHeight - 70)} active={!!liveCode} activeColor={colors.primary} />
               </View>
               <View pointerEvents="none" style={styles.overlayHintWrap}>
                 <VectorIcon name="qr-code" size={24} color="#fff" style={styles.overlayHintIcon} />
                 <Text style={styles.overlayHintText}>{t('corpScanHint')}</Text>
               </View>
-              <View style={styles.overlayCornerRow}>
-                <TouchableOpacity style={styles.overlayCornerButton} onPress={() => setTorchOn((v) => !v)} activeOpacity={0.75}>
-                  <VectorIcon name={torchOn ? 'flash-on' : 'flash-off'} size={30} color="#fff" />
-                  <Text style={styles.overlayCornerText}>{torchOn ? t('scanTorchOn') : t('scanTorchOff')}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.overlayCornerButton} onPress={() => setHelpVisible(true)} activeOpacity={0.75}>
-                  <VectorIcon name="help-outline" size={30} color="#fff" />
-                  <Text style={styles.overlayCornerText}>{t('scanHelpLabel')}</Text>
-                </TouchableOpacity>
-              </View>
             </>
+          )}
+          {isCameraType && (
+            <View style={styles.overlayCornerRow}>
+              <TouchableOpacity style={styles.overlayCornerButton} onPress={() => setTorchOn((v) => !v)} activeOpacity={0.75}>
+                <VectorIcon name={torchOn ? 'flash-on' : 'flash-off'} size={30} color="#fff" />
+                <Text style={styles.overlayCornerText}>{torchOn ? t('scanTorchOn') : t('scanTorchOff')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.overlayCornerButton} onPress={() => setHelpVisible(true)} activeOpacity={0.75}>
+                <VectorIcon name="help-outline" size={30} color="#fff" />
+                <Text style={styles.overlayCornerText}>{t('scanHelpLabel')}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          {/* Result of the last Capture press. */}
+          {captureType !== 'rfid' && !!captureFeedback && (
+            <View pointerEvents="none" style={styles.captureFeedbackWrap}>
+              <View style={[styles.captureFeedbackPill, captureFeedback.ok ? styles.captureFeedbackOk : styles.captureFeedbackError]}>
+                <VectorIcon name={captureFeedback.ok ? 'check-circle' : 'error-outline'} size={20} color="#fff" />
+                <Text style={styles.captureFeedbackText}>{captureFeedback.text}</Text>
+              </View>
+            </View>
           )}
           {isCameraType && cameraStalled && (
             <View style={styles.stalledOverlay}>
@@ -1362,6 +1363,25 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
             </View>
           )}
         </View>
+
+        {/* Always pressable — with nothing registered in frame it says so
+            (see handleCapture) rather than staying greyed out. */}
+        {captureType !== 'rfid' && (
+          <GradientButton
+            style={[styles.captureButton, !captureReady && styles.captureButtonIdle]}
+            onPress={handleCapture}
+            disabled={capturing}
+          >
+            {capturing || verifying ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <VectorIcon name={captureType === 'nfc' ? 'nfc' : 'photo-camera'} size={32} color="#fff" />
+                <Text style={styles.captureButtonText}>{t('corpCaptureButton')}</Text>
+              </>
+            )}
+          </GradientButton>
+        )}
 
         {/* RFID mode has no Recent Captures card — the Passing Tags card
             above already shows registered captures live, with product image
@@ -1408,25 +1428,6 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
             {!!codeUnrecognized && !liveCode && (
               <Text style={styles.unrecognizedText}>{t('corpCodeUnrecognized')}</Text>
             )}
-
-            <GradientButton
-              style={[styles.captureButton, (!captureEnabled || capturing) && styles.captureButtonDisabled]}
-              onPress={handleCapture}
-              disabled={!captureEnabled || capturing}
-            >
-              {capturing || verifying ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <>
-                  <VectorIcon
-                    name={captureType === 'nfc' ? 'nfc' : 'photo-camera'}
-                    size={38}
-                    color="#fff"
-                  />
-                  <Text style={styles.captureButtonText}>{t('corpCaptureButton')}</Text>
-                </>
-              )}
-            </GradientButton>
           </View>
         )}
       </View>
@@ -1800,10 +1801,15 @@ const DARK = '#0b1220';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg, padding: spacing.lg },
+  containerCompact: { padding: spacing.sm },
   // Bleeds past the container's own padding to sit flush against the
   // screen edges/bottom nav with rounded top corners — matches the consumer
   // ScannerScreen's whiteBoard treatment.
+  // Fills the space under Capture; its heading and thumbnails sit at the
+  // bottom, next to the nav bar.
   bottomBoard: {
+    flex: 1,
+    justifyContent: 'flex-end',
     marginTop: spacing.md,
     marginHorizontal: -spacing.lg,
     marginBottom: -spacing.lg,
@@ -1825,31 +1831,20 @@ const styles = StyleSheet.create({
     ...shadow(1),
   },
   infoCell: { flex: 1, alignItems: 'center', gap: 2 },
+  // The date is the longest value (2026/10/26) — a wider cell keeps it whole.
+  infoCellWide: { flex: 1.5 },
   // numberOfLines={1} makes these size to the full cell width for ellipsis
   // purposes, so the parent's alignItems:'center' alone doesn't center the
   // glyphs inside — textAlign does.
   infoLabel: { fontSize: 17, color: colors.muted, textAlign: 'center' },
   infoValue: { fontSize: 20, fontWeight: '600', color: colors.text, textAlign: 'center' },
-  // Left/right chevron wrapper — same structure as ProductLifecycleScreen's
-  // tabRowWrap: arrows are real flex siblings with a permanently reserved
-  // MIN_TOUCH-wide slot each (disabled + dimmed at the respective edge
-  // rather than unmounted), so the ScrollView's viewport width never shifts.
-  typeRowWrap: { flexDirection: 'row', alignItems: 'stretch', marginBottom: spacing.sm },
-  typeArrowBtn: { width: MIN_TOUCH, alignItems: 'center', justifyContent: 'center' },
-  typeEdgeHint: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.surfaceAlt,
-  },
-  typeEdgeHintDisabled: { opacity: 0.35 },
-  typeSelectorScroll: { flex: 1 },
-  typeSelectorRow: { flexDirection: 'row', gap: spacing.xs, paddingHorizontal: spacing.xs },
+  // Three equal type buttons, all fully visible.
+  typeSelectorRow: { flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.sm },
   typeChip: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     height: 45,
     borderRadius: radius.pill,
     borderWidth: 1,
@@ -1885,7 +1880,7 @@ const styles = StyleSheet.create({
   // color wins regardless of the dark backgroundColor set on scanViewport.
   // Top-aligned (not centered) so the reader selector/status pack toward the
   // top and the passing-tags card below gets the rest of the height.
-  rfidPanel: { flex: 1, width: '100%', justifyContent: 'flex-start', alignItems: 'stretch', padding: spacing.lg, backgroundColor: colors.surface },
+  rfidPanel: { flex: 1, width: '100%', justifyContent: 'flex-start', alignItems: 'stretch', padding: spacing.sm, backgroundColor: colors.surface },
   rfidReaderTypeRow: { flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.md, alignSelf: 'center' },
   rfidReaderChip: {
     height: 40,
@@ -1964,27 +1959,31 @@ const styles = StyleSheet.create({
   rfidPassingHeading: { fontSize: 17, fontWeight: '600', color: colors.muted, marginBottom: spacing.xs },
   rfidPassingEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   rfidPassingList: { flex: 1 },
+  // Tail room so the last row scrolls fully clear of the card's edge.
+  rfidPassingListContent: { paddingBottom: spacing.lg },
+  // Compact rows — as many tags on screen as possible.
   rfidPassingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: spacing.sm,
-    marginBottom: spacing.xs,
+    paddingVertical: 4,
+    paddingHorizontal: spacing.xs,
+    marginBottom: 4,
   },
   rfidPassingIconBox: {
-    width: 40,
-    height: 40,
+    width: 30,
+    height: 30,
     borderRadius: radius.sm,
     backgroundColor: colors.surfaceAlt,
     alignItems: 'center',
     justifyContent: 'center',
   },
   rfidPassingDetail: { flex: 1, marginLeft: spacing.sm },
-  rfidPassingLabel: { fontSize: 16, fontWeight: '600', color: colors.text },
-  rfidPassingEpc: { fontSize: 13, color: colors.muted, marginTop: 1 },
+  rfidPassingLabel: { fontSize: 14, fontWeight: '600', color: colors.text },
+  rfidPassingEpc: { fontSize: 11, color: colors.muted },
   rfidNewBadge: {
     backgroundColor: colors.primary,
     borderRadius: radius.pill,
@@ -2022,11 +2021,39 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: spacing.lg,
     right: spacing.lg,
-    bottom: spacing.lg,
+    bottom: spacing.sm,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
   },
+  captureFeedbackWrap: { position: 'absolute', left: spacing.md, right: spacing.md, bottom: 72, alignItems: 'center' },
+  captureButton: {
+    height: 58,
+    marginTop: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.primary,
+    borderRadius: radius.pill,
+    ...shadow(1),
+  },
+  // Nothing registered in frame yet — still pressable, just quieter.
+  captureButtonIdle: { opacity: 0.8 },
+  captureButtonText: { color: '#fff', fontSize: 23, fontWeight: '600' },
+  captureFeedbackPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    maxWidth: '100%',
+    borderRadius: radius.pill,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.md,
+  },
+  captureFeedbackOk: { backgroundColor: colors.success },
+  captureFeedbackError: { backgroundColor: colors.danger },
+  captureFeedbackText: { color: '#fff', fontSize: 16, fontWeight: '600', flexShrink: 1 },
   overlayCornerButton: { alignItems: 'center', minWidth: 48, minHeight: 48, justifyContent: 'center' },
   overlayCornerText: {
     color: '#fff',
@@ -2072,21 +2099,6 @@ const styles = StyleSheet.create({
   thumbRef: { fontSize: 15, fontWeight: '600', color: colors.muted, marginTop: 2 },
   thumbTime: { fontSize: 14, color: colors.muted },
   unrecognizedText: { color: colors.danger, fontSize: 18, textAlign: 'center', marginBottom: spacing.sm },
-  captureButton: {
-    // 1.3x smaller than the earlier 75 (75 / 1.3 ≈ 58) per explicit feedback.
-    height: 58,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.primary,
-    borderRadius: radius.pill,
-    ...shadow(1),
-  },
-  captureButtonDisabled: {
-    backgroundColor: colors.borderStrong,
-  },
-  captureButtonText: { color: '#fff', fontSize: 23, fontWeight: '600' },
   helpOverlay: {
     flex: 1,
     backgroundColor: 'rgba(11,18,32,0.55)',

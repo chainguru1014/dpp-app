@@ -5,8 +5,7 @@ import Clipboard from '@react-native-clipboard/clipboard';
 import AppLayout, { useBottomBarSpace, useTopBarHeight } from '../components/AppLayout';
 import GradientButton from '../components/GradientButton';
 import GradientView from '../components/GradientView';
-import MediaSlider from '../components/MediaSlider';
-import VideoPlayerModal from '../components/VideoPlayerModal';
+import MediaSlider, { isPlayableVideo } from '../components/MediaSlider';
 import { saveTextFile, safeFileBaseName } from '../utils/saveTextFile';
 import { CareSymbol, getCareSymbolLabel } from '../components/CareSymbols';
 import { useI18n } from '../i18n/I18nContext';
@@ -171,7 +170,6 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
   }, [tabs, tab]);
   // Journey stages are all collapsed by default — a down-chevron invites the tap.
   const [openStage, setOpenStage] = useState<string | null>(null);
-  const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
   // Which Material Origins row (by index) is expanded — Materials tab and
   // Traceability tab each track their own via a prefixed key.
   const [openOrigin, setOpenOrigin] = useState<string | null>(null);
@@ -875,14 +873,27 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
     </View>
   );
 
+  // Videos the brand added on the matching admin form step
+  // (product.tabVideos) — YouTube links or uploaded files, below the tab.
+  const renderTabVideos = (key: string) => {
+    const videos = toArray(productData?.tabVideos?.[key]).filter(isPlayableVideo);
+    if (!videos.length) return null;
+    return (
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>{t('lifecycleTabVideos')}</Text>
+        <MediaSlider images={[]} videos={videos} hideHeader flush maxHeight={220} getFileUrl={fileUrl} watchLabel={t('watchVideo')} />
+      </View>
+    );
+  };
+
   const renderTab = () => {
     switch (tab) {
       case 'journey': return renderJourney();
-      case 'care': return renderCare();
-      case 'materials': return renderMaterials();
-      case 'dispose': return renderDispose();
-      case 'traceability': return renderTraceability();
-      case 'compliance': return renderCompliance();
+      case 'care': return <>{renderCare()}{renderTabVideos('care')}</>;
+      case 'materials': return <>{renderMaterials()}{renderTabVideos('materials')}</>;
+      case 'dispose': return <>{renderDispose()}{renderTabVideos('dispose')}</>;
+      case 'traceability': return <>{renderTraceability()}{renderTabVideos('traceability')}</>;
+      case 'compliance': return <>{renderCompliance()}{renderTabVideos('warranty')}</>;
       default: return null;
     }
   };
@@ -931,10 +942,9 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
                 hideHeader
                 flush
                 onDark
-                maxHeight={88}
+                maxHeight={211}
                 getFileUrl={fileUrl}
                 watchLabel={t('watchVideo')}
-                onPlayVideo={setPlayingVideoId}
               />
             ) : (
               <View style={[styles.headerThumb, styles.headerThumbPlaceholder]}>
@@ -942,7 +952,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
               </View>
             )}
           </View>
-          <View style={{ flex: 1 }}>
+          <View style={{ flexGrow: 1, flexBasis: 140, minWidth: 0 }}>
             <Text style={styles.headerName} numberOfLines={2} accessibilityRole="header">{productData?.name || '—'}</Text>
             {/* Model and ID on separate lines -- combining them on one line with
                 numberOfLines={1} truncated the ID (the more identity-critical of
@@ -1063,11 +1073,6 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
         </View>
       </GradientView>
 
-      <VideoPlayerModal
-        visible={!!playingVideoId}
-        videoId={playingVideoId}
-        onClose={() => setPlayingVideoId(null)}
-      />
 
       <Modal visible={!!infoDialog} transparent animationType="fade" onRequestClose={() => setInfoDialog(null)}>
         <TouchableOpacity style={styles.dialogOverlay} activeOpacity={1} onPress={() => setInfoDialog(null)}>
@@ -1089,8 +1094,11 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
 // parameter is named `colors` so every rule below reads the same as before.
 const makeStyles = (colors: Palette) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.header },
+  // Wraps the name below the (211px) image when they don't fit side by side.
   header: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
     gap: spacing.lg,
     alignItems: 'center',
     paddingLeft: spacing.xl,
@@ -1098,8 +1106,8 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
     paddingTop: spacing.sm,
     paddingBottom: spacing.md,
   },
-  headerMedia: { width: 88 },
-  headerThumb: { width: 88, height: 88, borderRadius: radius.md, backgroundColor: 'rgba(255,255,255,0.15)' },
+  headerMedia: { width: 211 },
+  headerThumb: { width: 211, height: 211, borderRadius: radius.md, backgroundColor: 'rgba(255,255,255,0.15)' },
   headerThumbPlaceholder: { alignItems: 'center', justifyContent: 'center' },
   headerName: { fontSize: 23, fontWeight: '700', color: colors.onHeader, marginBottom: 4 },
   headerMeta: { fontSize: 17, color: colors.onHeader, opacity: 0.9, marginTop: 3, lineHeight: 22 },

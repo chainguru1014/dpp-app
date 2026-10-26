@@ -3,7 +3,6 @@ import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import AppLayout from '../components/AppLayout';
 import MediaSlider from '../components/MediaSlider';
-import VideoPlayerModal from '../components/VideoPlayerModal';
 import GradientButton from '../components/GradientButton';
 import { useI18n } from '../i18n/I18nContext';
 import { colors, spacing, radius, shadow, MIN_TOUCH } from '../theme';
@@ -23,7 +22,6 @@ export default function ScanSuccessfulScreen({ navigation, route, user, onLogout
   const productId = route?.params?.productId ?? productData?._id;
   const qrcodeId = route?.params?.qrcodeId ?? productData?.token_id;
   const hasIds = productId != null && qrcodeId != null;
-  const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
 
   // A shallow Array.isArray check silently drops to [] whenever the API
   // returns images/videos as a keyed object instead of a flat array (seen
@@ -66,7 +64,6 @@ export default function ScanSuccessfulScreen({ navigation, route, user, onLogout
             hideHeader
             maxHeight={140}
             watchLabel={t('watchVideo')}
-            onPlayVideo={setPlayingVideoId}
           />
           {!!productData?.name && (
             <Text style={styles.productName} numberOfLines={1}>{productData.name}</Text>
@@ -117,7 +114,6 @@ export default function ScanSuccessfulScreen({ navigation, route, user, onLogout
         </View>
       </View>
 
-      <VideoPlayerModal visible={!!playingVideoId} videoId={playingVideoId} onClose={() => setPlayingVideoId(null)} />
     </AppLayout>
   );
 }

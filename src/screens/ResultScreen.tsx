@@ -23,11 +23,10 @@ import { API_BASE_URL } from '../config/api';
 import { CareSymbol, getCareSymbolLabel } from '../components/CareSymbols';
 import AppLayout from '../components/AppLayout';
 import BottomSafeScrollView from '../components/BottomSafeScrollView';
-import VideoPlayerModal from '../components/VideoPlayerModal';
 import GradientButton from '../components/GradientButton';
 import GradientView from '../components/GradientView';
 import { useI18n } from '../i18n/I18nContext';
-import MediaSlider from '../components/MediaSlider';
+import MediaSlider, { isPlayableVideo } from '../components/MediaSlider';
 import { saveTextFile, safeFileBaseName } from '../utils/saveTextFile';
 import { colors, radius, spacing, shadow, MIN_TOUCH } from '../theme';
 import { BASE_PALETTE, Palette, applyLook, buttonFill, useBrandLook } from '../utils/dppTheme';
@@ -114,7 +113,6 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
   const [showCamera, setShowCamera] = useState(false);
   const [showJoinDialog, setShowJoinDialog] = useState(false);
   // YouTube video currently playing full-screen in the in-app player (null = closed).
-  const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
   const [selectedFeedback, setSelectedFeedback] = useState<'like' | 'dislike' | 'buy' | null>(null);
   // Buyer's transfer status for the current item, driving the primary button:
   // 'pending' (+ sent) → Requested, 'confirmed' → Owned, otherwise → Buy.
@@ -933,12 +931,6 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
     return `${API_BASE_URL}files/${cleanFilename}`;
   };
 
-  const getYoutubeVideoID = (url: string) => {
-    if (!url) return null;
-    const match = url.match(/(?:https?:\/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:\/watch\?v=|\/)([^\s&]+)/);
-    return match ? match[1] : null;
-  };
-
   const normalizeToStringArray = (value: any): string[] => {
     if (value == null) return [];
     if (Array.isArray(value)) {
@@ -1328,7 +1320,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
   const renderImageSlider = (maxHeight?: number, hideHeader?: boolean) => {
     const images = normalizeToStringArray(productData?.images);
     const videos = normalizeToArray(productData?.videos);
-    const hasVideo = videos.some((v: any) => getYoutubeVideoID(typeof v === 'string' ? v : v?.url));
+    const hasVideo = videos.some(isPlayableVideo);
     if (images.length === 0 && !hasVideo) return null;
 
     return (
@@ -1343,7 +1335,6 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
         maxHeight={maxHeight}
         getFileUrl={getFileUrl}
         watchLabel={t('watchVideo')}
-        onPlayVideo={(videoId) => setPlayingVideoId(videoId)}
       />
     );
   };
@@ -1797,12 +1788,12 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
             <View style={styles.ovProductCard}>
               {look.theme.heroLayout === 'top' ? (
                 <>
-                  <View style={{ marginBottom: spacing.md }}>{renderImageSlider(240, true)}</View>
+                  <View style={{ marginBottom: spacing.md }}>{renderImageSlider(288, true)}</View>
                   {heroInfo}
                 </>
               ) : (
                 <View style={styles.ovHeaderRow}>
-                  <View style={styles.ovHeaderMedia}>{renderImageSlider(132, true)}</View>
+                  <View style={styles.ovHeaderMedia}>{renderImageSlider(211, true)}</View>
                   <View style={styles.ovHeaderInfo}>{heroInfo}</View>
                 </View>
               )}
@@ -2287,11 +2278,6 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
         </TouchableOpacity>
       </Modal>
 
-      <VideoPlayerModal
-        visible={!!playingVideoId}
-        videoId={playingVideoId}
-        onClose={() => setPlayingVideoId(null)}
-      />
     </AppLayout>
   );
 }
@@ -2310,8 +2296,10 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
     marginTop: spacing.md,
     ...shadow(1),
   },
-  ovHeaderRow: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' },
-  ovHeaderMedia: { width: 132 },
+  // Media is 211 wide (1.2x the Lifecycle header's former 176); on a phone
+  // the info wraps below it, on wider screens it stays beside it.
+  ovHeaderRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: spacing.md, alignItems: 'center' },
+  ovHeaderMedia: { width: 211, maxWidth: '100%' },
   ovHeaderInfo: { flex: 1 },
   ovName: { fontSize: 22, fontWeight: '700', color: colors.heading },
   ovModel: { fontSize: 17, color: colors.muted, marginTop: 2 },
