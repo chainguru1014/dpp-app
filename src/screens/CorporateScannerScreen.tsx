@@ -133,7 +133,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   // Camera (Code) / NFC panel height — about half the screen, so the
   // Capture button sits right under it, within thumb reach.
   const { height: windowHeight } = useWindowDimensions();
-  const cameraHeight = Math.round(Math.min(540, Math.max(300, windowHeight * 0.51)) * 1.5);
+  const cameraHeight = Math.round(Math.min(540, Math.max(300, windowHeight * 0.51)) * 2.25);
   const stepIndex: number = route?.params?.stepIndex ?? 0;
   const initialCaptureType: CaptureType = route?.params?.captureType === 'rfid' ? 'rfid' : 'code';
 
@@ -2068,18 +2068,23 @@ const styles = StyleSheet.create({
   thumbRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.md, marginBottom: spacing.sm },
   thumbHeading: { fontSize: 21, fontWeight: '600', color: colors.muted },
   seeAllLink: { fontSize: 18, color: colors.muted },
-  // Explicit height — without it a horizontal ScrollView with no flex:1
-  // sibling can stretch its single-row content to fill leftover vertical
-  // space, ballooning card height when there's only one capture to show.
-  // Only rendered at all when there's at least one capture (see JSX) so an
-  // empty step doesn't reserve this space between the header and Capture.
-  thumbStrip: { height: 105, marginBottom: spacing.md },
+  // Explicit height AND flexGrow/flexShrink: 0 — on web a horizontal
+  // ScrollView with no flex:1 sibling can still stretch its single-row
+  // content to fill leftover vertical space inside bottomBoard's flex:1,
+  // ballooning card height when there's only one capture to show; height
+  // alone wasn't enough to stop that on react-native-web. Only rendered at
+  // all when there's at least one capture (see JSX) so an empty step
+  // doesn't reserve this space between the header and Capture.
+  thumbStrip: { height: 74, flexGrow: 0, flexShrink: 0, marginBottom: spacing.md },
   // Horizontal: image on the left, index (dark blue)/ref (gray)/time (gray)
-  // stacked on the right.
+  // stacked on the right. Explicit height (image + padding) + alignSelf for
+  // the same stretch-proofing as thumbStrip above.
   thumbCard: {
     flexDirection: 'row',
     alignItems: 'center',
     width: 225,
+    height: 74,
+    alignSelf: 'flex-start',
     marginRight: spacing.sm,
     backgroundColor: colors.surface,
     borderRadius: radius.md,
