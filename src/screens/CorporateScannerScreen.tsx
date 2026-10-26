@@ -133,7 +133,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   // Camera (Code) / NFC panel height — about half the screen, so the
   // Capture button sits right under it, within thumb reach.
   const { height: windowHeight } = useWindowDimensions();
-  const cameraHeight = Math.round(Math.min(540, Math.max(300, windowHeight * 0.51)));
+  const cameraHeight = Math.round(Math.min(540, Math.max(300, windowHeight * 0.51)) * 1.5);
   const stepIndex: number = route?.params?.stepIndex ?? 0;
   const initialCaptureType: CaptureType = route?.params?.captureType === 'rfid' ? 'rfid' : 'code';
 
@@ -1390,12 +1390,13 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
             freed vertical space on its own. */}
         {captureType !== 'rfid' && (
           <View style={styles.bottomBoard}>
-            <View style={styles.thumbRow}>
-              <Text style={styles.thumbHeading}>{t('corpRecentCaptures')}</Text>
-              <Text style={styles.seeAllLink}>{t('scanTodayCountLabel').replace('{count}', String(typeCaptures.length))}</Text>
-            </View>
             {typeCaptures.length > 0 && (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.thumbStrip}>
+              <>
+                <View style={styles.thumbRow}>
+                  <Text style={styles.thumbHeading}>{t('corpRecentCaptures')}</Text>
+                  <Text style={styles.seeAllLink}>{t('scanTodayCountLabel').replace('{count}', String(typeCaptures.length))}</Text>
+                </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.thumbStrip}>
                 {typeCaptures.map((doc, index) => (
                   <TouchableOpacity
                     key={doc._id}
@@ -1422,7 +1423,8 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                     </View>
                   </TouchableOpacity>
                 ))}
-              </ScrollView>
+                </ScrollView>
+              </>
             )}
 
             {!!codeUnrecognized && !liveCode && (
