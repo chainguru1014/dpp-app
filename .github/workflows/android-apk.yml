@@ -1,8 +1,24 @@
 name: Build Android APK
 
-# Run manually from the GitHub "Actions" tab -> "Build Android APK" -> "Run workflow".
+# Runs on every push to main that touches the app, and manually from the
+# GitHub "Actions" tab -> "Build Android APK" -> "Run workflow".
+# Produces the installable APK and the Play Store bundle (AAB).
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'android/**'
+      - 'App.tsx'
+      - 'index.js'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/android-apk.yml'
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -76,13 +92,13 @@ jobs:
           fi
           echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/chris_yometel.keystore
 
-      - name: Build release APK
+      - name: Build release APK + AAB
         working-directory: android
         # On failure, surface Gradle's error summary and compiler errors as annotations
         # so they're visible on the run page without digging through the full log.
         run: |
           set -o pipefail
-          if ! gradle assembleRelease --no-daemon 2>&1 | tee gradle-build.log; then
+          if ! gradle assembleRelease bundleRelease --no-daemon 2>&1 | tee gradle-build.log; then
             # Runner shells use -e; a grep with no match must not abort the report.
             set +e +o pipefail
             { grep -E '^e: |error:|FAILED|went wrong|disappeared|Killed' gradle-build.log | head -20
@@ -95,4 +111,11 @@ jobs:
         with:
           name: app-release-apk
           path: android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 14
+
+      # Upload this one to Google Play Console (Release -> Create new release).
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-release-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
           retention-days: 14

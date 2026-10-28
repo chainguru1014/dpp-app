@@ -1,0 +1,209 @@
+name: Build iOS app
+
+# Runs on every push to main that touches the app, and manually from the
+# GitHub "Actions" tab -> "Build iOS app" -> "Run workflow".
+#
+# Always: compiles the app for the iOS Simulator (proves the native build is
+# healthy) and uploads that build as artifact `ios-simulator-app`.
+#
+# When the Apple signing secrets below are set, it also archives a signed
+# Release build, uploads the installable `.ipa` as artifact `ios-ipa`, and —
+# if the App Store Connect API key secrets are set too — sends it to TestFlight.
+#
+# Repo secrets (Settings -> Secrets and variables -> Actions):
+#   IOS_DIST_CERT_P12_BASE64   base64 of the Apple Distribution certificate .p12
+#   IOS_DIST_CERT_PASSWORD     password of that .p12
+#   IOS_PROVISION_PROFILE_BASE64  base64 of the App Store provisioning profile
+#                              (.mobileprovision) for com.yometel.dpp
+#   IOS_TEAM_ID                10-character Apple Developer Team ID
+#   ASC_KEY_ID / ASC_ISSUER_ID / ASC_KEY_P8_BASE64   (optional) App Store Connect
+#                              API key, for the TestFlight upload
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'ios/**'
+      - 'App.tsx'
+      - 'index.js'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/ios.yml'
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NO_FLIPPER: '1'
+  SCHEME: QRAuthApp
+  WORKSPACE: ios/QRAuthApp.xcworkspace
+
+jobs:
+  build:
+    runs-on: macos-14
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # RN 0.72 does not compile with Xcode 16.3+ (fmt / char_traits). Use the
+      # newest Xcode 15.x on the runner, else 16.2, else whatever is default.
+      - name: Select Xcode
+        run: |
+          pick=$(ls -d /Applications/Xcode_15*.app 2>/dev/null | sort -V | tail -1)
+          [ -n "$pick" ] || pick=$(ls -d /Applications/Xcode_16.2*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$pick" ]; then sudo xcode-select -s "$pick/Contents/Developer"; fi
+          xcodebuild -version
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+
+      # react-qr-reader@2 declares a react@~16 peer; the project runs on React 18.
+      - name: Install JS dependencies
+        run: npm ci --legacy-peer-deps
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+
+      - name: Install CocoaPods
+        run: gem install cocoapods -v 1.15.2 --no-document
+
+      - uses: actions/cache@v4
+        with:
+          path: ios/Pods
+          key: pods-${{ runner.os }}-${{ hashFiles('package-lock.json', 'ios/Podfile') }}
+
+      - name: pod install
+        working-directory: ios
+        run: pod install --repo-update
+
+      - name: Build for iOS Simulator
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -workspace "$WORKSPACE" -scheme "$SCHEME" -configuration Release \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build/sim \
+            CODE_SIGNING_ALLOWED=NO \
+            build 2>&1 | tee xcodebuild-sim.log | grep -E '^(\*\*|error:|.*: error:)' || true
+          if ! grep -q '\*\* BUILD SUCCEEDED \*\*' xcodebuild-sim.log; then
+            grep -E ': error:|error:' xcodebuild-sim.log | sort -u | head -20 \
+              | awk '{printf "%s%%0A", $0}' | sed 's/^/::error title=Xcode build failed::/'; echo
+            exit 1
+          fi
+
+      - name: Zip simulator app
+        run: |
+          cd build/sim/Build/Products/Release-iphonesimulator
+          zip -qry "$GITHUB_WORKSPACE/QRAuthApp-simulator.zip" QRAuthApp.app
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-simulator-app
+          path: QRAuthApp-simulator.zip
+          retention-days: 14
+
+      # ---- Signed build (only when the signing secrets exist) ----
+
+      - name: Check signing secrets
+        id: signing
+        env:
+          P12: ${{ secrets.IOS_DIST_CERT_P12_BASE64 }}
+          PROFILE: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
+          TEAM: ${{ secrets.IOS_TEAM_ID }}
+        run: |
+          if [ -n "$P12" ] && [ -n "$PROFILE" ] && [ -n "$TEAM" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Signed iOS build skipped::Add the IOS_* signing secrets to also produce an installable .ipa."
+          fi
+
+      - name: Install certificate and provisioning profile
+        if: steps.signing.outputs.enabled == 'true'
+        env:
+          P12: ${{ secrets.IOS_DIST_CERT_P12_BASE64 }}
+          P12_PASSWORD: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
+          PROFILE: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/build.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -hex 16)"
+          echo "$P12" | base64 --decode > "$RUNNER_TEMP/dist.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/dist.p12" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" >/dev/null
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+
+          echo "$PROFILE" | base64 --decode > "$RUNNER_TEMP/app.mobileprovision"
+          security cms -D -i "$RUNNER_TEMP/app.mobileprovision" > "$RUNNER_TEMP/profile.plist"
+          UUID=$(/usr/libexec/PlistBuddy -c 'Print UUID' "$RUNNER_TEMP/profile.plist")
+          NAME=$(/usr/libexec/PlistBuddy -c 'Print Name' "$RUNNER_TEMP/profile.plist")
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          cp "$RUNNER_TEMP/app.mobileprovision" "$HOME/Library/MobileDevice/Provisioning Profiles/$UUID.mobileprovision"
+          echo "PROFILE_NAME=$NAME" >> "$GITHUB_ENV"
+
+      - name: Archive signed Release build
+        if: steps.signing.outputs.enabled == 'true'
+        env:
+          TEAM: ${{ secrets.IOS_TEAM_ID }}
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -workspace "$WORKSPACE" -scheme "$SCHEME" -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/QRAuthApp.xcarchive \
+            DEVELOPMENT_TEAM="$TEAM" CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
+            archive 2>&1 | tee xcodebuild-archive.log | grep -E '^\*\*|: error:' || true
+          grep -q '\*\* ARCHIVE SUCCEEDED \*\*' xcodebuild-archive.log
+
+      - name: Export .ipa
+        if: steps.signing.outputs.enabled == 'true'
+        env:
+          TEAM: ${{ secrets.IOS_TEAM_ID }}
+        run: |
+          cat > build/ExportOptions.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store</string>
+            <key>teamID</key><string>${TEAM}</string>
+            <key>signingStyle</key><string>manual</string>
+            <key>provisioningProfiles</key><dict>
+              <key>com.yometel.dpp</key><string>${PROFILE_NAME}</string>
+            </dict>
+          </dict></plist>
+          EOF
+          xcodebuild -exportArchive -archivePath build/QRAuthApp.xcarchive \
+            -exportOptionsPlist build/ExportOptions.plist -exportPath build/ipa
+          ls build/ipa
+
+      - uses: actions/upload-artifact@v4
+        if: steps.signing.outputs.enabled == 'true'
+        with:
+          name: ios-ipa
+          path: build/ipa/*.ipa
+          retention-days: 14
+
+      - name: Upload to TestFlight
+        if: steps.signing.outputs.enabled == 'true'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 }}
+        run: |
+          if [ -z "$ASC_KEY_ID" ] || [ -z "$ASC_ISSUER_ID" ] || [ -z "$ASC_KEY_P8_BASE64" ]; then
+            echo "::notice title=TestFlight upload skipped::Add ASC_KEY_ID, ASC_ISSUER_ID and ASC_KEY_P8_BASE64 to upload automatically."
+            exit 0
+          fi
+          mkdir -p "$HOME/private_keys"
+          echo "$ASC_KEY_P8_BASE64" | base64 --decode > "$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8"
+          xcrun altool --upload-app -t ios -f build/ipa/*.ipa --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID"
