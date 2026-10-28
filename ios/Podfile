@@ -37,6 +37,11 @@ end
 target 'QRAuthApp' do
   config = use_native_modules!
 
+  # Google Sign-In's Swift dependency AppCheckCore imports these two as
+  # modules; with static libraries they must generate module maps.
+  pod 'GoogleUtilities', :modular_headers => true
+  pod 'RecaptchaInterop', :modular_headers => true
+
   # Flags change depending on the env values.
   flags = get_default_flags()
 
