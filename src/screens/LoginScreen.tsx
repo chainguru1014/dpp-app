@@ -18,7 +18,7 @@ import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIc
 import GoogleAuthButton from '../components/GoogleAuthButton';
 import AppleAuthButton from '../components/AppleAuthButton';
 import OtpSignIn from '../components/OtpSignIn';
-import FaceCapture, { FaceFailure, FaceMode } from '../components/FaceCapture';
+import FaceCapture, { FaceFailure } from '../components/FaceCapture';
 import { authTileStyles, AUTH_TILE_ICON, AUTH_TILE_ICON_MAIN } from '../components/authTileStyles';
 import { API_BASE_URL } from '../config/api';
 import { useI18n } from '../i18n/I18nContext';
@@ -28,13 +28,20 @@ import { colors, spacing, radius, shadow, MIN_TOUCH } from '../theme';
 type AuthResult = { user: any; token: string; profileCompleted: boolean; mode?: 'signin' | 'signup'; actorKind?: 'User' | 'Employee' };
 
 const FACE_FAILURE_KEY: Record<FaceFailure, any> = {
-  notConfigured: 'faceErrNotConfigured',
   permission: 'faceErrPermission',
   noFace: 'faceErrNoFace',
-  unrecognized: 'faceErrUnrecognized',
-  duplicate: 'faceErrDuplicate',
   spoof: 'faceErrSpoof',
   cancelled: null,
+  failed: 'faceErrFailed',
+};
+
+// Backend `code` on a failed /auth/face/* call → message key.
+const FACE_SERVER_ERROR_KEY: Record<string, any> = {
+  notConfigured: 'faceErrNotConfigured',
+  noFace: 'faceErrNoFace',
+  manyFaces: 'faceErrManyFaces',
+  unrecognized: 'faceErrUnrecognized',
+  duplicate: 'faceErrDuplicate',
   failed: 'faceErrFailed',
 };
 
@@ -53,7 +60,7 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
   // The single method currently opened (remembered one, or Email tapped from the list).
   const [openMethod, setOpenMethod] = useState<AuthMethod | null>(null);
   const [busy, setBusy] = useState(false);
-  const [faceRun, setFaceRun] = useState<null | { mode: FaceMode; payload?: any; ticket?: string }>(null);
+  const [faceOpen, setFaceOpen] = useState(false);
   const autoFaceStartedRef = useRef(false);
 
   useEffect(() => {
@@ -148,40 +155,27 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
       body: JSON.stringify(body),
     });
     const j = await r.json().catch(() => ({}));
-    if (!r.ok || j?.status !== 'success') throw new Error(j?.message || t('faceErrFailed'));
+    if (!r.ok || j?.status !== 'success') {
+      const key = FACE_SERVER_ERROR_KEY[j?.code];
+      throw new Error(key ? t(key) : j?.message || t('faceErrFailed'));
+    }
     return j;
   };
 
-  // Face — Signup: create the account, enroll the face with its id as the
-  // FACEIO payload, then attach the Facial ID. Login: authenticate the face,
-  // then let the backend confirm it with FACEIO and issue the session.
-  const startFace = async () => {
-    if (busy || faceRun) return;
+  // Face — the capture page checks the person is live (blink + liveness)
+  // and returns one photo; the backend matches it in CompreFace. Signup:
+  // creates the account and enrolls the face. Login: finds whose face it is.
+  const startFace = () => {
+    if (busy || faceOpen) return;
     setApiError('');
-    if (authMode === 'signin') {
-      setFaceRun({ mode: 'authenticate' });
-      return;
-    }
-    setBusy(true);
-    try {
-      const j = await postJson('auth/face/signup/start');
-      setFaceRun({ mode: 'enroll', payload: { uid: j.userId }, ticket: j.signupTicket });
-    } catch (e: any) {
-      setApiError(e?.message || t('faceErrFailed'));
-    } finally {
-      setBusy(false);
-    }
+    setFaceOpen(true);
   };
 
-  const onFaceSuccess = async (facialId: string) => {
-    const run = faceRun;
-    setFaceRun(null);
-    if (!run) return;
+  const onFaceSuccess = async (image: string) => {
+    setFaceOpen(false);
     setBusy(true);
     try {
-      const j = run.mode === 'enroll'
-        ? await postJson('auth/face/signup/complete', { signupTicket: run.ticket, facialId })
-        : await postJson('auth/face/login', { facialId });
+      const j = await postJson(authMode === 'signup' ? 'auth/face/signup' : 'auth/face/login', { image });
       // Face accounts always go through the profile page until it's done —
       // that's where they add their email.
       await handleAuthSuccess('face', {
@@ -199,7 +193,7 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
   };
 
   const onFaceFailure = (reason: FaceFailure) => {
-    setFaceRun(null);
+    setFaceOpen(false);
     const key = FACE_FAILURE_KEY[reason];
     if (key) setApiError(t(key));
   };
@@ -376,13 +370,7 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <FaceCapture
-        visible={!!faceRun}
-        mode={faceRun?.mode || 'authenticate'}
-        payload={faceRun?.payload}
-        onSuccess={onFaceSuccess}
-        onFailure={onFaceFailure}
-      />
+      <FaceCapture visible={faceOpen} onSuccess={onFaceSuccess} onFailure={onFaceFailure} />
     </ImageBackground>
   );
 }
