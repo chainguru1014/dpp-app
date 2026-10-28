@@ -130,10 +130,12 @@ interface CorporateScannerScreenProps {
 export default function CorporateScannerScreen({ navigation, route, user, onLogout }: CorporateScannerScreenProps) {
   const { t, locale } = useI18n();
   const isFocused = useIsFocused();
-  // Camera (Code) / NFC panel height — about half the screen, so the
-  // Capture button sits right under it, within thumb reach.
+  // scanViewport itself now gets its actual on-screen height from flex
+  // (50/50 with bottomHalf, see the JSX below) rather than a pixel formula;
+  // this is just a rough stand-in for sizing the scan reticle to roughly
+  // match that real height.
   const { height: windowHeight } = useWindowDimensions();
-  const cameraHeight = Math.round(Math.min(540, Math.max(300, windowHeight * 0.51)) * 2.25);
+  const cameraHeight = Math.round(windowHeight * 0.5);
   const stepIndex: number = route?.params?.stepIndex ?? 0;
   const initialCaptureType: CaptureType = route?.params?.captureType === 'rfid' ? 'rfid' : 'code';
 
@@ -163,6 +165,12 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   // resolved product object and the tapped tag so the dialog's "View Product
   // Details" button can still navigate with the right ids.
   const [previewTag, setPreviewTag] = useState<{ product: any; productId?: string; qrcodeId?: string } | null>(null);
+  // Same idiom for a tapped Recent Captures item — unlike previewTag (RFID),
+  // a capture doc only carries ids, not the full product, so this is fetched
+  // on tap (same qrcode/public endpoint ResultScreen uses) instead of being
+  // pre-cached.
+  const [previewCapture, setPreviewCapture] = useState<{ product: any; productId?: string; qrcodeId?: string } | null>(null);
+  const [previewCaptureLoading, setPreviewCaptureLoading] = useState(false);
   const [rfidReaderType, setRfidReaderType] = useState<RfidReaderType>('impinj');
   // Mocked connection state, per reader type — no real BLE/LLRP hardware is
   // wired up yet (see project notes). Connect just flips this locally; the
@@ -1017,12 +1025,26 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   // only dims the Capture button a little; it is never disabled.
   const captureReady = isCameraType ? !!liveCode : nfcAvailable && !nfcReading;
 
-  const today = new Date();
-  // Explicit Y/M/D for Japanese (toLocaleDateString follows the device
-  // locale, not the app's language).
-  const dateLabel = locale === 'ja'
-    ? `${today.getFullYear()}/${today.getMonth() + 1}/${today.getDate()}`
-    : today.toLocaleDateString();
+  // Tapping a Recent Captures item opens the product summary as a dialog
+  // (same idiom as the RFID Passing Tags preview) instead of navigating to
+  // the full Result page.
+  const openCapturePreview = async (doc: CaptureDoc) => {
+    if (!doc.productId) return;
+    setPreviewCapture({ product: null, productId: doc.productId, qrcodeId: doc.qrcodeId });
+    setPreviewCaptureLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}qrcode/public/${encodeURIComponent(doc.productId)}/${encodeURIComponent(String(doc.qrcodeId))}`);
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data?.status === 'success') {
+        setPreviewCapture({ product: data.data || {}, productId: doc.productId, qrcodeId: doc.qrcodeId });
+      }
+    } catch (err) {
+      console.error('Failed to load capture preview:', err);
+    } finally {
+      setPreviewCaptureLoading(false);
+    }
+  };
+
   const subtitle = step ? `${step.entity} / ${step.type}` : undefined;
 
   const renderCamera = () => {
@@ -1083,56 +1105,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
       flatContent
     >
       <View style={[styles.container, captureType === 'rfid' && styles.containerCompact]}>
-        {/* Hidden in RFID mode so the Passing Tags list gets the height. */}
-        {captureType !== 'rfid' && (
-          <View style={styles.infoStrip}>
-            <View style={[styles.infoCell, styles.infoCellWide]}>
-              <VectorIcon name="event" size={21} color={colors.primary} />
-              <Text style={styles.infoLabel} numberOfLines={1}>{t('corpDateLabel')}</Text>
-              <Text style={styles.infoValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{dateLabel}</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.infoCell}
-              onPress={() => navigation.navigate('CorporateReview', { stepIndex })}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-            >
-              <VectorIcon name="show-chart" size={21} color={colors.primary} />
-              <Text style={styles.infoLabel} numberOfLines={1}>{t('corpTodayScans')}</Text>
-              <Text style={styles.infoValue} numberOfLines={1}>{captures.length}</Text>
-            </TouchableOpacity>
-            <View style={styles.infoCell}>
-              <VectorIcon name="person" size={21} color={colors.primary} />
-              <Text style={styles.infoLabel} numberOfLines={1}>{t('corpTerminal')}</Text>
-              <Text style={styles.infoValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{user?.terminalId || '—'}</Text>
-            </View>
-          </View>
-        )}
-
-        <View style={styles.typeSelectorRow}>
-          {CAPTURE_TYPES.map((opt) => (
-            <TouchableOpacity
-              key={opt.key}
-              style={[styles.typeChip, captureType === opt.key && styles.typeChipActive]}
-              onPress={() => setCaptureType(opt.key)}
-              activeOpacity={0.75}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: captureType === opt.key }}
-            >
-              <VectorIcon
-                name={opt.icon}
-                size={21}
-                color={captureType === opt.key ? '#fff' : colors.muted}
-                style={styles.typeChipIcon}
-              />
-              <Text style={[styles.typeChipText, captureType === opt.key && styles.typeChipTextActive]} numberOfLines={1}>
-                {t(opt.labelKey)}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <View style={[styles.scanViewport, captureType !== 'rfid' && { flex: 0, height: cameraHeight }]}>
+        <View style={styles.scanViewport}>
           {isCameraType ? renderCamera() : captureType === 'rfid' ? (
             <View style={styles.rfidPanel}>
               {(() => {
@@ -1364,74 +1337,99 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
           )}
         </View>
 
-        {/* Always pressable — with nothing registered in frame it says so
-            (see handleCapture) rather than staying greyed out. */}
+        {/* Code/NFC only — camera UI above takes the top half (scanViewport's
+            own flex:1); this wrapper is the other flex:1 sibling, splitting
+            the content layer 50/50. RFID keeps its existing full-height
+            panel (no wrapper, no Capture button, no Recent Captures card —
+            the Passing Tags card already shows registered captures live). */}
         {captureType !== 'rfid' && (
-          <GradientButton
-            style={[styles.captureButton, !captureReady && styles.captureButtonIdle]}
-            onPress={handleCapture}
-            disabled={capturing}
-          >
-            {capturing || verifying ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <>
-                <VectorIcon name={captureType === 'nfc' ? 'nfc' : 'photo-camera'} size={32} color="#fff" />
-                <Text style={styles.captureButtonText}>{t('corpCaptureButton')}</Text>
-              </>
-            )}
-          </GradientButton>
-        )}
+          <View style={styles.bottomHalf}>
+            {/* Always pressable — with nothing registered in frame it says
+                so (see handleCapture) rather than staying greyed out. */}
+            <GradientButton
+              style={[styles.captureButton, !captureReady && styles.captureButtonIdle]}
+              onPress={handleCapture}
+              disabled={capturing}
+            >
+              {capturing || verifying ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <VectorIcon name={captureType === 'nfc' ? 'nfc' : 'photo-camera'} size={32} color="#fff" />
+                  <Text style={styles.captureButtonText}>{t('corpCaptureButton')}</Text>
+                </>
+              )}
+            </GradientButton>
 
-        {/* RFID mode has no Recent Captures card — the Passing Tags card
-            above already shows registered captures live, with product image
-            and tap-through, so this section is skipped entirely rather than
-            just hiding its button; scanViewport's flex:1 then fills the
-            freed vertical space on its own. */}
-        {captureType !== 'rfid' && (
-          <View style={styles.bottomBoard}>
-            {typeCaptures.length > 0 && (
-              <>
-                <View style={styles.thumbRow}>
-                  <Text style={styles.thumbHeading}>{t('corpRecentCaptures')}</Text>
-                  <Text style={styles.seeAllLink}>{t('scanTodayCountLabel').replace('{count}', String(typeCaptures.length))}</Text>
-                </View>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.thumbStrip}>
-                {typeCaptures.map((doc, index) => (
-                  <TouchableOpacity
-                    key={doc._id}
-                    style={styles.thumbCard}
-                    activeOpacity={doc.productId ? 0.7 : 1}
-                    disabled={!doc.productId}
-                    onPress={() => navigation.navigate('Result', { productId: doc.productId, qrcodeId: doc.qrcodeId })}
-                  >
-                    {doc.imagePath ? (
-                      <Image source={{ uri: `${API_BASE_URL.replace(/\/$/, '')}${doc.imagePath}` }} style={styles.thumbImage} />
-                    ) : doc.identifierType === 'nfc' && (
-                      <View style={styles.thumbTagIconBox}>
-                        <VectorIcon name="nfc" size={30} color={colors.primary} />
-                      </View>
-                    )}
-                    <View style={styles.thumbDetail}>
-                      <Text style={styles.thumbIndex}>{index + 1}</Text>
-                      <Text style={styles.thumbRef} numberOfLines={1}>{doc.refNumber}</Text>
+            <View style={styles.bottomBoard}>
+              {typeCaptures.length > 0 && (
+                <>
+                  <View style={styles.thumbRow}>
+                    <Text style={styles.thumbHeading}>{t('corpRecentCaptures')}</Text>
+                    <Text style={styles.seeAllLink}>{t('scanTodayCountLabel').replace('{count}', String(typeCaptures.length))}</Text>
+                  </View>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.thumbStrip}>
+                  {typeCaptures.map((doc, index) => (
+                    <TouchableOpacity
+                      key={doc._id}
+                      style={styles.thumbCard}
+                      activeOpacity={doc.productId ? 0.7 : 1}
+                      disabled={!doc.productId}
+                      onPress={() => openCapturePreview(doc)}
+                    >
                       {doc.imagePath ? (
-                        <Text style={styles.thumbTime}>{new Date(doc.capturedAt).toLocaleTimeString()}</Text>
-                      ) : (
-                        <Text style={styles.thumbTime} numberOfLines={1}>{doc.rawValue}</Text>
+                        <Image source={{ uri: `${API_BASE_URL.replace(/\/$/, '')}${doc.imagePath}` }} style={styles.thumbImage} />
+                      ) : doc.identifierType === 'nfc' && (
+                        <View style={styles.thumbTagIconBox}>
+                          <VectorIcon name="nfc" size={30} color={colors.primary} />
+                        </View>
                       )}
-                    </View>
-                  </TouchableOpacity>
-                ))}
-                </ScrollView>
-              </>
-            )}
+                      <View style={styles.thumbDetail}>
+                        <Text style={styles.thumbIndex}>{index + 1}</Text>
+                        <Text style={styles.thumbRef} numberOfLines={1}>{doc.refNumber}</Text>
+                        {doc.imagePath ? (
+                          <Text style={styles.thumbTime}>{new Date(doc.capturedAt).toLocaleTimeString()}</Text>
+                        ) : (
+                          <Text style={styles.thumbTime} numberOfLines={1}>{doc.rawValue}</Text>
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                  </ScrollView>
+                </>
+              )}
 
-            {!!codeUnrecognized && !liveCode && (
-              <Text style={styles.unrecognizedText}>{t('corpCodeUnrecognized')}</Text>
-            )}
+              {!!codeUnrecognized && !liveCode && (
+                <Text style={styles.unrecognizedText}>{t('corpCodeUnrecognized')}</Text>
+              )}
+            </View>
           </View>
         )}
+
+        {/* Code type selector — moved to the bottom of the content layer
+            (was above the camera/RFID panel). */}
+        <View style={styles.typeSelectorRow}>
+          {CAPTURE_TYPES.map((opt) => (
+            <TouchableOpacity
+              key={opt.key}
+              style={[styles.typeChip, captureType === opt.key && styles.typeChipActive]}
+              onPress={() => setCaptureType(opt.key)}
+              activeOpacity={0.75}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: captureType === opt.key }}
+            >
+              <VectorIcon
+                name={opt.icon}
+                size={21}
+                color={captureType === opt.key ? '#fff' : colors.muted}
+                style={styles.typeChipIcon}
+              />
+              <Text style={[styles.typeChipText, captureType === opt.key && styles.typeChipTextActive]} numberOfLines={1}>
+                {t(opt.labelKey)}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
 
       <Modal visible={helpVisible} transparent animationType="fade" onRequestClose={() => setHelpVisible(false)}>
@@ -1496,6 +1494,62 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                 </View>
               ))}
             </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Recent Captures item tap — same dialog idiom as previewTag above,
+          except the product is fetched on open (see openCapturePreview)
+          since a capture doc only carries ids, not the full product. */}
+      <Modal visible={!!previewCapture} transparent animationType="fade" onRequestClose={() => setPreviewCapture(null)}>
+        <TouchableOpacity style={styles.helpOverlay} activeOpacity={1} onPress={() => setPreviewCapture(null)}>
+          <TouchableOpacity style={styles.previewCard} activeOpacity={1} onPress={() => {}}>
+            <TouchableOpacity
+              style={styles.previewCloseIcon}
+              onPress={() => setPreviewCapture(null)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel={t('close')}
+            >
+              <VectorIcon name="close" size={26} color={colors.muted} />
+            </TouchableOpacity>
+            {previewCaptureLoading && !previewCapture?.product ? (
+              <View style={styles.previewLoadingBox}>
+                <ActivityIndicator size="small" color={colors.primary} />
+              </View>
+            ) : (
+              <>
+                <View style={styles.previewMedia}>
+                  <MediaSlider
+                    images={Array.isArray(previewCapture?.product?.images) ? previewCapture.product.images : []}
+                    videos={Array.isArray(previewCapture?.product?.videos) ? previewCapture.product.videos : []}
+                    hideHeader
+                    flush
+                    maxHeight={180}
+                    getFileUrl={fileUrl}
+                  />
+                </View>
+                <Text style={styles.previewName} numberOfLines={2}>{previewCapture?.product?.name || '—'}</Text>
+                <View style={styles.previewVerifiedBadge}>
+                  <VectorIcon name="check-circle" size={18} color={colors.primary} />
+                  <Text style={styles.previewVerifiedText}>{t('overviewAuthenticated')}</Text>
+                </View>
+                <View style={styles.previewRows}>
+                  {[
+                    { label: t('summaryBrand'), value: previewCapture?.product?.brandInfo?.name },
+                    { label: t('factProductType'), value: previewCapture?.product?.productType },
+                    { label: t('factColor'), value: previewCapture?.product?.color },
+                    { label: t('factSize'), value: previewCapture?.product?.size },
+                    { label: t('summaryMaterial'), value: previewCapture?.product?.detailFacts?.material },
+                  ].filter((row) => !!row.value).map((row) => (
+                    <View key={row.label} style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>{row.label}</Text>
+                      <Text style={styles.detailValue} numberOfLines={1}>{row.value}</Text>
+                    </View>
+                  ))}
+                </View>
+              </>
+            )}
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
@@ -1804,17 +1858,17 @@ const DARK = '#0b1220';
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg, padding: spacing.lg },
   containerCompact: { padding: spacing.sm },
-  // Bleeds past the container's own padding to sit flush against the
-  // screen edges/bottom nav with rounded top corners — matches the consumer
-  // ScannerScreen's whiteBoard treatment.
-  // Fills the space under Capture; its heading and thumbnails sit at the
-  // bottom, next to the nav bar.
+  // Bleeds past the container's own horizontal padding to sit flush against
+  // the screen edges with rounded top corners — matches the consumer
+  // ScannerScreen's whiteBoard treatment. No longer bleeds past the bottom
+  // too: the type selector row sits below it now, not the screen edge.
+  // Fills the space under Capture (within bottomHalf); its heading and
+  // thumbnails sit at the bottom of that half.
   bottomBoard: {
     flex: 1,
     justifyContent: 'flex-end',
     marginTop: spacing.md,
     marginHorizontal: -spacing.lg,
-    marginBottom: -spacing.lg,
     backgroundColor: colors.surfaceAlt,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
@@ -1822,26 +1876,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.sm,
   },
-  infoStrip: {
-    flexDirection: 'row',
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    ...shadow(1),
-  },
-  infoCell: { flex: 1, alignItems: 'center', gap: 2 },
-  // The date is the longest value (2026/10/26) — a wider cell keeps it whole.
-  infoCellWide: { flex: 1.5 },
-  // numberOfLines={1} makes these size to the full cell width for ellipsis
-  // purposes, so the parent's alignItems:'center' alone doesn't center the
-  // glyphs inside — textAlign does.
-  infoLabel: { fontSize: 17, color: colors.muted, textAlign: 'center' },
-  infoValue: { fontSize: 20, fontWeight: '600', color: colors.text, textAlign: 'center' },
-  // Three equal type buttons, all fully visible.
-  typeSelectorRow: { flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.sm },
+  // Code/NFC only — the other flex:1 sibling of scanViewport, so the two
+  // split the content layer's height 50/50. Holds the Capture button and
+  // the Recent Captures card.
+  bottomHalf: { flex: 1 },
+  // Three equal type buttons, all fully visible. Now the last element in
+  // the content layer (moved from above the camera/RFID panel), hence
+  // marginTop instead of marginBottom for spacing from whatever is above it.
+  typeSelectorRow: { flexDirection: 'row', gap: spacing.xs, marginTop: spacing.sm },
   typeChip: {
     flex: 1,
     flexDirection: 'row',
@@ -2145,6 +2187,7 @@ const styles = StyleSheet.create({
   previewVerifiedBadge: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, marginBottom: spacing.md },
   previewVerifiedText: { fontSize: 15, color: colors.primary, fontWeight: '600' },
   previewRows: {},
+  previewLoadingBox: { height: 220, alignItems: 'center', justifyContent: 'center' },
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
