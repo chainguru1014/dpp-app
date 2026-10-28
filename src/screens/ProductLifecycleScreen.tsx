@@ -26,10 +26,10 @@ type TabKey = 'journey' | 'care' | 'materials' | 'dispose' | 'traceability' | 'c
 
 const TABS: { key: TabKey; labelKey: string }[] = [
   { key: 'journey', labelKey: 'lifecycleTabJourney' },
-  { key: 'care', labelKey: 'lifecycleTabCare' },
   { key: 'materials', labelKey: 'lifecycleTabMaterials' },
   { key: 'dispose', labelKey: 'lifecycleTabDispose' },
   { key: 'traceability', labelKey: 'lifecycleTabTraceability' },
+  { key: 'care', labelKey: 'lifecycleTabCare' },
   { key: 'compliance', labelKey: 'lifecycleTabCompliance' },
 ];
 
@@ -105,11 +105,11 @@ function Row({ label, value, icon, chevron, onPress }: { label: string; value: s
   const content = (
     <>
       {!!icon && (
-        <View style={styles.itemIcon}><Icon name={icon} size={19} color={colors.primary} /></View>
+        <View style={styles.itemIcon}><Icon name={icon} size={25} color={colors.primary} /></View>
       )}
       <Text style={styles.itemLabel}>{label}</Text>
       <Text style={styles.itemValue} numberOfLines={1}>{value}</Text>
-      {chevron && <Icon name="chevron-right" size={19} color={colors.muted} />}
+      {chevron && <Icon name="chevron-right" size={25} color={colors.muted} />}
     </>
   );
   if (onPress) {
@@ -455,7 +455,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
           {links.map((l) => (
             <TouchableOpacity key={l.kind} style={styles.jLinkRow} onPress={() => selectTab('dispose')} accessibilityRole="button">
               <Text style={styles.jLink}>{t(SERVICE_META[l.kind].title)}</Text>
-              <Icon name="chevron-right" size={18} color={colors.accent} />
+              <Icon name="chevron-right" size={23} color={colors.accent} />
             </TouchableOpacity>
           ))}
           {impactItems.map((it, i) => (
@@ -467,12 +467,26 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
     return null;
   };
 
+  const [aboutExpanded, setAboutExpanded] = useState(false);
+
   const renderJourney = () => (
     <View style={{ paddingTop: spacing.lg }}>
       {!!productData?.aboutProduct && (
         <View style={[styles.card, { marginBottom: spacing.lg }]}>
           <Text style={styles.cardTitle}>{t('lifecycleAboutProduct')}</Text>
-          <Text style={styles.paragraph}>{productData.aboutProduct}</Text>
+          <Text style={styles.paragraph} numberOfLines={aboutExpanded ? undefined : 3}>{productData.aboutProduct}</Text>
+          {String(productData.aboutProduct).length > 140 && (
+            <TouchableOpacity
+              style={styles.showMoreBtn}
+              onPress={() => setAboutExpanded((v) => !v)}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: aboutExpanded }}
+            >
+              <Text style={styles.showMoreText}>{aboutExpanded ? t('showLess') : t('showMore')}</Text>
+              <Icon name={aboutExpanded ? 'expand-less' : 'expand-more'} size={28} color={colors.primary} />
+            </TouchableOpacity>
+          )}
         </View>
       )}
       {JOURNEY_STAGES.map((s, i) => {
@@ -481,7 +495,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
         return (
           <View key={s.key} style={styles.jItem}>
             <View style={styles.jRail}>
-              <View style={styles.jDot}><Icon name={s.icon} size={24} color="#fff" /></View>
+              <View style={styles.jDot}><Icon name={s.icon} size={31} color="#fff" /></View>
               {i < JOURNEY_STAGES.length - 1 && <View style={styles.jLine} />}
             </View>
             <TouchableOpacity
@@ -494,7 +508,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
             >
               <View style={styles.jTitleRow}>
                 <Text style={styles.jTitle}>{t(s.labelKey as any)}</Text>
-                <Icon name={open ? 'expand-less' : 'expand-more'} size={22} color={colors.muted} />
+                <Icon name={open ? 'expand-less' : 'expand-more'} size={29} color={colors.muted} />
               </View>
               <Text style={styles.jDesc}>{t(s.descKey as any)}</Text>
               {open && (detail || (
@@ -505,7 +519,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
         );
       })}
       <View style={styles.hintCard}>
-        <Icon name="info-outline" size={20} color={colors.primary} />
+        <Icon name="info-outline" size={26} color={colors.primary} />
         <View style={{ flex: 1 }}>
           <Text style={styles.hintTitle}>{t('lifecycleJourneyHintTitle')}</Text>
           <Text style={styles.hintBody}>{t('lifecycleJourneyHint')}</Text>
@@ -553,7 +567,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
         <Text style={styles.cardTitle}>{t('lifecycleCareTips')}</Text>
         {careTips.length > 0 ? careTips.map((tip, i) => (
           <View key={i} style={styles.tipRow}>
-            <Icon name="check-circle" size={19} color={colors.primary} />
+            <Icon name="check-circle" size={25} color={colors.primary} />
             <View style={{ flex: 1 }}>
               <Text style={styles.tipText}>{tip.primary}</Text>
               {!!tip.detail && <Text style={styles.tipDetailText}>{tip.detail}</Text>}
@@ -567,13 +581,13 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
         activeOpacity={0.7}
         onPress={() => openInfoDialog(t('lifecycleCareHelpTitle'), `${t('lifecycleCareHint')}\n\n${t('lifecycleLearnCare')}`)}
       >
-        <View style={styles.leafIcon}><Icon name="eco" size={20} color={colors.success} /></View>
+        <View style={styles.leafIcon}><Icon name="eco" size={26} color={colors.success} /></View>
         <View style={{ flex: 1 }}>
           <Text style={styles.leafTitle}>{t('lifecycleCareHelpTitle')}</Text>
           <Text style={styles.leafBody}>{t('lifecycleCareHint')}</Text>
           <Text style={styles.leafLink}>{t('lifecycleLearnCare')}</Text>
         </View>
-        <Icon name="chevron-right" size={19} color={colors.muted} />
+        <Icon name="chevron-right" size={25} color={colors.muted} />
       </TouchableOpacity>
     </View>
   );
@@ -605,14 +619,14 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
                       {o.icon ? (
                         <Image source={{ uri: fileUrl(o.icon) }} style={styles.originImg} resizeMode="contain" />
                       ) : (
-                        <Icon name="recycling" size={20} color={colors.primary} />
+                        <Icon name="recycling" size={26} color={colors.primary} />
                       )}
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.originName}>{o.material || '—'}</Text>
                       <Text style={styles.originSub}>{[o.country || o.origin, o.companyName].filter(Boolean).join(' · ') || '—'}</Text>
                     </View>
-                    <Icon name={open ? 'expand-less' : 'expand-more'} size={22} color={colors.muted} />
+                    <Icon name={open ? 'expand-less' : 'expand-more'} size={29} color={colors.muted} />
                   </TouchableOpacity>
                   {open && renderOriginDetail(o)}
                 </View>
@@ -630,7 +644,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
                 {c.icon ? (
                   <Image source={{ uri: fileUrl(c.icon) }} style={styles.certImg} resizeMode="contain" />
                 ) : (
-                  <Icon name="verified" size={30} color={colors.primary} />
+                  <Icon name="verified" size={39} color={colors.primary} />
                 )}
                 <Text style={styles.certBadgeText} numberOfLines={2}>{c.title}</Text>
               </View>
@@ -643,12 +657,12 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
         activeOpacity={0.7}
         onPress={() => openInfoDialog(t('lifecycleResponsibleSourcingTitle'), t('lifecycleResponsibleSourcing'))}
       >
-        <View style={styles.leafIcon}><Icon name="eco" size={20} color={colors.success} /></View>
+        <View style={styles.leafIcon}><Icon name="eco" size={26} color={colors.success} /></View>
         <View style={{ flex: 1 }}>
           <Text style={styles.leafTitle}>{t('lifecycleResponsibleSourcingTitle')}</Text>
           <Text style={styles.leafBody}>{t('lifecycleResponsibleSourcing')}</Text>
         </View>
-        <Icon name="chevron-right" size={19} color={colors.muted} />
+        <Icon name="chevron-right" size={25} color={colors.muted} />
       </TouchableOpacity>
     </View>
   );
@@ -673,11 +687,11 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
             {impactItems.map((it, i) => (
               <View key={i} style={styles.tile}>
                 {it.icon && /^[a-z-]+$/.test(it.icon) ? (
-                  <Icon name={it.icon} size={28} color={colors.success} />
+                  <Icon name={it.icon} size={36} color={colors.success} />
                 ) : it.icon ? (
                   <Image source={{ uri: fileUrl(it.icon) }} style={styles.tileImg} resizeMode="contain" />
                 ) : (
-                  <Icon name="eco" size={28} color={colors.success} />
+                  <Icon name="eco" size={36} color={colors.success} />
                 )}
                 <Text style={styles.tileValue}>{it.value}</Text>
                 <Text style={styles.tileLabel}>{it.label}</Text>
@@ -692,12 +706,12 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
         activeOpacity={0.7}
         onPress={() => openInfoDialog(t('lifecycleNeedHelpTitle'), t('lifecycleDisposeHelp'))}
       >
-        <View style={styles.leafIcon}><Icon name="help-outline" size={20} color={colors.primary} /></View>
+        <View style={styles.leafIcon}><Icon name="help-outline" size={26} color={colors.primary} /></View>
         <View style={{ flex: 1 }}>
           <Text style={styles.leafTitle}>{t('lifecycleNeedHelpTitle')}</Text>
           <Text style={styles.leafBody}>{t('lifecycleDisposeHelp')}</Text>
         </View>
-        <Icon name="chevron-right" size={19} color={colors.muted} />
+        <Icon name="chevron-right" size={25} color={colors.muted} />
       </TouchableOpacity>
     </View>
   );
@@ -718,10 +732,10 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
             accessibilityLabel={`${t('lifecycleMaterialsSourcedFrom')} ${originCountries.length} ${t('lifecycleCountries')}`}
             accessibilityState={{ expanded: traceOriginsOpen }}
           >
-            <View style={styles.itemIcon}><Icon name="hub" size={19} color={colors.primary} /></View>
+            <View style={styles.itemIcon}><Icon name="hub" size={25} color={colors.primary} /></View>
             <Text style={styles.itemLabel}>{t('lifecycleMaterialsSourcedFrom')}</Text>
             <Text style={styles.itemValue} numberOfLines={1}>{originCountries.length ? `${originCountries.length} ${t('lifecycleCountries')}` : ''}</Text>
-            <Icon name={traceOriginsOpen ? 'expand-less' : 'expand-more'} size={20} color={colors.muted} />
+            <Icon name={traceOriginsOpen ? 'expand-less' : 'expand-more'} size={26} color={colors.muted} />
           </TouchableOpacity>
         )}
         {traceOriginsOpen && materialOrigins.length > 0 && (
@@ -732,7 +746,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
                   {o.icon ? (
                     <Image source={{ uri: fileUrl(o.icon) }} style={styles.originImg} resizeMode="contain" />
                   ) : (
-                    <Icon name="recycling" size={20} color={colors.primary} />
+                    <Icon name="recycling" size={26} color={colors.primary} />
                   )}
                 </View>
                 <View style={{ flex: 1 }}>
@@ -755,9 +769,9 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
                 accessibilityLabel={t('lifecycleShippingRoute')}
                 accessibilityState={{ expanded: jOpen }}
               >
-                <View style={styles.itemIcon}><Icon name="local-shipping" size={19} color={colors.primary} /></View>
+                <View style={styles.itemIcon}><Icon name="local-shipping" size={25} color={colors.primary} /></View>
                 <Text style={styles.itemLabel}>{t('lifecycleShippingRoute')}</Text>
-                <Icon name={jOpen ? 'expand-less' : 'expand-more'} size={22} color={colors.muted} />
+                <Icon name={jOpen ? 'expand-less' : 'expand-more'} size={29} color={colors.muted} />
               </TouchableOpacity>
               {jOpen && (
                 <View style={styles.cardDetail}>
@@ -780,13 +794,13 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
         activeOpacity={0.7}
         onPress={() => openInfoDialog(t('lifecycleVerifiedDataTitle'), `${t('lifecycleVerifiedData')}\n\n${t('lifecycleLearnMore')}`)}
       >
-        <View style={styles.leafIcon}><Icon name="verified-user" size={20} color={colors.primary} /></View>
+        <View style={styles.leafIcon}><Icon name="verified-user" size={26} color={colors.primary} /></View>
         <View style={{ flex: 1 }}>
           <Text style={styles.leafTitle}>{t('lifecycleVerifiedDataTitle')}</Text>
           <Text style={styles.leafBody}>{t('lifecycleVerifiedData')}</Text>
           <Text style={styles.leafLink}>{t('lifecycleLearnMore')}</Text>
         </View>
-        <Icon name="chevron-right" size={19} color={colors.muted} />
+        <Icon name="chevron-right" size={25} color={colors.muted} />
       </TouchableOpacity>
     </View>
     );
@@ -823,7 +837,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
                 {c.icon ? (
                   <Image source={{ uri: fileUrl(c.icon) }} style={styles.originImg} resizeMode="contain" />
                 ) : (
-                  <Icon name={expired ? 'error-outline' : 'verified'} size={20} color={expired ? colors.warning : colors.success} />
+                  <Icon name={expired ? 'error-outline' : 'verified'} size={26} color={expired ? colors.warning : colors.success} />
                 )}
               </View>
               <View style={{ flex: 1 }}>
@@ -833,7 +847,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
                 {!!meta && <Text style={[styles.originSub, expired && { color: colors.warning }]}>{meta}</Text>}
                 {!!c.content && <Text style={styles.originSub}>{c.content}</Text>}
               </View>
-              {!!c.fileUrl && <Icon name="open-in-new" size={18} color={colors.muted} />}
+              {!!c.fileUrl && <Icon name="open-in-new" size={23} color={colors.muted} />}
             </TouchableOpacity>
           );
         }) : <Text style={styles.emptyText}>{t('lifecycleNoData')}</Text>}
@@ -864,7 +878,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
         />
       </View>
       <View style={styles.leafCard}>
-        <View style={styles.leafIcon}><Icon name="verified-user" size={20} color={colors.primary} /></View>
+        <View style={styles.leafIcon}><Icon name="verified-user" size={26} color={colors.primary} /></View>
         <View style={{ flex: 1 }}>
           <Text style={styles.leafTitle}>{t('lifecycleComplianceHintTitle')}</Text>
           <Text style={styles.leafBody}>{t('lifecycleComplianceHint')}</Text>
@@ -908,7 +922,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
       user={user}
       onLogout={onLogout}
       showBackButton
-      onBackPress={() => navigation.navigate(user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Home')}
+      onBackPress={() => navigation.navigate(user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Scanner')}
       title={t('titleProductLifecycle')}
       flatContent
       flushBottom
@@ -948,7 +962,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
               />
             ) : (
               <View style={[styles.headerThumb, styles.headerThumbPlaceholder]}>
-                <Icon name="inventory-2" size={24} color="rgba(255,255,255,0.6)" />
+                <Icon name="inventory-2" size={31} color="rgba(255,255,255,0.6)" />
               </View>
             )}
           </View>
@@ -968,12 +982,12 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
             {productData?.item_status === 'blocked' ? (
               // The brand marked this label as a suspected copy.
               <View style={styles.authCard} accessible accessibilityRole="alert" accessibilityLabel={t('overviewSuspectTitle')}>
-                <Icon name="warning" size={18} color={colors.onHeader} />
+                <Icon name="warning" size={23} color={colors.onHeader} />
                 <Text style={[styles.authTitle, { flexShrink: 1 }]}>{t('overviewSuspectTitle')}</Text>
               </View>
             ) : (
             <View style={styles.authCard} accessible accessibilityLabel={`${t('overviewAuthenticated')}. ${t('lifecycleVerifiedByBrand')}`}>
-              <View style={styles.authCheck}><Icon name="check" size={12} color={colors.header} /></View>
+              <View style={styles.authCheck}><Icon name="check" size={16} color={colors.header} /></View>
               <View>
                 <Text style={styles.authTitle}>{t('overviewAuthenticated')}</Text>
                 <Text style={styles.authSub}>{t('lifecycleVerifiedByBrand')}</Text>
@@ -1004,7 +1018,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
               accessibilityState={{ disabled: !canScrollTabsLeft }}
             >
               <View style={[styles.tabEdgeHint, !canScrollTabsLeft && styles.tabEdgeHintDisabled]}>
-                <Icon name="chevron-left" size={22} color={canScrollTabsLeft ? colors.primary : colors.placeholder} />
+                <Icon name="chevron-left" size={29} color={canScrollTabsLeft ? colors.primary : colors.placeholder} />
               </View>
             </TouchableOpacity>
             <ScrollView
@@ -1056,7 +1070,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
               accessibilityState={{ disabled: !canScrollTabsRight }}
             >
               <View style={[styles.tabEdgeHint, !canScrollTabsRight && styles.tabEdgeHintDisabled]}>
-                <Icon name="chevron-right" size={22} color={canScrollTabsRight ? colors.primary : colors.placeholder} />
+                <Icon name="chevron-right" size={29} color={canScrollTabsRight ? colors.primary : colors.placeholder} />
               </View>
             </TouchableOpacity>
           </View>
@@ -1207,14 +1221,16 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
   },
   cardTitle: { fontSize: 20, fontWeight: '700', color: colors.primary, marginBottom: 9 },
   paragraph: { fontSize: 19, color: colors.text, lineHeight: 28 },
+  showMoreBtn: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 2, minHeight: 44, marginTop: spacing.xs },
+  showMoreText: { fontSize: 19, fontWeight: '700', color: colors.primary },
   emptyText: { fontSize: 19, color: colors.muted, paddingVertical: spacing.sm },
   // journey
   jItem: { flexDirection: 'row', gap: spacing.lg },
-  jRail: { alignItems: 'center', width: 48 },
+  jRail: { alignItems: 'center', width: 58 },
   jDot: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1239,7 +1255,7 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
   jLink: { fontSize: 18, color: colors.accent, fontWeight: '600', textDecorationLine: 'underline' },
   // rows
   itemRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: MIN_TOUCH, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border },
-  itemIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
+  itemIcon: { width: 42, height: 42, borderRadius: 21, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
   itemLabel: { flex: 1, fontSize: 19, color: colors.muted },
   itemValue: { fontSize: 19, color: colors.text, fontWeight: '600', textAlign: 'right' },
   // expand
@@ -1333,7 +1349,7 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
     padding: spacing.md,
     marginTop: spacing.xs,
   },
-  leafIcon: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  leafIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
   leafTitle: { fontSize: 18, fontWeight: '700', color: colors.primary },
   leafBody: { fontSize: 17, color: colors.primaryDark, lineHeight: 23, marginTop: 2 },
   leafLink: { fontSize: 17, color: colors.accent, fontWeight: '600', marginTop: 4 },

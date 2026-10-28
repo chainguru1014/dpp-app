@@ -776,7 +776,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
               accessibilityRole="button"
               accessibilityLabel={t('scanUploadImageCta')}
             >
-              <VectorIcon name="image" size={18} color={colors.primary} />
+              <VectorIcon name="image" size={30} color={colors.primary} />
               <Text style={styles.whiteBoardButtonText} numberOfLines={2}>{t('scanUploadImageCta')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -786,7 +786,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
               accessibilityRole="button"
               accessibilityLabel={t('scanEnterCodeCta')}
             >
-              <VectorIcon name="keyboard" size={18} color={colors.primary} />
+              <VectorIcon name="keyboard" size={30} color={colors.primary} />
               <Text style={styles.whiteBoardButtonText} numberOfLines={2}>{t('scanEnterCodeCta')}</Text>
             </TouchableOpacity>
           </View>
@@ -827,7 +827,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
   const renderCameraOverlay = () => (
     <>
       <View pointerEvents="none" style={styles.overlayHintWrap}>
-        <VectorIcon name="qr-code" size={16} color="#fff" style={styles.overlayHintIcon} />
+        <VectorIcon name="qr-code" size={26} color={colors.primary} style={styles.overlayHintIcon} />
         <Text style={styles.overlayHintText}>{t('scannerScanHint')}</Text>
       </View>
       <View style={styles.overlayCornerRow}>
@@ -840,7 +840,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
           accessibilityState={{ selected: torchOn }}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <VectorIcon name={torchOn ? 'flash-on' : 'flash-off'} size={20} color="#fff" />
+          <VectorIcon name={torchOn ? 'flash-on' : 'flash-off'} size={32} color={colors.primary} />
           <Text style={styles.overlayCornerText}>{t('scanFlash')}</Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -851,7 +851,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
           accessibilityLabel={t('scanHelpLabel')}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <VectorIcon name="help-outline" size={20} color="#fff" />
+          <VectorIcon name="help-outline" size={32} color={colors.primary} />
           <Text style={styles.overlayCornerText}>{t('scanHelpLabel')}</Text>
         </TouchableOpacity>
       </View>
@@ -872,7 +872,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
               accessibilityRole="button"
               accessibilityLabel={t('scanUploadImageCta')}
             >
-              <VectorIcon name="image" size={18} color={colors.primary} />
+              <VectorIcon name="image" size={30} color={colors.primary} />
               <Text style={styles.overlayActionText}>{t('scanUploadImageCta')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -882,7 +882,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
               accessibilityRole="button"
               accessibilityLabel={t('scanEnterCodeCta')}
             >
-              <VectorIcon name="keyboard" size={18} color={colors.primary} />
+              <VectorIcon name="keyboard" size={30} color={colors.primary} />
               <Text style={styles.overlayActionText} numberOfLines={2}>{t('scanEnterCodeCta')}</Text>
             </TouchableOpacity>
           </>
@@ -926,7 +926,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
       {cameraStalled && (
         <View style={styles.stalledOverlay}>
           <View style={styles.stalledCard} accessibilityRole="alert">
-            <VectorIcon name="center-focus-weak" size={30} color={colors.danger} />
+            <VectorIcon name="center-focus-weak" size={40} color={colors.danger} />
             <Text style={styles.stalledTitle}>{t('scanTroubleTitle')}</Text>
             <Text style={styles.stalledBody}>{t('scanTroubleBody')}</Text>
             <GradientButton
@@ -945,7 +945,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
               accessibilityRole="button"
               accessibilityLabel={t('scanUploadPhoto')}
             >
-              <VectorIcon name="photo-library" size={16} color={colors.primary} />
+              <VectorIcon name="photo-library" size={26} color={colors.primary} />
               <Text style={styles.stalledSecondaryText}>{t('scanUploadPhoto')}</Text>
             </TouchableOpacity>
           </View>
@@ -954,7 +954,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
       {cameraUnavailable && (
         <View style={styles.stalledOverlay}>
           <View style={styles.stalledCard} accessibilityRole="alert">
-            <VectorIcon name="videocam-off" size={30} color={colors.danger} />
+            <VectorIcon name="videocam-off" size={40} color={colors.danger} />
             <Text style={styles.stalledTitle}>{t('scanUnavailableTitle')}</Text>
             <Text style={styles.stalledBody}>{t('scanUnavailableBody')}</Text>
             <GradientButton
@@ -973,7 +973,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
               accessibilityRole="button"
               accessibilityLabel={t('scanUploadPhoto')}
             >
-              <VectorIcon name="photo-library" size={16} color={colors.primary} />
+              <VectorIcon name="photo-library" size={26} color={colors.primary} />
               <Text style={styles.stalledSecondaryText}>{t('scanUploadPhoto')}</Text>
             </TouchableOpacity>
           </View>
@@ -1201,26 +1201,25 @@ const styles = StyleSheet.create({
   overlayHintWrap: {
     position: 'absolute',
     top: spacing.lg,
-    left: spacing.xl,
-    right: spacing.xl,
+    alignSelf: 'center',
+    maxWidth: '92%',
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(255,255,255,0.92)',
   },
   overlayHintIcon: {
-    marginRight: 6,
-    textShadowColor: 'rgba(0,0,0,0.6)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    marginRight: 8,
   },
   overlayHintText: {
-    color: '#fff',
+    color: colors.primary,
     fontSize: 18,
-    fontWeight: '400',
+    fontWeight: '700',
     textAlign: 'center',
-    textShadowColor: 'rgba(0,0,0,0.6)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    flexShrink: 1,
   },
   // Torch (bottom-left) / help (bottom-right) overlaid on the camera feed —
   // sits just above the Upload / Enter Code pill row.
@@ -1228,7 +1227,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: spacing.lg,
     right: spacing.lg,
-    bottom: 154,
+    bottom: 168,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
@@ -1249,7 +1248,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    minHeight: MIN_TOUCH,
+    minHeight: 58,
     paddingVertical: 6,
     paddingHorizontal: 4,
     borderRadius: radius.md,
@@ -1269,17 +1268,19 @@ const styles = StyleSheet.create({
   overlayLoadingText: { color: '#fff', fontSize: 18, fontWeight: '600' },
   overlayCornerButton: {
     alignItems: 'center',
-    minWidth: MIN_TOUCH,
-    minHeight: MIN_TOUCH,
     justifyContent: 'center',
+    minWidth: 76,
+    minHeight: 64,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: radius.lg,
+    backgroundColor: 'rgba(255,255,255,0.92)',
   },
   overlayCornerText: {
-    color: '#fff',
-    fontSize: 17,
+    color: colors.primary,
+    fontSize: 16,
+    fontWeight: '700',
     marginTop: 2,
-    textShadowColor: 'rgba(0,0,0,0.6)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
   },
   // Camera viewport + frame. flex:1 (with a floor) so it fills whatever
   // space the white board below doesn't need — the board is content-sized

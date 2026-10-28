@@ -1280,7 +1280,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                 <ScanFrameCorners size={Math.min(200, cameraHeight - 70)} active={!!liveCode} activeColor={colors.primary} />
               </View>
               <View pointerEvents="none" style={styles.overlayHintWrap}>
-                <VectorIcon name="qr-code" size={24} color="#fff" style={styles.overlayHintIcon} />
+                <VectorIcon name="qr-code" size={28} color={colors.primary} style={styles.overlayHintIcon} />
                 <Text style={styles.overlayHintText}>{t('corpScanHint')}</Text>
               </View>
             </>
@@ -1288,11 +1288,11 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
           {isCameraType && (
             <View style={styles.overlayCornerRow}>
               <TouchableOpacity style={styles.overlayCornerButton} onPress={() => setTorchOn((v) => !v)} activeOpacity={0.75}>
-                <VectorIcon name={torchOn ? 'flash-on' : 'flash-off'} size={30} color="#fff" />
+                <VectorIcon name={torchOn ? 'flash-on' : 'flash-off'} size={32} color={colors.primary} />
                 <Text style={styles.overlayCornerText}>{torchOn ? t('scanTorchOn') : t('scanTorchOff')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.overlayCornerButton} onPress={() => setHelpVisible(true)} activeOpacity={0.75}>
-                <VectorIcon name="help-outline" size={30} color="#fff" />
+                <VectorIcon name="help-outline" size={32} color={colors.primary} />
                 <Text style={styles.overlayCornerText}>{t('scanHelpLabel')}</Text>
               </TouchableOpacity>
             </View>
@@ -2043,26 +2043,25 @@ const styles = StyleSheet.create({
   overlayHintWrap: {
     position: 'absolute',
     top: spacing.lg,
-    left: spacing.xl,
-    right: spacing.xl,
+    alignSelf: 'center',
+    maxWidth: '92%',
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(255,255,255,0.92)',
   },
   overlayHintIcon: {
-    marginRight: 6,
-    textShadowColor: 'rgba(0,0,0,0.6)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    marginRight: 8,
   },
   overlayHintText: {
-    color: '#fff',
+    color: colors.primary,
     fontSize: 20,
-    fontWeight: '400',
+    fontWeight: '700',
     textAlign: 'center',
-    textShadowColor: 'rgba(0,0,0,0.6)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    flexShrink: 1,
   },
   overlayCornerRow: {
     position: 'absolute',
@@ -2101,14 +2100,21 @@ const styles = StyleSheet.create({
   captureFeedbackOk: { backgroundColor: colors.success },
   captureFeedbackError: { backgroundColor: colors.danger },
   captureFeedbackText: { color: '#fff', fontSize: 16, fontWeight: '600', flexShrink: 1 },
-  overlayCornerButton: { alignItems: 'center', minWidth: 48, minHeight: 48, justifyContent: 'center' },
+  overlayCornerButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 76,
+    minHeight: 64,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: radius.lg,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+  },
   overlayCornerText: {
-    color: '#fff',
-    fontSize: 17,
+    color: colors.primary,
+    fontSize: 16,
+    fontWeight: '700',
     marginTop: 2,
-    textShadowColor: 'rgba(0,0,0,0.6)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
   },
   thumbRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.md, marginBottom: spacing.sm },
   thumbHeading: { fontSize: 21, fontWeight: '600', color: colors.muted },

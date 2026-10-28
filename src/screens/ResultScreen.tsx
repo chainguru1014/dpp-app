@@ -27,6 +27,7 @@ import GradientButton from '../components/GradientButton';
 import GradientView from '../components/GradientView';
 import { useI18n } from '../i18n/I18nContext';
 import MediaSlider, { isPlayableVideo } from '../components/MediaSlider';
+import ProductReactionBar from '../components/ProductReactionBar';
 import { saveTextFile, safeFileBaseName } from '../utils/saveTextFile';
 import { colors, radius, spacing, shadow, MIN_TOUCH } from '../theme';
 import { BASE_PALETTE, Palette, applyLook, buttonFill, useBrandLook } from '../utils/dppTheme';
@@ -1438,7 +1439,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
           as authenticated — see the warning card below. */}
       {productData?.item_status !== 'blocked' && (
         <View style={styles.ovAuthBadge} accessible accessibilityLabel={`${t('overviewAuthenticated')}. ${t('lifecycleVerifiedByBrand')}`}>
-          <View style={styles.ovAuthBadgeCheck}><Icon name="check" size={11} color={colors.onBadge} /></View>
+          <View style={styles.ovAuthBadgeCheck}><Icon name="check" size={14} color={colors.onBadge} /></View>
           <View style={{ flex: 1 }}>
             <Text style={styles.ovAuthBadgeTitle}>{t('overviewAuthenticated')}</Text>
             <Text style={styles.ovAuthBadgeSub}>{t('lifecycleVerifiedByBrand')}</Text>
@@ -1467,7 +1468,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
                   <Text style={styles.ovCardTitle}>{t('overviewKeyHighlights')}</Text>
                   {extra.map((e) => (
                     <View key={e.text} style={styles.ovHlRow}>
-                      <Icon name={e.icon} size={17} color={BRAND_COLOR} />
+                      <Icon name={e.icon} size={22} color={BRAND_COLOR} />
                       <Text style={styles.ovHlText} numberOfLines={1}>{e.text}</Text>
                     </View>
                   ))}
@@ -1491,7 +1492,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
                   <React.Fragment key={s.key}>
                     <View style={styles.ovLcStage}>
                       <View style={styles.ovLcDot}>
-                        <Icon name={s.icon} size={27} color={BRAND_COLOR} />
+                        <Icon name={s.icon} size={35} color={BRAND_COLOR} />
                       </View>
                     </View>
                     {i < LIFECYCLE_STAGES.length - 1 && <View style={styles.ovLcConn} />}
@@ -1506,7 +1507,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
                 accessibilityLabel={t('overviewViewFullLifecycle')}
               >
                 <Text style={styles.ovViewLcText}>{t('overviewViewFullLifecycle')}</Text>
-                <Icon name="chevron-right" size={16} color={colors.accent} />
+                <Icon name="chevron-right" size={21} color={colors.accent} />
               </TouchableOpacity>
             </View>
 
@@ -1539,7 +1540,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
               accessibilityLabel={`${name}: ${website}`}
             >
               <Text style={styles.ovViewLcText} numberOfLines={1}>{website.replace(/^https?:\/\//i, '').replace(/\/$/, '')}</Text>
-              <Icon name="open-in-new" size={16} color={colors.accent} />
+              <Icon name="open-in-new" size={21} color={colors.accent} />
             </TouchableOpacity>
           )}
         </View>
@@ -1576,48 +1577,8 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
     },
     feedback: () => (
       <View style={{ marginTop: spacing.lg }}>
-            {/* Helpful / Not helpful / Share — labelled, not icon-only. Share
-                is visually the most prominent of the three since it's the one
-                most consumers actually use. */}
-            <View style={styles.ovIconRow}>
-              <TouchableOpacity
-                style={[styles.ovIconBtn, selectedFeedback === 'like' && styles.ovIconBtnActive]}
-                onPress={handleLike}
-                activeOpacity={0.8}
-                accessibilityRole="button"
-                accessibilityLabel={t('helpfulAction')}
-                accessibilityState={{ selected: selectedFeedback === 'like' }}
-              >
-                <Icon name="thumb-up" size={16} color={selectedFeedback === 'like' ? '#fff' : colors.primary} />
-                <Text style={[styles.ovIconBtnText, selectedFeedback === 'like' && styles.ovIconBtnTextActive]} numberOfLines={1}>
-                  {t('helpfulAction')}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.ovIconBtn, selectedFeedback === 'dislike' && styles.ovIconBtnActive]}
-                onPress={handleDislike}
-                activeOpacity={0.8}
-                accessibilityRole="button"
-                accessibilityLabel={t('notHelpfulAction')}
-                accessibilityState={{ selected: selectedFeedback === 'dislike' }}
-              >
-                <Icon name="thumb-down" size={16} color={selectedFeedback === 'dislike' ? '#fff' : colors.primary} />
-                <Text style={[styles.ovIconBtnText, selectedFeedback === 'dislike' && styles.ovIconBtnTextActive]} numberOfLines={1}>
-                  {t('notHelpfulAction')}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.ovIconBtn, styles.ovShareBtn]}
-                onPress={openShareSheet}
-                activeOpacity={0.8}
-                accessibilityRole="button"
-                accessibilityLabel={t('share')}
-              >
-                <Icon name="share" size={16} color={colors.primary} />
-                <Text style={styles.ovIconBtnText} numberOfLines={1}>{t('share')}</Text>
-              </TouchableOpacity>
-            </View>
-
+        {/* Same Like (album) / Add to Cart / Dislike buttons as the summary page. */}
+        <ProductReactionBar product={productData} user={user} onRequireLogin={showLoginPrompt} />
       </View>
     ),
     actions: () => (
@@ -1671,7 +1632,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
       showBackButton={isAuthenticatedUser}
       onBackPress={
         isAuthenticatedUser
-          ? () => navigation.navigate(user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Home')
+          ? () => navigation.navigate(user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Scanner')
           : undefined
       }
       bottomBar={isAuthenticatedUser && !isEmployeeActor ? 'product' : 'auto'}
@@ -2355,16 +2316,16 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
   ovHlRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 6 },
   ovHlText: { flex: 1, fontSize: 19, color: colors.text, lineHeight: 26 },
   ovLcStrip: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6 },
-  ovLcStage: { alignItems: 'center', width: 50 },
+  ovLcStage: { alignItems: 'center', width: 58 },
   ovLcDot: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     backgroundColor: colors.surfaceAlt,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  ovLcConn: { flex: 1, height: 3, backgroundColor: colors.primary, marginTop: 23.5, marginHorizontal: -2, borderRadius: 2 },
+  ovLcConn: { flex: 1, height: 3, backgroundColor: colors.primary, marginTop: 27.5, marginHorizontal: -2, borderRadius: 2 },
   ovViewLc: {
     flexDirection: 'row',
     alignItems: 'center',

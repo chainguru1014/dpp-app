@@ -76,7 +76,7 @@ export default function EnterCodeScreen({ navigation, route, user, onLogout }: E
                 accessibilityLabel={t(opt.labelKey)}
                 accessibilityState={{ selected: active }}
               >
-                <Icon name={opt.icon} size={22} color={active ? colors.primary : colors.muted} />
+                <Icon name={opt.icon} size={34} color={active ? colors.primary : colors.muted} />
                 <Text style={[styles.typeLabel, active && styles.typeLabelActive]}>{t(opt.labelKey)}</Text>
               </TouchableOpacity>
             );
@@ -106,7 +106,7 @@ export default function EnterCodeScreen({ navigation, route, user, onLogout }: E
               accessibilityRole="button"
               accessibilityLabel={t('clearText')}
             >
-              <Icon name="cancel" size={18} color={colors.muted} />
+              <Icon name="cancel" size={28} color={colors.muted} />
             </TouchableOpacity>
           )}
         </View>
@@ -129,7 +129,7 @@ export default function EnterCodeScreen({ navigation, route, user, onLogout }: E
         </GradientButton>
 
         <View style={styles.hintCard}>
-          <Icon name="info-outline" size={18} color={colors.primary} />
+          <Icon name="info-outline" size={28} color={colors.primary} />
           <Text style={styles.hintText}>{t('enterCodeHint')}</Text>
         </View>
       </ScrollView>

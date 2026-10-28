@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Linking, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Linking, ActivityIndicator } from 'react-native';
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AppLayout from '../components/AppLayout';
+import MediaSlider from '../components/MediaSlider';
+import { normalizeToStringArray, normalizeToArray } from '../utils/mediaNormalize';
 import { useI18n } from '../i18n/I18nContext';
-import { firstImageOf, formatPrice, recordPurchase } from '../utils/consumerApi';
+import { fileUrl, formatPrice, recordPurchase } from '../utils/consumerApi';
 import { colors, radius, spacing, shadow } from '../theme';
 
 const href = (url?: string) => {
@@ -19,7 +21,8 @@ export default function PurchaseScreen({ navigation, route, user, onLogout }: an
   const { t } = useI18n();
   const product = route?.params?.product || {};
   const [busy, setBusy] = useState(false);
-  const img = firstImageOf(product);
+  const images = normalizeToStringArray(product?.images);
+  const videos = normalizeToArray(product?.videos);
   const price = formatPrice(product.price, product.currency);
   const shopUrl = href(product.purchaseUrl) || href(product.brandInfo?.websiteUrl);
 
@@ -40,9 +43,7 @@ export default function PurchaseScreen({ navigation, route, user, onLogout }: an
     <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton title={t('titlePurchase')}>
       <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
         <View style={styles.imageCard}>
-          {img ? <Image source={{ uri: img }} style={styles.image} resizeMode="contain" /> : (
-            <MaterialCommunityIcon name="tshirt-crew-outline" size={96} color={colors.placeholder} />
-          )}
+          <MediaSlider images={images} videos={videos} hideHeader flush maxHeight={300} getFileUrl={fileUrl} watchLabel={t('watchVideo')} />
         </View>
         <Text style={styles.name}>{product.name || '—'}</Text>
         {!!product.brandInfo?.name && <Text style={styles.brand}>{product.brandInfo.name}</Text>}
@@ -74,20 +75,14 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   container: { flexGrow: 1, padding: spacing.lg, gap: spacing.sm },
   imageCard: {
-    width: '100%',
-    aspectRatio: 1,
-    maxHeight: 360,
-    alignSelf: 'center',
     backgroundColor: colors.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
     overflow: 'hidden',
+    paddingVertical: spacing.sm,
     ...shadow(1),
   },
-  image: { width: '100%', height: '100%' },
   name: { fontSize: 26, fontWeight: '700', color: colors.heading, textAlign: 'center', marginTop: spacing.md },
   brand: { fontSize: 19, color: colors.muted, textAlign: 'center' },
   price: { fontSize: 32, fontWeight: '800', color: colors.primary, textAlign: 'center', marginTop: spacing.sm },

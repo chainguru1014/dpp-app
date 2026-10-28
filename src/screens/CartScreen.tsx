@@ -65,7 +65,7 @@ export default function CartScreen({ navigation, user, onLogout }: any) {
           accessibilityLabel={p.name}
         >
           {img ? <Image source={{ uri: img }} style={styles.thumbImg} resizeMode="cover" /> : (
-            <MaterialCommunityIcon name="tshirt-crew-outline" size={36} color={colors.placeholder} />
+            <MaterialCommunityIcon name="tshirt-crew-outline" size={54} color={colors.placeholder} />
           )}
         </TouchableOpacity>
         <View style={styles.info}>
@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     ...shadow(1),
   },
-  thumb: { width: 84, height: 84, borderRadius: radius.md, backgroundColor: colors.surfaceAlt, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  thumb: { width: 126, height: 126, borderRadius: radius.md, backgroundColor: colors.surfaceAlt, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   thumbImg: { width: '100%', height: '100%' },
   info: { flex: 1, minWidth: 0 },
   name: { fontSize: 18, fontWeight: '700', color: colors.heading },

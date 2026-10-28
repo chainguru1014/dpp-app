@@ -108,7 +108,7 @@ const EMPLOYEE_BRAND_TITLE = 'Yometel Traceability';
 // below. Fixed design constants, not device-specific hacks.
 const TOP_BAR_CONTENT = 56;
 const BOTTOM_BAR_CONTENT = 74;
-const BOTTOM_TAB_ICON_SIZE = 32;
+const BOTTOM_TAB_ICON_SIZE = 38;
 // Staff bar now matches the consumer bar's height exactly (was 85).
 const EMPLOYEE_BOTTOM_BAR_CONTENT = BOTTOM_BAR_CONTENT;
 
@@ -687,7 +687,7 @@ function ScanCenterTab({ label, selected, onPress }: { label: string; selected: 
     >
       <View style={styles.scanCircle}>
         <GradientView style={[StyleSheet.absoluteFill, { borderRadius: 27 }]} angle="diagonal" to={selected ? colors.primaryDark : colors.primary} />
-        <Icon name="crop-free" size={26} color={colors.white} />
+        <Icon name="crop-free" size={30} color={colors.white} />
       </View>
       <Text style={[styles.scanTabLabel, selected && styles.bottomTabLabelSelected]} numberOfLines={1}>
         {label}
@@ -709,9 +709,14 @@ function ConsumerBottomBar({
   // Three tabs only: Product Album · Scan · Profile.
   return (
     <View style={[styles.bottomBar, { height: barHeight, paddingBottom: bottomInset }]}>
-      <BottomTab mci icon="image-multiple-outline" iconActive="image-multiple" label={t('bottomAlbum')} selected={routeName === 'ProductAlbum'} onPress={onAlbum} />
+      {/* Album and Profile nudged toward the centre Scan button. */}
+      <View style={styles.consumerTabShiftRight}>
+        <BottomTab mci icon="image-multiple-outline" iconActive="image-multiple" label={t('bottomAlbum')} selected={routeName === 'ProductAlbum'} onPress={onAlbum} />
+      </View>
       <ScanCenterTab label={t('bottomScan')} selected={routeName === 'Scanner' || routeName === 'EnterCode'} onPress={onScan} />
-      <BottomTab mci icon="account-outline" iconActive="account" label={t('bottomProfile')} selected={profileActive || routeName === 'EditProfile'} onPress={onProfile} />
+      <View style={styles.consumerTabShiftLeft}>
+        <BottomTab mci icon="account-outline" iconActive="account" label={t('bottomProfile')} selected={profileActive || routeName === 'EditProfile'} onPress={onProfile} />
+      </View>
     </View>
   );
 }
@@ -829,6 +834,8 @@ const styles = StyleSheet.create({
   },
   scanTabLabel: { fontSize: 17, color: colors.primary, marginTop: 2, fontWeight: '600' },
   productTabShiftRight: { flex: 1, transform: [{ translateX: 16 }] },
+  consumerTabShiftRight: { flex: 1, height: '100%', transform: [{ translateX: 28 }] },
+  consumerTabShiftLeft: { flex: 1, height: '100%', transform: [{ translateX: -28 }] },
   productTabShiftLeft: { flex: 1, transform: [{ translateX: -16 }] },
   modalOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
   // Wide web: Modal portals to the real window root, so without this the
