@@ -330,7 +330,8 @@ export default function AppLayout({
   // Title font size from the real width left between the side icons, so it
   // never ends in "..." on a narrow phone (react-native-web ignores
   // adjustsFontSizeToFit). Two lines remain as a last resort.
-  const sideSlots = (1 + (showCartIcon && !logoLeft ? 1 : 0)) + (showCartIcon ? 2 : 1);
+  const leftSlots = logoLeft ? 0 : showBackButton ? 1 + (showCartIcon ? 1 : 0) : 0;
+  const sideSlots = leftSlots + (showCartIcon ? 2 : 1);
   const titleRoom = Math.max(80, wideColumnWidth - 24 - sideSlots * MIN_TOUCH);
   const titleLen = Math.max(1, String(computedTitle ?? '').length);
   const titleFontSize = Math.max(15, Math.min(23, Math.floor(titleRoom / (titleLen * 0.52))));
@@ -461,11 +462,11 @@ export default function AppLayout({
             >
               <Icon name="arrow-back" size={26} color={barText} />
             </TouchableOpacity>
-          ) : (
-            <View style={styles.iconButton} />
-          )}
-          {/* Mirrors the cart icon's width so the title stays centred. */}
-          {showCartIcon && !logoLeft && <View style={styles.iconButton} />}
+          ) : null}
+          {/* With a back icon, mirror the cart icon's width so the title stays
+              centred on the bar. Without one (e.g. Scan), there is nothing on
+              the left, so the title centres in the space before the icons. */}
+          {showCartIcon && !logoLeft && showBackButton && <View style={styles.iconButton} />}
 
           <View style={styles.titleBlock} pointerEvents="none">
             {!logoLeft && (

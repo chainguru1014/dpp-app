@@ -872,8 +872,10 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
               accessibilityRole="button"
               accessibilityLabel={t('scanUploadImageCta')}
             >
-              <VectorIcon name="image" size={30} color={colors.primary} />
+              {/* Icon centred in the space left of the (centred) text. */}
+              <View style={styles.overlayActionIconSlot}><VectorIcon name="image" size={36} color={colors.primary} /></View>
               <Text style={styles.overlayActionText}>{t('scanUploadImageCta')}</Text>
+              <View style={styles.overlayActionEndSlot} />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.overlayActionBtn}
@@ -882,8 +884,9 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
               accessibilityRole="button"
               accessibilityLabel={t('scanEnterCodeCta')}
             >
-              <VectorIcon name="keyboard" size={30} color={colors.primary} />
+              <View style={styles.overlayActionIconSlot}><VectorIcon name="keyboard" size={36} color={colors.primary} /></View>
               <Text style={styles.overlayActionText} numberOfLines={2}>{t('scanEnterCodeCta')}</Text>
+              <View style={styles.overlayActionEndSlot} />
             </TouchableOpacity>
           </>
         )}
@@ -1247,7 +1250,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
     minHeight: 58,
     paddingVertical: 6,
     paddingHorizontal: 4,
@@ -1255,6 +1257,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.95)',
   },
   overlayActionText: { color: colors.primary, fontSize: 18, fontWeight: '700', textAlign: 'center', flexShrink: 1 },
+  // Equal flexible space either side keeps the text centred; the icon sits in
+  // the middle of the left one (never narrower than the icon itself).
+  overlayActionIconSlot: { flexGrow: 1, flexBasis: 0, minWidth: 40, alignItems: 'center', justifyContent: 'center' },
+  overlayActionEndSlot: { flexGrow: 1, flexBasis: 0, minWidth: 4 },
   overlayLoadingPill: {
     flex: 1,
     flexDirection: 'row',
@@ -1274,15 +1280,11 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 10,
   },
-  // No background — a soft white halo keeps the dark-blue text readable on the camera feed.
   overlayCornerText: {
     color: colors.primary,
     fontSize: 16,
     fontWeight: '800',
     marginTop: 2,
-    textShadowColor: 'rgba(255,255,255,0.9)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 6,
   },
   // Camera viewport + frame. flex:1 (with a floor) so it fills whatever
   // space the white board below doesn't need — the board is content-sized
