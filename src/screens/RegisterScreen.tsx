@@ -7,7 +7,6 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   ScrollView,
   Dimensions,
   Image,
@@ -41,6 +40,10 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
   const [countryModalVisible, setCountryModalVisible] = useState(false);
   const [dobPickerVisible, setDobPickerVisible] = useState(false);
   const [dobDraft, setDobDraft] = useState(new Date(2000, 0, 1));
+  // Per-field validation messages, shown under each field after Save.
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  // Face signups arrive with no email — the profile page asks for one.
+  const needsEmail = !partialUser.email;
 
   const [form, setForm] = useState<any>({
     name: partialUser.name || '',
@@ -76,7 +79,15 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
     ];
   }, [locale]);
 
-  const setField = (key: string, value: string) => setForm((prev: any) => ({ ...prev, [key]: value }));
+  const setField = (key: string, value: string) => {
+    setForm((prev: any) => ({ ...prev, [key]: value }));
+    setErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
   const formatDate = (date: Date) => {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -95,24 +106,45 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
     setDobDraft(next);
   };
 
+  // Marks every empty required field (shown in red under the field) instead
+  // of a single Alert — Alert.alert is a no-op on react-native-web.
   const validate = () => {
-    const normalizedName = (form.name || '').trim();
+    const next: Record<string, string> = {};
+    const required = (key: string, ok: boolean) => {
+      if (!ok) next[key] = t('profileFieldRequired');
+    };
+    const emailOk = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((v || '').trim());
     if (userType === 'client') {
       // GDPR data minimization: nickname/gender/birthYear/country only —
-      // never a real name, email, or phone number for consumer accounts.
-      const normalizedNickname = (form.nickname || '').trim();
-      if (!normalizedNickname || !form.gender || !/^\d{4}$/.test(form.birthYear || '') || !form.country) {
-        Alert.alert(t('error'), t('fillProfileFieldsClient'));
-        return false;
+      // plus an email for face signups, which have no other contact channel.
+      required('nickname', !!(form.nickname || '').trim());
+      required('gender', !!form.gender);
+      required('birthYear', !!form.birthYear);
+      if (form.birthYear && !/^\d{4}$/.test(form.birthYear)) next.birthYear = t('profileFieldRequired');
+      required('country', !!form.country);
+      if (needsEmail) {
+        required('email', !!(form.email || '').trim());
+        if ((form.email || '').trim() && !emailOk(form.email)) next.email = t('profileEmailInvalid');
       }
     } else {
-      if (!normalizedName || !form.email || !form.firstName || !form.lastName || !form.addressStreet || !form.addressCity || !form.addressState || !form.addressZipCode || !form.addressCountry || !form.phoneNumber || !form.gender || !form.dateOfBirth) {
-        Alert.alert(t('error'), t('fillProfileFieldsAgent'));
-        return false;
-      }
+      ['name', 'email', 'firstName', 'lastName', 'addressStreet', 'addressCity', 'addressState', 'addressZipCode', 'addressCountry', 'phoneNumber', 'gender', 'dateOfBirth']
+        .forEach((key) => required(key, !!(form[key] || '').trim()));
+      if ((form.email || '').trim() && !emailOk(form.email)) next.email = t('profileEmailInvalid');
+    }
+    setErrors(next);
+    if (Object.keys(next).length) {
+      setApiError(t('profileFixFields'));
+      return false;
     }
     return true;
   };
+
+  // Red border + message under a field that failed validation.
+  const errStyle = (key: string) => (errors[key] ? styles.inputError : null);
+  const errText = (key: string) =>
+    errors[key] ? (
+      <Text style={styles.fieldErrorText} accessibilityRole="alert">{errors[key]}</Text>
+    ) : null;
 
   const handleCompleteProfile = async () => {
     setApiError('');
@@ -137,6 +169,7 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
         payload.gender = form.gender;
         payload.birthYear = Number(form.birthYear);
         payload.country = form.country;
+        if (needsEmail) payload.email = (form.email || '').trim();
       } else {
         payload.name = normalizedName;
         payload.email = form.email;
@@ -181,13 +214,13 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
       // landed so the gate's Continue button sends the user there next.
       if (!tagged.aiConciergeConsentAt) {
         navigation.replace('AiConciergeConsent', {
-          redirectTo: redirectTo || 'Home',
+          redirectTo: redirectTo || 'Scanner',
           redirectParams: redirectParams || {},
         });
       } else if (redirectTo) {
         navigation.replace(redirectTo, redirectParams || {});
       } else {
-        navigation.replace('Home');
+        navigation.replace('Scanner');
       }
     } catch (error: any) {
       setApiError(error?.message || t('networkErrorRetry'));
@@ -206,7 +239,7 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
   return (
     <View style={styles.container}>
       <ImageBackground
-        source={require('../assets/bg-login.jpg')}
+        source={require('../assets/bg-intro-dpp.jpg')}
         style={styles.imageBg}
         resizeMode="cover"
       >
@@ -238,13 +271,23 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
               </View>
 
               {userType === 'agent' && (
-                <TextInput style={styles.input} placeholder={t('username')} placeholderTextColor={colors.placeholder} value={form.name} onChangeText={(v) => setField('name', v)} autoCapitalize="none" />
+                <>
+                  <TextInput style={[styles.input, errStyle('name')]} placeholder={t('username')} placeholderTextColor={colors.placeholder} value={form.name} onChangeText={(v) => setField('name', v)} autoCapitalize="none" />
+                  {errText('name')}
+                </>
               )}
 
               {userType === 'client' ? (
                 <>
-                  <TextInput style={styles.input} placeholder={t('nickname')} placeholderTextColor={colors.placeholder} value={form.nickname} onChangeText={(v) => setField('nickname', v)} autoCapitalize="none" />
-                  <View style={styles.genderContainer}>
+                  {needsEmail && (
+                    <>
+                      <TextInput style={[styles.input, errStyle('email')]} placeholder={t('email')} placeholderTextColor={colors.placeholder} value={form.email} onChangeText={(v) => setField('email', v)} keyboardType="email-address" autoCapitalize="none" autoComplete="email" />
+                      {errText('email')}
+                    </>
+                  )}
+                  <TextInput style={[styles.input, errStyle('nickname')]} placeholder={t('nickname')} placeholderTextColor={colors.placeholder} value={form.nickname} onChangeText={(v) => setField('nickname', v)} autoCapitalize="none" />
+                  {errText('nickname')}
+                  <View style={[styles.genderContainer, !!errors.gender && styles.genderContainerError]}>
                     {genderOptions.map((option) => (
                       <TouchableOpacity
                         key={option.value}
@@ -268,23 +311,35 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
                       </TouchableOpacity>
                     ))}
                   </View>
-                  <TextInput style={styles.input} placeholder={t('birthYear')} placeholderTextColor={colors.placeholder} value={form.birthYear} onChangeText={(v) => setField('birthYear', v.replace(/[^0-9]/g, '').slice(0, 4))} keyboardType="numeric" maxLength={4} />
-                  <TouchableOpacity style={styles.inputButton} onPress={() => setCountryModalVisible(true)}>
+                  {errText('gender')}
+                  <TextInput style={[styles.input, errStyle('birthYear')]} placeholder={t('birthYear')} placeholderTextColor={colors.placeholder} value={form.birthYear} onChangeText={(v) => setField('birthYear', v.replace(/[^0-9]/g, '').slice(0, 4))} keyboardType="numeric" maxLength={4} />
+                  {errText('birthYear')}
+                  <TouchableOpacity style={[styles.inputButton, errStyle('country')]} onPress={() => setCountryModalVisible(true)}>
                     <Text style={form.country ? styles.inputButtonText : styles.inputButtonPlaceholder}>{form.country || t('selectCountry')}</Text>
                   </TouchableOpacity>
+                  {errText('country')}
                 </>
               ) : (
                 <>
-                  <TextInput style={styles.input} placeholder={t('email')} placeholderTextColor={colors.placeholder} value={form.email} onChangeText={(v) => setField('email', v)} keyboardType="email-address" autoCapitalize="none" />
-                  <TextInput style={styles.input} placeholder={t('firstName')} placeholderTextColor={colors.placeholder} value={form.firstName} onChangeText={(v) => setField('firstName', v)} />
-                  <TextInput style={styles.input} placeholder={t('lastName')} placeholderTextColor={colors.placeholder} value={form.lastName} onChangeText={(v) => setField('lastName', v)} />
-                  <TextInput style={styles.input} placeholder={t('street')} placeholderTextColor={colors.placeholder} value={form.addressStreet} onChangeText={(v) => setField('addressStreet', v)} />
-                  <TextInput style={styles.input} placeholder={t('city')} placeholderTextColor={colors.placeholder} value={form.addressCity} onChangeText={(v) => setField('addressCity', v)} />
-                  <TextInput style={styles.input} placeholder={t('state')} placeholderTextColor={colors.placeholder} value={form.addressState} onChangeText={(v) => setField('addressState', v)} />
-                  <TextInput style={styles.input} placeholder={t('zipCode')} placeholderTextColor={colors.placeholder} value={form.addressZipCode} onChangeText={(v) => setField('addressZipCode', v)} />
-                  <TextInput style={styles.input} placeholder={t('country')} placeholderTextColor={colors.placeholder} value={form.addressCountry} onChangeText={(v) => setField('addressCountry', v)} />
-                  <TextInput style={styles.input} placeholder={t('phoneNumber')} placeholderTextColor={colors.placeholder} value={form.phoneNumber} onChangeText={(v) => setField('phoneNumber', v)} keyboardType="phone-pad" />
-                  <View style={styles.genderContainer}>
+                  <TextInput style={[styles.input, errStyle('email')]} placeholder={t('email')} placeholderTextColor={colors.placeholder} value={form.email} onChangeText={(v) => setField('email', v)} keyboardType="email-address" autoCapitalize="none" />
+                  {errText('email')}
+                  <TextInput style={[styles.input, errStyle('firstName')]} placeholder={t('firstName')} placeholderTextColor={colors.placeholder} value={form.firstName} onChangeText={(v) => setField('firstName', v)} />
+                  {errText('firstName')}
+                  <TextInput style={[styles.input, errStyle('lastName')]} placeholder={t('lastName')} placeholderTextColor={colors.placeholder} value={form.lastName} onChangeText={(v) => setField('lastName', v)} />
+                  {errText('lastName')}
+                  <TextInput style={[styles.input, errStyle('addressStreet')]} placeholder={t('street')} placeholderTextColor={colors.placeholder} value={form.addressStreet} onChangeText={(v) => setField('addressStreet', v)} />
+                  {errText('addressStreet')}
+                  <TextInput style={[styles.input, errStyle('addressCity')]} placeholder={t('city')} placeholderTextColor={colors.placeholder} value={form.addressCity} onChangeText={(v) => setField('addressCity', v)} />
+                  {errText('addressCity')}
+                  <TextInput style={[styles.input, errStyle('addressState')]} placeholder={t('state')} placeholderTextColor={colors.placeholder} value={form.addressState} onChangeText={(v) => setField('addressState', v)} />
+                  {errText('addressState')}
+                  <TextInput style={[styles.input, errStyle('addressZipCode')]} placeholder={t('zipCode')} placeholderTextColor={colors.placeholder} value={form.addressZipCode} onChangeText={(v) => setField('addressZipCode', v)} />
+                  {errText('addressZipCode')}
+                  <TextInput style={[styles.input, errStyle('addressCountry')]} placeholder={t('country')} placeholderTextColor={colors.placeholder} value={form.addressCountry} onChangeText={(v) => setField('addressCountry', v)} />
+                  {errText('addressCountry')}
+                  <TextInput style={[styles.input, errStyle('phoneNumber')]} placeholder={t('phoneNumber')} placeholderTextColor={colors.placeholder} value={form.phoneNumber} onChangeText={(v) => setField('phoneNumber', v)} keyboardType="phone-pad" />
+                  {errText('phoneNumber')}
+                  <View style={[styles.genderContainer, !!errors.gender && styles.genderContainerError]}>
                     {genderOptions.map((option) => (
                       <TouchableOpacity
                         key={option.value}
@@ -308,8 +363,9 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
                       </TouchableOpacity>
                     ))}
                   </View>
+                  {errText('gender')}
                   <TouchableOpacity
-                    style={styles.inputButton}
+                    style={[styles.inputButton, errStyle('dateOfBirth')]}
                     onPress={() => {
                       setDobDraft(parseDate(form.dateOfBirth));
                       setDobPickerVisible(true);
@@ -319,6 +375,7 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
                       {form.dateOfBirth || t('selectDateOfBirth')}
                     </Text>
                   </TouchableOpacity>
+                  {errText('dateOfBirth')}
                 </>
               )}
 
@@ -332,11 +389,11 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
             {/* Fixed footer — stays below the scrolling fields. */}
             <View style={styles.cardFooter}>
               <GradientButton style={[styles.button, loading && styles.buttonDisabled]} onPress={handleCompleteProfile} disabled={loading}>
-                <Text style={styles.buttonText}>{loading ? 'Saving...' : 'Save & Continue'}</Text>
+                <Text style={styles.buttonText}>{loading ? t('profileSaving') : t('profileSaveContinue')}</Text>
               </GradientButton>
 
               <TouchableOpacity style={styles.linkButton} onPress={handleCancel}>
-                <Text style={styles.linkText}>Cancel and sign out</Text>
+                <Text style={styles.linkText}>{t('profileCancelSignOut')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -474,6 +531,9 @@ const styles = StyleSheet.create({
   button: { backgroundColor: colors.accent, borderRadius: radius.pill, paddingVertical: 15, paddingHorizontal: spacing.lg, alignItems: 'center', marginTop: spacing.sm, ...shadow(1) },
   buttonDisabled: { opacity: 0.6 },
   buttonText: { color: colors.white, fontSize: 22, fontWeight: '400' },
+  inputError: { borderColor: colors.danger, borderWidth: 2 },
+  genderContainerError: { borderWidth: 2, borderColor: colors.danger, borderRadius: radius.md, padding: 2 },
+  fieldErrorText: { color: colors.danger, fontSize: 17, marginTop: -spacing.sm, marginBottom: spacing.md, marginLeft: spacing.md },
   apiErrorBox: { backgroundColor: colors.dangerSoft, borderRadius: radius.md, paddingVertical: spacing.md, paddingHorizontal: spacing.md, marginBottom: spacing.md },
   apiErrorText: { color: colors.danger, fontSize: 18, textAlign: 'left' },
   linkButton: { marginTop: spacing.lg, alignItems: 'center' },

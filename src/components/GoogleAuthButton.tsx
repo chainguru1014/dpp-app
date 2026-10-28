@@ -16,6 +16,7 @@ import {
   GOOGLE_IOS_CLIENT_ID,
 } from '../config/auth';
 import { colors, spacing, radius, shadow } from '../theme';
+import { authTileStyles, AUTH_TILE_ICON } from './authTileStyles';
 
 // Monochrome Google "G" mark (Simple Icons, CC0) — black to match this
 // button's white background, mirroring how AppleAuthButton draws its glyph
@@ -41,6 +42,8 @@ interface GoogleAuthButtonProps {
   // Called with the envelope returned by POST auth/google: { user, token, profileCompleted, ... }
   onSuccess: (result: { user: any; token: string; profileCompleted: boolean; actorKind?: 'User' | 'Employee' }) => void;
   onError?: (error: string) => void;
+  // 'tile': big icon-first button used on the Login/Signup screen.
+  variant?: 'pill' | 'tile';
   navigation?: any;
 }
 
@@ -52,7 +55,7 @@ declare global {
 
 const HIDDEN_BUTTON_CONTAINER_ID = 'google-id-hidden-button';
 
-export default function GoogleAuthButton({ onSuccess, onError }: GoogleAuthButtonProps) {
+export default function GoogleAuthButton({ onSuccess, onError, variant = 'pill' }: GoogleAuthButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [gsiReady, setGsiReady] = useState(false);
   const configuredNativeRef = useRef(false);
@@ -238,6 +241,26 @@ export default function GoogleAuthButton({ onSuccess, onError }: GoogleAuthButto
   // in Google Cloud Console. Keeping the import/name around documents where
   // it must be created; see src/config/auth.ts.
   void GOOGLE_ANDROID_CLIENT_ID;
+
+  if (variant === 'tile') {
+    return (
+      <TouchableOpacity
+        style={[authTileStyles.tile, isLoading && styles.buttonDisabled]}
+        onPress={handleGoogleLogin}
+        disabled={isLoading}
+        activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel="Google"
+      >
+        {isLoading ? (
+          <ActivityIndicator color={colors.primary} />
+        ) : (
+          <GoogleLogo size={AUTH_TILE_ICON} color={colors.primary} />
+        )}
+        <Text style={authTileStyles.label}>Google</Text>
+      </TouchableOpacity>
+    );
+  }
 
   return (
     <View style={styles.container}>

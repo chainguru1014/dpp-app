@@ -1,29 +1,69 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   Image,
   ImageBackground,
   TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
 } from 'react-native';
-
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import GoogleAuthButton from '../components/GoogleAuthButton';
 import AppleAuthButton from '../components/AppleAuthButton';
 import OtpSignIn from '../components/OtpSignIn';
+import FaceCapture, { FaceFailure, FaceMode } from '../components/FaceCapture';
+import { authTileStyles, AUTH_TILE_ICON, AUTH_TILE_ICON_MAIN } from '../components/authTileStyles';
+import { API_BASE_URL } from '../config/api';
 import { useI18n } from '../i18n/I18nContext';
+import { AuthMethod, loadAuthPrefs, rememberAuthMethod } from '../utils/authPrefs';
 import { colors, spacing, radius, shadow, MIN_TOUCH } from '../theme';
 
 type AuthResult = { user: any; token: string; profileCompleted: boolean; mode?: 'signin' | 'signup'; actorKind?: 'User' | 'Employee' };
 
+const FACE_FAILURE_KEY: Record<FaceFailure, any> = {
+  notConfigured: 'faceErrNotConfigured',
+  permission: 'faceErrPermission',
+  noFace: 'faceErrNoFace',
+  unrecognized: 'faceErrUnrecognized',
+  duplicate: 'faceErrDuplicate',
+  spoof: 'faceErrSpoof',
+  cancelled: null,
+  failed: 'faceErrFailed',
+};
+
+// One screen for both Signup and Login. A device that has never finished a
+// signup/sign-in sees Signup; afterwards it sees Login with the method used
+// last time already open (Face starts scanning straight away, Email shows
+// its field), plus "Login another way" for the full list. Methods, in order
+// of prominence: Face (main), Google / Apple, Email.
 export default function LoginScreen({ navigation, onLogin, route }: any) {
   const { t } = useI18n();
+  const insets = useSafeAreaInsets();
   const [apiError, setApiError] = useState('');
-  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signup');
+  const [remembered, setRemembered] = useState<AuthMethod | null>(null);
+  // The single method currently opened (remembered one, or Email tapped from the list).
+  const [openMethod, setOpenMethod] = useState<AuthMethod | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [faceRun, setFaceRun] = useState<null | { mode: FaceMode; payload?: any; ticket?: string }>(null);
+  const autoFaceStartedRef = useRef(false);
+
+  useEffect(() => {
+    loadAuthPrefs().then(({ hasAccount, method }) => {
+      setAuthMode(hasAccount ? 'signin' : 'signup');
+      setRemembered(hasAccount ? method : null);
+      setOpenMethod(hasAccount ? method : null);
+      setPrefsLoaded(true);
+    });
+  }, []);
 
   // Corporate employee sessions always land on the operations home, never on
   // the consumer redirect target the route may have been carrying (e.g. a
@@ -43,7 +83,7 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
     // the user there next instead of back to Login.
     if (userData && !userData.aiConciergeConsentAt) {
       navigation.replace('AiConciergeConsent', {
-        redirectTo: redirectTo || 'Home',
+        redirectTo: redirectTo || 'Scanner',
         redirectParams: redirectParams || {},
       });
       return;
@@ -52,7 +92,7 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
       navigation.replace(redirectTo, redirectParams || {});
       return;
     }
-    navigation.replace('Home');
+    navigation.replace('Scanner');
   };
 
   // Tag the session with which kind of account this is so ownership-transfer
@@ -69,21 +109,18 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
     goAfterAuth(actorKind, tagged);
   };
 
-  // Shared handler for all three passwordless methods. If the backend says
-  // the profile isn't complete yet (new account, or an existing account
-  // that never finished onboarding), stash the token/partial user and route
-  // to the profile-completion screen (the repurposed RegisterScreen)
-  // instead of Home. Exception: OTP sign-in (mode === 'signin') never
-  // requires profile completion — auth/otp/request only succeeds for an
-  // email that's already registered, so an incomplete profile there means an
-  // old abandoned signup, not someone who needs onboarding right now.
-  // Google/Apple and OTP signup are unaffected and keep the redirect.
-  // Employee accounts have no profile-completion concept at all (no
-  // Register-screen equivalent for staff), so that branch never applies
-  // regardless of the flag's value.
-  const handleAuthSuccess = async ({ user, token, profileCompleted, mode, actorKind }: AuthResult) => {
+  // Shared handler for every method. If the backend says the profile isn't
+  // complete yet (new account, or one that never finished onboarding), stash
+  // the token/partial user and route to the profile page (RegisterScreen)
+  // instead. Exception: email OTP sign-in (mode === 'signin') never requires
+  // profile completion — auth/otp/request only succeeds for an email that's
+  // already registered, so an incomplete profile there means an old
+  // abandoned signup, not someone who needs onboarding right now. Employee
+  // accounts have no profile-completion concept at all.
+  const handleAuthSuccess = async (method: AuthMethod, { user, token, profileCompleted, mode, actorKind }: AuthResult) => {
     setApiError('');
     const kind: 'User' | 'Employee' = actorKind === 'Employee' ? 'Employee' : 'User';
+    await rememberAuthMethod(method);
     if (kind === 'User' && !profileCompleted && mode !== 'signin') {
       const tagged = { ...user, actorKind: 'User' };
       await AsyncStorage.setItem('userToken', token || '');
@@ -104,62 +141,218 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
     setApiError(message);
   };
 
-  return (
-    <View style={styles.container}>
-      {/* Background image covers the full page (was just the top 55%, with a
-          plain colour fill below it) */}
-      <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        <ImageBackground
-          source={require('../assets/bg-login.jpg')}
-          style={styles.bgImage}
-          resizeMode="cover"
-        >
-          <View style={styles.bgOverlay} />
-        </ImageBackground>
-      </View>
+  const postJson = async (path: string, body: any = {}) => {
+    const r = await fetch(`${API_BASE_URL}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || j?.status !== 'success') throw new Error(j?.message || t('faceErrFailed'));
+    return j;
+  };
 
-      {/* Title floated at the top over the image */}
-      <Text style={styles.pageTitle} accessibilityRole="header">
-        {t('loginHeroTitle')}
+  // Face — Signup: create the account, enroll the face with its id as the
+  // FACEIO payload, then attach the Facial ID. Login: authenticate the face,
+  // then let the backend confirm it with FACEIO and issue the session.
+  const startFace = async () => {
+    if (busy || faceRun) return;
+    setApiError('');
+    if (authMode === 'signin') {
+      setFaceRun({ mode: 'authenticate' });
+      return;
+    }
+    setBusy(true);
+    try {
+      const j = await postJson('auth/face/signup/start');
+      setFaceRun({ mode: 'enroll', payload: { uid: j.userId }, ticket: j.signupTicket });
+    } catch (e: any) {
+      setApiError(e?.message || t('faceErrFailed'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onFaceSuccess = async (facialId: string) => {
+    const run = faceRun;
+    setFaceRun(null);
+    if (!run) return;
+    setBusy(true);
+    try {
+      const j = run.mode === 'enroll'
+        ? await postJson('auth/face/signup/complete', { signupTicket: run.ticket, facialId })
+        : await postJson('auth/face/login', { facialId });
+      // Face accounts always go through the profile page until it's done —
+      // that's where they add their email.
+      await handleAuthSuccess('face', {
+        user: j.user,
+        token: j.token,
+        profileCompleted: !!j.user?.profileCompleted,
+        mode: 'signup',
+        actorKind: 'User',
+      });
+    } catch (e: any) {
+      setApiError(e?.message || t('faceErrFailed'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onFaceFailure = (reason: FaceFailure) => {
+    setFaceRun(null);
+    const key = FACE_FAILURE_KEY[reason];
+    if (key) setApiError(t(key));
+  };
+
+  // Remembered Face: start scanning without a tap.
+  useEffect(() => {
+    if (!prefsLoaded || autoFaceStartedRef.current) return;
+    if (authMode === 'signin' && openMethod === 'face' && remembered === 'face') {
+      autoFaceStartedRef.current = true;
+      startFace();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefsLoaded, authMode, openMethod, remembered]);
+
+  const switchMode = () => {
+    setApiError('');
+    setOpenMethod(null);
+    setAuthMode(authMode === 'signin' ? 'signup' : 'signin');
+  };
+
+  const onGoogleApple = (method: AuthMethod) => (r: AuthResult) => handleAuthSuccess(method, r);
+
+  // ---- tiles ----
+
+  const faceTile = (main: boolean) => (
+    <TouchableOpacity
+      style={[authTileStyles.tile, main && authTileStyles.tileMain, busy && styles.dim]}
+      onPress={startFace}
+      disabled={busy}
+      activeOpacity={0.85}
+      accessibilityRole="button"
+      accessibilityLabel={t('authFace')}
+    >
+      {busy ? (
+        <ActivityIndicator color={main ? colors.white : colors.primary} size="large" />
+      ) : (
+        <MaterialCommunityIcon
+          name="face-recognition"
+          size={main ? AUTH_TILE_ICON_MAIN : AUTH_TILE_ICON}
+          color={main ? colors.white : colors.primary}
+        />
+      )}
+      <Text style={[authTileStyles.label, main && authTileStyles.labelMain]}>
+        {busy ? t('authPleaseWait') : main && openMethod === 'face' ? t('authFaceTapToStart') : t('authFace')}
       </Text>
+    </TouchableOpacity>
+  );
 
-      {/* KAV fills the full screen so the card centres against the whole page */}
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.kav}
-      >
-        <View style={styles.centerWrap}>
+  const emailTile = (
+    <TouchableOpacity
+      style={authTileStyles.tile}
+      onPress={() => { setApiError(''); setOpenMethod('email'); }}
+      activeOpacity={0.85}
+      accessibilityRole="button"
+      accessibilityLabel={t('authEmail')}
+    >
+      <MaterialCommunityIcon name="email-outline" size={AUTH_TILE_ICON} color={colors.primary} />
+      <Text style={authTileStyles.label}>{t('authEmail')}</Text>
+    </TouchableOpacity>
+  );
+
+  const renderOpenMethod = () => {
+    switch (openMethod) {
+      case 'face':
+        return faceTile(true);
+      case 'google':
+        return (
+          <View style={styles.singleRow}>
+            <GoogleAuthButton variant="tile" onSuccess={onGoogleApple('google')} onError={handleAuthError} navigation={navigation} />
+          </View>
+        );
+      case 'apple':
+        return (
+          <View style={styles.singleRow}>
+            <AppleAuthButton variant="tile" onSuccess={onGoogleApple('apple')} onError={handleAuthError} />
+          </View>
+        );
+      case 'email':
+        return (
+          <View style={styles.emailBox}>
+            <MaterialCommunityIcon name="email-outline" size={AUTH_TILE_ICON} color={colors.primary} style={styles.emailIcon} />
+            <OtpSignIn onSuccess={(r) => handleAuthSuccess('email', r)} onError={handleAuthError} mode={authMode} />
+          </View>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const renderAllMethods = () => (
+    <>
+      {faceTile(true)}
+      <View style={styles.tileRow}>
+        <GoogleAuthButton variant="tile" onSuccess={onGoogleApple('google')} onError={handleAuthError} navigation={navigation} />
+        <AppleAuthButton variant="tile" onSuccess={onGoogleApple('apple')} onError={handleAuthError} />
+      </View>
+      <View style={styles.tileRow}>{emailTile}</View>
+    </>
+  );
+
+  return (
+    <ImageBackground source={require('../assets/bg-intro-dpp.jpg')} style={styles.container} resizeMode="cover">
+      <View style={styles.overlay} pointerEvents="none" />
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.fill}>
+        <ScrollView
+          contentContainerStyle={[styles.scroll, { paddingTop: insets.top + spacing.xl, paddingBottom: insets.bottom + spacing.xl }]}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Image
+            source={require('../assets/yometel-logo-white.png')}
+            style={styles.logo}
+            resizeMode="contain"
+            accessibilityRole="image"
+            accessibilityLabel="Yometel"
+          />
+
           <View style={styles.card}>
-            <View style={styles.logoContainer}>
-              <Image
-                source={require('../assets/yometel-logo-trans.png')}
-                style={styles.logoImage}
-                resizeMode="contain"
-              />
-            </View>
+            <Text style={styles.title} accessibilityRole="header">
+              {authMode === 'signup' ? t('authSignUpTitle') : t('authSignInTitle')}
+            </Text>
 
             {!!apiError && (
               <View style={styles.apiErrorBox} accessibilityRole="alert">
+                <Icon name="error-outline" size={22} color={colors.danger} />
                 <Text style={styles.apiErrorText}>{apiError}</Text>
               </View>
             )}
 
-            <OtpSignIn onSuccess={handleAuthSuccess} onError={handleAuthError} mode={authMode} />
-
-            <View style={styles.dividerRow}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>{t('orContinueWith')}</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            <View style={styles.socialRow}>
-              <GoogleAuthButton onSuccess={handleAuthSuccess} onError={handleAuthError} navigation={navigation} />
-              <AppleAuthButton onSuccess={handleAuthSuccess} onError={handleAuthError} />
-            </View>
+            {!prefsLoaded ? (
+              <ActivityIndicator color={colors.primary} size="large" style={{ marginVertical: spacing.xxxl }} />
+            ) : openMethod ? (
+              <>
+                {renderOpenMethod()}
+                <TouchableOpacity
+                  style={styles.anotherWay}
+                  onPress={() => { setApiError(''); setOpenMethod(null); }}
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel={authMode === 'signup' ? t('authSignupAnotherWay') : t('authLoginAnotherWay')}
+                >
+                  <Icon name="apps" size={24} color={colors.primary} />
+                  <Text style={styles.anotherWayText}>
+                    {authMode === 'signup' ? t('authSignupAnotherWay') : t('authLoginAnotherWay')}
+                  </Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              renderAllMethods()
+            )}
 
             <TouchableOpacity
               style={styles.authModeLink}
-              onPress={() => setAuthMode(authMode === 'signin' ? 'signup' : 'signin')}
+              onPress={switchMode}
               accessibilityRole="button"
               accessibilityLabel={authMode === 'signin' ? `${t('noAccount')} ${t('signUp')}` : `${t('haveAccount')} ${t('signIn')}`}
             >
@@ -170,8 +363,7 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
 
             {/* GDPR: lets a user reopen the AI Concierge consent screen at any
                 time to review or change their locally-stored choice — see
-                AiConciergeConsentScreen. reviewMode distinguishes this from
-                the pre-login gate visit (which has no route params). */}
+                AiConciergeConsentScreen. */}
             <TouchableOpacity
               style={styles.privacyLink}
               onPress={() => navigation.navigate('AiConciergeConsent', { reviewMode: true })}
@@ -181,127 +373,73 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
               <Text style={styles.privacyLinkText}>{t('privacyPreferences')}</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
-    </View>
+
+      <FaceCapture
+        visible={!!faceRun}
+        mode={faceRun?.mode || 'authenticate'}
+        payload={faceRun?.payload}
+        onSuccess={onFaceSuccess}
+        onFailure={onFaceFailure}
+      />
+    </ImageBackground>
   );
 }
 
 const webFill = Platform.OS === 'web' ? ({ minHeight: '100vh' } as any) : {};
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#e8ecf0',
-    ...webFill,
-  },
-  bgImage: {
-    flex: 1,
-  },
-  bgOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.28)',
-  },
-  // Higher zIndex than pageTitle below — the card is opaque, so if it grows
-  // tall enough to reach the title's area, it should cover the title rather
-  // than the title floating on top of the card.
-  kav: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 20,
-  },
-  pageTitle: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    color: '#ffffff',
-    fontSize: 30,
-    fontWeight: '600',
-    textAlign: 'center',
-    paddingTop: 56,
-    paddingHorizontal: spacing.xl,
-    letterSpacing: 0.5,
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
-    zIndex: 10,
-  },
-  centerWrap: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.xxxl,
-    width: '100%',
-  },
+  container: { flex: 1, backgroundColor: colors.primaryDark, ...webFill },
+  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(13,42,64,0.35)' },
+  fill: { flex: 1 },
+  scroll: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.lg },
+  logo: { width: 190, height: 56, marginBottom: spacing.xl },
   card: {
-    backgroundColor: '#f3f4f6',
-    borderRadius: radius.xl,
-    padding: spacing.xxxl,
     width: '100%',
-    maxWidth: 340,
+    maxWidth: 420,
+    backgroundColor: colors.bg,
+    borderRadius: radius.xxl,
+    padding: spacing.xl,
+    gap: spacing.md,
     ...shadow(3),
   },
-  logoContainer: {
+  title: { fontSize: 26, fontWeight: '700', color: colors.heading, textAlign: 'center', marginBottom: spacing.xs },
+  tileRow: { flexDirection: 'row', gap: spacing.md },
+  singleRow: { flexDirection: 'row' },
+  dim: { opacity: 0.7 },
+  emailBox: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
+    ...shadow(1),
+  },
+  emailIcon: { alignSelf: 'center', marginBottom: spacing.sm },
+  anotherWay: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.lg,
+    justifyContent: 'center',
+    gap: spacing.sm,
+    minHeight: 56,
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    backgroundColor: colors.surface,
   },
-  logoImage: {
-    width: 160,
-    height: 48,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: '400',
-    color: colors.heading,
-    marginBottom: spacing.xl,
-  },
+  anotherWayText: { fontSize: 19, fontWeight: '600', color: colors.primary },
   apiErrorBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
     backgroundColor: colors.dangerSoft,
     borderRadius: radius.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.md,
+    padding: spacing.md,
   },
-  apiErrorText: {
-    color: colors.danger,
-    fontSize: 18,
-    textAlign: 'left',
-  },
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginVertical: spacing.md,
-  },
-  dividerLine: { flex: 1, height: 1, backgroundColor: colors.borderStrong },
-  dividerText: { fontSize: 19, color: colors.muted },
-  socialRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    width: '100%',
-  },
-  authModeLink: {
-    marginTop: spacing.md,
-    minHeight: MIN_TOUCH,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  authModeLinkText: {
-    fontSize: 19,
-    fontWeight: '600',
-    color: colors.primary,
-  },
-  privacyLink: {
-    marginTop: spacing.sm,
-    minHeight: MIN_TOUCH,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  privacyLinkText: {
-    fontSize: 18,
-    fontWeight: '400',
-    color: colors.muted,
-    textDecorationLine: 'underline',
-  },
+  apiErrorText: { flex: 1, color: colors.danger, fontSize: 18 },
+  authModeLink: { minHeight: MIN_TOUCH, alignItems: 'center', justifyContent: 'center' },
+  authModeLinkText: { fontSize: 19, fontWeight: '600', color: colors.primary },
+  privacyLink: { minHeight: MIN_TOUCH, alignItems: 'center', justifyContent: 'center' },
+  privacyLinkText: { fontSize: 17, color: colors.muted, textDecorationLine: 'underline' },
 });

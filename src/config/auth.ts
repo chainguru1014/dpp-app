@@ -46,3 +46,14 @@ export const GOOGLE_IOS_CLIENT_ID = '';
 // `signIn()` on web will simply fail with an Apple-side error until this is
 // replaced with a real Services ID.
 export const APPLE_WEB_CLIENT_ID = 'com.yometel.dpp.web-PLACEHOLDER';
+
+// FACEIO (https://faceio.net) face sign-in. The Public ID comes from the
+// FACEIO Console's Application Manager. PLACEHOLDER until the FACEIO app
+// exists — the face button reports "not configured" while it's empty.
+//
+// FACEIO only runs on origins whitelisted in its console, and the camera only
+// works on a secure (https) origin. The web build uses whatever https host it
+// is served from; the native app runs fio.js inside a WebView whose page is
+// given FACEIO_WEB_ORIGIN as its origin — whitelist that same host in FACEIO.
+export const FACEIO_PUBLIC_ID = '';
+export const FACEIO_WEB_ORIGIN = 'https://dpp.innosynch.com/';

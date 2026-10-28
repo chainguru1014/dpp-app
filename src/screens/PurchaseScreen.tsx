@@ -1,0 +1,108 @@
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Linking, ActivityIndicator } from 'react-native';
+import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
+import AppLayout from '../components/AppLayout';
+import { useI18n } from '../i18n/I18nContext';
+import { firstImageOf, formatPrice, recordPurchase } from '../utils/consumerApi';
+import { colors, radius, spacing, shadow } from '../theme';
+
+const href = (url?: string) => {
+  const raw = String(url || '').trim();
+  if (!raw) return '';
+  return /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+};
+
+// One product's purchase page (from the Cart's Buy button): photo, name,
+// brand, price and a big Buy button that opens the brand's shop page for it
+// (product.purchaseUrl, else the brand website) and records the purchase.
+export default function PurchaseScreen({ navigation, route, user, onLogout }: any) {
+  const { t } = useI18n();
+  const product = route?.params?.product || {};
+  const [busy, setBusy] = useState(false);
+  const img = firstImageOf(product);
+  const price = formatPrice(product.price, product.currency);
+  const shopUrl = href(product.purchaseUrl) || href(product.brandInfo?.websiteUrl);
+
+  const buy = async () => {
+    if (!shopUrl || busy) return;
+    setBusy(true);
+    try {
+      if (user?._id && product?._id) await recordPurchase(String(user._id), product).catch(() => {});
+      await Linking.openURL(shopUrl);
+    } catch (e) {
+      console.error('Open shop failed:', e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton title={t('titlePurchase')}>
+      <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
+        <View style={styles.imageCard}>
+          {img ? <Image source={{ uri: img }} style={styles.image} resizeMode="contain" /> : (
+            <MaterialCommunityIcon name="tshirt-crew-outline" size={96} color={colors.placeholder} />
+          )}
+        </View>
+        <Text style={styles.name}>{product.name || '—'}</Text>
+        {!!product.brandInfo?.name && <Text style={styles.brand}>{product.brandInfo.name}</Text>}
+        <Text style={[styles.price, !price && styles.priceMuted]}>{price || t('priceOnRequest')}</Text>
+
+        <View style={styles.spacer} />
+
+        {shopUrl ? (
+          <TouchableOpacity
+            style={[styles.buyBtn, busy && { opacity: 0.7 }]}
+            onPress={buy}
+            disabled={busy}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={t('purchaseBuyNow')}
+          >
+            {busy ? <ActivityIndicator color={colors.white} /> : <MaterialCommunityIcon name="shopping" size={40} color={colors.white} />}
+            <Text style={styles.buyText}>{t('purchaseBuyNow')}</Text>
+          </TouchableOpacity>
+        ) : (
+          <Text style={styles.noLink}>{t('purchaseNoLink')}</Text>
+        )}
+      </ScrollView>
+    </AppLayout>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.bg },
+  container: { flexGrow: 1, padding: spacing.lg, gap: spacing.sm },
+  imageCard: {
+    width: '100%',
+    aspectRatio: 1,
+    maxHeight: 360,
+    alignSelf: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    ...shadow(1),
+  },
+  image: { width: '100%', height: '100%' },
+  name: { fontSize: 26, fontWeight: '700', color: colors.heading, textAlign: 'center', marginTop: spacing.md },
+  brand: { fontSize: 19, color: colors.muted, textAlign: 'center' },
+  price: { fontSize: 32, fontWeight: '800', color: colors.primary, textAlign: 'center', marginTop: spacing.sm },
+  priceMuted: { fontSize: 20, fontWeight: '500', color: colors.muted },
+  spacer: { flexGrow: 1, minHeight: spacing.lg },
+  buyBtn: {
+    height: 76,
+    borderRadius: radius.xl,
+    backgroundColor: colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.md,
+    ...shadow(2),
+  },
+  buyText: { color: colors.white, fontSize: 24, fontWeight: '700' },
+  noLink: { fontSize: 18, color: colors.muted, textAlign: 'center' },
+});

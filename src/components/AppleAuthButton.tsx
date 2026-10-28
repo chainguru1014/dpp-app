@@ -12,6 +12,7 @@ import Svg, { Path } from 'react-native-svg';
 import { API_BASE_URL } from '../config/api';
 import { APPLE_WEB_CLIENT_ID } from '../config/auth';
 import { colors, spacing, radius, shadow } from '../theme';
+import { authTileStyles, AUTH_TILE_ICON } from './authTileStyles';
 
 // Apple logomark as an inline SVG (react-native-svg, already a project
 // dependency) rather than a font icon or bundled asset — GoogleAuthButton
@@ -52,9 +53,11 @@ interface AppleAuthButtonProps {
   // Called with the envelope returned by POST auth/apple: { user, token, profileCompleted, ... }
   onSuccess: (result: { user: any; token: string; profileCompleted: boolean; actorKind?: 'User' | 'Employee' }) => void;
   onError?: (error: string) => void;
+  // 'tile': big icon-first button used on the Login/Signup screen.
+  variant?: 'pill' | 'tile';
 }
 
-export default function AppleAuthButton({ onSuccess, onError }: AppleAuthButtonProps) {
+export default function AppleAuthButton({ onSuccess, onError, variant = 'pill' }: AppleAuthButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const webReadyRef = useRef(false);
 
@@ -183,6 +186,26 @@ export default function AppleAuthButton({ onSuccess, onError }: AppleAuthButtonP
       setIsLoading(false);
     }
   };
+
+  if (variant === 'tile') {
+    return (
+      <TouchableOpacity
+        style={[authTileStyles.tile, isLoading && styles.buttonDisabled]}
+        onPress={handleAppleLogin}
+        disabled={isLoading}
+        activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel="Apple"
+      >
+        {isLoading ? (
+          <ActivityIndicator color={colors.primary} />
+        ) : (
+          <AppleLogo size={AUTH_TILE_ICON} color={colors.primary} />
+        )}
+        <Text style={authTileStyles.label}>Apple</Text>
+      </TouchableOpacity>
+    );
+  }
 
   return (
     <View style={styles.container}>

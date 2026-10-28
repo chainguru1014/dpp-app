@@ -5,6 +5,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { API_BASE_URL } from '../config/api';
 import LoginScreen from '../screens/LoginScreen';
+import IntroScreen from '../screens/IntroScreen';
+import ProductAlbumScreen from '../screens/ProductAlbumScreen';
+import CartScreen from '../screens/CartScreen';
+import PurchaseScreen from '../screens/PurchaseScreen';
 import HomeScreen from '../screens/HomeScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import AiConciergeConsentScreen from '../screens/AiConciergeConsentScreen';
@@ -205,14 +209,16 @@ export default function AppNavigator({ navigationRef }: { navigationRef: any }) 
       screenOptions={{ headerShown: false }}
       initialRouteName={
         !user
-          ? 'Login'
+          ? 'Intro'
           : user.actorKind === 'Employee'
           ? 'EmployeeHome'
           : !user.aiConciergeConsentAt
           ? 'AiConciergeConsent'
-          : 'Home'
+          : 'Scanner'
       }
     >
+      <Stack.Screen name="Intro" component={IntroScreen} />
+
       <Stack.Screen name="Login">
         {(props) => <LoginScreen {...props} onLogin={handleLogin} />}
       </Stack.Screen>
@@ -324,6 +330,18 @@ export default function AppNavigator({ navigationRef }: { navigationRef: any }) 
 
       <Stack.Screen name="History">
         {(props) => <HistoryScreen {...props} user={user} onLogout={handleLogout} />}
+      </Stack.Screen>
+
+      <Stack.Screen name="ProductAlbum">
+        {(props) => <ProductAlbumScreen {...props} user={user} onLogout={handleLogout} />}
+      </Stack.Screen>
+
+      <Stack.Screen name="Cart">
+        {(props) => <CartScreen {...props} user={user} onLogout={handleLogout} />}
+      </Stack.Screen>
+
+      <Stack.Screen name="Purchase">
+        {(props) => <PurchaseScreen {...props} user={user} onLogout={handleLogout} />}
       </Stack.Screen>
 
       <Stack.Screen name="Notifications">

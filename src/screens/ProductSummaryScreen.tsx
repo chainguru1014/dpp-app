@@ -1,12 +1,13 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Linking, Animated } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AppLayout from '../components/AppLayout';
 import MediaSlider from '../components/MediaSlider';
-import GradientButton from '../components/GradientButton';
 import { useI18n } from '../i18n/I18nContext';
-import { API_BASE_URL } from '../config/api';
-import { colors, radius, spacing, shadow, MIN_TOUCH } from '../theme';
+import { colors, radius, spacing, shadow } from '../theme';
+import { normalizeToStringArray, normalizeToArray } from '../utils/mediaNormalize';
+import { fetchPublicProduct, fileUrl, getReactionState, Reaction, setInCart, setReaction } from '../utils/consumerApi';
 
 interface ProductSummaryScreenProps {
   navigation: any;
@@ -15,205 +16,303 @@ interface ProductSummaryScreenProps {
   onLogout?: () => void;
 }
 
-const CATEGORY_LABEL_KEY: Record<string, 'categoryDenim' | 'categoryTops' | 'categoryBottoms' | 'categoryOuterwear' | 'categoryOther'> = {
-  denim: 'categoryDenim',
-  tops: 'categoryTops',
-  bottoms: 'categoryBottoms',
-  outerwear: 'categoryOuterwear',
-  others: 'categoryOther',
+const websiteHref = (url?: string) => {
+  const raw = String(url || '').trim();
+  if (!raw) return '';
+  return /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
 };
 
-const fileUrl = (f: string) => {
-  if (!f) return '';
-  if (/^https?:\/\//i.test(f)) return f;
-  return `${API_BASE_URL}files/${String(f).replace(/^\/+/, '')}`;
-};
-
-// Registration date from the Mongo ObjectId (first 4 bytes = unix seconds).
-const registeredDate = (id?: string, createdAt?: string): Date | null => {
-  if (createdAt) {
-    const d = new Date(createdAt);
-    if (!Number.isNaN(d.getTime())) return d;
-  }
-  if (id && /^[a-f0-9]{8}/i.test(id)) {
-    return new Date(parseInt(id.substring(0, 8), 16) * 1000);
-  }
-  return null;
-};
-
-const fmt = (d: Date | null) => (d ? d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '');
-
+// The consumer product summary — shown right after a successful scan
+// (route ScanSuccessful) and when a Product Album card is opened (route
+// ProductSummary). Deliberately minimal: photos, name, brand link, then big
+// icon buttons — Like (save to album) / Add to Cart / Dislike, and Product
+// details / Scan another.
 export default function ProductSummaryScreen({ navigation, route, user, onLogout }: ProductSummaryScreenProps) {
   const { t } = useI18n();
-  const product = route?.params?.product || {};
-  const owned = !!route?.params?.owned;
+  const params = route?.params || {};
+  const [product, setProduct] = useState<any>(params.productData || params.product || {});
+  const productId = params.productId ?? product?._id;
+  const qrcodeId = params.qrcodeId ?? product?.token_id;
+  const securityPassed = !!params.securityPassed;
 
-  const images = Array.isArray(product?.images) ? product.images : [];
-  const videos = Array.isArray(product?.videos) ? product.videos : [];
-  const hasMedia = images.length > 0 || videos.length > 0;
-  const addedDate = registeredDate(product?._id, product?.createdAt);
+  const [reaction, setReactionState] = useState<Reaction>(null);
+  const [inCart, setInCartState] = useState(false);
+  const [pending, setPending] = useState<string | null>(null);
+  const [toast, setToast] = useState('');
+  const toastOpacity = useRef(new Animated.Value(0)).current;
+  const toastTimer = useRef<any>(null);
 
-  const facts = product?.detailFacts || {};
-  const rows: { label: string; value: string }[] = [
-    { label: t('summaryBrand'), value: product?.brandInfo?.name || '' },
-    { label: t('summaryCategory'), value: CATEGORY_LABEL_KEY[product?.itemCategory] ? t(CATEGORY_LABEL_KEY[product.itemCategory]) : '' },
-    { label: t('factProductType'), value: product?.productType || '' },
-    { label: t('factColor'), value: product?.color || '' },
-    { label: t('factSize'), value: product?.size || '' },
-    { label: t('summaryMaterial'), value: facts.material || '' },
-  ].filter((r) => !!r.value);
+  const isConsumer = !!user?._id && user?.actorKind !== 'Employee';
 
-  const goToDetails = () =>
-    navigation.navigate('Result', {
-      productData: product,
-      productId: product?._id,
-      qrcodeId: product?.token_id != null ? String(product.token_id) : undefined,
-      owned,
+  // Album / cart rows only carry a snapshot (no videos, no price) — load the
+  // full public product when we have its ids.
+  useEffect(() => {
+    if (productId == null || qrcodeId == null || product?.videos) return;
+    let alive = true;
+    fetchPublicProduct(String(productId), qrcodeId).then((full) => {
+      if (alive && full) setProduct((prev: any) => ({ ...prev, ...full }));
     });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productId, qrcodeId]);
+
+  useEffect(() => {
+    if (!isConsumer || !product?._id) return;
+    let alive = true;
+    getReactionState(String(user._id), product)
+      .then((s) => {
+        if (!alive) return;
+        setReactionState(s.reaction);
+        setInCartState(s.inCart);
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConsumer, product?._id]);
+
+  useEffect(() => () => clearTimeout(toastTimer.current), []);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    clearTimeout(toastTimer.current);
+    Animated.timing(toastOpacity, { toValue: 1, duration: 150, useNativeDriver: true }).start();
+    toastTimer.current = setTimeout(() => {
+      Animated.timing(toastOpacity, { toValue: 0, duration: 250, useNativeDriver: true }).start(() => setToast(''));
+    }, 1800);
+  };
+
+  const requireLogin = () => {
+    navigation.navigate('Login', {
+      redirectTo: 'ProductSummary',
+      redirectParams: { productId: productId != null ? String(productId) : undefined, qrcodeId: qrcodeId != null ? String(qrcodeId) : undefined },
+    });
+  };
+
+  const onReact = async (next: 'like' | 'dislike') => {
+    if (!isConsumer) return requireLogin();
+    if (pending || !product?._id) return;
+    const target: Reaction = reaction === next ? null : next;
+    const prev = reaction;
+    setReactionState(target);
+    setPending(next);
+    try {
+      await setReaction(String(user._id), product, target);
+      if (target === 'like') showToast(t('toastSavedToAlbum'));
+      else if (target === 'dislike') showToast(t('toastDisliked'));
+      else if (prev === 'like') showToast(t('toastRemovedFromAlbum'));
+    } catch (e) {
+      setReactionState(prev);
+      showToast(t('toastActionFailed'));
+    } finally {
+      setPending(null);
+    }
+  };
+
+  const onCart = async () => {
+    if (!isConsumer) return requireLogin();
+    if (pending || !product?._id) return;
+    const next = !inCart;
+    setInCartState(next);
+    setPending('cart');
+    try {
+      await setInCart(product, next);
+      showToast(next ? t('toastAddedToCart') : t('toastRemovedFromCart'));
+    } catch (e) {
+      setInCartState(!next);
+      showToast(t('toastActionFailed'));
+    } finally {
+      setPending(null);
+    }
+  };
+
+  const goToDetails = () => {
+    const hasIds = productId != null && qrcodeId != null;
+    navigation.navigate('Result', {
+      securityPassed,
+      ...(hasIds ? { productId: String(productId), qrcodeId: String(qrcodeId) } : { productData: product }),
+    });
+  };
+
+  const images = normalizeToStringArray(product?.images);
+  const videos = normalizeToArray(product?.videos);
+  const brandName = product?.brandInfo?.name || product?.company_id?.name || '';
+  const brandUrl = websiteHref(product?.brandInfo?.websiteUrl);
 
   return (
-    <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton title={t('titleProductSummary')}>
+    <AppLayout
+      navigation={navigation}
+      user={user}
+      onLogout={onLogout}
+      showBackButton
+      onBackPress={() => (navigation.canGoBack?.() ? navigation.goBack() : navigation.navigate('Scanner'))}
+      title={t('titleProductSummary')}
+    >
       <ScrollView style={styles.screen} contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        <View style={styles.headerCard}>
-          <View style={styles.headerMedia}>
-            {hasMedia ? (
-              <MediaSlider images={images} videos={videos} hideHeader flush maxHeight={210} getFileUrl={fileUrl} />
-            ) : (
-              <View style={[styles.thumb, styles.thumbPlaceholder]}>
-                <Icon name="inventory-2" size={28} color={colors.placeholder} />
-              </View>
-            )}
-          </View>
-          <View style={styles.headerInfo}>
-            <Text style={styles.name} numberOfLines={2}>{product?.name || '—'}</Text>
-            {/* Same "Genuine product / Verified by Yometel" pairing used on
-                Product Overview and the Lifecycle header -- one consistent
-                authenticity badge across the app. */}
-            <View style={styles.verifiedBadge}>
-              <View style={styles.verifiedCheck}><Icon name="check" size={11} color="#fff" /></View>
-              <View>
-                <Text style={styles.verifiedTitle}>{t('overviewAuthenticated')}</Text>
-                <Text style={styles.verifiedSub}>{t('lifecycleVerifiedByBrand')}</Text>
-              </View>
-            </View>
-            {owned && !!addedDate && (
-              <Text style={styles.metaLine} numberOfLines={1}>{t('summaryOwnedSince')} {fmt(addedDate)}</Text>
-            )}
-          </View>
+        <View style={styles.mediaCard}>
+          <MediaSlider images={images} videos={videos} hideHeader flush maxHeight={300} getFileUrl={fileUrl} watchLabel={t('watchVideo')} />
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>{t('summaryOverview')}</Text>
-          {rows.length === 0 ? (
-            <Text style={styles.emptyText}>{t('summaryNoDetails')}</Text>
+        <Text style={styles.name} accessibilityRole="header" numberOfLines={3}>{product?.name || '—'}</Text>
+
+        {!!brandName && (
+          brandUrl ? (
+            <TouchableOpacity
+              style={styles.brandLink}
+              onPress={() => Linking.openURL(brandUrl).catch(() => {})}
+              activeOpacity={0.7}
+              accessibilityRole="link"
+              accessibilityLabel={`${brandName}. ${t('actOpenBrandSite')}`}
+            >
+              <MaterialCommunityIcon name="storefront-outline" size={24} color={colors.headerLight} />
+              <Text style={styles.brandLinkText} numberOfLines={1}>{brandName}</Text>
+              <Icon name="open-in-new" size={20} color={colors.headerLight} />
+            </TouchableOpacity>
           ) : (
-            rows.map((r) => (
-              <View key={r.label} style={styles.dataRow}>
-                <Text style={styles.dataLabel}>{r.label}</Text>
-                <Text style={styles.dataValue} numberOfLines={2}>{r.value}</Text>
-              </View>
-            ))
-          )}
+            <Text style={styles.brandPlain} numberOfLines={1}>{brandName}</Text>
+          )
+        )}
+
+        <View style={styles.spacer} />
+
+        <View style={styles.row}>
+          <BigIconButton
+            icon={reaction === 'like' ? 'heart' : 'heart-outline'}
+            color={colors.danger}
+            active={reaction === 'like'}
+            activeBg={colors.dangerSoft}
+            label={t('actLike')}
+            busy={pending === 'like'}
+            onPress={() => onReact('like')}
+          />
+          <BigIconButton
+            icon={inCart ? 'cart-check' : 'cart-plus'}
+            color={colors.primary}
+            active={inCart}
+            activeBg={colors.surfaceAlt}
+            label={t('actAddToCart')}
+            busy={pending === 'cart'}
+            onPress={onCart}
+          />
+          <BigIconButton
+            icon={reaction === 'dislike' ? 'thumb-down' : 'thumb-down-outline'}
+            color={colors.muted}
+            active={reaction === 'dislike'}
+            activeBg={colors.surfaceAlt}
+            label={t('actDislike')}
+            busy={pending === 'dislike'}
+            onPress={() => onReact('dislike')}
+          />
         </View>
 
-        <View style={styles.footer}>
-          <GradientButton
-            style={styles.primaryButton}
-            onPress={goToDetails}
-            activeOpacity={0.85}
-            accessibilityRole="button"
-            accessibilityLabel={t('summaryViewProductDetails')}
-          >
-            <Text style={styles.primaryButtonText}>{t('summaryViewProductDetails')}</Text>
-          </GradientButton>
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={() => navigation.navigate('Scanner')}
-            activeOpacity={0.8}
-            accessibilityRole="button"
-            accessibilityLabel={t('summaryScanAgain')}
-          >
-            <Text style={styles.secondaryButtonText}>{t('summaryScanAgain')}</Text>
-          </TouchableOpacity>
+        <View style={styles.row}>
+          <BigIconButton wide filled icon="text-box-search-outline" label={t('actViewDetails')} onPress={goToDetails} />
+          <BigIconButton wide icon="qrcode-scan" color={colors.primary} label={t('actScanAnother')} onPress={() => navigation.replace('Scanner')} />
         </View>
       </ScrollView>
+
+      {!!toast && (
+        <Animated.View style={[styles.toast, { opacity: toastOpacity }]} pointerEvents="none" accessibilityLiveRegion="polite">
+          <Text style={styles.toastText}>{toast}</Text>
+        </Animated.View>
+      )}
     </AppLayout>
+  );
+}
+
+// Icon-only action button (the label is for screen readers). `active` fills
+// the background so the chosen state reads at a glance.
+function BigIconButton({
+  icon,
+  label,
+  onPress,
+  color = colors.primary,
+  active = false,
+  activeBg,
+  busy = false,
+  wide = false,
+  filled = false,
+}: {
+  icon: string;
+  label: string;
+  onPress: () => void;
+  color?: string;
+  active?: boolean;
+  activeBg?: string;
+  busy?: boolean;
+  wide?: boolean;
+  filled?: boolean;
+}) {
+  return (
+    <TouchableOpacity
+      style={[
+        styles.bigBtn,
+        wide && styles.bigBtnWide,
+        filled && styles.bigBtnFilled,
+        active && { backgroundColor: activeBg, borderColor: color },
+        busy && { opacity: 0.6 },
+      ]}
+      onPress={onPress}
+      disabled={busy}
+      activeOpacity={0.8}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected: active, busy }}
+    >
+      <MaterialCommunityIcon name={icon} size={wide ? 46 : 50} color={filled ? colors.white : color} />
+    </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  container: { flexGrow: 1, padding: spacing.lg },
-  headerCard: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: spacing.md,
+  container: { flexGrow: 1, padding: spacing.lg, gap: spacing.md },
+  mediaCard: {
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: spacing.md,
+    overflow: 'hidden',
+    paddingVertical: spacing.sm,
     ...shadow(1),
   },
-  // 1.5x the original 140; the name wraps below it on a narrow phone.
-  headerMedia: { width: 210, maxWidth: '100%' },
-  headerInfo: { flexGrow: 1, flexBasis: 140, minWidth: 0 },
-  thumb: { width: 210, height: 210, borderRadius: radius.md, backgroundColor: colors.surfaceAlt },
-  thumbPlaceholder: { alignItems: 'center', justifyContent: 'center' },
-  name: { fontSize: 26, fontWeight: '700', color: colors.heading },
-  verifiedBadge: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 6 },
-  verifiedCheck: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: colors.primary,
+  name: { fontSize: 28, fontWeight: '700', color: colors.heading, textAlign: 'center', marginTop: spacing.xs },
+  brandLink: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    alignSelf: 'center',
+    gap: spacing.sm,
+    minHeight: 48,
+    paddingHorizontal: spacing.md,
+    maxWidth: '100%',
   },
-  verifiedTitle: { fontSize: 17, fontWeight: '700', color: colors.heading },
-  verifiedSub: { fontSize: 16, color: colors.muted, marginTop: 1 },
-  metaLine: { fontSize: 18, color: colors.muted, marginTop: 4, lineHeight: 24 },
-  card: {
+  brandLinkText: { fontSize: 21, fontWeight: '600', color: colors.headerLight, textDecorationLine: 'underline', flexShrink: 1 },
+  brandPlain: { fontSize: 21, fontWeight: '600', color: colors.muted, textAlign: 'center' },
+  spacer: { flexGrow: 1, minHeight: spacing.sm },
+  row: { flexDirection: 'row', gap: spacing.md },
+  bigBtn: {
+    flex: 1,
+    height: 88,
+    borderRadius: radius.xl,
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.border,
-    padding: spacing.lg,
-    marginTop: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
     ...shadow(1),
   },
-  cardTitle: { fontSize: 22, fontWeight: '700', color: colors.primary, marginBottom: spacing.sm },
-  emptyText: { fontSize: 19, color: colors.muted },
-  dataRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingVertical: spacing.sm + 2,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    gap: spacing.lg,
+  bigBtnWide: { height: 80 },
+  bigBtnFilled: { backgroundColor: colors.primary, borderColor: colors.primary },
+  toast: {
+    position: 'absolute',
+    alignSelf: 'center',
+    bottom: 110,
+    backgroundColor: 'rgba(18,58,86,0.95)',
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    maxWidth: '90%',
+    ...shadow(3),
   },
-  dataLabel: { fontSize: 19, color: colors.muted, flexShrink: 0, lineHeight: 26 },
-  dataValue: { fontSize: 19, color: colors.text, fontWeight: '600', flex: 1, textAlign: 'right', lineHeight: 26 },
-  footer: { marginTop: 'auto', paddingTop: spacing.md },
-  primaryButton: {
-    borderRadius: radius.md,
-    height: 54, justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.accent,
-    ...shadow(1),
-  },
-  primaryButtonText: { color: colors.white, fontSize: 20, fontWeight: '600' },
-  secondaryButton: {
-    marginTop: spacing.sm,
-    borderRadius: radius.md,
-    height: MIN_TOUCH, justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.accent,
-    backgroundColor: colors.surface,
-  },
-  secondaryButtonText: { color: colors.accent, fontSize: 20, fontWeight: '600' },
+  toastText: { color: colors.white, fontSize: 18, fontWeight: '600', textAlign: 'center' },
 });

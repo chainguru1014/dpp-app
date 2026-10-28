@@ -94,6 +94,9 @@ const ROUTE_TITLE_KEYS: Record<string, string> = {
   BrandDetail: 'titleBrandDetail',
   SendProductInfo: 'titleSendProductInfo',
   ProductHistory: 'titleProductHistory',
+  ProductAlbum: 'titleProductAlbum',
+  Cart: 'titleCart',
+  Purchase: 'titlePurchase',
 };
 
 const BRAND_TITLE = 'Yometel DPP';
@@ -215,7 +218,8 @@ export default function AppLayout({
   const bottomBarHeight = (effectiveBar === 'employee' ? EMPLOYEE_BOTTOM_BAR_CONTENT : BOTTOM_BAR_CONTENT) + insets.bottom;
 
   const productsTarget = isEmployeeActor ? 'CorporateReview' : 'ScannedProducts';
-  const homeBaseRoute = isEmployeeActor ? 'EmployeeHome' : 'Home';
+  // Consumers have no Home page any more — Scan is where they land.
+  const homeBaseRoute = isEmployeeActor ? 'EmployeeHome' : 'Scanner';
 
   const handleNotifications = () => {
     if (!isAuthenticated) {
@@ -281,8 +285,8 @@ export default function AppLayout({
   });
   const handleHome = guardAuthed(() => navigation.navigate(homeBaseRoute));
   const handleProducts = guardAuthed(() => navigation.navigate(productsTarget));
-  const handleHistory = guardAuthed(() => navigation.navigate('History'));
-  const handleBrands = guardAuthed(() => navigation.navigate('FavoriteBrands'));
+  const handleAlbum = guardAuthed(() => navigation.navigate('ProductAlbum'));
+  const handleCart = guardAuthed(() => navigation.navigate('Cart'));
   const openProfileSheet = guardAuthed(() => setProfileSheetVisible(true));
 
   const handleProductOverview = () => {
@@ -318,6 +322,8 @@ export default function AppLayout({
   // Icons and title on the top bar: white, or the colour that reads on a brand's own bar.
 
   const barText = barColors?.text || colors.white;
+  // Consumer Cart shortcut, left of the notification bell.
+  const showCartIcon = isAuthenticated && !isEmployeeActor && (rightIcon === 'notification' || rightIcon == null);
 
   const rightIconEl = (() => {
     if (rightIcon === 'none') return <View style={styles.iconButton} />;
@@ -362,6 +368,18 @@ export default function AppLayout({
       );
     }
     return (
+      <>
+      {showCartIcon && (
+        <TouchableOpacity
+          onPress={handleCart}
+          style={styles.iconButton}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={t('titleCart')}
+        >
+          <MaterialCommunityIcon name="cart-outline" size={30} color={barText} />
+        </TouchableOpacity>
+      )}
       <TouchableOpacity
         onPress={handleNotifications}
         style={styles.iconButton}
@@ -376,6 +394,7 @@ export default function AppLayout({
           <NotificationBadge userId={user?._id ? String(user._id) : undefined} onCountChange={setUnreadCount} />
         </View>
       </TouchableOpacity>
+      </>
     );
   })();
 
@@ -435,6 +454,8 @@ export default function AppLayout({
           ) : (
             <View style={styles.iconButton} />
           )}
+          {/* Mirrors the cart icon's width so the title stays centred. */}
+          {showCartIcon && !logoLeft && <View style={styles.iconButton} />}
 
           <View style={styles.titleBlock} pointerEvents="none">
             {!logoLeft && (
@@ -484,9 +505,7 @@ export default function AppLayout({
           profileActive={profileSheetVisible}
           t={t}
           onScan={handleScan}
-          onHome={handleHome}
-          onHistory={handleHistory}
-          onBrands={handleBrands}
+          onAlbum={handleAlbum}
           onProfile={openProfileSheet}
           barHeight={bottomBarHeight}
           bottomInset={insets.bottom}
@@ -682,24 +701,16 @@ function ConsumerBottomBar({
   profileActive,
   t,
   onScan,
-  onHome,
-  onHistory,
-  onBrands,
+  onAlbum,
   onProfile,
   barHeight,
   bottomInset,
 }: any) {
+  // Three tabs only: Product Album · Scan · Profile.
   return (
     <View style={[styles.bottomBar, { height: barHeight, paddingBottom: bottomInset }]}>
-      {/* MaterialCommunityIcons (not MaterialIcons/Feather) — the classic
-          MaterialIcons "home"/"access-time"/"person" names each have just
-          one already-solid style (no real outline), and Feather has no
-          filled variants at all. MaterialCommunityIcons' -outline suffix
-          gives every one of these a genuine outline glyph to start from. */}
-      <BottomTab mci icon="home-outline" iconActive="home" label={t('bottomHome')} selected={routeName === 'Home' || routeName === 'ScannedProducts' || routeName === 'ProductSummary'} onPress={onHome} />
-      <BottomTab mci icon="tag-outline" iconActive="tag" label={t('bottomBrands')} selected={routeName === 'FavoriteBrands' || routeName === 'BrandDetail'} onPress={onBrands} />
+      <BottomTab mci icon="image-multiple-outline" iconActive="image-multiple" label={t('bottomAlbum')} selected={routeName === 'ProductAlbum'} onPress={onAlbum} />
       <ScanCenterTab label={t('bottomScan')} selected={routeName === 'Scanner' || routeName === 'EnterCode'} onPress={onScan} />
-      <BottomTab mci icon="clock-outline" iconActive="clock" label={t('bottomHistory')} selected={routeName === 'History' || routeName === 'ProductHistory' || routeName === 'PurchaseHistory'} onPress={onHistory} />
       <BottomTab mci icon="account-outline" iconActive="account" label={t('bottomProfile')} selected={profileActive || routeName === 'EditProfile'} onPress={onProfile} />
     </View>
   );
