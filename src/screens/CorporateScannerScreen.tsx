@@ -153,6 +153,9 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
   const captureFeedbackTimerRef = useRef<any>(null);
   const [torchOn, setTorchOn] = useState(false);
   const [helpVisible, setHelpVisible] = useState(false);
+  // NFC capture isn't built yet — tapping its chip shows this instead of
+  // actually switching captureType to 'nfc'.
+  const [nfcUnderConstructionVisible, setNfcUnderConstructionVisible] = useState(false);
   const [captureType, setCaptureType] = useState<CaptureType>(initialCaptureType);
   const [rfidTags, setRfidTags] = useState<RfidTag[]>([]);
   // Per-EPC product resolution for the Passing Tags card — populated as each
@@ -1399,14 +1402,14 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
             <TouchableOpacity
               key={opt.key}
               style={[styles.typeChip, captureType === opt.key && styles.typeChipActive]}
-              onPress={() => setCaptureType(opt.key)}
+              onPress={() => (opt.key === 'nfc' ? setNfcUnderConstructionVisible(true) : setCaptureType(opt.key))}
               activeOpacity={0.75}
               accessibilityRole="tab"
               accessibilityState={{ selected: captureType === opt.key }}
             >
               <VectorIcon
                 name={opt.icon}
-                size={21}
+                size={30}
                 color={captureType === opt.key ? '#fff' : colors.muted}
                 style={styles.typeChipIcon}
               />
@@ -1424,6 +1427,18 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
             <Text style={styles.helpTitle}>{t('scannerScanHint')}</Text>
             <Text style={styles.helpBody}>{t('scanHelpBody')}</Text>
             <GradientButton style={styles.helpCloseButton} onPress={() => setHelpVisible(false)} activeOpacity={0.8}>
+              <Text style={styles.helpCloseButtonText}>{t('close')}</Text>
+            </GradientButton>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <Modal visible={nfcUnderConstructionVisible} transparent animationType="fade" onRequestClose={() => setNfcUnderConstructionVisible(false)}>
+        <TouchableOpacity style={styles.helpOverlay} activeOpacity={1} onPress={() => setNfcUnderConstructionVisible(false)}>
+          <View style={styles.helpCard}>
+            <Text style={styles.helpTitle}>{t('nfcUnderConstructionTitle')}</Text>
+            <Text style={styles.helpBody}>{t('nfcUnderConstructionBody')}</Text>
+            <GradientButton style={styles.helpCloseButton} onPress={() => setNfcUnderConstructionVisible(false)} activeOpacity={0.8}>
               <Text style={styles.helpCloseButtonText}>{t('close')}</Text>
             </GradientButton>
           </View>
@@ -1872,20 +1887,23 @@ const styles = StyleSheet.create({
   // the content layer (moved from above the camera/RFID panel), hence
   // marginTop instead of marginBottom for spacing from whatever is above it.
   typeSelectorRow: { flexDirection: 'row', gap: spacing.xs, marginTop: spacing.sm },
+  // Stacked (icon on top, label below) instead of side-by-side, per explicit
+  // "texts should be bottom of icon" request — taller box + less extreme
+  // corner rounding than the old pill shape to suit the vertical layout.
   typeChip: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 45,
-    borderRadius: radius.pill,
+    height: 72,
+    borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
     paddingHorizontal: spacing.md,
   },
   typeChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  typeChipIcon: { marginRight: 4 },
+  typeChipIcon: { marginBottom: 4 },
   typeChipText: { fontSize: 18, color: colors.muted, fontWeight: '600' },
   typeChipTextActive: { color: '#fff' },
   // Camera viewport + overlay — deliberately the same visual treatment as
