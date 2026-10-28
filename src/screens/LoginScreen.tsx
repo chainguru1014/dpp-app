@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
+  useWindowDimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -53,6 +54,10 @@ const FACE_SERVER_ERROR_KEY: Record<string, any> = {
 export default function LoginScreen({ navigation, onLogin, route }: any) {
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
+  // Short screens (most phones in a browser, small Androids): tighter logo,
+  // card padding and gaps so the whole card fits without a scroll bar.
+  const { height: winHeight } = useWindowDimensions();
+  const short = winHeight < 760;
   const [apiError, setApiError] = useState('');
   const [prefsLoaded, setPrefsLoaded] = useState(false);
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signup');
@@ -299,19 +304,19 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
       <View style={styles.overlay} pointerEvents="none" />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.fill}>
         <ScrollView
-          contentContainerStyle={[styles.scroll, { paddingTop: insets.top + spacing.xl, paddingBottom: insets.bottom + spacing.xl }]}
+          contentContainerStyle={[styles.scroll, { paddingTop: insets.top + (short ? spacing.md : spacing.xl), paddingBottom: insets.bottom + (short ? spacing.md : spacing.xl) }]}
           keyboardShouldPersistTaps="handled"
         >
           <Image
             source={require('../assets/yometel-logo-white.png')}
-            style={styles.logo}
+            style={[styles.logo, short && styles.logoShort]}
             resizeMode="contain"
             accessibilityRole="image"
             accessibilityLabel="Yometel"
           />
 
-          <View style={styles.card}>
-            <Text style={styles.title} accessibilityRole="header">
+          <View style={[styles.card, short && styles.cardShort]}>
+            <Text style={[styles.title, short && styles.titleShort]} accessibilityRole="header">
               {authMode === 'signup' ? t('authSignUpTitle') : t('authSignInTitle')}
             </Text>
 
@@ -344,6 +349,8 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
               renderAllMethods()
             )}
 
+            {/* The two text links sit together, without the card's item gap between them. */}
+            <View style={styles.linkGroup}>
             <TouchableOpacity
               style={styles.authModeLink}
               onPress={switchMode}
@@ -366,6 +373,7 @@ export default function LoginScreen({ navigation, onLogin, route }: any) {
             >
               <Text style={styles.privacyLinkText}>{t('privacyPreferences')}</Text>
             </TouchableOpacity>
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -383,6 +391,9 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   scroll: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.lg },
   logo: { width: 190, height: 56, marginBottom: spacing.xl },
+  logoShort: { width: 160, height: 46, marginBottom: spacing.md },
+  cardShort: { padding: spacing.lg, gap: spacing.sm },
+  titleShort: { fontSize: 23 },
   card: {
     width: '100%',
     maxWidth: 420,
@@ -426,8 +437,9 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   apiErrorText: { flex: 1, color: colors.danger, fontSize: 18 },
-  authModeLink: { minHeight: MIN_TOUCH, alignItems: 'center', justifyContent: 'center' },
+  linkGroup: { alignItems: 'stretch' },
+  authModeLink: { minHeight: 40, alignItems: 'center', justifyContent: 'center' },
   authModeLinkText: { fontSize: 19, fontWeight: '600', color: colors.primary },
-  privacyLink: { minHeight: MIN_TOUCH, alignItems: 'center', justifyContent: 'center' },
+  privacyLink: { minHeight: 32, alignItems: 'center', justifyContent: 'center' },
   privacyLinkText: { fontSize: 17, color: colors.muted, textDecorationLine: 'underline' },
 });
