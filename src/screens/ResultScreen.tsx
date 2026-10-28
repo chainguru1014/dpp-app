@@ -1438,10 +1438,9 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
       {/* A label the brand marked as a suspected copy never shows
           as authenticated — see the warning card below. */}
       {productData?.item_status !== 'blocked' && (
-        <View style={styles.ovAuthBadge} accessible accessibilityLabel={`${t('overviewAuthenticated')}. ${t('lifecycleVerifiedByBrand')}`}>
+        <View style={styles.ovAuthBadge} accessible accessibilityLabel={t('lifecycleVerifiedByBrand')}>
           <View style={styles.ovAuthBadgeCheck}><Icon name="check" size={14} color={colors.onBadge} /></View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.ovAuthBadgeTitle}>{t('overviewAuthenticated')}</Text>
             <Text style={styles.ovAuthBadgeSub}>{t('lifecycleVerifiedByBrand')}</Text>
           </View>
         </View>
@@ -2298,7 +2297,7 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
   ovSuspectTitle: { fontSize: 19, fontWeight: '700', color: colors.danger },
   ovSuspectBody: { fontSize: 17, color: colors.text, lineHeight: 23, marginTop: 2 },
   ovAuthBadgeTitle: { fontSize: 17, fontWeight: '700', color: colors.heading },
-  ovAuthBadgeSub: { fontSize: 16, color: colors.muted, marginTop: 1 },
+  ovAuthBadgeSub: { fontSize: 17, fontWeight: '700', color: colors.primary },
   ovCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
