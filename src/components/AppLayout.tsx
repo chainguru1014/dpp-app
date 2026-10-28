@@ -105,7 +105,7 @@ const EMPLOYEE_BRAND_TITLE = 'Yometel Traceability';
 // below. Fixed design constants, not device-specific hacks.
 const TOP_BAR_CONTENT = 56;
 const BOTTOM_BAR_CONTENT = 74;
-const BOTTOM_TAB_ICON_SIZE = 28;
+const BOTTOM_TAB_ICON_SIZE = 32;
 // Staff bar now matches the consumer bar's height exactly (was 85).
 const EMPLOYEE_BOTTOM_BAR_CONTENT = BOTTOM_BAR_CONTENT;
 
