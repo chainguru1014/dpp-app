@@ -89,15 +89,25 @@ jobs:
 
       - name: pod install
         working-directory: ios
-        # On failure, surface the tail of the output as an annotation (full
-        # logs need a GitHub login; annotations are public on this repo).
+        timeout-minutes: 50
+        env:
+          COCOAPODS_DISABLE_STATS: 'true'
+        # A download on the runner occasionally stalls forever (one run sat in
+        # pod install for 90 min), so each attempt gets 15 minutes and is retried
+        # up to 3 times. On failure, the tail of the output becomes an annotation
+        # (full logs need a GitHub login; annotations are public on this repo).
         run: |
-          set -o pipefail
-          if ! pod install --repo-update 2>&1 | tee pod-install.log; then
-            set +e +o pipefail
-            grep -vE '^\s*$' pod-install.log | tail -25 | awk '{printf "%s%%0A", $0}' | sed 's/^/::error title=pod install failed::/'; echo
-            exit 1
-          fi
+          set +e
+          for attempt in 1 2 3; do
+            echo "pod install attempt $attempt"
+            perl -e 'alarm shift; exec @ARGV' 900 pod install --repo-update > pod-install.log 2>&1
+            code=$?
+            cat pod-install.log
+            [ $code -eq 0 ] && exit 0
+            echo "::warning title=pod install attempt $attempt failed::exit code $code (142 = timed out after 15 min)"
+          done
+          grep -vE '^\s*$' pod-install.log | tail -25 | awk '{printf "%s%%0A", $0}' | sed 's/^/::error title=pod install failed::/'; echo
+          exit 1
 
       - name: Build for iOS Simulator
         run: |
