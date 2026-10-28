@@ -327,6 +327,14 @@ export default function AppLayout({
   // Consumer Cart shortcut, left of the notification bell.
   const showCartIcon = isAuthenticated && !isEmployeeActor && (rightIcon === 'notification' || rightIcon == null);
 
+  // Title font size from the real width left between the side icons, so it
+  // never ends in "..." on a narrow phone (react-native-web ignores
+  // adjustsFontSizeToFit). Two lines remain as a last resort.
+  const sideSlots = (1 + (showCartIcon && !logoLeft ? 1 : 0)) + (showCartIcon ? 2 : 1);
+  const titleRoom = Math.max(80, wideColumnWidth - 24 - sideSlots * MIN_TOUCH);
+  const titleLen = Math.max(1, String(computedTitle ?? '').length);
+  const titleFontSize = Math.max(15, Math.min(23, Math.floor(titleRoom / (titleLen * 0.52))));
+
   const rightIconEl = (() => {
     if (rightIcon === 'none') return <View style={styles.iconButton} />;
     if (rightIcon === 'heart') {
@@ -462,10 +470,12 @@ export default function AppLayout({
           <View style={styles.titleBlock} pointerEvents="none">
             {!logoLeft && (
               <Text
-                style={[styles.titleText, barColors?.text ? { color: barColors.text } : null]}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.7}
+                style={[
+                  styles.titleText,
+                  { fontSize: titleFontSize, lineHeight: Math.round(titleFontSize * 1.2) },
+                  barColors?.text ? { color: barColors.text } : null,
+                ]}
+                numberOfLines={2}
                 accessibilityRole="header"
               >
                 {/* Screens outside ROUTE_TITLE_KEYS with no explicit `title`
@@ -709,12 +719,11 @@ function ConsumerBottomBar({
   // Three tabs only: Product Album · Scan · Profile.
   return (
     <View style={[styles.bottomBar, { height: barHeight, paddingBottom: bottomInset }]}>
-      {/* Album and Profile nudged toward the centre Scan button. */}
-      <View style={styles.consumerTabShiftRight}>
+      <View style={styles.sideTabSlot}>
         <BottomTab mci icon="image-multiple-outline" iconActive="image-multiple" label={t('bottomAlbum')} selected={routeName === 'ProductAlbum'} onPress={onAlbum} />
       </View>
       <ScanCenterTab label={t('bottomScan')} selected={routeName === 'Scanner' || routeName === 'EnterCode'} onPress={onScan} />
-      <View style={styles.consumerTabShiftLeft}>
+      <View style={styles.sideTabSlot}>
         <BottomTab mci icon="account-outline" iconActive="account" label={t('bottomProfile')} selected={profileActive || routeName === 'EditProfile'} onPress={onProfile} />
       </View>
     </View>
@@ -724,13 +733,11 @@ function ConsumerBottomBar({
 function ProductBottomBar({ routeName, t, onOverview, onLifecycle, onScan, barHeight, bottomInset }: any) {
   return (
     <View style={[styles.bottomBar, { height: barHeight, paddingBottom: bottomInset }]}>
-      {/* Nudged toward the centre Scan circle so the row doesn't read as
-          edge-hugging with only 3 items. */}
-      <View style={styles.productTabShiftRight}>
+      <View style={styles.sideTabSlot}>
         <BottomTab icon="grid" label={t('bottomOverview')} selected={routeName === 'Result' || routeName === 'ProductSummary'} onPress={onOverview} />
       </View>
       <ScanCenterTab label={t('bottomScan')} selected={routeName === 'Scanner'} onPress={onScan} />
-      <View style={styles.productTabShiftLeft}>
+      <View style={styles.sideTabSlot}>
         <BottomTab icon="refresh-cw" label={t('bottomLifecycle')} selected={routeName === 'ProductLifecycle'} onPress={onLifecycle} />
       </View>
     </View>
@@ -819,7 +826,7 @@ const styles = StyleSheet.create({
   // Bottom-nav labels: ~14-16px.
   bottomTabLabel: { fontSize: 15, color: '#333333', marginTop: 3, fontWeight: '500' },
   bottomTabLabelSelected: { color: colors.primary, fontWeight: '700' },
-  scanTab: { flex: 1, height: '100%', alignItems: 'center', justifyContent: 'center' },
+  scanTab: { width: SCAN_CIRCLE + 24, height: '100%', alignItems: 'center', justifyContent: 'center' },
   scanCircle: {
     width: SCAN_CIRCLE,
     height: SCAN_CIRCLE,
@@ -833,10 +840,9 @@ const styles = StyleSheet.create({
     ...shadow(2),
   },
   scanTabLabel: { fontSize: 17, color: colors.primary, marginTop: 2, fontWeight: '600' },
-  productTabShiftRight: { flex: 1, transform: [{ translateX: 16 }] },
-  consumerTabShiftRight: { flex: 1, height: '100%', transform: [{ translateX: 23 }] },
-  consumerTabShiftLeft: { flex: 1, height: '100%', transform: [{ translateX: -23 }] },
-  productTabShiftLeft: { flex: 1, transform: [{ translateX: -16 }] },
+  // Album / Profile (and Overview / Lifecycle): each fills the space between
+  // the bar edge and the fixed-width Scan slot, its tab centred in it.
+  sideTabSlot: { flex: 1, height: '100%', alignItems: 'stretch' },
   modalOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
   // Wide web: Modal portals to the real window root, so without this the
   // sheet below stretches to the overlay's (full window) width instead of

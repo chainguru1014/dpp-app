@@ -1254,7 +1254,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     backgroundColor: 'rgba(255,255,255,0.95)',
   },
-  overlayActionText: { color: colors.primary, fontSize: 18, fontWeight: '700' },
+  overlayActionText: { color: colors.primary, fontSize: 18, fontWeight: '700', textAlign: 'center', flexShrink: 1 },
   overlayLoadingPill: {
     flex: 1,
     flexDirection: 'row',

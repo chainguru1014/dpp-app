@@ -8,9 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Dimensions,
   Image,
-  ImageBackground,
   Modal,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -238,14 +236,9 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
 
   return (
     <View style={styles.container}>
-      <ImageBackground
-        source={require('../assets/bg-intro-dpp.jpg')}
-        style={styles.imageBg}
-        resizeMode="cover"
-      >
-        <Text style={styles.pageTitle}>Digital Product Passport</Text>
-      </ImageBackground>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.centeredOverlay}>
+      {/* Solid dark blue page: title on top, the card takes all the height below. */}
+      <Text style={styles.pageTitle}>{t('introTagline')}</Text>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.cardArea}>
         <View style={styles.centerWrap}>
           <View style={styles.card}>
             <ScrollView
@@ -471,33 +464,31 @@ export default function RegisterScreen({ navigation, onLogin, route }: any) {
   );
 }
 
-const screenHeight = Dimensions.get('window').height;
 const isWebPlatform = Platform.OS === 'web';
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg },
-  imageBg: { width: '100%', height: screenHeight * 0.55 },
-  centeredOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  container: { flex: 1, backgroundColor: colors.primaryDark, ...(isWebPlatform ? ({ minHeight: '100vh' } as any) : null) },
+  cardArea: { flex: 1 },
   pageTitle: {
     color: '#ffffff',
     fontSize: 30,
     fontWeight: '600',
     textAlign: 'center',
-    paddingTop: 56,
-    paddingBottom: spacing.lg,
+    paddingTop: spacing.xxxl,
+    paddingBottom: spacing.md,
     paddingHorizontal: spacing.xl,
     letterSpacing: 0.5,
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },
-  centerWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl, width: '100%' },
+  centerWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xl, paddingBottom: spacing.xl, width: '100%' },
   card: {
     backgroundColor: '#f3f4f6',
     borderRadius: radius.xl,
     width: '100%',
     maxWidth: 420,
-    maxHeight: Math.round(screenHeight * 0.7),
+    flexShrink: 1,
     overflow: 'hidden',
     ...shadow(3),
   },
