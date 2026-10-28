@@ -21,7 +21,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Clipboard from '@react-native-clipboard/clipboard';
 import { API_BASE_URL } from '../config/api';
 import { CareSymbol, getCareSymbolLabel } from '../components/CareSymbols';
-import AppLayout from '../components/AppLayout';
+import AppLayout, { useBottomBarSpace } from '../components/AppLayout';
 import BottomSafeScrollView from '../components/BottomSafeScrollView';
 import GradientButton from '../components/GradientButton';
 import GradientView from '../components/GradientView';
@@ -85,12 +85,25 @@ const LIFECYCLE_STAGES: { key: string; icon: string; labelKey: string }[] = [
   { key: 'endOfLife', icon: 'recycling', labelKey: 'lifecycleStageEndOfLife' },
 ];
 
+// Overview blocks shown in the pinned footer instead of the scrolling page.
+const PINNED_BLOCKS = ['feedback', 'actions'];
+
 export default function ResultScreen({ route, navigation, user, onLogout }: ResultScreenProps) {
   const FALLBACK_BRAND_NAME = 'Yometel';
   const FALLBACK_BRAND_DETAIL = 'Developing innovative "real-time and automatic" digital twins IoT /RFID technologies';
   const FALLBACK_BRAND_WEBSITE = 'https://www.yometel.jp/';
   const { t } = useI18n();
-  const { height: windowHeight } = useWindowDimensions();
+  const { height: windowHeight, width: windowWidth } = useWindowDimensions();
+  // Side-by-side hero: a narrower photo on small phones (< 400px) so the
+  // name and "Verified by" badge beside it keep enough room for whole words.
+  const heroMediaSize = windowWidth < 400 ? 175 : 211;
+  // Consumer Overview: Like/Cart/Dislike + Scan Product live in a footer pinned
+  // just above the bottom bar, so they are always fully visible whatever the
+  // device / browser height. Its vertical spacing tightens on short screens,
+  // and the scroll content is padded by the footer's measured height.
+  const bottomBarSpace = useBottomBarSpace();
+  const [pinnedFooterHeight, setPinnedFooterHeight] = useState(0);
+  const footerGap = windowHeight < 640 ? spacing.sm : windowHeight < 760 ? spacing.md : spacing.lg;
   const [productData, setProductData] = useState<any>(route?.params?.productData || {});
   // The brand's own look for this product (staff sessions keep the standard
   // one). `colors` / `styles` below deliberately shadow the standard ones so
@@ -1653,6 +1666,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
         contentContainerStyle={[
           styles.contentContainer,
           Platform.OS === 'web' && { minHeight: availableContentMinHeight },
+          !isEmployeeActor && pinnedFooterHeight > 0 && { paddingBottom: bottomBarSpace + pinnedFooterHeight + spacing.sm },
         ]}
         showsVerticalScrollIndicator={false}
       >
@@ -1753,7 +1767,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
                 </>
               ) : (
                 <View style={styles.ovHeaderRow}>
-                  <View style={styles.ovHeaderMedia}>{renderImageSlider(211, true)}</View>
+                  <View style={[styles.ovHeaderMedia, { width: heroMediaSize }]}>{renderImageSlider(heroMediaSize, true)}</View>
                   <View style={styles.ovHeaderInfo}>{heroInfo}</View>
                 </View>
               )}
@@ -1771,7 +1785,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
 
             {/* The rest of the page, in the brand's order (the standard order
                 when the brand has not changed it). */}
-            {look.theme.blocks.filter((b) => b.visible).map((b) => (
+            {look.theme.blocks.filter((b) => b.visible && !PINNED_BLOCKS.includes(b.key)).map((b) => (
               <React.Fragment key={b.key}>{overviewBlocks[b.key]?.()}</React.Fragment>
             ))}
 
@@ -1797,6 +1811,20 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
           </>
         )}
       </BottomSafeScrollView>
+      {!isEmployeeActor && !!productData && Object.keys(productData).length > 0 && (() => {
+        const pinned = look.theme.blocks.filter((b) => b.visible && PINNED_BLOCKS.includes(b.key));
+        if (!pinned.length) return null;
+        return (
+          <View
+            style={[styles.ovPinnedFooter, { bottom: bottomBarSpace, paddingTop: footerGap, paddingBottom: footerGap, gap: footerGap }]}
+            onLayout={(e) => setPinnedFooterHeight(Math.round(e.nativeEvent.layout.height))}
+          >
+            {pinned.map((b) => (
+              <React.Fragment key={b.key}>{overviewBlocks[b.key]?.()}</React.Fragment>
+            ))}
+          </View>
+        );
+      })()}
       {/* Keep modal outside ScrollView to avoid RN web content-layer paint issues */}
       <Modal
         visible={showCamera}
@@ -2297,7 +2325,7 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
   ovSuspectTitle: { fontSize: 19, fontWeight: '700', color: colors.danger },
   ovSuspectBody: { fontSize: 17, color: colors.text, lineHeight: 23, marginTop: 2 },
   ovAuthBadgeTitle: { fontSize: 17, fontWeight: '700', color: colors.heading },
-  ovAuthBadgeSub: { fontSize: 17, fontWeight: '700', color: colors.primary },
+  ovAuthBadgeSub: { flexShrink: 1, fontSize: 16, fontWeight: '700', color: colors.primary },
   ovCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
@@ -2362,8 +2390,16 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
   // reserved for the feedback that's currently selected) sets it apart
   // without competing with the primary Scan/Request-ownership row below.
   ovShareBtn: { backgroundColor: colors.surfaceAlt, borderColor: colors.primary },
-  ovCtaRow: { flexDirection: 'row', gap: spacing.sm, marginHorizontal: spacing.xl, marginTop: spacing.lg },
-  ovReactionRow: { marginHorizontal: spacing.xl, marginTop: spacing.lg },
+  ovCtaRow: { flexDirection: 'row', gap: spacing.sm, marginHorizontal: spacing.xl },
+  ovReactionRow: { marginHorizontal: spacing.xl },
+  ovPinnedFooter: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    backgroundColor: colors.bg,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
   ovPrimaryCta: {
     flex: 1,
     minHeight: 48,
