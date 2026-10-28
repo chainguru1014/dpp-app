@@ -26,7 +26,7 @@ const itemKey = (productId: any, tokenId: any) => `${productId}:${tokenId ?? ''}
 
 // Products the user tapped Like on, newest save first — 3 cards per row with
 // photo, name, brand, price and Add to Cart / Remove buttons. A search box
-// (product or brand name) plus brand and saved-date chips filter the grid.
+// (product or brand name) plus saved-date chips filter the grid.
 // A card opens that product's summary page.
 export default function ProductAlbumScreen({ navigation, user, onLogout }: any) {
   const { t } = useI18n();
@@ -35,7 +35,6 @@ export default function ProductAlbumScreen({ navigation, user, onLogout }: any) 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [query, setQuery] = useState('');
-  const [brand, setBrand] = useState<string | null>(null);
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
   const [busyKey, setBusyKey] = useState<string | null>(null);
 
@@ -71,12 +70,6 @@ export default function ProductAlbumScreen({ navigation, user, onLogout }: any) 
     };
   };
 
-  const brands = useMemo(
-    () => Array.from(new Set(items.map((it) => view(it).brand).filter(Boolean))).sort(),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [items],
-  );
-
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
     const now = Date.now();
@@ -89,13 +82,12 @@ export default function ProductAlbumScreen({ navigation, user, onLogout }: any) 
       .filter((it) => {
         const v = view(it);
         if (q && !v.name.toLowerCase().includes(q) && !v.brand.toLowerCase().includes(q)) return false;
-        if (brand && v.brand !== brand) return false;
         if (minTime && v.savedAt < minTime) return false;
         return true;
       })
       .sort((a, b) => view(b).savedAt - view(a).savedAt);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, query, brand, dateFilter]);
+  }, [items, query, dateFilter]);
 
   const asProduct = (item: any) => ({ ...(item.product || item.productSnapshot || {}), _id: String(item.product_id), token_id: item.token_id });
 
@@ -221,13 +213,6 @@ export default function ProductAlbumScreen({ navigation, user, onLogout }: any) 
         <Chip label={t('albumFilter7Days')} active={dateFilter === 'week'} onPress={() => setDateFilter('week')} />
         <Chip label={t('albumFilter30Days')} active={dateFilter === 'month'} onPress={() => setDateFilter('month')} />
       </ScrollView>
-      {brands.length > 1 && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-          <MaterialCommunityIcon name="storefront-outline" size={26} color={colors.primary} style={styles.chipIcon} />
-          <Chip label={t('albumAllBrands')} active={!brand} onPress={() => setBrand(null)} />
-          {brands.map((b) => <Chip key={b} label={b} active={brand === b} onPress={() => setBrand(brand === b ? null : b)} />)}
-        </ScrollView>
-      )}
     </View>
   );
 
@@ -275,7 +260,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     minHeight: 52,
   },
-  searchInput: { flex: 1, fontSize: 18, color: colors.text, paddingVertical: 10 },
+  searchInput: { flex: 1, fontSize: 20, color: colors.text, paddingVertical: 10 },
   clearBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   chipRow: { alignItems: 'center', gap: spacing.sm, paddingRight: spacing.md },
   chipIcon: { marginRight: 2 },
@@ -289,7 +274,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { fontSize: 16, fontWeight: '600', color: colors.text },
+  chipText: { fontSize: 18, fontWeight: '600', color: colors.text },
   chipTextActive: { color: colors.white },
   // flex:1 + maxWidth keeps a short last row from stretching its cards.
   card: {
@@ -305,10 +290,10 @@ const styles = StyleSheet.create({
   thumb: { width: '100%', aspectRatio: 1, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
   thumbImg: { width: '100%', height: '100%' },
   cardBody: { paddingHorizontal: spacing.sm, paddingTop: spacing.sm, gap: 1 },
-  cardName: { fontSize: 15, fontWeight: '700', color: colors.heading, minHeight: 38 },
-  cardBrand: { fontSize: 14, color: colors.muted },
-  cardPrice: { fontSize: 16, fontWeight: '800', color: colors.primary },
-  cardPriceMuted: { fontSize: 13, fontWeight: '500', color: colors.muted },
+  cardName: { fontSize: 17, fontWeight: '700', color: colors.heading, minHeight: 44 },
+  cardBrand: { fontSize: 16, color: colors.muted },
+  cardPrice: { fontSize: 18, fontWeight: '800', color: colors.primary },
+  cardPriceMuted: { fontSize: 15, fontWeight: '500', color: colors.muted },
   cardActions: { flexDirection: 'row', gap: 6, padding: spacing.sm },
   cardBtn: {
     flex: 1,
@@ -321,5 +306,5 @@ const styles = StyleSheet.create({
   },
   cardBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   empty: { alignItems: 'center', paddingHorizontal: spacing.xxl, paddingTop: spacing.xxxl, gap: spacing.lg },
-  emptyText: { fontSize: 19, color: colors.muted, textAlign: 'center', lineHeight: 26 },
+  emptyText: { fontSize: 21, color: colors.muted, textAlign: 'center', lineHeight: 26 },
 });

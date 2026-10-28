@@ -8,7 +8,7 @@ import { colors, radius, spacing, shadow } from '../theme';
 // Like (save to Product Album) / Add to Cart / Dislike — one big-icon row
 // shared by the product summary and the product detail (Overview) pages so
 // both behave identically. A short confirmation fades in under the row.
-export default function ProductReactionBar({ product, user, onRequireLogin }: { product: any; user?: any; onRequireLogin: () => void }) {
+export default function ProductReactionBar({ product, user, onRequireLogin, compact = false }: { product: any; user?: any; onRequireLogin: () => void; compact?: boolean }) {
   const { t } = useI18n();
   const [reaction, setReactionState] = useState<Reaction>(null);
   const [inCart, setInCartState] = useState(false);
@@ -83,9 +83,10 @@ export default function ProductReactionBar({ product, user, onRequireLogin }: { 
 
   return (
     <View>
-      <View style={styles.row}>
+      <View style={[styles.row, compact && styles.rowCompact]}>
         <BigIconButton
           icon={reaction === 'like' ? 'thumb-up' : 'thumb-up-outline'}
+          compact={compact}
           active={reaction === 'like'}
           label={t('actLike')}
           busy={pending === 'like'}
@@ -93,6 +94,7 @@ export default function ProductReactionBar({ product, user, onRequireLogin }: { 
         />
         <BigIconButton
           icon={inCart ? 'cart-check' : 'cart-plus'}
+          compact={compact}
           active={inCart}
           label={t('actAddToCart')}
           busy={pending === 'cart'}
@@ -100,15 +102,24 @@ export default function ProductReactionBar({ product, user, onRequireLogin }: { 
         />
         <BigIconButton
           icon={reaction === 'dislike' ? 'thumb-down' : 'thumb-down-outline'}
+          compact={compact}
           active={reaction === 'dislike'}
           label={t('actDislike')}
           busy={pending === 'dislike'}
           onPress={() => onReact('dislike')}
         />
       </View>
-      <Animated.View style={[styles.note, { opacity: noteOpacity }]} accessibilityLiveRegion="polite">
-        <Text style={styles.noteText}>{note || ' '}</Text>
-      </Animated.View>
+      {compact ? (
+        !!note && (
+          <Animated.View style={[styles.noteFloat, { opacity: noteOpacity }]} pointerEvents="none" accessibilityLiveRegion="polite">
+            <Text style={styles.noteFloatText}>{note}</Text>
+          </Animated.View>
+        )
+      ) : (
+        <Animated.View style={[styles.note, { opacity: noteOpacity }]} accessibilityLiveRegion="polite">
+          <Text style={styles.noteText}>{note || ' '}</Text>
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -127,6 +138,7 @@ export function BigIconButton({
   active = false,
   busy = false,
   filled = false,
+  compact = false,
 }: {
   icon: string;
   label: string;
@@ -136,6 +148,7 @@ export function BigIconButton({
   active?: boolean;
   busy?: boolean;
   filled?: boolean;
+  compact?: boolean;
 }) {
   const fg = filled ? colors.white : color;
   return (
@@ -143,6 +156,7 @@ export function BigIconButton({
       style={[
         styles.bigBtn,
         caption ? styles.bigBtnCaptioned : null,
+        compact && styles.bigBtnCompact,
         filled && styles.bigBtnFilled,
         active && styles.bigBtnActive,
         busy && { opacity: 0.6 },
@@ -154,7 +168,7 @@ export function BigIconButton({
       accessibilityLabel={label}
       accessibilityState={{ selected: active, busy }}
     >
-      <MaterialCommunityIcon name={icon} size={caption ? 44 : 50} color={fg} />
+      <MaterialCommunityIcon name={icon} size={compact ? 30 : caption ? 44 : 50} color={fg} />
       {!!caption && <Text style={[styles.caption, { color: fg }]} numberOfLines={1}>{caption}</Text>}
     </TouchableOpacity>
   );
@@ -162,6 +176,7 @@ export function BigIconButton({
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: spacing.md },
+  rowCompact: { gap: spacing.sm },
   bigBtn: {
     flex: 1,
     height: 88,
@@ -174,9 +189,21 @@ const styles = StyleSheet.create({
     ...shadow(1),
   },
   bigBtnCaptioned: { height: 96, gap: 2 },
+  bigBtnCompact: { height: 44, borderRadius: radius.md },
   bigBtnFilled: { backgroundColor: colors.primary, borderColor: colors.primary },
   bigBtnActive: { backgroundColor: colors.surfaceAlt, borderColor: colors.primary, borderWidth: 2 },
   caption: { fontSize: 17, fontWeight: '700' },
   note: { alignItems: 'center', marginTop: spacing.xs, minHeight: 24 },
   noteText: { fontSize: 17, fontWeight: '600', color: colors.primary },
+  noteFloat: {
+    position: 'absolute',
+    bottom: '100%',
+    alignSelf: 'center',
+    marginBottom: 6,
+    backgroundColor: 'rgba(18,58,86,0.95)',
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 6,
+  },
+  noteFloatText: { fontSize: 16, fontWeight: '600', color: colors.white },
 });

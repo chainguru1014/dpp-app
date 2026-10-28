@@ -9,7 +9,6 @@ import IntroScreen from '../screens/IntroScreen';
 import ProductAlbumScreen from '../screens/ProductAlbumScreen';
 import CartScreen from '../screens/CartScreen';
 import PurchaseScreen from '../screens/PurchaseScreen';
-import HomeScreen from '../screens/HomeScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import AiConciergeConsentScreen from '../screens/AiConciergeConsentScreen';
 import ProductSummaryScreen from '../screens/ProductSummaryScreen';
@@ -37,6 +36,16 @@ import CorporateReviewScreen from '../screens/CorporateReviewScreen';
 import ShipmentInspectionScreen from '../screens/ShipmentInspectionScreen';
 
 const Stack = createNativeStackNavigator();
+
+function RedirectRoute({ navigation, to }: { navigation: any; to: string }) {
+  useEffect(() => {
+    // Deferred one tick: a replace issued while the navigator is still
+    // restoring its initial state is silently dropped.
+    const id = setTimeout(() => navigation.replace(to), 0);
+    return () => clearTimeout(id);
+  }, [navigation, to]);
+  return null;
+}
 
 export default function AppNavigator({ navigationRef }: { navigationRef: any }) {
   const [user, setUser] = useState<any>(null);
@@ -290,8 +299,11 @@ export default function AppNavigator({ navigationRef }: { navigationRef: any }) 
         {(props) => <SendProductInfoScreen {...props} user={user} onLogout={handleLogout} />}
       </Stack.Screen>
 
+      {/* There is no Home page any more. The route stays registered only so an
+          old saved navigation stack or a Back press that lands on it forwards
+          to the Scan page (staff: their operations home) instead. */}
       <Stack.Screen name="Home">
-        {(props) => <HomeScreen {...props} user={user} onLogout={handleLogout} />}
+        {(props) => <RedirectRoute {...props} to={user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Scanner'} />}
       </Stack.Screen>
 
       <Stack.Screen name="Scanner">

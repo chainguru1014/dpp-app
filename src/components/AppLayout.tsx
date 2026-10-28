@@ -109,6 +109,8 @@ const EMPLOYEE_BRAND_TITLE = 'Yometel Traceability';
 const TOP_BAR_CONTENT = 56;
 const BOTTOM_BAR_CONTENT = 74;
 const BOTTOM_TAB_ICON_SIZE = 38;
+// Centre Scan button (raised circle, no label).
+const SCAN_CIRCLE = 72;
 // Staff bar now matches the consumer bar's height exactly (was 85).
 const EMPLOYEE_BOTTOM_BAR_CONTENT = BOTTOM_BAR_CONTENT;
 
@@ -685,13 +687,11 @@ function ScanCenterTab({ label, selected, onPress }: { label: string; selected: 
       accessibilityState={{ selected }}
       accessibilityLabel={label}
     >
+      {/* Icon only — the label is kept for screen readers (accessibilityLabel). */}
       <View style={styles.scanCircle}>
-        <GradientView style={[StyleSheet.absoluteFill, { borderRadius: 27 }]} angle="diagonal" to={selected ? colors.primaryDark : colors.primary} />
-        <Icon name="crop-free" size={30} color={colors.white} />
+        <GradientView style={[StyleSheet.absoluteFill, { borderRadius: SCAN_CIRCLE / 2 }]} angle="diagonal" to={selected ? colors.primaryDark : colors.primary} />
+        <Icon name="crop-free" size={40} color={colors.white} />
       </View>
-      <Text style={[styles.scanTabLabel, selected && styles.bottomTabLabelSelected]} numberOfLines={1}>
-        {label}
-      </Text>
     </TouchableOpacity>
   );
 }
@@ -821,10 +821,10 @@ const styles = StyleSheet.create({
   bottomTabLabelSelected: { color: colors.primary, fontWeight: '700' },
   scanTab: { flex: 1, height: '100%', alignItems: 'center', justifyContent: 'center' },
   scanCircle: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    marginTop: -22,
+    width: SCAN_CIRCLE,
+    height: SCAN_CIRCLE,
+    borderRadius: SCAN_CIRCLE / 2,
+    marginTop: -26,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -834,8 +834,8 @@ const styles = StyleSheet.create({
   },
   scanTabLabel: { fontSize: 17, color: colors.primary, marginTop: 2, fontWeight: '600' },
   productTabShiftRight: { flex: 1, transform: [{ translateX: 16 }] },
-  consumerTabShiftRight: { flex: 1, height: '100%', transform: [{ translateX: 28 }] },
-  consumerTabShiftLeft: { flex: 1, height: '100%', transform: [{ translateX: -28 }] },
+  consumerTabShiftRight: { flex: 1, height: '100%', transform: [{ translateX: 23 }] },
+  consumerTabShiftLeft: { flex: 1, height: '100%', transform: [{ translateX: -23 }] },
   productTabShiftLeft: { flex: 1, transform: [{ translateX: -16 }] },
   modalOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
   // Wide web: Modal portals to the real window root, so without this the

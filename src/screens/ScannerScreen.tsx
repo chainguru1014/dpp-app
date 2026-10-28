@@ -1273,14 +1273,16 @@ const styles = StyleSheet.create({
     minHeight: 64,
     paddingVertical: 6,
     paddingHorizontal: 10,
-    borderRadius: radius.lg,
-    backgroundColor: 'rgba(255,255,255,0.92)',
   },
+  // No background — a soft white halo keeps the dark-blue text readable on the camera feed.
   overlayCornerText: {
     color: colors.primary,
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '800',
     marginTop: 2,
+    textShadowColor: 'rgba(255,255,255,0.9)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 6,
   },
   // Camera viewport + frame. flex:1 (with a floor) so it fills whatever
   // space the white board below doesn't need — the board is content-sized

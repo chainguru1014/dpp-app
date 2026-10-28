@@ -1576,9 +1576,9 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
       );
     },
     feedback: () => (
-      <View style={{ marginTop: spacing.lg }}>
+      <View style={styles.ovReactionRow}>
         {/* Same Like (album) / Add to Cart / Dislike buttons as the summary page. */}
-        <ProductReactionBar product={productData} user={user} onRequireLogin={showLoginPrompt} />
+        <ProductReactionBar compact product={productData} user={user} onRequireLogin={showLoginPrompt} />
       </View>
     ),
     actions: () => (
@@ -2340,7 +2340,7 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
   // Was `marginTop: 'auto'` -- pushed this whole group to the bottom of the
   // flex column regardless of how much (or little) content sat above it,
   // leaving a large dead gap under Lifecycle Preview on most products.
-  ovBottomGroup: { marginTop: spacing.lg, paddingBottom: spacing.sm },
+  ovBottomGroup: { paddingBottom: spacing.lg },
   ovIconRow: { flexDirection: 'row', gap: spacing.sm, marginHorizontal: spacing.lg, marginTop: spacing.sm },
   ovIconBtn: {
     flex: 1,
@@ -2363,7 +2363,8 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
   // reserved for the feedback that's currently selected) sets it apart
   // without competing with the primary Scan/Request-ownership row below.
   ovShareBtn: { backgroundColor: colors.surfaceAlt, borderColor: colors.primary },
-  ovCtaRow: { flexDirection: 'row', gap: spacing.sm, marginHorizontal: spacing.lg, marginTop: spacing.sm },
+  ovCtaRow: { flexDirection: 'row', gap: spacing.sm, marginHorizontal: spacing.xl, marginTop: spacing.lg },
+  ovReactionRow: { marginHorizontal: spacing.xl, marginTop: spacing.lg },
   ovPrimaryCta: {
     flex: 1,
     minHeight: 48,
