@@ -5,7 +5,8 @@ require Pod::Executable.execute_command('node', ['-p',
     {paths: [process.argv[1]]},
   )', __dir__]).strip
 
-platform :ios, min_ios_version_supported
+# @react-native-ml-kit/barcode-scanning (GoogleMLKit 8) requires iOS 15.5+.
+platform :ios, '15.5'
 prepare_react_native_project!
 
 # react-native-vision-camera v4: this app carries no react-native-worklets-core
