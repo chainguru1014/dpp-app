@@ -1179,7 +1179,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                           <ActivityIndicator size="small" color="#fff" />
                         ) : (
                           <>
-                            <VectorIcon name={connected ? 'bluetooth-disabled' : 'bluetooth'} size={20} color="#fff" />
+                            <VectorIcon name={connected ? 'bluetooth-disabled' : 'bluetooth'} size={32} color="#fff" />
                             <Text style={styles.rfidConnectButtonText}>
                               {connected ? t('rfidDisconnectButton') : t('rfidConnectButton')}
                             </Text>
@@ -1960,7 +1960,7 @@ const styles = StyleSheet.create({
   // Disconnect reads as the same button, just recolored — same red used by
   // every other stop/failure indicator on this screen (rfidStatusDotFailed).
   rfidDisconnectButtonVariant: { backgroundColor: colors.danger },
-  rfidConnectButtonText: { color: '#fff', fontSize: 18, fontWeight: '600' },
+  rfidConnectButtonText: { color: '#fff', fontSize: 23, fontWeight: '600' },
   rfidConnectButtonDisabled: { opacity: 0.7 },
   rfidSettingsIconButton: {
     width: 44,
