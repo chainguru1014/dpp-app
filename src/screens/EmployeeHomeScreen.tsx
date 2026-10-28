@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import VectorIcon from 'react-native-vector-icons/MaterialIcons';
-import AppLayout, { useBottomBarSpace } from '../components/AppLayout';
+import AppLayout from '../components/AppLayout';
 import { useI18n } from '../i18n/I18nContext';
 import { API_BASE_URL } from '../config/api';
 import { colors, spacing, radius, shadow } from '../theme';
@@ -47,7 +46,6 @@ const TILE_HEIGHT = 87;
 // worker comes back to this screen (via Back or a refresh).
 export default function EmployeeHomeScreen({ navigation, user, onLogout }: any) {
   const { t } = useI18n();
-  const bottomBarSpace = useBottomBarSpace('employee');
   const [steps, setSteps] = useState<ProcessStep[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedStep, setSelectedStep] = useState<number | null>(null);
@@ -81,10 +79,6 @@ export default function EmployeeHomeScreen({ navigation, user, onLogout }: any) 
     setSelectedStep(index);
     AsyncStorage.setItem(SELECTED_STEP_STORAGE_KEY, String(index)).catch(() => {});
     navigation.navigate('CorporateScanner', { stepIndex: index });
-  };
-
-  const handleRfidScan = () => {
-    navigation.navigate('CorporateScanner', { stepIndex: selectedStep ?? 0, captureType: 'rfid' });
   };
 
   return (
@@ -126,22 +120,6 @@ export default function EmployeeHomeScreen({ navigation, user, onLogout }: any) 
           </View>
         )}
       </ScrollView>
-
-      {/* Dedicated RFID entry point, sitting just above the bottom bar —
-          distinct from the bar's own Capture tab (which opens on QR mode).
-          Shipment Inspection is temporarily hidden from this screen (see
-          commit 10f7a8d for how it was wired in) — this button is back in
-          its original place/color until it's re-enabled.
-          useBottomBarSpace() mirrors the exact offset AppLayout itself uses
-          for its bottom bar, so this floats flush above it on every device. */}
-      <TouchableOpacity
-        style={[styles.rfidScanButton, { bottom: bottomBarSpace + spacing.xxl }]}
-        onPress={handleRfidScan}
-        activeOpacity={0.85}
-      >
-        <VectorIcon name="wifi-tethering" size={24} color="#fff" />
-        <Text style={styles.rfidScanButtonText}>{t('rfidScanHomeButton')}</Text>
-      </TouchableOpacity>
     </AppLayout>
   );
 }
@@ -198,22 +176,4 @@ const styles = StyleSheet.create({
   },
   tileEntity: { fontSize: 20, fontWeight: '700', color: colors.text },
   tileType: { fontSize: 20, fontWeight: '400', color: colors.muted, marginTop: 1 },
-  // Floating pill, absolutely positioned (bottom set inline from
-  // useBottomBarSpace()) so it sits just above the bottom bar regardless of
-  // scroll position, matching AppLayout's own bottom-bar/scan-tab shadow
-  // treatment.
-  rfidScanButton: {
-    position: 'absolute',
-    left: spacing.xl,
-    right: spacing.xl,
-    height: 54,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.primary,
-    borderRadius: radius.pill,
-    ...shadow(2),
-  },
-  rfidScanButtonText: { color: '#fff', fontSize: 20, fontWeight: '600' },
 });

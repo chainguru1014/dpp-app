@@ -1105,7 +1105,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
       flatContent
     >
       <View style={[styles.container, captureType === 'rfid' && styles.containerCompact]}>
-        <View style={styles.scanViewport}>
+        <View style={[styles.scanViewport, captureType !== 'rfid' && styles.scanViewportTop]}>
           {isCameraType ? renderCamera() : captureType === 'rfid' ? (
             <View style={styles.rfidPanel}>
               {(() => {
@@ -1130,17 +1130,6 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                     : impinjStatus === 'failed' ? styles.rfidStatusDotFailed
                     : styles.rfidStatusDotDisconnected)
                   : (connected ? styles.rfidStatusDotConnected : styles.rfidStatusDotDisconnected);
-                const statusTextStyle = isImpinjRow
-                  ? (impinjStatus === 'started' ? styles.rfidStatusTextStarted
-                    : impinjStatus === 'connected' ? styles.rfidStatusTextConnected
-                    : impinjStatus === 'failed' ? styles.rfidStatusTextFailed
-                    : undefined)
-                  : (connected ? styles.rfidStatusTextConnected : undefined);
-                const statusLabel = isImpinjRow
-                  ? (impinjStatus === 'started' ? t('rfidStartedLabel')
-                    : impinjStatus === 'connected' ? t('rfidConnectedLabel')
-                    : t('rfidDisconnectedLabel'))
-                  : (connected ? t('rfidConnectedLabel') : t('rfidDisconnectedLabel'));
                 if (!readerId) {
                   return (
                     <View style={styles.rfidStatusRow}>
@@ -1155,9 +1144,6 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                       <View style={[styles.rfidStatusDot, statusDotStyle]} />
                       <Text style={[styles.rfidStatusText, styles.rfidReaderIdText]} numberOfLines={1}>
                         {t('rfidReaderIdLabel')}: {readerId}
-                      </Text>
-                      <Text style={[styles.rfidStatusText, statusTextStyle]}>
-                        {statusLabel}
                       </Text>
                       {/* Reopen the connect/communicate debug timeline at any
                           point — not just right after tapping Connect — so a
@@ -1876,10 +1862,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.sm,
   },
-  // Code/NFC only — the other flex:1 sibling of scanViewport, so the two
-  // split the content layer's height 50/50. Holds the Capture button and
-  // the Recent Captures card.
-  bottomHalf: { flex: 1 },
+  // Code/NFC only — the other flex sibling of scanViewportTop, splitting
+  // the content layer 65/35 (camera/bottomHalf). Holds the Capture button
+  // and the Recent Captures card.
+  bottomHalf: { flex: 35 },
+  // Code/NFC only, overrides scanViewport's own flex:1 — see bottomHalf.
+  scanViewportTop: { flex: 65 },
   // Three equal type buttons, all fully visible. Now the last element in
   // the content layer (moved from above the camera/RFID panel), hence
   // marginTop instead of marginBottom for spacing from whatever is above it.
@@ -1951,9 +1939,6 @@ const styles = StyleSheet.create({
   // The reader name is the one part of the status row allowed to shrink
   // (ellipsized), so the status label and icons after it stay on-screen.
   rfidReaderIdText: { flexShrink: 1 },
-  rfidStatusTextConnected: { color: colors.success, fontWeight: '600' },
-  rfidStatusTextStarted: { color: colors.primary, fontWeight: '600' },
-  rfidStatusTextFailed: { color: colors.danger, fontWeight: '600' },
   // Overrides stateText's white color (meant for the dark camera/NFC
   // viewport) back to a readable dark tone on the RFID panel's white bg.
   rfidHintText: { color: colors.muted },
@@ -1967,7 +1952,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.xs,
-    height: 44,
+    height: 58,
     paddingHorizontal: spacing.lg,
     borderRadius: radius.pill,
     backgroundColor: colors.primary,
