@@ -10,7 +10,7 @@
 //      (needs the app's package name `com.yometel.dpp` + the SHA-1 of the
 //      signing certificate used for the build, debug AND release.)
 //   3. An "iOS" client              -> GOOGLE_IOS_CLIENT_ID
-//      (needs the app's bundle id `com.yometel.dpp`.)
+//      (needs the iOS bundle id `com.yometeldpp.com` -- the "Yometel DPP" App ID; Android stays `com.yometel.dpp`.)
 //
 // `@react-native-google-signin/google-signin` is configured with
 // `webClientId` (used to request an ID token whose audience the backend can
@@ -34,7 +34,7 @@ export const GOOGLE_ANDROID_CLIENT_ID = '';
 export const GOOGLE_IOS_CLIENT_ID = '';
 
 // Sign In with Apple has no client-id concept on the NATIVE client side — the
-// entitlement + bundle id (com.yometel.dpp) registered in the Apple Developer
+// entitlement + bundle id (com.yometeldpp.com) registered in the Apple Developer
 // portal is what ties native requests to the app. Nothing to configure here
 // for native iOS.
 //

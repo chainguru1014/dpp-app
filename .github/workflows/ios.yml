@@ -14,7 +14,7 @@ name: Build iOS app
 #   IOS_DIST_CERT_P12_BASE64   base64 of the Apple Distribution certificate .p12
 #   IOS_DIST_CERT_PASSWORD     password of that .p12
 #   IOS_PROVISION_PROFILE_BASE64  base64 of the App Store provisioning profile
-#                              (.mobileprovision) for com.yometel.dpp
+#                              (.mobileprovision) for com.yometeldpp.com (the "Yometel DPP" App ID)
 #   IOS_TEAM_ID                10-character Apple Developer Team ID
 #   ASC_KEY_ID / ASC_ISSUER_ID / ASC_KEY_P8_BASE64   (optional) App Store Connect
 #                              API key, for the TestFlight upload
@@ -196,7 +196,7 @@ jobs:
             <key>teamID</key><string>${TEAM}</string>
             <key>signingStyle</key><string>manual</string>
             <key>provisioningProfiles</key><dict>
-              <key>com.yometel.dpp</key><string>${PROFILE_NAME}</string>
+              <key>com.yometeldpp.com</key><string>${PROFILE_NAME}</string>
             </dict>
           </dict></plist>
           EOF

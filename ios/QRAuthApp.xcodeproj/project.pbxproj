@@ -507,7 +507,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.yometel.dpp;
+				PRODUCT_BUNDLE_IDENTIFIER = com.yometeldpp.com;
 				PRODUCT_NAME = QRAuthApp;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -534,7 +534,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.yometel.dpp;
+				PRODUCT_BUNDLE_IDENTIFIER = com.yometeldpp.com;
 				PRODUCT_NAME = QRAuthApp;
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
