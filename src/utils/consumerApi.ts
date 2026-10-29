@@ -104,12 +104,24 @@ export async function setReaction(userId: string, product: any, reaction: Reacti
   ]);
 }
 
+// The header cart badge listens here so it updates as soon as an item is
+// added or removed anywhere in the app.
+const cartListeners = new Set<() => void>();
+export function onCartChanged(fn: () => void): () => void {
+  cartListeners.add(fn);
+  return () => { cartListeners.delete(fn); };
+}
+
 export async function setInCart(product: any, inCart: boolean): Promise<void> {
-  await fetch(`${API_BASE_URL}engagement/cart`, {
-    method: inCart ? 'POST' : 'DELETE',
-    headers: await authHeaders(),
-    body: JSON.stringify({ product_id: product._id, token_id: tokenIdOf(product) }),
-  });
+  try {
+    await fetch(`${API_BASE_URL}engagement/cart`, {
+      method: inCart ? 'POST' : 'DELETE',
+      headers: await authHeaders(),
+      body: JSON.stringify({ product_id: product._id, token_id: tokenIdOf(product) }),
+    });
+  } finally {
+    cartListeners.forEach((fn) => fn());
+  }
 }
 
 export async function listAlbum(userId: string): Promise<any[]> {

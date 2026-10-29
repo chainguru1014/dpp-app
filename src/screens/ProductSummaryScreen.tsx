@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Linking, useWindowDimensions } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AppLayout from '../components/AppLayout';
@@ -30,6 +30,11 @@ const websiteHref = (url?: string) => {
 // then big icon buttons: Like / Add to Cart / Dislike, and Details / Scan.
 export default function ProductSummaryScreen({ navigation, route, user, onLogout }: ProductSummaryScreenProps) {
   const { t } = useI18n();
+  // Everything below the slider plus the top and bottom bars takes about
+  // 560px, so the slider gets whatever height is left (110–230) and all the
+  // buttons stay above the bottom bar on short phones.
+  const { height: winH } = useWindowDimensions();
+  const sliderHeight = Math.max(110, Math.min(230, winH - 560));
   const params = route?.params || {};
   const [product, setProduct] = useState<any>(params.productData || params.product || {});
   const productId = params.productId ?? product?._id;
@@ -80,11 +85,11 @@ export default function ProductSummaryScreen({ navigation, route, user, onLogout
     >
       <ScrollView style={styles.screen} contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         <View style={styles.mediaCard}>
-          <MediaSlider images={images} videos={videos} hideHeader flush maxHeight={210} getFileUrl={fileUrl} watchLabel={t('watchVideo')} />
+          <MediaSlider images={images} videos={videos} hideHeader flush maxHeight={sliderHeight} thumbnails getFileUrl={fileUrl} watchLabel={t('watchVideo')} />
         </View>
 
         <View style={styles.info}>
-          <Text style={styles.name} accessibilityRole="header" numberOfLines={3}>{product?.name || '—'}</Text>
+          <Text style={styles.name} accessibilityRole="header" numberOfLines={2}>{product?.name || '—'}</Text>
           {!!product?.model && <Text style={styles.model} numberOfLines={2}>{product.model}</Text>}
           {!!price && <Text style={styles.price}>{price}</Text>}
 

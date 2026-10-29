@@ -59,6 +59,9 @@ interface MediaSliderProps {
    *  use light-on-dark pagination dots instead of the default light-grey/blue
    *  pair, which is otherwise nearly invisible against a blue background. */
   onDark?: boolean;
+  /** Show a column of small thumbnails (images, then videos) to the right of
+   *  the slider instead of the dots; tapping one shows it in the slider. */
+  thumbnails?: boolean;
 }
 
 /**
@@ -80,6 +83,7 @@ export default function MediaSlider({
   getFileUrl = defaultGetFileUrl,
   watchLabel,
   onDark = false,
+  thumbnails = false,
 }: MediaSliderProps) {
   const { t } = useI18n();
   const noImageLabel = t('noImage');
@@ -103,6 +107,8 @@ export default function MediaSlider({
       })
       .filter((s): s is MediaSlide => s != null),
   ];
+
+  const showThumbs = thumbnails && slides.length > 1;
 
   const onScroll = (e: any) => {
     if (!pageWidth) return;
@@ -183,8 +189,10 @@ export default function MediaSlider({
     <View
       style={[styles.container, flush && styles.containerFlush]}
       onLayout={(e) => {
+        // With thumbnails the slider is narrower than the container; its own
+        // onLayout below measures it.
         const w = e.nativeEvent.layout.width;
-        if (w && Math.abs(w - pageWidth) > 1) setPageWidth(w);
+        if (!showThumbs && w && Math.abs(w - pageWidth) > 1) setPageWidth(w);
       }}
     >
       {!hideHeader && (name || model || pmcCode) ? (
@@ -195,6 +203,7 @@ export default function MediaSlider({
         </View>
       ) : null}
 
+      <View style={showThumbs ? styles.thumbsLayout : null}>
       <ScrollView
         ref={scrollRef}
         horizontal
@@ -206,7 +215,7 @@ export default function MediaSlider({
           const w = e.nativeEvent.layout.width;
           if (w && w !== pageWidth) setPageWidth(w);
         }}
-        style={styles.carousel}
+        style={showThumbs ? styles.carouselWithThumbs : styles.carousel}
         {...(webDragHandlers as any)}
       >
         {slides.map((slide, index) => (
@@ -251,7 +260,35 @@ export default function MediaSlider({
         ))}
       </ScrollView>
 
-      {slides.length > 1 && (
+      {showThumbs && (
+        <ScrollView style={[styles.thumbColumn, { height: imageHeight }]} contentContainerStyle={styles.thumbColumnContent} showsVerticalScrollIndicator={false}>
+          {slides.map((slide, i) => (
+            <TouchableOpacity
+              key={i}
+              onPress={() => goTo(i)}
+              activeOpacity={0.75}
+              style={[styles.thumb, active === i && styles.thumbActive]}
+              accessibilityRole="button"
+              accessibilityLabel={slide.kind === 'image' ? `${i + 1} / ${slides.length}` : slide.description || watchLabel || 'Play video'}
+              accessibilityState={{ selected: active === i }}
+            >
+              {slide.kind === 'image' ? (
+                <Image source={{ uri: getFileUrl(slide.uri) }} style={styles.thumbMedia} resizeMode="cover" />
+              ) : (
+                <View style={[styles.thumbMedia, styles.thumbVideo]}>
+                  {slide.kind === 'video' && (
+                    <Image source={{ uri: `https://img.youtube.com/vi/${slide.videoId}/default.jpg` }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                  )}
+                  <Icon name="play-circle-filled" size={26} color="#fff" />
+                </View>
+              )}
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
+      </View>
+
+      {slides.length > 1 && !showThumbs && (
         <View style={styles.dots}>
           {slides.map((_, i: number) => (
             <TouchableOpacity
@@ -405,6 +442,22 @@ const styles = StyleSheet.create({
   productModel: { fontSize: 22, color: colors.muted, textAlign: 'center' },
   pmcBadge: { fontSize: 19, fontWeight: '600', color: colors.muted, textAlign: 'center', marginTop: 4 },
   carousel: { width: '100%' },
+  thumbsLayout: { flexDirection: 'row', gap: 8 },
+  carouselWithThumbs: { flex: 1, minWidth: 0 },
+  thumbColumn: { flexGrow: 0, width: 58 },
+  thumbColumnContent: { gap: 6, paddingRight: 4 },
+  thumb: {
+    width: 52,
+    height: 52,
+    borderRadius: 8,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  thumbActive: { borderWidth: 2.5, borderColor: colors.primaryDark },
+  thumbMedia: { width: '100%', height: '100%' },
+  thumbVideo: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#000' },
   slidePage: { paddingHorizontal: 16 },
   imageCard: {
     width: '100%',

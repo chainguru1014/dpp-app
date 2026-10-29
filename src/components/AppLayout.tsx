@@ -23,6 +23,7 @@ import { useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useI18n } from '../i18n/I18nContext';
 import NotificationBadge from './NotificationBadge';
+import CartBadge from './CartBadge';
 import GradientView from './GradientView';
 import { colors, radius, shadow, spacing, MIN_TOUCH } from '../theme';
 
@@ -388,7 +389,10 @@ export default function AppLayout({
           accessibilityRole="button"
           accessibilityLabel={t('titleCart')}
         >
-          <MaterialCommunityIcon name="cart-outline" size={30} color={barText} />
+          <View>
+            <MaterialCommunityIcon name="cart-outline" size={30} color={barText} />
+            <CartBadge />
+          </View>
         </TouchableOpacity>
       )}
       <TouchableOpacity
