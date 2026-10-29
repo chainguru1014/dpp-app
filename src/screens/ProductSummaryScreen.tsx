@@ -95,7 +95,7 @@ export default function ProductSummaryScreen({ navigation, route, user, onLogout
             accessibilityLabel={`${t('summaryBrandCompany')}: ${brandName}${brandUrl ? `. ${t('actOpenBrandSite')}` : ''}`}
           >
             <Text style={styles.brandText} numberOfLines={2}>
-              <Text style={styles.brandLabel}>{t('summaryBrandCompany')}: </Text>
+              <Text style={styles.brandLabel}>{t('summaryBrandCompany')} : </Text>
               <Text style={styles.brandName}>{brandName}</Text>
             </Text>
           </GradientButton>
