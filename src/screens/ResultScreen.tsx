@@ -1470,8 +1470,9 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
                       accessibilityRole="button"
                       accessibilityLabel={t('overviewViewFullLifecycle')}
                     >
-                      <Icon name="sync" size={20} color={colors.white} />
+                      <Icon name="eco" size={20} color={colors.primary} />
                       <Text style={styles.ovLcButtonText}>{t('bottomLifecycle')}</Text>
+                      <Icon name="chevron-right" size={20} color={colors.primary} />
                     </TouchableOpacity>
                   </View>
                   {extra.map((e) => (
@@ -2295,13 +2296,16 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
   ovLcButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
     minHeight: 40,
-    paddingHorizontal: 14,
+    paddingLeft: 10,
+    paddingRight: 4,
     borderRadius: radius.pill,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  ovLcButtonText: { color: colors.white, fontSize: 16, fontWeight: '700' },
+  ovLcButtonText: { color: colors.primary, fontSize: 16, fontWeight: '700' },
   ovBlockText: { fontSize: 18, color: colors.text, lineHeight: 26 },
   ovBrandRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: 8 },
   ovBrandLogo: { width: 40, height: 40 },
