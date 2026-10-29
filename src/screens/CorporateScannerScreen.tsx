@@ -1280,7 +1280,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
                 <ScanFrameCorners size={Math.min(200, cameraHeight - 70)} active={!!liveCode} activeColor={colors.primary} />
               </View>
               <View pointerEvents="none" style={styles.overlayHintWrap}>
-                <VectorIcon name="qr-code" size={28} color={colors.primary} style={styles.overlayHintIcon} />
+                <VectorIcon name="qr-code" size={28} color={colors.white} style={styles.overlayHintIcon} />
                 <Text style={styles.overlayHintText}>{t('corpScanHint')}</Text>
               </View>
             </>
@@ -1288,11 +1288,11 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
           {isCameraType && (
             <View style={styles.overlayCornerRow}>
               <TouchableOpacity style={styles.overlayCornerButton} onPress={() => setTorchOn((v) => !v)} activeOpacity={0.75}>
-                <VectorIcon name={torchOn ? 'flash-on' : 'flash-off'} size={32} color={colors.primary} />
+                <VectorIcon name={torchOn ? 'flash-on' : 'flash-off'} size={32} color={colors.white} />
                 <Text style={styles.overlayCornerText}>{torchOn ? t('scanTorchOn') : t('scanTorchOff')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.overlayCornerButton} onPress={() => setHelpVisible(true)} activeOpacity={0.75}>
-                <VectorIcon name="help-outline" size={32} color={colors.primary} />
+                <VectorIcon name="help-outline" size={32} color={colors.white} />
                 <Text style={styles.overlayCornerText}>{t('scanHelpLabel')}</Text>
               </TouchableOpacity>
             </View>
@@ -1397,6 +1397,7 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
 
         {/* Code type selector — moved to the bottom of the content layer
             (was above the camera/RFID panel). */}
+        <Text style={styles.typeSelectorLabel}>{t('captureSelectCodeType')}</Text>
         <View style={styles.typeSelectorRow}>
           {CAPTURE_TYPES.map((opt) => (
             <TouchableOpacity
@@ -1886,7 +1887,8 @@ const styles = StyleSheet.create({
   // Three equal type buttons, all fully visible. Now the last element in
   // the content layer (moved from above the camera/RFID panel), hence
   // marginTop instead of marginBottom for spacing from whatever is above it.
-  typeSelectorRow: { flexDirection: 'row', gap: spacing.xs, marginTop: spacing.sm },
+  typeSelectorLabel: { fontSize: 18, fontWeight: '600', color: colors.heading, textAlign: 'center', marginTop: spacing.sm },
+  typeSelectorRow: { flexDirection: 'row', gap: spacing.xs, marginTop: spacing.xs },
   // Stacked (icon on top, label below) instead of side-by-side, per explicit
   // "texts should be bottom of icon" request — taller box + less extreme
   // corner rounding than the old pill shape to suit the vertical layout.
@@ -2050,14 +2052,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     paddingHorizontal: 16,
-    borderRadius: radius.pill,
-    backgroundColor: 'rgba(255,255,255,0.92)',
   },
   overlayHintIcon: {
     marginRight: 8,
   },
   overlayHintText: {
-    color: colors.primary,
+    color: colors.white,
     fontSize: 20,
     fontWeight: '700',
     textAlign: 'center',
@@ -2107,11 +2107,9 @@ const styles = StyleSheet.create({
     minHeight: 64,
     paddingVertical: 6,
     paddingHorizontal: 10,
-    borderRadius: radius.lg,
-    backgroundColor: 'rgba(255,255,255,0.92)',
   },
   overlayCornerText: {
-    color: colors.primary,
+    color: colors.white,
     fontSize: 16,
     fontWeight: '700',
     marginTop: 2,

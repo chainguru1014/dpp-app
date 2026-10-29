@@ -1,9 +1,8 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, ActivityIndicator, Modal, TouchableWithoutFeedback, Dimensions, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Clipboard from '@react-native-clipboard/clipboard';
 import VectorIcon from 'react-native-vector-icons/MaterialIcons';
-import FeatherIcon from 'react-native-vector-icons/Feather';
 import AppLayout from '../components/AppLayout';
 import GradientView from '../components/GradientView';
 import { useI18n } from '../i18n/I18nContext';
@@ -11,9 +10,8 @@ import { API_BASE_URL } from '../config/api';
 import { colors, radius, spacing, shadow } from '../theme';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const PAGE_SIZE = 5;
+const PAGE_SIZE = 10;
 
-type PeriodOption = 'today' | 'week' | 'month';
 type FilterTab = 'newest' | 'all' | 'flagged';
 
 interface CaptureDoc {
@@ -56,7 +54,6 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
   const [step, setStep] = useState<ProcessStep | null>(null);
   const [loading, setLoading] = useState(true);
   const [docs, setDocs] = useState<CaptureDoc[]>([]);
-  const [period, setPeriod] = useState<PeriodOption>('today');
   const [filter, setFilter] = useState<FilterTab>('newest');
   const [detailDoc, setDetailDoc] = useState<CaptureDoc | null>(null);
   // Tap point + measured overlay/popup sizes — the popup's final position is
@@ -64,12 +61,14 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
   const [detailTap, setDetailTap] = useState({ x: 0, y: 0 });
   const [detailArea, setDetailArea] = useState({ width: 0, height: 0 });
   const [detailSize, setDetailSize] = useState({ width: 0, height: 0 });
-  const [periodMenuVisible, setPeriodMenuVisible] = useState(false);
-  const [periodPopover, setPeriodPopover] = useState({ top: 0, right: 0 });
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  // Guards against a second page request while one is in flight, and drops
+  // answers that arrive after the list was reset (filter / step change).
+  const loadingMoreRef = useRef(false);
+  const listVersionRef = useRef(0);
   const [showCopyInfoDialog, setShowCopyInfoDialog] = useState(false);
   const tokenRef = useRef<string>('');
-  const periodButtonRef = useRef<View>(null);
 
   useEffect(() => {
     if (routeStepIndex !== undefined) return;
@@ -101,50 +100,75 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
     })();
   }, [stepIndex]);
 
-  const load = async () => {
-    setLoading(true);
+  const fetchPage = async (skip: number) => {
     const token = await AsyncStorage.getItem('userToken');
     tokenRef.current = token || '';
+    const params = new URLSearchParams();
+    if (stepIndex !== undefined) params.set('stepIndex', String(stepIndex));
+    params.set('date', 'all');
+    if (filter === 'flagged') params.set('flagged', 'true');
+    params.set('skip', String(skip));
+    params.set('limit', String(PAGE_SIZE));
+    params.set('tzOffset', String(new Date().getTimezoneOffset()));
+    const res = await fetch(`${API_BASE_URL}captures?${params.toString()}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
+    const data = await res.json().catch(() => ({}));
+    return { docs: (data?.data?.docs || []) as CaptureDoc[], hasMore: !!data?.data?.hasMore };
+  };
+
+  // First page (also used to refresh after a flag toggle).
+  const load = async () => {
+    const version = ++listVersionRef.current;
+    setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (stepIndex !== undefined) params.set('stepIndex', String(stepIndex));
-      params.set('date', period === 'today' ? 'today' : 'all');
-      params.set('tzOffset', String(new Date().getTimezoneOffset()));
-      const res = await fetch(`${API_BASE_URL}captures?${params.toString()}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      });
-      const data = await res.json().catch(() => ({}));
-      setDocs(data?.data?.docs || []);
+      const page = await fetchPage(0);
+      if (version !== listVersionRef.current) return;
+      setDocs(page.docs);
+      setHasMore(page.hasMore);
     } catch (err) {
       console.error('Failed to load captures:', err);
     } finally {
-      setLoading(false);
+      if (version === listVersionRef.current) setLoading(false);
+    }
+  };
+
+  const loadMore = async () => {
+    if (!hasMore || loading || loadingMoreRef.current) return;
+    const version = listVersionRef.current;
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+    try {
+      const page = await fetchPage(docs.length);
+      if (version !== listVersionRef.current) return;
+      setDocs((prev) => {
+        const seen = new Set(prev.map((d) => d._id));
+        return [...prev, ...page.docs.filter((d) => !seen.has(d._id))];
+      });
+      setHasMore(page.hasMore);
+    } catch (err) {
+      console.error('Failed to load more captures:', err);
+    } finally {
+      loadingMoreRef.current = false;
+      setLoadingMore(false);
     }
   };
 
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stepIndex, period]);
+  }, [stepIndex, filter]);
 
-  useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
-  }, [filter, period, docs]);
-
-  const filteredDocs = useMemo(() => {
-    let list = docs;
-    if (period === 'week' || period === 'month') {
-      const cutoff = Date.now() - (period === 'week' ? 7 : 30) * 24 * 60 * 60 * 1000;
-      list = list.filter((d) => new Date(d.capturedAt).getTime() >= cutoff);
-    }
-    if (filter === 'flagged') list = list.filter((d) => d.flagged);
-    // API already sorts capturedAt desc; 'newest' and 'all' share that order,
-    // 'newest' just implies the default (no additional client-side re-sort needed).
-    return list;
-  }, [docs, filter, period]);
-
-  const visibleDocs = filteredDocs.slice(0, visibleCount);
-  const hasMore = visibleCount < filteredDocs.length;
+  // Load the next page once the list is scrolled near its end.
+  const onListScroll = (e: any) => {
+    const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+    if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 120) loadMore();
+  };
+  // A first page shorter than the screen can't be scrolled, so keep loading.
+  const listHeightRef = useRef(0);
+  const onListContentSize = (_w: number, h: number) => {
+    if (listHeightRef.current && h <= listHeightRef.current) loadMore();
+  };
 
   const DETAIL_POPUP_MAX_WIDTH = 360;
   const DETAIL_EDGE = 12;
@@ -177,23 +201,16 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
     return Math.min(Math.max(DETAIL_EDGE, above), Math.max(DETAIL_EDGE, areaH - popH - DETAIL_EDGE));
   })();
 
-  const openPeriodMenu = () => {
-    periodButtonRef.current?.measureInWindow((x: number, y: number, width: number, height: number) => {
-      setPeriodPopover({
-        top: y + height + 6,
-        right: Math.max(12, SCREEN_WIDTH - x - width),
-      });
-      setPeriodMenuVisible(true);
-    });
-  };
-
   const toggleFlag = async (id: string) => {
     try {
       await fetch(`${API_BASE_URL}captures/${id}/flag`, {
         method: 'PATCH',
         headers: tokenRef.current ? { Authorization: `Bearer ${tokenRef.current}` } : undefined,
       });
-      await load();
+      setDocs((prev) => {
+        const next = prev.map((d) => (d._id === id ? { ...d, flagged: !d.flagged } : d));
+        return filter === 'flagged' ? next.filter((d) => d.flagged) : next;
+      });
     } catch (err) {
       console.error('Failed to toggle flag:', err);
     }
@@ -226,11 +243,6 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
     ? (step ? `${step.entity} / ${step.type}` : undefined)
     : t('corpAllSteps');
 
-  const periodOptions: { key: PeriodOption; label: string }[] = [
-    { key: 'today', label: t('corpToday') },
-    { key: 'week', label: t('corpThisWeek') },
-    { key: 'month', label: t('corpThisMonth') },
-  ];
   const filterOptions: { key: FilterTab; label: string; icon: string }[] = [
     { key: 'newest', label: t('corpFilterNewest'), icon: 'schedule' },
     { key: 'all', label: t('corpFilterAll'), icon: 'grid-view' },
@@ -248,53 +260,6 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
       flatContent
     >
       <View style={styles.container}>
-        <View style={styles.statsRow}>
-          <View style={styles.statCell}>
-            <VectorIcon name="event" size={20} color={colors.primary} />
-            <Text style={styles.statLabel}>{t('corpDateLabel')}</Text>
-            <Text style={styles.statValue}>{new Date().toLocaleDateString()}</Text>
-          </View>
-          <View style={styles.statCell}>
-            <FeatherIcon name="file-text" size={20} color={colors.primary} />
-            <Text style={styles.statLabel}>{t('corpRecordsLabel')}</Text>
-            <Text style={styles.statValue}>{filteredDocs.length}</Text>
-          </View>
-          <View style={styles.statCell}>
-            <VectorIcon name="filter-list" size={20} color={colors.primary} />
-            <Text style={styles.statLabel}>{t('corpPeriodLabel')}</Text>
-            <TouchableOpacity onPress={openPeriodMenu} activeOpacity={0.7}>
-              <View ref={periodButtonRef} style={styles.periodButton}>
-                <Text style={styles.periodButtonText}>{periodOptions.find((o) => o.key === period)?.label}</Text>
-                <VectorIcon name="arrow-drop-down" size={27} color={colors.primary} />
-              </View>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <Modal visible={periodMenuVisible} transparent animationType="none" onRequestClose={() => setPeriodMenuVisible(false)}>
-          <TouchableWithoutFeedback onPress={() => setPeriodMenuVisible(false)}>
-            <View style={styles.periodOverlay}>
-              <View style={[styles.periodPopover, { position: 'absolute', top: periodPopover.top, right: periodPopover.right }]}>
-                {periodOptions.map((opt) => (
-                  <TouchableOpacity
-                    key={opt.key}
-                    style={[styles.periodPopoverItem, period === opt.key && styles.periodPopoverItemActive]}
-                    onPress={() => {
-                      setPeriod(opt.key);
-                      setPeriodMenuVisible(false);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[styles.periodPopoverText, period === opt.key && styles.periodPopoverTextActive]}>
-                      {opt.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          </TouchableWithoutFeedback>
-        </Modal>
-
         <View style={styles.tabRow}>
           {filterOptions.map((opt) => (
             <TouchableOpacity
@@ -318,11 +283,16 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
 
         {loading ? (
           <ActivityIndicator size="large" color={colors.accent} style={{ marginTop: spacing.xl }} />
-        ) : filteredDocs.length === 0 ? (
+        ) : docs.length === 0 ? (
           <Text style={styles.emptyText}>{t('corpNoCaptures')}</Text>
         ) : (
-          <ScrollView>
-            {visibleDocs.map((doc, index) => (
+          <ScrollView
+            onScroll={onListScroll}
+            scrollEventThrottle={100}
+            onLayout={(e) => { listHeightRef.current = e.nativeEvent.layout.height; }}
+            onContentSizeChange={onListContentSize}
+          >
+            {docs.map((doc, index) => (
               <View key={doc._id} style={styles.row}>
                 <TouchableOpacity
                   style={styles.rowHeader}
@@ -347,7 +317,7 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
                         <VectorIcon name="content-copy" size={16} color={colors.muted} />
                       </TouchableOpacity>
                     </View>
-                    <Text style={styles.rowTime}>{new Date(doc.capturedAt).toLocaleTimeString()}</Text>
+                    <Text style={styles.rowTime}>{new Date(doc.capturedAt).toLocaleString()}</Text>
                   </View>
                   <View style={[styles.badge, index === 0 ? styles.badgeLatest : styles.badgeSaved]}>
                     <Text style={index === 0 ? styles.badgeLatestText : styles.badgeTextOnColor}>
@@ -364,11 +334,8 @@ export default function CorporateReviewScreen({ navigation, route, user, onLogou
                 </TouchableOpacity>
               </View>
             ))}
-            {hasMore && (
-              <TouchableOpacity style={styles.moreButton} onPress={() => setVisibleCount((c) => c + PAGE_SIZE)} activeOpacity={0.7}>
-                <VectorIcon name="expand-more" size={24} color={colors.primary} />
-                <Text style={styles.moreButtonText}>{t('corpMoreRecordsBelow')}</Text>
-              </TouchableOpacity>
+            {loadingMore && (
+              <ActivityIndicator size="large" color={colors.primary} style={styles.loadingMore} />
             )}
           </ScrollView>
         )}
@@ -481,6 +448,7 @@ const styles = StyleSheet.create({
   statCell: { flex: 1, alignItems: 'center', gap: 2 },
   statLabel: { fontSize: 17, color: colors.muted },
   statValue: { fontSize: 21, fontWeight: '600', color: colors.text },
+  loadingMore: { marginVertical: spacing.lg },
   periodButton: {
     flexDirection: 'row',
     alignItems: 'center',

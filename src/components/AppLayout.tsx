@@ -657,7 +657,9 @@ export default function AppLayout({
       <Modal visible={langMenuVisible} transparent animationType="none" onRequestClose={() => setLangMenuVisible(false)} accessibilityViewIsModal>
         <TouchableWithoutFeedback onPress={() => setLangMenuVisible(false)}>
           <View style={styles.langOverlay}>
-            <View style={[styles.langPopover, { position: 'absolute', top: topBarHeight + 6, right: wideColumnInset + 16 }]}>
+            {/* Opened from the Profile sheet, so it sits above the bottom bar on the
+                right, next to the Profile tab. */}
+            <View style={[styles.langPopover, { position: 'absolute', bottom: bottomBarHeight + 8, right: wideColumnInset + 16 }]}>
               {languages.map((lang) => (
                 <TouchableOpacity
                   key={lang.code}
