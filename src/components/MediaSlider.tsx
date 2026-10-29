@@ -93,7 +93,12 @@ export default function MediaSlider({
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   const pad = flush ? 0 : 16;
-  const imageHeight = Math.min(Math.max(120, Math.round((pageWidth - pad * 2) * 1.05)), maxHeight);
+  // With thumbnails the height is fixed: deriving it from the slider's width
+  // fed back into the thumbnail columns (which change that width) and the
+  // card kept resizing.
+  const imageHeight = thumbnails
+    ? maxHeight
+    : Math.min(Math.max(120, Math.round((pageWidth - pad * 2) * 1.05)), maxHeight);
 
   const slides: MediaSlide[] = [
     ...images.map((uri): MediaSlide => ({ kind: 'image', uri })),
@@ -109,18 +114,11 @@ export default function MediaSlider({
   ];
 
   const showThumbs = thumbnails && slides.length > 1;
-  // Thumbnails fill columns top to bottom; when one column can't hold them
-  // all, more columns are added (up to 3, then the thumbnails shrink).
-  const THUMB = 64;
+  // Four thumbnails per column, top to bottom; more media adds columns.
   const THUMB_GAP = 6;
-  let thumbSize = THUMB;
-  let thumbsPerCol = Math.max(1, Math.floor((imageHeight + THUMB_GAP) / (THUMB + THUMB_GAP)));
-  let thumbCols = Math.ceil(slides.length / thumbsPerCol);
-  if (thumbCols > 3) {
-    thumbCols = 3;
-    thumbsPerCol = Math.ceil(slides.length / 3);
-    thumbSize = Math.max(32, Math.floor((imageHeight - THUMB_GAP * (thumbsPerCol - 1)) / thumbsPerCol));
-  }
+  const THUMBS_PER_COL = 4;
+  const thumbSize = Math.max(28, Math.floor((imageHeight - THUMB_GAP * (THUMBS_PER_COL - 1)) / THUMBS_PER_COL));
+  const thumbCols = Math.ceil(slides.length / THUMBS_PER_COL);
   const thumbGridWidth = thumbCols * thumbSize + (thumbCols - 1) * THUMB_GAP;
 
   const onScroll = (e: any) => {

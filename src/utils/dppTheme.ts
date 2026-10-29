@@ -62,8 +62,8 @@ export const BASE_PALETTE: Palette = { ...colors, onPrimary: '#ffffff', onHeader
 
 const SECTIONS: { key: DppSectionKey; on: boolean }[] = [
   { key: 'journey', on: true },
-  { key: 'materials', on: true },
   { key: 'dispose', on: true },
+  { key: 'materials', on: true },
   { key: 'traceability', on: true },
   { key: 'care', on: true },
   { key: 'compliance', on: true },

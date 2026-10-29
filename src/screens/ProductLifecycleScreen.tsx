@@ -26,8 +26,8 @@ type TabKey = 'journey' | 'care' | 'materials' | 'dispose' | 'traceability' | 'c
 
 const TABS: { key: TabKey; labelKey: string }[] = [
   { key: 'journey', labelKey: 'lifecycleTabJourney' },
-  { key: 'materials', labelKey: 'lifecycleTabMaterials' },
   { key: 'dispose', labelKey: 'lifecycleTabDispose' },
+  { key: 'materials', labelKey: 'lifecycleTabMaterials' },
   { key: 'traceability', labelKey: 'lifecycleTabTraceability' },
   { key: 'care', labelKey: 'lifecycleTabCare' },
   { key: 'compliance', labelKey: 'lifecycleTabCompliance' },

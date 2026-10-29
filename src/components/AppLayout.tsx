@@ -347,8 +347,11 @@ export default function AppLayout({
   // Title font size from the real width left between the side icons, so it
   // never ends in "..." on a narrow phone (react-native-web ignores
   // adjustsFontSizeToFit). Two lines remain as a last resort.
-  const leftSlots = logoLeft ? 0 : showBackButton ? 1 + (showCartIcon ? 1 : 0) : 0;
-  const sideSlots = leftSlots + (showCartIcon ? 2 : 1);
+  // Normal users have no notifications bell; staff keep it.
+  const showBell = isEmployeeActor;
+  const rightSlots = showCartIcon && showBell ? 2 : 1;
+  const leftSlots = logoLeft ? 0 : showBackButton ? rightSlots : 0;
+  const sideSlots = leftSlots + rightSlots;
   const titleRoom = Math.max(80, wideColumnWidth - 24 - sideSlots * MIN_TOUCH);
   const titleLen = Math.max(1, String(computedTitle ?? '').length);
   const titleFontSize = Math.max(15, Math.min(23, Math.floor(titleRoom / (titleLen * 0.52))));
@@ -411,6 +414,7 @@ export default function AppLayout({
           </View>
         </TouchableOpacity>
       )}
+      {showBell && (
       <TouchableOpacity
         onPress={handleNotifications}
         style={styles.iconButton}
@@ -425,6 +429,7 @@ export default function AppLayout({
           <NotificationBadge userId={user?._id ? String(user._id) : undefined} onCountChange={setUnreadCount} />
         </View>
       </TouchableOpacity>
+      )}
       </>
     );
   })();
@@ -486,7 +491,7 @@ export default function AppLayout({
           {/* With a back icon, mirror the cart icon's width so the title stays
               centred on the bar. Without one (e.g. Scan), there is nothing on
               the left, so the title centres in the space before the icons. */}
-          {showCartIcon && !logoLeft && showBackButton && <View style={styles.iconButton} />}
+          {rightSlots === 2 && !logoLeft && showBackButton && <View style={styles.iconButton} />}
 
           <View style={styles.titleBlock} pointerEvents="none">
             {!logoLeft && (

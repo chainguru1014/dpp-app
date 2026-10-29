@@ -827,7 +827,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
   const renderCameraOverlay = () => (
     <>
       <View pointerEvents="none" style={styles.overlayHintWrap}>
-        <VectorIcon name="qr-code" size={26} color={colors.primary} style={styles.overlayHintIcon} />
+        <VectorIcon name="qr-code" size={26} color={colors.white} style={styles.overlayHintIcon} />
         <Text style={styles.overlayHintText}>{t('scannerScanHint')}</Text>
       </View>
       <View style={styles.overlayCornerRow}>
@@ -840,7 +840,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
           accessibilityState={{ selected: torchOn }}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <VectorIcon name={torchOn ? 'flash-on' : 'flash-off'} size={32} color={colors.primary} />
+          <VectorIcon name={torchOn ? 'flash-on' : 'flash-off'} size={32} color={colors.white} />
           <Text style={styles.overlayCornerText}>{t('scanFlash')}</Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -851,7 +851,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
           accessibilityLabel={t('scanHelpLabel')}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <VectorIcon name="help-outline" size={32} color={colors.primary} />
+          <VectorIcon name="help-outline" size={32} color={colors.white} />
           <Text style={styles.overlayCornerText}>{t('scanHelpLabel')}</Text>
         </TouchableOpacity>
       </View>
@@ -873,7 +873,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
               accessibilityLabel={t('scanUploadImageCta')}
             >
               {/* Icon centred in the space left of the (centred) text. */}
-              <View style={styles.overlayActionIconSlot}><VectorIcon name="image" size={36} color={colors.primary} /></View>
+              <View style={styles.overlayActionIconSlot}><VectorIcon name="image" size={36} color={colors.muted} /></View>
               <Text style={styles.overlayActionText}>{t('scanUploadImageCta')}</Text>
               <View style={styles.overlayActionEndSlot} />
             </TouchableOpacity>
@@ -884,7 +884,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
               accessibilityRole="button"
               accessibilityLabel={t('scanEnterCodeCta')}
             >
-              <View style={styles.overlayActionIconSlot}><VectorIcon name="keyboard" size={36} color={colors.primary} /></View>
+              <View style={styles.overlayActionIconSlot}><VectorIcon name="keyboard" size={36} color={colors.muted} /></View>
               <Text style={styles.overlayActionText} numberOfLines={2}>{t('scanEnterCodeCta')}</Text>
               <View style={styles.overlayActionEndSlot} />
             </TouchableOpacity>
@@ -1211,14 +1211,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     paddingHorizontal: 16,
-    borderRadius: radius.pill,
-    backgroundColor: 'rgba(255,255,255,0.92)',
   },
   overlayHintIcon: {
     marginRight: 8,
   },
   overlayHintText: {
-    color: colors.primary,
+    color: colors.white,
     fontSize: 18,
     fontWeight: '700',
     textAlign: 'center',
@@ -1256,7 +1254,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     backgroundColor: 'rgba(255,255,255,0.95)',
   },
-  overlayActionText: { color: colors.primary, fontSize: 18, fontWeight: '700', textAlign: 'center', flexShrink: 1 },
+  overlayActionText: { color: colors.muted, fontSize: 18, fontWeight: '700', textAlign: 'center', flexShrink: 1 },
   // Equal flexible space either side keeps the text centred; the icon sits in
   // the middle of the left one (never narrower than the icon itself).
   overlayActionIconSlot: { flexGrow: 1, flexBasis: 0, minWidth: 40, alignItems: 'center', justifyContent: 'center' },
@@ -1281,7 +1279,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   overlayCornerText: {
-    color: colors.primary,
+    color: colors.white,
     fontSize: 16,
     fontWeight: '800',
     marginTop: 2,
