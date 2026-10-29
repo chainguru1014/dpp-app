@@ -209,19 +209,19 @@ export default function ProductServices({ product, qrcodeId, user, palette, butt
                   )}
                   <View style={styles.links}>
                     {!!s.url && (
-                      <TouchableOpacity style={[styles.linkButton, shape]} onPress={() => openWeb(s.url)} accessibilityRole="link">
+                      <TouchableOpacity style={[styles.linkButton, styles.linkFill, shape]} onPress={() => openWeb(s.url)} accessibilityRole="link">
                         <Icon name="open-in-new" size={20} color={palette.primary} />
                         <Text style={styles.linkButtonText}>{t('svcOpenWebsite')}</Text>
                       </TouchableOpacity>
                     )}
                     {!!s.email && (
-                      <TouchableOpacity style={[styles.linkButton, shape]} onPress={() => openUrl(`mailto:${s.email}`)} accessibilityRole="link" accessibilityLabel={`${t('svcEmail')}: ${s.email}`}>
+                      <TouchableOpacity style={[styles.linkButton, styles.linkFill, shape]} onPress={() => openUrl(`mailto:${s.email}`)} accessibilityRole="link" accessibilityLabel={`${t('svcEmail')}: ${s.email}`}>
                         <Icon name="mail-outline" size={20} color={palette.primary} />
                         <Text style={styles.linkButtonText}>{t('svcEmail')}</Text>
                       </TouchableOpacity>
                     )}
                     {!!s.phone && (
-                      <TouchableOpacity style={[styles.linkButton, shape]} onPress={() => openUrl(`tel:${s.phone.replace(/[^\d+]/g, '')}`)} accessibilityRole="link" accessibilityLabel={`${t('svcCall')}: ${s.phone}`}>
+                      <TouchableOpacity style={[styles.linkButton, styles.linkFill, shape]} onPress={() => openUrl(`tel:${s.phone.replace(/[^\d+]/g, '')}`)} accessibilityRole="link" accessibilityLabel={`${t('svcCall')}: ${s.phone}`}>
                         <Icon name="call" size={20} color={palette.primary} />
                         <Text style={styles.linkButtonText}>{t('svcCall')}</Text>
                       </TouchableOpacity>
@@ -335,6 +335,8 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
   mainButtonText: { color: colors.onPrimary, fontSize: 19, fontWeight: '700' },
   links: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   linkButton: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: MIN_TOUCH, paddingHorizontal: spacing.md, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.primary, backgroundColor: colors.surface },
+  // Website / Email / Call share the row and stretch to the main button's width.
+  linkFill: { flexGrow: 1, justifyContent: 'center' },
   linkButtonText: { fontSize: 18, fontWeight: '600', color: colors.primary },
   request: { paddingVertical: spacing.sm, gap: 6 },
   requestHead: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm },
