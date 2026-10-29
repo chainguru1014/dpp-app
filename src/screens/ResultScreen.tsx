@@ -96,7 +96,6 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
   const { height: windowHeight, width: windowWidth } = useWindowDimensions();
   // Side-by-side hero: a narrower photo on small phones (< 400px) so the
   // name and "Verified by" badge beside it keep enough room for whole words.
-  const heroMediaSize = windowWidth < 400 ? 175 : 211;
   // Consumer Overview: Like/Cart/Dislike + Scan Product live in a footer pinned
   // just above the bottom bar, so they are always fully visible whatever the
   // device / browser height. Its vertical spacing tightens on short screens,
@@ -1331,7 +1330,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
     }
   };
 
-  const renderImageSlider = (maxHeight?: number, hideHeader?: boolean) => {
+  const renderImageSlider = (maxHeight?: number, hideHeader?: boolean, thumbnails?: boolean) => {
     const images = normalizeToStringArray(productData?.images);
     const videos = normalizeToArray(productData?.videos);
     const hasVideo = videos.some(isPlayableVideo);
@@ -1347,6 +1346,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
         hideHeader={!!hideHeader}
         flush={!!hideHeader}
         maxHeight={maxHeight}
+        thumbnails={!!thumbnails}
         getFileUrl={getFileUrl}
         watchLabel={t('watchVideo')}
       />
@@ -1440,26 +1440,6 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
       Alert.alert('Error', 'Failed to copy');
     }
   };
-
-  const heroInfo = (
-    <>
-      <Text style={styles.ovName} numberOfLines={2}>{productData?.name || '—'}</Text>
-      {!!productData?.model && <Text style={styles.ovModel} numberOfLines={1}>{productData.model}</Text>}
-      {look.theme.showProductId && (productData?.pmc_code || productData?.token_id != null) && (
-        <Text style={styles.ovId} numberOfLines={1}>ID: {productData?.pmc_code || productData?.token_id}</Text>
-      )}
-      {/* A label the brand marked as a suspected copy never shows
-          as authenticated — see the warning card below. */}
-      {productData?.item_status !== 'blocked' && (
-        <View style={styles.ovAuthBadge} accessible accessibilityLabel={t('lifecycleVerifiedByBrand')}>
-          <View style={styles.ovAuthBadgeCheck}><Icon name="check" size={14} color={colors.onBadge} /></View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.ovAuthBadgeSub}>{t('lifecycleVerifiedByBrand')}</Text>
-          </View>
-        </View>
-      )}
-    </>
-  );
 
   // The blocks of the consumer Overview below the product card. The brand
   // chooses which show and in what order (theme.blocks); a block with
@@ -1758,20 +1738,9 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
           </>
         ) : (
           <>
-            {/* Product card — photo beside the name, or (brand's choice) a large photo on top. */}
-            <View style={styles.ovProductCard}>
-              {look.theme.heroLayout === 'top' ? (
-                <>
-                  <View style={{ marginBottom: spacing.md }}>{renderImageSlider(288, true)}</View>
-                  {heroInfo}
-                </>
-              ) : (
-                <View style={styles.ovHeaderRow}>
-                  <View style={[styles.ovHeaderMedia, { width: heroMediaSize }]}>{renderImageSlider(heroMediaSize, true)}</View>
-                  <View style={styles.ovHeaderInfo}>{heroInfo}</View>
-                </View>
-              )}
-            </View>
+            {/* Product card — the media slider with its thumbnail column, same
+                as Product Summary. */}
+            <View style={styles.ovProductCard}>{renderImageSlider(240, true, true)}</View>
 
             {productData?.item_status === 'blocked' && (
               <View style={styles.ovSuspectCard} accessible accessibilityRole="alert">

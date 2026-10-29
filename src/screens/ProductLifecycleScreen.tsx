@@ -912,9 +912,6 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
     }
   };
 
-  const sliderImages = toStrArray(productData?.images);
-  const sliderVideos = toArray(productData?.videos);
-  const hasMedia = sliderImages.length > 0 || sliderVideos.length > 0;
 
   return (
     <AppLayout
@@ -946,56 +943,17 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
         to={colors.header}
         frame={headerHeight > 0 ? { totalHeight: topBarHeight + headerHeight, offsetY: topBarHeight } : undefined}
       >
-        {/* Blue header — product image slider + name / model / id + Authenticated card. */}
-        <View style={styles.header} onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}>
-          <View style={styles.headerMedia}>
-            {hasMedia ? (
-              <MediaSlider
-                images={sliderImages}
-                videos={sliderVideos}
-                hideHeader
-                flush
-                onDark
-                maxHeight={211}
-                getFileUrl={fileUrl}
-                watchLabel={t('watchVideo')}
-              />
-            ) : (
-              <View style={[styles.headerThumb, styles.headerThumbPlaceholder]}>
-                <Icon name="inventory-2" size={31} color="rgba(255,255,255,0.6)" />
-              </View>
-            )}
-          </View>
-          <View style={{ flexGrow: 1, flexBasis: 140, minWidth: 0 }}>
-            <Text style={styles.headerName} numberOfLines={2} accessibilityRole="header">{productData?.name || '—'}</Text>
-            {/* Model and ID on separate lines -- combining them on one line with
-                numberOfLines={1} truncated the ID (the more identity-critical of
-                the two) whenever a model name was also present. */}
-            {!!productData?.model && (
-              <Text style={styles.headerMeta} numberOfLines={1}>{productData.model}</Text>
-            )}
-            {look.theme.showProductId && (productData?.pmc_code || productData?.token_id != null) && (
-              <Text style={styles.headerMetaId} numberOfLines={1}>
-                {`ID: ${productData?.pmc_code || productData?.token_id}`}
-              </Text>
-            )}
-            {productData?.item_status === 'blocked' ? (
-              // The brand marked this label as a suspected copy.
-              <View style={styles.authCard} accessible accessibilityRole="alert" accessibilityLabel={t('overviewSuspectTitle')}>
-                <Icon name="warning" size={23} color={colors.onHeader} />
-                <Text style={[styles.authTitle, { flexShrink: 1 }]}>{t('overviewSuspectTitle')}</Text>
-              </View>
-            ) : (
-            <View style={styles.authCard} accessible accessibilityLabel={`${t('overviewAuthenticated')}. ${t('lifecycleVerifiedByBrand')}`}>
-              <View style={styles.authCheck}><Icon name="check" size={16} color={colors.header} /></View>
-              <View>
-                <Text style={styles.authTitle}>{t('overviewAuthenticated')}</Text>
-                <Text style={styles.authSub}>{t('lifecycleVerifiedByBrand')}</Text>
-              </View>
+        {/* No product header here (the Overview shows the photos); the tabs
+            start right under the top bar. A label the brand marked as a
+            suspected copy still gets its warning. */}
+        {productData?.item_status === 'blocked' && (
+          <View style={styles.header} onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}>
+            <View style={styles.authCard} accessible accessibilityRole="alert" accessibilityLabel={t('overviewSuspectTitle')}>
+              <Icon name="warning" size={23} color={colors.onHeader} />
+              <Text style={[styles.authTitle, { flexShrink: 1 }]}>{t('overviewSuspectTitle')}</Text>
             </View>
-            )}
           </View>
-        </View>
+        )}
 
         {/* Rounded sheet: underline tab row + tab content. */}
         <View style={styles.sheet}>

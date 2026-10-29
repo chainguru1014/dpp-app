@@ -86,13 +86,6 @@ export default function ProductSummaryScreen({ navigation, route, user, onLogout
           <MediaSlider images={images} videos={videos} hideHeader flush maxHeight={sliderHeight} thumbnails getFileUrl={fileUrl} watchLabel={t('watchVideo')} />
         </View>
 
-        <View style={styles.info}>
-          <Text style={styles.name} accessibilityRole="header" numberOfLines={2}>{product?.name || '—'}</Text>
-          {!!price && <Text style={styles.price}>{price}</Text>}
-        </View>
-
-        <View style={styles.spacer} />
-
         {!!brandName && (
           <GradientButton
             style={styles.brandButton}
@@ -113,6 +106,13 @@ export default function ProductSummaryScreen({ navigation, route, user, onLogout
         <View style={styles.row}>
           <BigIconButton filled icon="text-box-search-outline" label={t('actViewDetails')} caption={t('actDetailsShort')} onPress={goToDetails} />
           <BigIconButton icon="qrcode-scan" label={t('actScanAnother')} caption={t('actScanShort')} onPress={() => navigation.replace('Scanner')} />
+        </View>
+
+        <View style={styles.spacer} />
+
+        <View style={styles.info}>
+          <Text style={styles.name} accessibilityRole="header" numberOfLines={2}>{product?.name || '—'}</Text>
+          {!!price && <Text style={styles.price}>{price}</Text>}
         </View>
       </ScrollView>
     </AppLayout>
