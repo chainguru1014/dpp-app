@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Linking } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AppLayout from '../components/AppLayout';
 import MediaSlider from '../components/MediaSlider';
+import GradientButton from '../components/GradientButton';
 import ProductReactionBar, { BigIconButton } from '../components/ProductReactionBar';
 import { useI18n } from '../i18n/I18nContext';
 import { colors, radius, spacing, shadow } from '../theme';
@@ -88,21 +89,20 @@ export default function ProductSummaryScreen({ navigation, route, user, onLogout
           {!!price && <Text style={styles.price}>{price}</Text>}
 
           {!!brandName && (
-            <TouchableOpacity
-              style={styles.brandRow}
+            <GradientButton
+              style={styles.brandButton}
               onPress={brandUrl ? () => Linking.openURL(brandUrl).catch(() => {}) : undefined}
               disabled={!brandUrl}
-              activeOpacity={0.7}
               accessibilityRole={brandUrl ? 'link' : 'text'}
               accessibilityLabel={`${t('summaryBrandCompany')}: ${brandName}${brandUrl ? `. ${t('actOpenBrandSite')}` : ''}`}
             >
-              <MaterialCommunityIcon name="storefront-outline" size={34} color={colors.primary} />
+              <MaterialCommunityIcon name="storefront-outline" size={30} color={colors.white} />
               <Text style={styles.brandText} numberOfLines={2}>
                 <Text style={styles.brandLabel}>{t('summaryBrandCompany')}: </Text>
-                <Text style={brandUrl ? styles.brandLink : styles.brandName}>{brandName}</Text>
+                <Text style={styles.brandName}>{brandName}</Text>
               </Text>
-              {!!brandUrl && <Icon name="open-in-new" size={24} color={colors.headerLight} />}
-            </TouchableOpacity>
+              {!!brandUrl && <Icon name="open-in-new" size={22} color={colors.white} />}
+            </GradientButton>
           )}
         </View>
 
@@ -135,18 +135,23 @@ const styles = StyleSheet.create({
   name: { fontSize: 28, fontWeight: '700', color: colors.heading, textAlign: 'center' },
   model: { fontSize: 19, color: colors.muted, textAlign: 'center' },
   price: { fontSize: 26, fontWeight: '800', color: colors.primary, marginTop: 2 },
-  brandRow: {
+  // Full-width gradient pill, like the primary buttons below it.
+  brandButton: {
+    alignSelf: 'stretch',
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: spacing.sm,
-    minHeight: 52,
-    paddingHorizontal: spacing.sm,
-    maxWidth: '100%',
+    minHeight: 54,
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.lg,
+    backgroundColor: colors.primary,
+    ...shadow(2),
   },
-  brandText: { flexShrink: 1, fontSize: 20 },
-  brandLabel: { color: colors.text, fontWeight: '500' },
-  brandName: { color: colors.heading, fontWeight: '700' },
-  brandLink: { color: colors.headerLight, fontWeight: '700', textDecorationLine: 'underline' },
+  brandText: { flexShrink: 1, fontSize: 19, textAlign: 'center', color: colors.white },
+  brandLabel: { fontWeight: '500' },
+  brandName: { fontWeight: '800' },
   spacer: { flexGrow: 1, minHeight: spacing.sm },
   row: { flexDirection: 'row', gap: spacing.md },
 });
