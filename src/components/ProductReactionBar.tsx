@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useI18n } from '../i18n/I18nContext';
 import { getReactionState, Reaction, setInCart, setReaction } from '../utils/consumerApi';
+import GradientButton from './GradientButton';
 import { colors, radius, spacing, shadow } from '../theme';
 
 // Like (save to Product Album) / Add to Cart / Dislike — one big-icon row
@@ -122,7 +123,8 @@ export default function ProductReactionBar({ product, user, onRequireLogin, comp
 /**
  * Big icon button. Icon-only by default (`label` is read by screen readers);
  * pass `caption` to also print a short label under the icon. `active`
- * fills it so the chosen state reads at a glance.
+ * fills it so the chosen state reads at a glance. `filled` paints the same
+ * blue gradient pill as the summary page's brand button.
  */
 export function BigIconButton({
   icon,
@@ -146,8 +148,9 @@ export function BigIconButton({
   compact?: boolean;
 }) {
   const fg = filled ? colors.white : color;
+  const Touchable: any = filled ? GradientButton : TouchableOpacity;
   return (
-    <TouchableOpacity
+    <Touchable
       style={[
         styles.bigBtn,
         caption ? styles.bigBtnCaptioned : null,
@@ -165,7 +168,7 @@ export function BigIconButton({
     >
       <MaterialCommunityIcon name={icon} size={compact ? 30 : caption ? 36 : 42} color={fg} />
       {!!caption && <Text style={[styles.caption, { color: fg }]} numberOfLines={1}>{caption}</Text>}
-    </TouchableOpacity>
+    </Touchable>
   );
 }
 
@@ -178,14 +181,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.xl,
     backgroundColor: colors.surface,
     borderWidth: 1.5,
-    borderColor: colors.border,
+    borderColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     ...shadow(1),
   },
   bigBtnCaptioned: { height: 78, gap: 2 },
   bigBtnCompact: { height: 44, borderRadius: radius.md },
-  bigBtnFilled: { backgroundColor: colors.primary, borderColor: colors.primary },
+  bigBtnFilled: { backgroundColor: colors.primary, borderWidth: 0, borderRadius: radius.lg, ...shadow(2) },
   bigBtnActive: { backgroundColor: colors.surfaceAlt, borderColor: colors.primary, borderWidth: 2 },
   caption: { fontSize: 16, fontWeight: '700' },
   noteFloat: {
