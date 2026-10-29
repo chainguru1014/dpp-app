@@ -109,6 +109,19 @@ export default function MediaSlider({
   ];
 
   const showThumbs = thumbnails && slides.length > 1;
+  // Thumbnails fill columns top to bottom; when one column can't hold them
+  // all, more columns are added (up to 3, then the thumbnails shrink).
+  const THUMB = 64;
+  const THUMB_GAP = 6;
+  let thumbSize = THUMB;
+  let thumbsPerCol = Math.max(1, Math.floor((imageHeight + THUMB_GAP) / (THUMB + THUMB_GAP)));
+  let thumbCols = Math.ceil(slides.length / thumbsPerCol);
+  if (thumbCols > 3) {
+    thumbCols = 3;
+    thumbsPerCol = Math.ceil(slides.length / 3);
+    thumbSize = Math.max(32, Math.floor((imageHeight - THUMB_GAP * (thumbsPerCol - 1)) / thumbsPerCol));
+  }
+  const thumbGridWidth = thumbCols * thumbSize + (thumbCols - 1) * THUMB_GAP;
 
   const onScroll = (e: any) => {
     if (!pageWidth) return;
@@ -261,13 +274,13 @@ export default function MediaSlider({
       </ScrollView>
 
       {showThumbs && (
-        <ScrollView style={[styles.thumbColumn, { height: imageHeight }]} contentContainerStyle={styles.thumbColumnContent} showsVerticalScrollIndicator={false}>
+        <View style={[styles.thumbGrid, { height: imageHeight, width: thumbGridWidth }]}>
           {slides.map((slide, i) => (
             <TouchableOpacity
               key={i}
               onPress={() => goTo(i)}
               activeOpacity={0.75}
-              style={[styles.thumb, active === i && styles.thumbActive]}
+              style={[styles.thumb, { width: thumbSize, height: thumbSize }, active === i && styles.thumbActive]}
               accessibilityRole="button"
               accessibilityLabel={slide.kind === 'image' ? `${i + 1} / ${slides.length}` : slide.description || watchLabel || 'Play video'}
               accessibilityState={{ selected: active === i }}
@@ -279,12 +292,12 @@ export default function MediaSlider({
                   {slide.kind === 'video' && (
                     <Image source={{ uri: `https://img.youtube.com/vi/${slide.videoId}/default.jpg` }} style={StyleSheet.absoluteFill} resizeMode="cover" />
                   )}
-                  <Icon name="play-circle-filled" size={26} color="#fff" />
+                  <Icon name="play-circle-filled" size={Math.min(26, Math.round(thumbSize * 0.45))} color="#fff" />
                 </View>
               )}
             </TouchableOpacity>
           ))}
-        </ScrollView>
+        </View>
       )}
       </View>
 
@@ -444,11 +457,8 @@ const styles = StyleSheet.create({
   carousel: { width: '100%' },
   thumbsLayout: { flexDirection: 'row', gap: 8 },
   carouselWithThumbs: { flex: 1, minWidth: 0 },
-  thumbColumn: { flexGrow: 0, width: 70 },
-  thumbColumnContent: { gap: 6, paddingRight: 4 },
+  thumbGrid: { flexDirection: 'column', flexWrap: 'wrap', alignContent: 'flex-start', gap: 6 },
   thumb: {
-    width: 64,
-    height: 64,
     borderRadius: 8,
     overflow: 'hidden',
     borderWidth: 1,
