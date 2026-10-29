@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Linking, useWindowDimensions } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
-import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AppLayout from '../components/AppLayout';
 import MediaSlider from '../components/MediaSlider';
 import GradientButton from '../components/GradientButton';
@@ -31,10 +29,10 @@ const websiteHref = (url?: string) => {
 export default function ProductSummaryScreen({ navigation, route, user, onLogout }: ProductSummaryScreenProps) {
   const { t } = useI18n();
   // Everything below the slider plus the top and bottom bars takes about
-  // 520px, so the slider gets whatever height is left (110–230) and all the
+  // 470px, so the slider gets whatever height is left (140–280) and all the
   // buttons stay above the bottom bar on short phones.
   const { height: winH } = useWindowDimensions();
-  const sliderHeight = Math.max(110, Math.min(230, winH - 520));
+  const sliderHeight = Math.max(140, Math.min(280, winH - 470));
   const params = route?.params || {};
   const [product, setProduct] = useState<any>(params.productData || params.product || {});
   const productId = params.productId ?? product?._id;
@@ -81,7 +79,7 @@ export default function ProductSummaryScreen({ navigation, route, user, onLogout
       onLogout={onLogout}
       showBackButton
       onBackPress={() => navigation.navigate('Scanner')}
-      title={t('titleProductSummary')}
+      title=""
     >
       <ScrollView style={styles.screen} contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         <View style={styles.mediaCard}>
@@ -90,28 +88,25 @@ export default function ProductSummaryScreen({ navigation, route, user, onLogout
 
         <View style={styles.info}>
           <Text style={styles.name} accessibilityRole="header" numberOfLines={2}>{product?.name || '—'}</Text>
-          {!!product?.model && <Text style={styles.model} numberOfLines={2}>{product.model}</Text>}
           {!!price && <Text style={styles.price}>{price}</Text>}
-
-          {!!brandName && (
-            <GradientButton
-              style={styles.brandButton}
-              onPress={brandUrl ? () => Linking.openURL(brandUrl).catch(() => {}) : undefined}
-              disabled={!brandUrl}
-              accessibilityRole={brandUrl ? 'link' : 'text'}
-              accessibilityLabel={`${t('summaryBrandCompany')}: ${brandName}${brandUrl ? `. ${t('actOpenBrandSite')}` : ''}`}
-            >
-              <MaterialCommunityIcon name="storefront-outline" size={30} color={colors.white} />
-              <Text style={styles.brandText} numberOfLines={2}>
-                <Text style={styles.brandLabel}>{t('summaryBrandCompany')}: </Text>
-                <Text style={styles.brandName}>{brandName}</Text>
-              </Text>
-              {!!brandUrl && <Icon name="open-in-new" size={22} color={colors.white} />}
-            </GradientButton>
-          )}
         </View>
 
         <View style={styles.spacer} />
+
+        {!!brandName && (
+          <GradientButton
+            style={styles.brandButton}
+            onPress={brandUrl ? () => Linking.openURL(brandUrl).catch(() => {}) : undefined}
+            disabled={!brandUrl}
+            accessibilityRole={brandUrl ? 'link' : 'text'}
+            accessibilityLabel={`${t('summaryBrandCompany')}: ${brandName}${brandUrl ? `. ${t('actOpenBrandSite')}` : ''}`}
+          >
+            <Text style={styles.brandText} numberOfLines={2}>
+              <Text style={styles.brandLabel}>{t('summaryBrandCompany')}: </Text>
+              <Text style={styles.brandName}>{brandName}</Text>
+            </Text>
+          </GradientButton>
+        )}
 
         <ProductReactionBar product={product} user={user} onRequireLogin={requireLogin} />
 
@@ -138,7 +133,6 @@ const styles = StyleSheet.create({
   },
   info: { alignItems: 'center', gap: 4, marginTop: spacing.xs },
   name: { fontSize: 28, fontWeight: '700', color: colors.heading, textAlign: 'center' },
-  model: { fontSize: 19, color: colors.muted, textAlign: 'center' },
   price: { fontSize: 26, fontWeight: '800', color: colors.primary, marginTop: 2 },
   // Full-width gradient pill, like the primary buttons below it.
   brandButton: {
@@ -148,7 +142,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.sm,
     minHeight: 54,
-    marginTop: spacing.sm,
     paddingHorizontal: spacing.lg,
     borderRadius: radius.lg,
     backgroundColor: colors.primary,
