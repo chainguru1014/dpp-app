@@ -29,10 +29,10 @@ const websiteHref = (url?: string) => {
 export default function ProductSummaryScreen({ navigation, route, user, onLogout }: ProductSummaryScreenProps) {
   const { t } = useI18n();
   // Everything below the slider plus the top and bottom bars takes about
-  // 470px, so the slider gets whatever height is left (140–280) and all the
+  // 530px, so the slider gets whatever height is left (120–280) and all the
   // buttons stay above the bottom bar on short phones.
   const { height: winH } = useWindowDimensions();
-  const sliderHeight = Math.max(140, Math.min(280, winH - 470));
+  const sliderHeight = Math.max(120, Math.min(280, winH - 530));
   const params = route?.params || {};
   const [product, setProduct] = useState<any>(params.productData || params.product || {});
   const productId = params.productId ?? product?._id;
