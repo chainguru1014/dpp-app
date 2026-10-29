@@ -1013,7 +1013,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         navigation={navigation}
         user={user}
         onLogout={onLogout}
-        showBackButton={false} logoLeft flushBottom
+        showBackButton={false} logoLeft flushBottom hideContentCorners
       >
         <View style={styles.stateContainer}>
           <View style={styles.stateCard}>
@@ -1034,7 +1034,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         navigation={navigation}
         user={user}
         onLogout={onLogout}
-        showBackButton={false} logoLeft flushBottom
+        showBackButton={false} logoLeft flushBottom hideContentCorners
       >
         <View style={styles.stateContainer}>
           <View style={styles.stateCard}>
@@ -1052,7 +1052,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
   // Web photo-scan mode (http / no live camera) — clean light layout.
   if (Platform.OS === 'web' && webPhotoMode) {
     return (
-      <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton={false} logoLeft flushBottom>
+      <AppLayout navigation={navigation} user={user} onLogout={onLogout} showBackButton={false} logoLeft flushBottom hideContentCorners>
         <View style={styles.photoContainer}>
           <View style={styles.photoScanCard}>
             <Image source={require('../assets/qr-code.png')} style={styles.photoScanIcon} resizeMode="contain" />
@@ -1079,7 +1079,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         navigation={navigation}
         user={user}
         onLogout={onLogout}
-        showBackButton={false} logoLeft flushBottom
+        showBackButton={false} logoLeft flushBottom hideContentCorners
       >
         <View style={styles.container}>
           <View style={styles.scanViewport}>
@@ -1110,7 +1110,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         navigation={navigation}
         user={user}
         onLogout={onLogout}
-        showBackButton={false} logoLeft flushBottom
+        showBackButton={false} logoLeft flushBottom hideContentCorners
       >
         <View style={styles.stateContainer}>
           <View style={styles.stateCard}>
@@ -1132,7 +1132,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
         navigation={navigation}
         user={user}
         onLogout={onLogout}
-        showBackButton={false} logoLeft flushBottom
+        showBackButton={false} logoLeft flushBottom hideContentCorners
       >
         <View style={styles.container}>
           <View style={styles.scanViewport}>
@@ -1163,7 +1163,7 @@ export default function ScannerScreen({ navigation, route, user, onLogout }: Sca
       navigation={navigation}
       user={user}
       onLogout={onLogout}
-      showBackButton={false} logoLeft flushBottom
+      showBackButton={false} logoLeft flushBottom hideContentCorners
     >
       <View style={styles.stateContainer}>
         <View style={styles.stateCard}>

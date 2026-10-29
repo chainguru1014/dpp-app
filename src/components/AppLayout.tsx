@@ -60,6 +60,9 @@ interface AppLayoutProps {
   product?: any;
   // Opt out of the rounded-top content sheet (e.g. full-bleed camera screens).
   flatContent?: boolean;
+  /** Skip the painted top corners (they use the light page color) on screens
+   *  whose content is dark, e.g. the camera. */
+  hideContentCorners?: boolean;
   // Let content run full-bleed behind the (absolutely-positioned) bottom bar
   // instead of reserving BOTTOM_BAR_HEIGHT of padding for it — used by the
   // Scanner so the camera viewport extends all the way down.
@@ -159,6 +162,7 @@ export default function AppLayout({
   useCenterTop = false,
   hideBottomBar = false,
   flatContent = false,
+  hideContentCorners = false,
   flushBottom = false,
   logoLeft = false,
   onGuestAction,
@@ -533,7 +537,7 @@ export default function AppLayout({
           fully dark at the right) with the page color curving inside. Relying
           on the content's own clipped corners left them transparent on some
           pages in Chrome, which showed black. */}
-      {!flatContent && ([['left', mixHex(barFrom, barTo, 0.5)], ['right', barTo]] as const).map(([side, color]) => (
+      {!flatContent && !hideContentCorners && ([['left', mixHex(barFrom, barTo, 0.5)], ['right', barTo]] as const).map(([side, color]) => (
         <View key={side} pointerEvents="none" style={[styles.corner, { top: topBarHeight, [side]: 0, backgroundColor: color }]}>
           <View style={[styles.cornerInner, side === 'left' ? { borderTopLeftRadius: CONTENT_RADIUS } : { borderTopRightRadius: CONTENT_RADIUS }]} />
         </View>
