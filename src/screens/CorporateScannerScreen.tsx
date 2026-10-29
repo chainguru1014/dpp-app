@@ -1887,7 +1887,7 @@ const styles = StyleSheet.create({
   // Three equal type buttons, all fully visible. Now the last element in
   // the content layer (moved from above the camera/RFID panel), hence
   // marginTop instead of marginBottom for spacing from whatever is above it.
-  typeSelectorLabel: { fontSize: 18, fontWeight: '600', color: colors.heading, textAlign: 'center', marginTop: spacing.sm },
+  typeSelectorLabel: { fontSize: 21, fontWeight: '600', color: colors.heading, textAlign: 'center', marginTop: spacing.sm },
   typeSelectorRow: { flexDirection: 'row', gap: spacing.xs, marginTop: spacing.xs },
   // Stacked (icon on top, label below) instead of side-by-side, per explicit
   // "texts should be bottom of icon" request — taller box + less extreme
@@ -2076,6 +2076,7 @@ const styles = StyleSheet.create({
   captureButton: {
     height: 58,
     marginTop: spacing.sm,
+    marginBottom: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

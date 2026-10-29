@@ -502,8 +502,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     overflow: 'hidden',
   },
-  rowHeader: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, minHeight: 70 },
-  rowImage: { width: 66, height: 66, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt, marginRight: spacing.md },
+  rowHeader: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md, paddingLeft: spacing.md, paddingRight: spacing.xs, minHeight: 70 },
+  rowImage: { width: 66, height: 66, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt, marginRight: spacing.sm },
   rowTagIconBox: {
     width: 66,
     height: 66,
@@ -513,18 +513,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: spacing.md,
   },
-  rowInfo: { flex: 1 },
+  rowInfo: { flex: 1, minWidth: 0, marginRight: spacing.xs },
   rowRef: { fontSize: 21, fontWeight: '600', color: colors.text },
   rowRefMaskedWrap: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   rowTime: { fontSize: 18, color: colors.muted },
-  badge: { paddingVertical: 6, paddingHorizontal: 15, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, marginRight: spacing.sm, borderWidth: 1, borderColor: 'transparent' },
+  badge: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: 'transparent' },
   // Latest: outlined (not filled) so it reads distinct from the filled-green Saved badge.
   badgeLatest: { backgroundColor: colors.surface, borderColor: colors.primary },
   badgeLatestText: { fontSize: 17, color: colors.primary, fontWeight: '600' },
   badgeSaved: { backgroundColor: colors.success },
   badgeText: { fontSize: 17, color: colors.muted, fontWeight: '600' },
   badgeTextOnColor: { fontSize: 17, color: '#fff', fontWeight: '600' },
-  flagButton: { padding: 8, minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  flagButton: { paddingHorizontal: 4, minWidth: 40, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   // Floating popup (not inline) — anchored near the tap point, same
   // overlay/dismiss pattern as periodOverlay/periodPopover above.
   detailOverlay: { flex: 1 },
