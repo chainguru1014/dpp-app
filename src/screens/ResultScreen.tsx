@@ -1461,7 +1461,19 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
               if (!extra.length) return null;
               return (
                 <View style={styles.ovCard}>
-                  <Text style={styles.ovCardTitle}>{t('overviewKeyHighlights')}</Text>
+                  <View style={styles.ovCardHead}>
+                    <Text style={[styles.ovCardTitle, styles.ovCardHeadTitle]}>{t('overviewKeyHighlights')}</Text>
+                    <TouchableOpacity
+                      style={styles.ovLcButton}
+                      onPress={goToLifecycle}
+                      activeOpacity={0.75}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('overviewViewFullLifecycle')}
+                    >
+                      <Icon name="sync" size={20} color={colors.white} />
+                      <Text style={styles.ovLcButtonText}>{t('bottomLifecycle')}</Text>
+                    </TouchableOpacity>
+                  </View>
                   {extra.map((e) => (
                     <View key={e.text} style={styles.ovHlRow}>
                       <Icon name={e.icon} size={22} color={BRAND_COLOR} />
@@ -2278,6 +2290,18 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
     ...shadow(1),
   },
   ovCardTitle: { fontSize: 20, fontWeight: '700', color: colors.primary, marginBottom: 8 },
+  ovCardHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: 8 },
+  ovCardHeadTitle: { flex: 1, marginBottom: 0 },
+  ovLcButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    minHeight: 40,
+    paddingHorizontal: 14,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
+  },
+  ovLcButtonText: { color: colors.white, fontSize: 16, fontWeight: '700' },
   ovBlockText: { fontSize: 18, color: colors.text, lineHeight: 26 },
   ovBrandRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: 8 },
   ovBrandLogo: { width: 40, height: 40 },

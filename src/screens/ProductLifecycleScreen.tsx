@@ -141,6 +141,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
   // instead of each restarting independently at the seam between them.
   const [headerHeight, setHeaderHeight] = useState(0);
   const [productData, setProductData] = useState<any>(route?.params?.productData || {});
+  const isBlocked = productData?.item_status === 'blocked';
   // The brand's own look for this product (staff sessions keep the standard
   // one). `colors` / `styles` below deliberately shadow the standard ones so
   // everything this screen draws follows it.
@@ -921,7 +922,9 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
       showBackButton
       onBackPress={() => navigation.navigate(user?.actorKind === 'Employee' ? 'EmployeeHome' : 'Scanner')}
       title={t('titleProductLifecycle')}
-      flatContent
+      // Only the suspected-copy warning band needs the flat, blue-backed layout;
+      // otherwise AppLayout's rounded content (and its corner fill) is used.
+      flatContent={isBlocked}
       flushBottom
       headerBleedHeight={headerHeight || undefined}
       bottomBar={user && user.actorKind !== 'Employee' ? 'product' : 'auto'}
@@ -946,7 +949,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
         {/* No product header here (the Overview shows the photos); the tabs
             start right under the top bar. A label the brand marked as a
             suspected copy still gets its warning. */}
-        {productData?.item_status === 'blocked' && (
+        {isBlocked && (
           <View style={styles.header} onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}>
             <View style={styles.authCard} accessible accessibilityRole="alert" accessibilityLabel={t('overviewSuspectTitle')}>
               <Icon name="warning" size={23} color={colors.onHeader} />
@@ -956,7 +959,7 @@ export default function ProductLifecycleScreen({ navigation, route, user, onLogo
         )}
 
         {/* Rounded sheet: underline tab row + tab content. */}
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, !isBlocked && styles.sheetSquare]}>
           <View style={styles.tabRowWrap}>
             {/* Left/right arrows are real flex siblings of the scrollable tab
                 row, each with their own permanently reserved 48px-wide area --
@@ -1108,6 +1111,7 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
     borderTopRightRadius: 22,
     overflow: 'hidden',
   },
+  sheetSquare: { borderTopLeftRadius: 0, borderTopRightRadius: 0 },
   // A real flex row: [optional left arrow] [scrollable tabs, flex: 1]
   // [optional right arrow] -- each arrow is a normal layout sibling with its
   // own reserved width, never an overlay on top of the tab row.

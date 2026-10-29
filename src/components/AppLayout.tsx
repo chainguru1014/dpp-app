@@ -139,6 +139,14 @@ export function useTopBarHeight(): number {
   return TOP_BAR_CONTENT + insets.top;
 }
 
+// Blend of two #rrggbb colors; t = 0 gives a, 1 gives b.
+const mixHex = (a: string, b: string, t: number) => {
+  const p = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const [x, y] = [p(a), p(b)];
+  if (x.some(isNaN) || y.some(isNaN)) return b;
+  return '#' + x.map((v, i) => Math.round(v + (y[i] - v) * t).toString(16).padStart(2, '0')).join('');
+};
+
 export default function AppLayout({
   children,
   navigation,
@@ -185,6 +193,8 @@ export default function AppLayout({
   // constants, so the header/tab bar never sit under system chrome.
   const insets = useSafeAreaInsets();
   const topBarHeight = insets.top + TOP_BAR_CONTENT;
+  const barFrom = barColors?.from || colors.headerLight;
+  const barTo = barColors?.to || colors.primary;
   // Bottom-anchored sheet modals (profile sheet) need their own safe-area pad
   // so their last row doesn't sit under the home indicator.
   const spacingBottomForSheet = spacing.xl + insets.bottom;
@@ -504,6 +514,20 @@ export default function AppLayout({
         </View>
       </GradientView>
 
+      {/* Fills the space behind the content's rounded top corners with the
+          top bar's bottom-edge colors (the diagonal ramp is halfway at the
+          bottom-left and fully dark at the bottom-right). Plain CSS on web --
+          the SVG layer above did not reliably paint there and showed black. */}
+      {!flatContent && (
+        Platform.OS === 'web' ? (
+          <View
+            pointerEvents="none"
+            style={[styles.cornerFill, { top: topBarHeight, backgroundColor: barTo, backgroundImage: `linear-gradient(90deg, ${mixHex(barFrom, barTo, 0.5)}, ${barTo})` } as any]}
+          />
+        ) : (
+          <GradientView pointerEvents="none" style={[styles.cornerFill, { top: topBarHeight }]} angle="horizontal" from={mixHex(barFrom, barTo, 0.5)} to={barTo} />
+        )
+      )}
       <View
         style={[
           styles.content,
@@ -800,6 +824,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     overflow: 'hidden',
   },
+  cornerFill: { position: 'absolute', left: 0, right: 0, height: 24 },
   contentFlat: {
     borderTopLeftRadius: 0,
     borderTopRightRadius: 0,
