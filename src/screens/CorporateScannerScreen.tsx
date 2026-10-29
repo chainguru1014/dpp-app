@@ -1353,10 +1353,6 @@ export default function CorporateScannerScreen({ navigation, route, user, onLogo
             <View style={styles.bottomBoard}>
               {typeCaptures.length > 0 && (
                 <>
-                  <View style={styles.thumbRow}>
-                    <Text style={styles.thumbHeading}>{t('corpRecentCaptures')}</Text>
-                    <Text style={styles.seeAllLink}>{t('scanTodayCountLabel').replace('{count}', String(typeCaptures.length))}</Text>
-                  </View>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.thumbStrip}>
                   {typeCaptures.map((doc, index) => (
                     <TouchableOpacity
@@ -2132,7 +2128,7 @@ const styles = StyleSheet.create({
   thumbCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    width: 225,
+    width: 169,
     height: 74,
     alignSelf: 'flex-start',
     marginRight: spacing.sm,
