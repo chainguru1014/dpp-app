@@ -1447,13 +1447,17 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
   const overviewBlocks: Record<string, () => React.ReactNode> = {
     highlights: () => (
       <>
-            {/* Key Highlights — Type / Color / Size. */}
+            {/* Key Highlights — name / model / ID, then Type / Color / Size. */}
             {(() => {
+              const productId = look.theme.showProductId ? (productData?.pmc_code || (productData?.token_id != null ? String(productData.token_id) : '')) : '';
               const extra = [
+                productData?.name && { icon: 'sell', text: productData.name, strong: true },
+                productData?.model && { icon: 'checkroom', text: productData.model },
+                productId && { icon: 'qr-code-2', text: `ID: ${productId}` },
                 productData?.productType && { icon: 'category', text: `${t('factProductType')}: ${productData.productType}` },
                 productData?.color && { icon: 'palette', text: `${t('factColor')}: ${productData.color}` },
                 productData?.size && { icon: 'straighten', text: `${t('factSize')}: ${productData.size}` },
-              ].filter(Boolean) as { icon: string; text: string }[];
+              ].filter(Boolean) as { icon: string; text: string; strong?: boolean }[];
               if (!extra.length) return null;
               return (
                 <View style={styles.ovCard}>
@@ -1461,7 +1465,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
                   {extra.map((e) => (
                     <View key={e.text} style={styles.ovHlRow}>
                       <Icon name={e.icon} size={22} color={BRAND_COLOR} />
-                      <Text style={styles.ovHlText} numberOfLines={1}>{e.text}</Text>
+                      <Text style={[styles.ovHlText, e.strong && styles.ovHlTextStrong]} numberOfLines={e.strong ? 2 : 1}>{e.text}</Text>
                     </View>
                   ))}
                 </View>
@@ -1470,41 +1474,9 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
 
       </>
     ),
-    lifecycle: () => (
-      <>
-            {/* Lifecycle Preview strip. */}
-            <View style={styles.ovCard}>
-              <Text style={[styles.ovCardTitle, { marginBottom: 14 }]}>{t('overviewLifecyclePreview')}</Text>
-              {/* Decorative -- the icons alone don't explain each stage, and
-                  the "View product journey" CTA right below is the actual
-                  meaningful content, so screen readers skip this strip
-                  entirely rather than announcing five unlabelled icon names. */}
-              <View style={styles.ovLcStrip} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
-                {LIFECYCLE_STAGES.map((s, i) => (
-                  <React.Fragment key={s.key}>
-                    <View style={styles.ovLcStage}>
-                      <View style={styles.ovLcDot}>
-                        <Icon name={s.icon} size={35} color={BRAND_COLOR} />
-                      </View>
-                    </View>
-                    {i < LIFECYCLE_STAGES.length - 1 && <View style={styles.ovLcConn} />}
-                  </React.Fragment>
-                ))}
-              </View>
-              <TouchableOpacity
-                style={styles.ovViewLc}
-                onPress={goToLifecycle}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityLabel={t('overviewViewFullLifecycle')}
-              >
-                <Text style={styles.ovViewLcText}>{t('overviewViewFullLifecycle')}</Text>
-                <Icon name="chevron-right" size={21} color={colors.accent} />
-              </TouchableOpacity>
-            </View>
-
-      </>
-    ),
+    // The Lifecycle Preview strip was removed; the Lifecycle tab in the bottom
+    // bar opens the full page.
+    lifecycle: () => null,
     about: () => (productData?.aboutProduct ? (
       <View style={styles.ovCard}>
         <Text style={styles.ovCardTitle}>{t('lifecycleAboutProduct')}</Text>
@@ -2310,6 +2282,7 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
   ovBrandRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: 8 },
   ovBrandLogo: { width: 40, height: 40 },
   ovHlRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 6 },
+  ovHlTextStrong: { fontWeight: '700', color: colors.heading },
   ovHlText: { flex: 1, fontSize: 19, color: colors.text, lineHeight: 26 },
   ovLcStrip: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6 },
   ovLcStage: { alignItems: 'center', width: 58 },
