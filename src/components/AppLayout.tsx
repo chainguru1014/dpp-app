@@ -139,6 +139,8 @@ export function useTopBarHeight(): number {
   return TOP_BAR_CONTENT + insets.top;
 }
 
+const CONTENT_RADIUS = 20;
+
 // Blend of two #rrggbb colors; t = 0 gives a, 1 gives b.
 const mixHex = (a: string, b: string, t: number) => {
   const p = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
@@ -514,20 +516,6 @@ export default function AppLayout({
         </View>
       </GradientView>
 
-      {/* Fills the space behind the content's rounded top corners with the
-          top bar's bottom-edge colors (the diagonal ramp is halfway at the
-          bottom-left and fully dark at the bottom-right). Plain CSS on web --
-          the SVG layer above did not reliably paint there and showed black. */}
-      {!flatContent && (
-        Platform.OS === 'web' ? (
-          <View
-            pointerEvents="none"
-            style={[styles.cornerFill, { top: topBarHeight, backgroundColor: barTo, backgroundImage: `linear-gradient(90deg, ${mixHex(barFrom, barTo, 0.5)}, ${barTo})` } as any]}
-          />
-        ) : (
-          <GradientView pointerEvents="none" style={[styles.cornerFill, { top: topBarHeight }]} angle="horizontal" from={mixHex(barFrom, barTo, 0.5)} to={barTo} />
-        )
-      )}
       <View
         style={[
           styles.content,
@@ -539,6 +527,17 @@ export default function AppLayout({
       >
         {children}
       </View>
+
+      {/* The content's rounded top corners, painted on top of it: the top
+          bar's bottom-edge color (its diagonal ramp is halfway at the left,
+          fully dark at the right) with the page color curving inside. Relying
+          on the content's own clipped corners left them transparent on some
+          pages in Chrome, which showed black. */}
+      {!flatContent && ([['left', mixHex(barFrom, barTo, 0.5)], ['right', barTo]] as const).map(([side, color]) => (
+        <View key={side} pointerEvents="none" style={[styles.corner, { top: topBarHeight, [side]: 0, backgroundColor: color }]}>
+          <View style={[styles.cornerInner, side === 'left' ? { borderTopLeftRadius: CONTENT_RADIUS } : { borderTopRightRadius: CONTENT_RADIUS }]} />
+        </View>
+      ))}
 
       {effectiveBar === 'consumer' && (
         <ConsumerBottomBar
@@ -820,11 +819,12 @@ const styles = StyleSheet.create({
     // marginTop set inline per-render from useSafeAreaInsets() (see topBarHeight)
     flex: 1,
     backgroundColor: colors.bg,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: CONTENT_RADIUS,
+    borderTopRightRadius: CONTENT_RADIUS,
     overflow: 'hidden',
   },
-  cornerFill: { position: 'absolute', left: 0, right: 0, height: 24 },
+  corner: { position: 'absolute', width: CONTENT_RADIUS, height: CONTENT_RADIUS, zIndex: 5 },
+  cornerInner: { flex: 1, backgroundColor: colors.bg },
   contentFlat: {
     borderTopLeftRadius: 0,
     borderTopRightRadius: 0,
