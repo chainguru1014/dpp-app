@@ -1,14 +1,16 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image, ActivityIndicator, RefreshControl, Linking } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AppLayout from '../components/AppLayout';
 import { useI18n } from '../i18n/I18nContext';
-import { firstImageOf, formatPrice, listCart, setInCart } from '../utils/consumerApi';
+import { firstImageOf, formatPrice, listCart, recordPurchase, setInCart, shopUrlOf } from '../utils/consumerApi';
 import { colors, radius, spacing, shadow, MIN_TOUCH } from '../theme';
 
 // Products added with Add to Cart — one row each (photo, name, brand, price)
-// with a big Buy button that opens that product's Purchase page.
+// with a big Buy button that opens the product's buy link (else the brand
+// website) in a new tab; the Purchase page is only the fallback when there is
+// no link at all.
 export default function CartScreen({ navigation, user, onLogout }: any) {
   const { t } = useI18n();
   const [items, setItems] = useState<any[]>([]);
@@ -46,6 +48,16 @@ export default function CartScreen({ navigation, user, onLogout }: any) {
     return formatPrice(priced.reduce((sum, i) => sum + Number(i.product.price) * (i.quantity || 1), 0), cur);
   }, [items]);
 
+  const buy = (product: any) => {
+    const url = shopUrlOf(product);
+    if (!url) {
+      navigation.navigate('Purchase', { product });
+      return;
+    }
+    if (user?._id && product?._id) recordPurchase(String(user._id), product).catch(() => {});
+    Linking.openURL(url).catch((e) => console.error('Open shop failed:', e));
+  };
+
   const renderItem = ({ item }: any) => {
     const p = item.product || {};
     const img = firstImageOf(p);
@@ -71,12 +83,12 @@ export default function CartScreen({ navigation, user, onLogout }: any) {
         <View style={styles.info}>
           <Text style={styles.name} numberOfLines={2}>{p.name || '—'}</Text>
           {!!p.brandInfo?.name && <Text style={styles.brand} numberOfLines={1}>{p.brandInfo.name}</Text>}
-          <Text style={[styles.price, !price && styles.priceMuted]}>{price || t('priceOnRequest')}</Text>
+          <Text style={[styles.price, !price && styles.priceMuted]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{price || t('priceOnRequest')}</Text>
         </View>
         <View style={styles.actions}>
           <TouchableOpacity
             style={styles.buyBtn}
-            onPress={() => navigation.navigate('Purchase', { product: productForPage })}
+            onPress={() => buy(productForPage)}
             activeOpacity={0.85}
             accessibilityRole="button"
             accessibilityLabel={`${t('cartBuy')} ${p.name || ''}`}
@@ -90,7 +102,7 @@ export default function CartScreen({ navigation, user, onLogout }: any) {
             accessibilityRole="button"
             accessibilityLabel={t('cartRemove')}
           >
-            <MaterialCommunityIcon name="trash-can-outline" size={26} color={colors.muted} />
+            <MaterialCommunityIcon name="trash-can-outline" size={24} color={colors.white} />
           </TouchableOpacity>
         </View>
       </View>
@@ -146,19 +158,26 @@ const styles = StyleSheet.create({
   info: { flex: 1, minWidth: 0 },
   name: { fontSize: 21, fontWeight: '700', color: colors.heading },
   brand: { fontSize: 18, color: colors.muted, marginTop: 2 },
-  price: { fontSize: 24, fontWeight: '700', color: colors.primary, marginTop: spacing.xs },
+  price: { fontSize: 20, fontWeight: '700', color: colors.primary, marginTop: spacing.xs },
   priceMuted: { fontSize: 18, fontWeight: '500', color: colors.muted },
   actions: { alignItems: 'center', gap: spacing.xs },
   buyBtn: {
-    width: 64,
-    height: 64,
+    width: 56,
+    height: 56,
     borderRadius: radius.lg,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     ...shadow(1),
   },
-  removeBtn: { width: MIN_TOUCH, height: MIN_TOUCH, alignItems: 'center', justifyContent: 'center' },
+  removeBtn: {
+    width: 56,
+    height: MIN_TOUCH,
+    borderRadius: radius.md,
+    backgroundColor: colors.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

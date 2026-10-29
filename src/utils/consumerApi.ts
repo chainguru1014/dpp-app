@@ -136,6 +136,16 @@ export async function listCart(): Promise<any[]> {
   return Array.isArray(j?.data) ? j.data : [];
 }
 
+// Where a product is bought: its buy link, else the brand website.
+export function shopUrlOf(product: any): string {
+  const href = (url?: string) => {
+    const raw = String(url || '').trim();
+    if (!raw) return '';
+    return /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+  };
+  return href(product?.purchaseUrl) || href(product?.brandInfo?.websiteUrl);
+}
+
 export async function recordPurchase(userId: string, product: any): Promise<void> {
   await fetch(`${API_BASE_URL}engagement/purchase`, {
     method: 'POST',

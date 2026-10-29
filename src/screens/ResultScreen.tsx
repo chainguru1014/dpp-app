@@ -27,6 +27,7 @@ import GradientButton from '../components/GradientButton';
 import GradientView from '../components/GradientView';
 import { useI18n } from '../i18n/I18nContext';
 import MediaSlider, { isPlayableVideo } from '../components/MediaSlider';
+import CenterLoader from '../components/CenterLoader';
 import ProductReactionBar from '../components/ProductReactionBar';
 import { saveTextFile, safeFileBaseName } from '../utils/saveTextFile';
 import { colors, radius, spacing, shadow, MIN_TOUCH } from '../theme';
@@ -102,8 +103,11 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
   // and the scroll content is padded by the footer's measured height.
   const bottomBarSpace = useBottomBarSpace();
   const [pinnedFooterHeight, setPinnedFooterHeight] = useState(0);
+  // Slider height follows the screen so the overview fits short phones.
+  const ovSliderHeight = Math.max(150, Math.min(240, windowHeight - 520));
   const footerGap = windowHeight < 640 ? spacing.sm : windowHeight < 760 ? spacing.md : spacing.lg;
   const [productData, setProductData] = useState<any>(route?.params?.productData || {});
+  const [loadingProduct, setLoadingProduct] = useState(false);
   // The brand's own look for this product (staff sessions keep the standard
   // one). `colors` / `styles` below deliberately shadow the standard ones so
   // everything this screen draws follows it.
@@ -240,6 +244,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
     if (!shouldFetchByIds) return;
 
     (async () => {
+      setLoadingProduct(true);
       try {
         const response = await fetch(`${API_BASE_URL}qrcode/public/${encodeURIComponent(String(productId))}/${encodeURIComponent(String(qrcodeId))}`);
         const data = await response.json();
@@ -248,6 +253,8 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
         }
       } catch (error) {
         console.error('Failed to load public product data:', error);
+      } finally {
+        setLoadingProduct(false);
       }
     })();
   }, [route?.params?.productId, route?.params?.qrcodeId, productData?._id]);
@@ -1725,7 +1732,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
           <>
             {/* Product card — the media slider with its thumbnail column, same
                 as Product Summary. */}
-            <View style={styles.ovProductCard}>{renderImageSlider(240, true, true)}</View>
+            <View style={styles.ovProductCard}>{renderImageSlider(ovSliderHeight, true, true)}</View>
 
             {productData?.item_status === 'blocked' && (
               <View style={styles.ovSuspectCard} accessible accessibilityRole="alert">
@@ -2220,6 +2227,7 @@ export default function ResultScreen({ route, navigation, user, onLogout }: Resu
         </TouchableOpacity>
       </Modal>
 
+      <CenterLoader visible={loadingProduct && !productData?._id} />
     </AppLayout>
   );
 }
@@ -2291,7 +2299,7 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
     ...shadow(1),
   },
   ovCardTitle: { fontSize: 20, fontWeight: '700', color: colors.primary, marginBottom: 8 },
-  ovCardHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: 8 },
+  ovCardHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: 4 },
   ovCardHeadTitle: { flex: 1, marginBottom: 0 },
   ovLcButton: {
     flexDirection: 'row',
@@ -2309,9 +2317,9 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
   ovBlockText: { fontSize: 18, color: colors.text, lineHeight: 26 },
   ovBrandRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: 8 },
   ovBrandLogo: { width: 40, height: 40 },
-  ovHlRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 6 },
+  ovHlRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 2 },
   ovHlTextStrong: { fontWeight: '700', color: colors.heading },
-  ovHlText: { flex: 1, fontSize: 19, color: colors.text, lineHeight: 26 },
+  ovHlText: { flex: 1, fontSize: 18, color: colors.text, lineHeight: 24 },
   ovLcStrip: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6 },
   ovLcStage: { alignItems: 'center', width: 58 },
   ovLcDot: {

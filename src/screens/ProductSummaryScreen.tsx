@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, Linking, useWindowDimensions } from
 import AppLayout from '../components/AppLayout';
 import MediaSlider from '../components/MediaSlider';
 import GradientButton from '../components/GradientButton';
+import CenterLoader from '../components/CenterLoader';
 import ProductReactionBar, { BigIconButton } from '../components/ProductReactionBar';
 import { useI18n } from '../i18n/I18nContext';
 import { colors, radius, spacing, shadow } from '../theme';
@@ -38,15 +39,19 @@ export default function ProductSummaryScreen({ navigation, route, user, onLogout
   const productId = params.productId ?? product?._id;
   const qrcodeId = params.qrcodeId ?? product?.token_id;
   const securityPassed = !!params.securityPassed;
+  const [loading, setLoading] = useState(false);
 
   // Album / cart rows only carry a snapshot (no videos, no price) — load the
   // full public product when we have its ids.
   useEffect(() => {
     if (productId == null || qrcodeId == null || product?.videos) return undefined;
     let alive = true;
-    fetchPublicProduct(String(productId), qrcodeId).then((full) => {
-      if (alive && full) setProduct((prev: any) => ({ ...prev, ...full }));
-    });
+    setLoading(true);
+    fetchPublicProduct(String(productId), qrcodeId)
+      .then((full) => {
+        if (alive && full) setProduct((prev: any) => ({ ...prev, ...full }));
+      })
+      .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productId, qrcodeId]);
@@ -115,6 +120,9 @@ export default function ProductSummaryScreen({ navigation, route, user, onLogout
           {!!price && <Text style={styles.price}>{price}</Text>}
         </View>
       </ScrollView>
+      {/* Only while there is nothing to show yet (album/cart snapshots
+          already carry a name and photo). */}
+      <CenterLoader visible={loading && !product?.name} />
     </AppLayout>
   );
 }

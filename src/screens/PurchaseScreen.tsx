@@ -5,14 +5,8 @@ import AppLayout from '../components/AppLayout';
 import MediaSlider from '../components/MediaSlider';
 import { normalizeToStringArray, normalizeToArray } from '../utils/mediaNormalize';
 import { useI18n } from '../i18n/I18nContext';
-import { fileUrl, formatPrice, recordPurchase } from '../utils/consumerApi';
+import { fileUrl, formatPrice, recordPurchase, shopUrlOf } from '../utils/consumerApi';
 import { colors, radius, spacing, shadow } from '../theme';
-
-const href = (url?: string) => {
-  const raw = String(url || '').trim();
-  if (!raw) return '';
-  return /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
-};
 
 // One product's purchase page (from the Cart's Buy button): photo, name,
 // brand, price and a big Buy button that opens the brand's shop page for it
@@ -24,7 +18,7 @@ export default function PurchaseScreen({ navigation, route, user, onLogout }: an
   const images = normalizeToStringArray(product?.images);
   const videos = normalizeToArray(product?.videos);
   const price = formatPrice(product.price, product.currency);
-  const shopUrl = href(product.purchaseUrl) || href(product.brandInfo?.websiteUrl);
+  const shopUrl = shopUrlOf(product);
 
   const buy = async () => {
     if (!shopUrl || busy) return;
